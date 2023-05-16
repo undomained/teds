@@ -166,6 +166,13 @@ int Program::execute( // {{{
             // Note that the interpolation will be done in the input units,
             // so before unit conversion.
             handle(frm->resample(ckd.get(),set_main.input_enhance));
+            if (ckd->fov_nfov_vp.front() != frm->dim_spat_truth) {
+                std::cerr << "error: the input file contains "
+                          << frm->dim_spat_truth
+                          << " spectra whereas the CKD defines "
+                          << ckd->fov_nfov_vp.front() << " ACT angles\n";
+                return 1;
+            }
 
             // Convert photons to Joules. The rest of the units are
             // normal. There are no centimeters rubbish like that.

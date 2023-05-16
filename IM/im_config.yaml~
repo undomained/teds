@@ -1,0 +1,6 @@
+filename:
+    ckd_input:      'ckd/ckd'                                #IM calibration key data
+    gm_input:       'gm/Tango_Carbon_gm_'                    #geometry data from GM
+    sgm_input:      'sgm/Tango_Carbon_sgm_radiance_'         #SGM radiance input
+    level0_input:   'level0/Tango_Carbon_l0_'                #level 0 input
+    binning_table:  'ckd/binning_table'                      #Instrument binning table

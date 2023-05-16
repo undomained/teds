@@ -1,0 +1,27 @@
+sim_with_noise: True
+
+path:
+    siml1b_output: 'level1b/'                       #siml1b output directory
+    sgm_input:     'sgm/'                          #path for sgm input
+    gm_input:      'gm/'                           #path to gm input
+    solar_spec:    'solar_spectra/'
+    
+filename:
+    sgm_input:       'Tango_Carbon_sgm_radiance'   #output file for rdiometric scene
+    siml1b_output:   'Tango_Carbon_l1b'            #output file for geophysical scene
+    gm_input:        'Tango_Carbon_gm'             #gm output file
+     
+spec_settings:                                     #settings for spectral grid of measurements
+    wave_start: 1590.0009375                       #nm
+    wave_end:   1675                               #nm
+    dwave:      0.1546875                          #nm
+
+isrf_settings:
+    type:       'Gaussian'                         #type of ISRF, currently only Gaussian
+    fwhm:       0.45                               #fwhm  [nm]
+    
+snr_model:                                         #SNR instrument model a nd b coefficients
+    a_snr:      1.54E-12                           #[e- m2 sr s nm/phot.]
+    b_snr:      45501                              #[e-]
+    seed:       5                                  #seed for measurement noise
+    

@@ -1,0 +1,19 @@
+[main]
+# Location of the CKD file
+ckd_file_in = data/ckd.nc
+# Process name. In the present implementation this is always l1b.
+process = l1b
+# Location of binning table file
+binningtable_filename = data/binning_table.nc
+[l1b]
+# Iteration limit for the stray light deconvolution procedure. Set to
+# 0 turn off the stray light correction.
+stray_van_cittert_steps = 4
+# Whether to perform geolocation. Use 0 for now.
+geolocation = 0
+# Location of the nL1A product (input detector images)
+l1a_files = data/l1a.nc
+# Location of the GM output (input geometry)
+geometry_file = data/Tango_Carbon_gm_S2_microHH_run0001.nc
+# Location of the L1B product
+outputfile = data/l1b.nc

@@ -1,0 +1,30 @@
+retrieval_init:                 #initialization parameter for inversion
+    max_iter: 15
+    chi2_lim: 0.1
+    
+atmosphere:
+    nlay: 30                    #number of atmospheric layers
+    dzlay: 1000                 #geometrical thickness of the layers [m]
+    psurf: 101300               #surface pressure [Pa]
+
+std_atm: 'prof.AFGL.US.std'     #path to AFGL model atmosphere
+    
+filename:
+    l2_output:    'Tango_Carbon_l2'       #output file for geophysical scene
+    l1b_input:    'Tango_Carbon_l1b'      #gm output file
+
+spec_settings:              #settings for line-by-line spectra
+    wavestart:   1590       #initial wavelength (indicator)
+    waveend:     1675       #final wavlength of measurement
+    wave_extend: 2.0        #shortwave and longwave extension of the measurement grid [nm]
+    dwave:       0.002      #nm
+
+isrf_settings:
+    type:       'Gaussian'  #type of ISRF, currently only Gaussian
+    fwhm:       0.45        #fwhm  [nm]
+    
+surface:
+    wave_alb: [1600, 1650]  #wavelengths at which the surface albedo is specified in the output
+    
+xsec_forced: False          #flag to froce new cross section calculation
+

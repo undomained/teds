@@ -1,0 +1,26 @@
+#this file contains all paths of the end-to-end simulator
+project = '/home/jochen/TANGO_E2ES/EndtoEndProject/'
+#project = '/Users/jochen/ownCloud2/TANGO/TANGO_E2ES/EndtoEndProject/'
+
+GM_modules    = 'modules/GM/'
+SGM_module    = 'modules/SGM/'
+IM_module     = 'modules/IM/'
+L0L1B_module  = 'modules/L0L1B/'
+L1L2_module   = 'modules/L1L2/'
+SIML1B_module = 'modules/SIML1B/'
+libaries      = 'modules/lib/'
+
+data_harpi    = 'data/hapi/'
+data_afgl     = 'data/AFGL/'
+data_microHH  = 'data/microHH/'
+data_sol_spec = 'data/solar_spectra/'
+data_harpi    = 'data/tmp/'
+data_interface= 'data/interface_data/'
+data_tmp      = 'data/tmp/'
+
+interface_sgm = 'sgm/'
+interface_l2  = 'level2/'
+interface_l1b = 'level1b/'
+interface_l0  = 'level0/'
+interface_gm  = 'gm/'
+interface_ckd = 'ckd/'

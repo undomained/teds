@@ -44,4 +44,3 @@ fwhm_gauss = 1.0
 noise_apply = 1
 # Seed for the random noise generator.
 # seed = 100
-[l1b]

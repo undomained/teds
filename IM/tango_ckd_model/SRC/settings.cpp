@@ -95,9 +95,5 @@ int Settings::init( // {{{
             raise_error("Settings error. No '=' found in line: %s",line.c_str());
         }
     }
-
-    check_error(!tag_found,"Error: tag [%s] not found in settings file.",tag.c_str());
-
     return 0;
-
 } // }}}

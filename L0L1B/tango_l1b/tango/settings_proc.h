@@ -12,12 +12,10 @@ class Settings_main;
 
 // Collocations of switches for detector calibration steps.
 struct Calibration_options {
-    // Currently, all options that are sitched off for any case are listed.
-    bool dark_current = true; // False for noise calibration.
-    bool nonlin = true; // False for FOV, swath and wavelength calibartion.
-    bool stray = true; // False for FOV, swath and wavelength calibration.
-    // These options are hardcoded in the constructors of the processor
-    // settings (the child classes).
+    bool dark_apply { true };
+    bool nonlin_apply { true };
+    bool prnu_apply { true };
+    bool rad_apply { true };
 
     // Optional calibration settings.
     uint32_t nonlin_niter = 100; // Number of iterations that will be allowed when performing the inversion that applies the non-linearity correction.
@@ -87,6 +85,10 @@ class Settings_proc : public Settings {
     uint32_t &nonlin_niter = opt.nonlin_niter; // Number of iterations that will be allowed when performing the inversion that applies the non-linearity correction.
     double &nonlin_tol = opt.nonlin_tol; // Convergence tolerance when performing the inversion that applies the non-linearity correction.
     int &stray_van_cittert_steps = opt.stray_van_cittert_steps; // Number of Van Cittert iterations to perform straylight correction.
+    bool& dark_apply { opt.dark_apply };
+    bool& nonlin_apply { opt.nonlin_apply };
+    bool& prnu_apply { opt.prnu_apply };
+    bool& rad_apply { opt.rad_apply };
 
     // Apply main settings to the processor.
     int apply_main_settings(

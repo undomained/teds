@@ -33,6 +33,5 @@ int Settings_main::init_common( // {{{
     recognize_setting(output_level); // Flag for additional detailed (non-operational) output.
 
     return 0;
-
 } // }}}
 

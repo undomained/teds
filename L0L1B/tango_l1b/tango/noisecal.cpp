@@ -20,7 +20,7 @@ Settings_noisecal::Settings_noisecal( // {{{
     tag = "noise";
     output_level_max = 1;
     l1a_type = L1A_FRAMES;
-    opt.dark_current = false;
+    opt.dark_apply = false;
 } // }}}
 Settings_noisecal::~Settings_noisecal() {}
 int Settings_noisecal::init_step( // {{{
@@ -106,9 +106,7 @@ int Noisecal::process_init( // {{{
 } // }}}
 
 // Noise calibration protocol.
-int Noisecal::process_batch( // {{{
-    size_t ibatch
-)
+int Noisecal::process_batch(size_t ibatch, const Calibration_options& opt)
 {
 
     // Get pixel range from batch.

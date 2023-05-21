@@ -285,17 +285,7 @@ int L1B::process_init( // {{{
 
     // NetCDF variables for geolocation.
     if (set->geolocation) {
-        /*
-        // Read UTC file.
-        NetCDF_object nc_utc(this);
-        handle(nc_utc.open(set->utcfile,NcFile::read));
-        netcdf_check(&nc_utc,dim_utc = nc_utc.ncid->getDim("sz").getSize());
-        mjd_utc.resize(dim_utc);
-        tdiff_utc.resize(dim_utc);
-        netcdf_check(&nc_utc,nc_utc.ncid->getVar("mjd").getVar(mjd_utc.data()));
-        netcdf_check(&nc_utc,nc_utc.ncid->getVar("timediff").getVar(tdiff_utc.data()));
-        */
-        dim_utc = 0;/*KR, to turn off the UTC, //Search current day procedure*/
+        dim_utc = 0;
 
         // Construct the planet.
         earth = make_unique<Planet>(this,set->semi_major_axis,set->semi_minor_axis,set->latitude_tol);
@@ -508,9 +498,7 @@ int L1B::process_init( // {{{
 } // }}}
 
 // Process one image.
-int L1B::process_batch( // {{{
-    size_t ibatch
-)
+int L1B::process_batch(size_t ibatch, const Calibration_options& opt)
 {
     // 1. Interpret index and observation according to L1B batch handling.
 
@@ -591,7 +579,7 @@ int L1B::process_batch( // {{{
     for (size_t ifov=0 ; ifov<ckd->dim_fov ; ifov++) {
         // This is one spectrum.
         Spectra specs;
-        handle(l1a->extract(ifov,specs));
+        handle(l1a->extract(ifov, opt, specs));
         size_t &nbin = specs.dim;
         // Now, the demodulation starts.
         if (ckd->lev > LEVEL_RADCAL) {
@@ -599,8 +587,7 @@ int L1B::process_batch( // {{{
                 if (!specs.mask[ibin]) {
                     radiance_raw_cur[ibin] = specs.signal[ibin];
                     intensity_radiance_cur[ibin] = specs.signal[ibin];
-                    intensity_radiance_noise_cur[ibin] = specs.noise[ibin]; //I_noise forming, see l1a.cpp
-                    //intensity_radiance_noise_cur[ibin] = specs.signal[ibin]; //I_noise forming, see l1a.cpp, //KR tests
+                    intensity_radiance_noise_cur[ibin] = specs.noise[ibin];
                 }
             }
         }
@@ -609,7 +596,6 @@ int L1B::process_batch( // {{{
             // Intensity product and input.
             radiance_raw_cur += ckd->fov_dims_spec[ifov];
             intensity_radiance_cur += dim_int_wave;
-            //KR, add noise
             intensity_radiance_noise_cur += dim_int_wave;
         }
     }

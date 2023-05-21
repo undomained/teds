@@ -71,9 +71,7 @@ int Prnucal::process_init( // {{{
 
 // PRNU correction calibration software.
 // This is the planned protocol.
-int Prnucal::process_batch( // {{{
-    size_t ibatch // Meaningless zero here.
-)
+int Prnucal::process_batch(size_t ibatch, const Calibration_options& opt)
 {
 
     // Shape the output.

@@ -405,8 +405,6 @@ int Program::execute( // {{{
                 uint32_t &ipix = bin->pixelpointer[ipix_unbinned];
                 if (ipix < bin->npix) {
                     image_binned[ipix] += frm->image[ipix_unbinned];
-                    //image_binned[ipix] = 0; //Tests KR remove it!
-                    //image_binned[ipix] += -3 ;//KR add to the image in a process, for tests. Added with binning!! (xTimesBin) Def==0
                 }
             }
             frm->image = image_binned;

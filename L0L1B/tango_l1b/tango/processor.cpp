@@ -124,6 +124,7 @@ int Processor::execute( // {{{
         nl1a_total = l1am->getNtotal();
         l1a_instances_all = l1am->getInstances();
 
+
         // Default nbatch. If not set, revert to 'all' or 'none' based on nl1a_total.
         nbatch = NC_FILL_UINT64;
 
@@ -183,9 +184,8 @@ int Processor::execute( // {{{
             // The batch contains everything we need, but we extract the stuff we require for processing: the list of images and its size.
             nl1a = bat.nl1a;
             l1a_instances = bat.l1a.data();
-
             // 5b. Execute the processor per batch.
-            handle(process_batch(ibatch)); // Batch number may indicate the phase of the process.
+            handle(process_batch(ibatch, set->opt)); // Batch number may indicate the phase of the process.
             handle(l1am->destruct_batch(bat)); // Images are thrown away if not flagged for recycling. This is done to save memory.
         }
 
@@ -262,9 +262,7 @@ int Processor::process_init(
     // Do nothing.
     return 0;
 }
-int Processor::process_batch(
-    size_t ibatch
-)
+int Processor::process_batch(size_t ibatch, const Calibration_options& opt)
 {
     // Do nothing.
     return 0;

@@ -267,9 +267,7 @@ int Nonlincal::process_init( // {{{
 
 // Non-linearity correction calibration software.
 // This is the planned protocol.
-int Nonlincal::process_batch( // {{{
-    size_t ibatch // Exposure time number or illumination level number (ascending).
-)
+int Nonlincal::process_batch(size_t ibatch, const Calibration_options& opt)
 {
 
     Batch &bat = batches[ibatch];

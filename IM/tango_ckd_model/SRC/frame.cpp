@@ -137,8 +137,6 @@ int Frame::read_l1x( // {{{
         // Read raw spectra.
         vector<size_t> strt = { l1x_iframe, 0, 0 };
         vector<size_t> cnt = { 1, l1x_inputfile->dim_spat_truth, l1x_inputfile->dim_spec_truth };
-        //vector<size_t> strt = { l1x_iframe, 0, 0, 0, 0 }; // KR, if we do follow the netCDF description
-        //vector<size_t> cnt = { 1, 1, 1, l1x_inputfile->dim_spat_truth, l1x_inputfile->dim_spec_truth };
         intens.resize(ckd->dim_vp*l1x_inputfile->dim_spat_truth*l1x_inputfile->dim_spec_truth);
         vector<double *> targets = { intens.data() };
         NcVar var_spectra;

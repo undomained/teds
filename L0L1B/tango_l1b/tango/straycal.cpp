@@ -92,9 +92,7 @@ Straycal::Straycal( // {{{
 Straycal::~Straycal() {}
 
 // Straylight correction calibration software.
-int Straycal::process_batch( // {{{
-    size_t ibatch // Meaningless zero here.
-)
+int Straycal::process_batch(size_t ibatch, const Calibration_options& opt)
 {
     // PART 0 - Dimensions.
     static constexpr double default_relative_padding { 0.1 };

@@ -67,9 +67,7 @@ int Radcal::process_init( // {{{
     return 0;
 
 } // }}}
-int Radcal::process_batch( // {{{
-    size_t ibatch // This is the viewport index.
-)
+int Radcal::process_batch(size_t ibatch, const Calibration_options& opt)
 {
 
     // The viewport index is linked to the batch index.
@@ -86,7 +84,7 @@ int Radcal::process_batch( // {{{
 
         Spectra specs;
         // Extract the spectrum.
-        handle(l1a->extract(ifov,specs));
+        handle(l1a->extract(ifov, opt, specs));
 
         // Interpolate reference spectrum to extracted spectra.
 

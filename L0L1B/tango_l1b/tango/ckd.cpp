@@ -915,47 +915,14 @@ int CKD::check_opts( // {{{
 }
 
 // Private routines to read and write calibration options.
-int CKD::read_opt( // {{{
+int CKD::read_opt(
     NetCDF_object *nc, // Input NetCDF object (not nc_ckd).
     NcGroup grp,
     Calibration_options &opt
 )
 {
-
-    uint8_t boolread; // To read any form of boolean.
-    if (lev > LEVEL_DARKCAL && !dark_skip) {
-        /*//commented by KR
-        // Forced option.
-        netcdf_check(nc,grp.getAtt("opt_dark_current").getValues(&boolread));
-        opt.dark_current = boolread == 1;
-        // No optional options.
-        */
-    }
-    if (lev > LEVEL_NONLINCAL && !nonlin_skip) {
-        /*//KR
-        netcdf_check(nc,grp.getAtt("opt_nonlin").getValues(&boolread));
-        opt.nonlin = boolread == 1;
-        // Optional options only relevant when executing non-linearity.
-        if (opt.nonlin) {
-            netcdf_check(nc,grp.getAtt("opt_nonlin_niter").getValues(&opt.nonlin_niter));
-            netcdf_check(nc,grp.getAtt("opt_nonlin_tol").getValues(&opt.nonlin_tol));
-        }
-    */
-    }
-    if (lev > LEVEL_STRAYCAL && !stray_skip) {
-         /*/commented by KR
-        netcdf_check(nc,grp.getAtt("opt_stray").getValues(&boolread));
-        opt.stray = boolread == 1;
-        // Optional options only relevant when executing straylight.
-        if (opt.stray) {
-            netcdf_check(nc,grp.getAtt("opt_stray_van_cittert_steps").getValues(&opt.stray_van_cittert_steps));
-        }
-        */
-    }
-
     return 0;
-
-} // }}}
+}
 
 int CKD::write_opt( // {{{
     NcGroup grp,
@@ -965,26 +932,23 @@ int CKD::write_opt( // {{{
     uint8_t boolwrite; // To write any form of boolean.
     if (lev > LEVEL_DARKCAL && !dark_skip) {
         // Forced option.
-        boolwrite = opt.dark_current?1:0;
+        boolwrite = opt.dark_apply?1:0;
         netcdf_check(nc_ckd,grp.putAtt("opt_dark_current",ncUbyte,boolwrite));
         // No optional options.
     }
     if (lev > LEVEL_NONLINCAL && !nonlin_skip) {
-        boolwrite = opt.nonlin?1:0;
+        boolwrite = opt.nonlin_apply?1:0;
         netcdf_check(nc_ckd,grp.putAtt("opt_nonlin",ncUbyte,boolwrite));
         // Optional options only relevant when executing non-linearity.
-        if (opt.nonlin) {
+        if (opt.nonlin_apply) {
             netcdf_check(nc_ckd,grp.putAtt("opt_nonlin_niter",ncUint,opt.nonlin_niter));
             netcdf_check(nc_ckd,grp.putAtt("opt_nonlin_tol",ncDouble,opt.nonlin_tol));
         }
     }
     if (lev > LEVEL_STRAYCAL && !stray_skip) {
-        boolwrite = opt.stray?1:0;
         netcdf_check(nc_ckd,grp.putAtt("opt_stray",ncUbyte,boolwrite));
         // Optional options only relevant when executing straylight.
-        if (opt.stray) {
-            netcdf_check(nc_ckd,grp.putAtt("opt_stray_van_cittert_steps",ncInt,opt.stray_van_cittert_steps));
-        }
+        netcdf_check(nc_ckd,grp.putAtt("opt_stray_van_cittert_steps",ncInt,opt.stray_van_cittert_steps));
     }
 
     return 0;
@@ -1011,8 +975,8 @@ int CKD::check_opt( // {{{
         if (
             lev_ref > LEVEL_NONLINCAL &&
             !nonlin_skip &&
-            opt_user.nonlin &&
-            opt_ref.nonlin
+            opt_user.nonlin_apply &&
+            opt_ref.nonlin_apply
         ) {
             if (opt_user.nonlin_niter != opt_ref.nonlin_niter) writelog(log_warning,"Warning: Inconsistent non-linearity number of iterations between user options of current step (%d) and options when the CKD of step %s was created (%d).",opt_user.nonlin_niter,stepname.c_str(),opt_ref.nonlin_niter);
             if (opt_user.nonlin_tol != opt_ref.nonlin_tol) writelog(log_warning,"Warning: Inconsistent non-linearity convergence criterion between user options of current step (%.6e) and options when the CKD of step %s was created (%.6e).",opt_user.nonlin_tol,stepname.c_str(),opt_ref.nonlin_tol);

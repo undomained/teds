@@ -51,6 +51,10 @@ int Settings_proc::init_common( // {{{
     recognize_setting(nonlin_niter); // Number of iterations that will be allowed when performing the inversion that applies the non-linearity correction.
     recognize_setting(nonlin_tol); // Convergence tolerance when performing the inversion that applies the non-linearity correction.
     recognize_setting(stray_van_cittert_steps); // Number of Van Cittert iterations to perform straylight correction.
+    recognize_setting(dark_apply);
+    recognize_setting(nonlin_apply);
+    recognize_setting(prnu_apply);
+    recognize_setting(rad_apply);
 
     // Own settings. This routine is overwritten by the inheriting class.
     handle(init_step(stream,key,value,recognized));

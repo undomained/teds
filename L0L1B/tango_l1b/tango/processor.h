@@ -76,9 +76,7 @@ class Processor : public Logger { // {{{
     // Empty routines that need to be overwritten by the classes.
     // It is legal not to overwrite them, but then, nothing happens.
     virtual int process_init();
-    virtual int process_batch(
-        size_t ibatch
-    );
+    virtual int process_batch(size_t ibatch, const Calibration_options& opt);
     virtual int process_finalize();
     virtual int write_detailed_output(
         NetCDF_object *nc,

@@ -185,6 +185,7 @@ int Binningtable::read( // {{{
         } // }}}
         // Straylight CKD will never be binned. Straylight is a step that happens in
         // the unbinned perspective.
+        binned_ckd->stray_skip = ckd->stray_skip;
 
         // FOV CKD. Meanwhile, help CKD is generated with which the next steps can be simplified.
         vector<size_t> help_ispec_start;
@@ -422,6 +423,7 @@ int Binningtable::read( // {{{
         // Radiometric calibration.
         if (ckd->lev > LEVEL_RADCAL) { // {{{
             binned_ckd->rad_spectra.resize(nspec_total*DIM_POL);
+            binned_ckd->rad_skip = ckd->rad_skip;
             // I think that the harmonic mean is best.
             size_t *ispec_start = help_ispec_start.data();
             size_t *ispec_end = help_ispec_end.data();

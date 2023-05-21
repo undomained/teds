@@ -6,9 +6,17 @@ process = l1b
 # Location of binning table file
 binningtable_filename = data/binning_table.nc
 [l1b]
+# Whether to apply dark offset and current calibration (default true)
+dark_apply = 1
+# Whether to apply nonlinearity calibration (default true)
+nonlin_apply = 1
 # Iteration limit for the stray light deconvolution procedure. Set to
 # 0 turn off the stray light correction.
 stray_van_cittert_steps = 4
+# Whether to apply PRNU calibration (default true)
+prnu_apply = 1
+# Whether to apply radiometric calibration (default true)
+rad_apply = 1
 # Whether to perform geolocation. Use 0 for now.
 geolocation = 0
 # Location of the nL1A product (input detector images)

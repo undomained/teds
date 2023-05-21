@@ -78,9 +78,7 @@ class Wavecal : public Processor { // {{{
     protected:
     unique_ptr<Settings_wavecal> set; // To ensure that everyone knows that set in this instance is of this derived type.
     int process_init() override;
-    int process_batch(
-        size_t ibatch
-    ) override;
+    int process_batch(size_t ibatch, const Calibration_options& opt) override;
 
     private:
     // Batch-to-viewport coupling. Non-trivial if viewports are skipped.

@@ -19,8 +19,7 @@ Settings_wavecal::Settings_wavecal( // {{{
 ) : Settings_proc(creator)
 {
     tag = "wave";
-    opt.nonlin = false;
-    opt.stray = false;
+    opt.nonlin_apply = false;
 } // }}}
 Settings_wavecal::~Settings_wavecal() {}
 int Settings_wavecal::init_step( // {{{
@@ -179,9 +178,7 @@ int Wavecal::process_init( // {{{
     return 0;
 
 } // }}}
-int Wavecal::process_batch( // {{{
-    size_t ibatch // This is the viewport index.
-)
+int Wavecal::process_batch(size_t ibatch, const Calibration_options& opt)
 {
 
     // The viewport index is linked to the batch index.
@@ -222,7 +219,7 @@ int Wavecal::process_batch( // {{{
     for (size_t ipeak=0 ; ipeak<npeak ; ipeak++) peaks[ipeak] = res[3*ipeak+1];
     for (size_t ifov=0 ; ifov<ckd->fov_nfov_vp[ivp] ; ifov++) {
         Spectra specs;
-        handle(l1a->extract(ifov,specs));
+        handle(l1a->extract(ifov, opt, specs));
 
         for (size_t ipol=0 ; ipol<DIM_POL ; ipol++) {
             // Extract mask, because vector<bool> does not convert properly to

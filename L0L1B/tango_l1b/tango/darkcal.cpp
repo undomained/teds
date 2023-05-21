@@ -78,9 +78,7 @@ int Darkcal::process_init( // {{{
 // 1. Extract necessary metadata from input.
 // 2. Fit temperature-dependent dark signal.
 // 3. Add a noise estimate.
-int Darkcal::process_batch( // {{{
-    size_t ibatch // Meaningless zero here.
-)
+int Darkcal::process_batch(size_t ibatch, const Calibration_options& opt)
 {
 
     vector<double> time(nl1a); // Should end up with size ntime.

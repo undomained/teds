@@ -25,8 +25,7 @@ Settings_swathcal::Settings_swathcal( // {{{
 {
     tag = "swath";
     output_level_max = 1;
-    opt.nonlin = false;
-    opt.stray = false;
+    opt.nonlin_apply = false;
 } // }}}
 Settings_swathcal::~Settings_swathcal() {}
 int Settings_swathcal::init_step( // {{{
@@ -321,9 +320,7 @@ int Swathcal::process_init( // {{{
 
 } // }}}
 
-int Swathcal::process_batch( // {{{
-    size_t ibatch // This is the viewport index.
-)
+int Swathcal::process_batch(size_t ibatch, const Calibration_options& opt)
 {
 
 

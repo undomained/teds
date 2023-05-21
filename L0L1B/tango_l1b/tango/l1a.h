@@ -56,7 +56,7 @@ class L1A : public Logger { // {{{
 
     // From the settings.
     bool l1a_navigation; // Request flag for navigation data.
-    
+
     //The follows has been added for the simplified GM
     double nav_latitude;
     double nav_longitude;
@@ -155,6 +155,7 @@ class L1A : public Logger { // {{{
     // it will be radiometrically calibrated.
     int extract(
         size_t ifov, // Field-of-view index.
+        const Calibration_options& opt,
         Spectra &specs // Output spectra.
     );
 

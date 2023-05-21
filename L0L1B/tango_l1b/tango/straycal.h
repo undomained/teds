@@ -57,10 +57,7 @@ class Straycal : public Processor { // {{{
     // Overwritten virtual functions.
     protected:
     unique_ptr<Settings_straycal> set; // To ensure that everyone knows that set in this instance is of this derived type.
-    int process_batch(
-        size_t ibatch
-    ) override;
-
+    int process_batch(size_t ibatch, const Calibration_options& opt) override;
 }; // }}}
 
 #endif

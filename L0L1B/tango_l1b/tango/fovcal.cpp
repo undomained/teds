@@ -22,8 +22,7 @@ Settings_fovcal::Settings_fovcal( // {{{
 {
     tag = "fov";
     output_level_max = 1;
-    opt.nonlin = false;
-    opt.stray = false;
+    opt.nonlin_apply = false;
 } // }}}
 Settings_fovcal::~Settings_fovcal() {}
 int Settings_fovcal::init_step( // {{{
@@ -214,9 +213,7 @@ int Fovcal::process_init( // {{{
 
 } // }}}
 
-int Fovcal::process_batch( // {{{
-    size_t ibatch // This is the viewport index.
-)
+int Fovcal::process_batch(size_t ibatch, const Calibration_options& opt)
 {
 
     // Set up administration. {{{

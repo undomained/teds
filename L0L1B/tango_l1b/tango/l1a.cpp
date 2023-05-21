@@ -188,8 +188,6 @@ int L1A::read_image( // {{{
             for (size_t iframe=0 ; iframe<nframe_inp ; iframe++) {
                 for (size_t ipix=ipix_start ; ipix<ipix_end ; ipix++) {
                     image[ipix] += rawframes[iframe][ipix];
-                    //image[ipix] += 1000; // KR test
-                    //image[ipix] = 1000; // KR test
                 }
             }
             for (size_t ipix=ipix_start ; ipix<ipix_end ; ipix++) {
@@ -338,11 +336,7 @@ int L1A::remove_image( // {{{
 static auto fillHoles(const int npix, double* image) -> void
 {
     for (int i {}; i < npix; ++i) {
-        if (image[i] < 0.0){//KR added
-           // image[i] = 0.0;
-        }
-        //if (std::abs(image[i]) > 1e4) { //KR 1e4 -> *5 the value
-        if (std::abs(image[i]) > 1e8) { //KR 1e4 -> *5 the value
+        if (std::abs(image[i]) > 1e8) {
             // Unless we are at either end of the image array, take
             // the average of the neighboring values.
             if (i == 0) {
@@ -408,7 +402,7 @@ int L1A::calibrate_detector( // {{{
         // Save mage with the dark current, so that the noise can be calculated with that one.
         image_with_dark_current_read.resize(npix_frac); // This will be subtracted with a delay. Keep it zero if dark is skipped.
         image_with_dark_current = image_with_dark_current_read.data() - ipix_start; // Note that this pointer is a member, but it becomes dangling after calibrate_detector. Besides this routine, the pointer is only used in the L1X.
-        if (!ckd->dark_skip) {
+        if (!ckd->dark_skip && opt.dark_apply) {
 
             // Evaluate the fit. The B-splines are fixed to a polynomial where the first term
             // is the value at nominal temperature.
@@ -421,8 +415,8 @@ int L1A::calibrate_detector( // {{{
             for (size_t ipix=ipix_start ; ipix<ipix_end ; ipix++) {
                 if (!pixelmask[ipix]) {
                     for (size_t iorder=0 ; iorder<ckd->dim_dark_order ; iorder++) {
-                        image[ipix] -= ckd->dark_offset[ipix*ckd->dim_dark_order+iorder]*terms[iorder]; // Subtract dark offset.
-                        //image[ipix] -= nr_coadditions * ckd->dark_offset[ipix*ckd->dim_dark_order+iorder]*terms[iorder]; // Subtract dark offset, //KR. wrong, beaurse the image is unbinned here!
+                        // Subtract dark offset.
+                        image[ipix] -= ckd->dark_offset[ipix*ckd->dim_dark_order+iorder]*terms[iorder];
                     }
                     // Make copy with dark current.
                     image_with_dark_current[ipix] = image[ipix];
@@ -433,14 +427,15 @@ int L1A::calibrate_detector( // {{{
                     // in noisecal.
                     // For application of the noise, the image_with_dark_current
                     // is available, and also for the L1X.
-                    if (opt.dark_current) {
-                        for (size_t iorder=0 ; iorder<ckd->dim_dark_order ; iorder++) {
-                            image[ipix] -= ckd->dark_current[ipix*ckd->dim_dark_order+iorder]*terms[iorder]*exposure_time;
-                            //image[ipix] -= nr_coadditions * ckd->dark_current[ipix*ckd->dim_dark_order+iorder]*terms[iorder]*exposure_time; //KR, wrong
-                        }
+                    for (size_t iorder=0 ; iorder<ckd->dim_dark_order ; iorder++) {
+                        image[ipix] -= ckd->dark_current[ipix*ckd->dim_dark_order+iorder]*terms[iorder]*exposure_time;
                     }
                 }
             }
+        } else {
+            image_with_dark_current = image;
+            std::cout << "Skipping dark offset and current calibration"
+                      << std::endl;
         }
         handle(l1x[L1X_DARK]->write(this));
     }
@@ -479,7 +474,7 @@ int L1A::calibrate_detector( // {{{
     image_with_dark_current = NULL;
 
     // Non-linearity correction.
-    if (il1x_start < L1X_NONLIN && ckd->lev > LEVEL_NONLINCAL && opt.nonlin) { // {{{
+    if (il1x_start < L1X_NONLIN && ckd->lev > LEVEL_NONLINCAL && opt.nonlin_apply) { // {{{
         if (!ckd->nonlin_skip) {
             // Choose the relevant exposure time.
             double mindiff = abs(ckd->nonlin_exptimes[0]-exposure_time);
@@ -532,7 +527,7 @@ int L1A::calibrate_detector( // {{{
 
     // Pixel-response non-uniformity.
     if (il1x_start < L1X_PRNU && ckd->lev > LEVEL_PRNUCAL) {
-        if (!ckd->prnu_skip) {
+        if (!ckd->prnu_skip && opt.prnu_apply) {
             // Correct for pixel response non-uniformity.
             for (size_t ipix=ipix_start ; ipix<ipix_end ; ipix++) {
                 if (!pixelmask[ipix]) {
@@ -540,6 +535,8 @@ int L1A::calibrate_detector( // {{{
                     noise[ipix] /= ckd->prnu_prnu[ipix];
                 }
             }
+        } else {
+            std::cout << "Skipping PRNU calibration" << std::endl;
         }
         handle(l1x[L1X_PRNU]->write(this));
     }
@@ -632,8 +629,11 @@ int L1A::calibrate_detector( // {{{
             handle(l1x[L1X_UNBIN]->write(this));
         } // }}}
         // Straylight correction itself.
-        if (il1x_start < L1X_STRAY && opt.stray) { // {{{
+        if (il1x_start < L1X_STRAY) { // {{{
             CKD *ckd = ckd_gen; // This temporarily hides the binned CKD,
+            if (ckd->stray_skip || opt.stray_van_cittert_steps == 0) {
+                std::cout << "Skipping stray light correction" << std::endl;
+            }
             if (!ckd->stray_skip && ckd->stray.n_kernels == 0) {
                 // Inside this scope, use the general CKD.
                 // which will be revealed again after the straylight step.
@@ -665,7 +665,6 @@ int L1A::calibrate_detector( // {{{
                 for (int i {}; i < detector_size; ++i) {
                     frame_ideal[i] = image[i];
                 }
-                std::cout<<"stray_van_cittert_steps = " << to_string(opt.stray_van_cittert_steps) << std::endl;
                 for (int i {}; i < opt.stray_van_cittert_steps; ++i) {
                     // Constant part of the kernel
                     convolve_fft (
@@ -847,6 +846,7 @@ int L1A::calibrate_detector( // {{{
 // Extracts S+ and S- spectrum from detector image.
 int L1A::extract( // {{{
     size_t ifov, // Field-of-view index.
+    const Calibration_options& opt,
     Spectra &specs // Output spectra.
 )
 {
@@ -907,9 +907,7 @@ int L1A::extract( // {{{
                                 specs.noise[ipol*specs.dim+ispec] = noise[ipix_left];
                             } else {
                                 specs.signal[ipol*specs.dim+ispec] = weightleft * image[ipix_left] + (1.0-weightleft) * image[ipix_right];
-                                //specs.noise[ipol*specs.dim+ispec] = sqrt(pow(weightleft * noise[ipix_left],2.0) + pow((1.0-weightleft) * noise[ipix_right],2.0)); //was before
-                                //specs.noise[ipol*specs.dim+ispec] = specs.signal[ipol*specs.dim+ispec]; // KR tests to find where is the descrepeancy 
-                                specs.noise[ipol*specs.dim+ispec] = weightleft * noise[ipix_left] + (1.0-weightleft) * noise[ipix_right];//KR test to cmp with Ryan's
+                                specs.noise[ipol*specs.dim+ispec] = weightleft * noise[ipix_left] + (1.0-weightleft) * noise[ipix_right];
                             }
                         }
                     }
@@ -931,7 +929,7 @@ int L1A::extract( // {{{
         // If L1X maturity is not yet radiometrically calibrated, do what is normal.
         if (il1x_start < L1X_RAD) {
 
-            if (!ckd->rad_skip) {
+            if (!ckd->rad_skip && opt.rad_apply) {
                 // We multiply by the calibration factor and divide by the exposure time, to make it radiance.
                 double *rad_cur = &ckd->rad_spectra[ckd->fov_iel_start[ifov]];
                 for (size_t iel=0 ; iel<DIM_POL*specs.dim ; iel++) {
@@ -945,6 +943,8 @@ int L1A::extract( // {{{
                         specs.noise[iel] *= rad_cur[iel] / exposure_time;
                     }
                 }
+            } else if (ifov == 0) {
+                std::cout << "Skipping radiometric calibration" << std::endl;
             }
 
             // Now, interpolate on the common wavelength grid.

@@ -285,7 +285,6 @@ int L1X::write( // {{{
             noise_img.resize(npix);
             for (size_t ipix=0 ; ipix<npix ; ipix++) {
                 noise_img[ipix] = 1.0;
-                //noise_img[ipix] = ckd->noise_g[ipix]; //KR, in counts
             }
             // Add noise realization.
             write_img = frm->image; // Copy the vector.
@@ -297,28 +296,10 @@ int L1X::write( // {{{
         ) {
             const size_t nel = ckd->dim_fov*DIM_POL*ckd->dim_detector_spec;
             noise_spectra.resize(nel);
-            //cout << "TESTdone1" << endl;
-            //cout << nel << endl;
             for (size_t iel=0 ; iel<nel ; iel++) {
-                //cout << iel << endl;
                 noise_spectra[iel] = 1.0;
-                //noise_spectra[iel] = ckd->noise_g[iel]; //KR, in counts
-            /* //Should be removed or be rewritten!! (look the spex_spectra in a code)
-            const size_t nel = ckd->dim_fov*DIM_POL*ckd->dim_detector_spec;
-            noise_spectra.resize(nel);
-            cout << "TESTdone1" << endl;
-            cout << nel << endl;
-            for (size_t iel=0 ; iel<nel ; iel++) {
-                cout << iel << endl;
-                cout << frm->spex_spectra.size() << endl;
-                cout << frm->spex_spectra.at(iel) << endl;
-                noise_spectra.at(iel) = sqrt(set->noise_g*frm->spex_spectra[iel] + pow(set->noise_n,2.0));
-                //noise_spectra[iel] = sqrt(set->noise_g*frm->spex_spectra[iel] + pow(set->noise_n,2.0));
-            */
             }
-            //cout << "TESTdone2" << endl;
             // Add noise realization.
-            //write_spectra = frm->spex_spectra; // If no noise realization is added, it will just be added as a zero. //KR
             write_spectra = frm->intens;
         }
         // Write images, relevant for all these steps.

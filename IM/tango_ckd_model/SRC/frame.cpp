@@ -337,6 +337,11 @@ int Frame::uncalibrate_spectra( // {{{
     CKD *ckd
 )
 {
+    if (ckd->rad_skip) {
+        std::cout << "Not applying radiometric calibration constants"
+                  << std::endl;
+        return 0;
+    }
     // Unapply radiometric correction
     double *rad_spectra_cur = ckd->rad_spectra.data();
     double *intens_cur = intens.data();
@@ -406,241 +411,220 @@ int Frame::apply_straylight( // {{{
     CKD *ckd
 )
 {
-    if (!ckd->stray_skip) {
-        for (int i {}; i < static_cast<int>(image.size()); ++i) {
-            if (std::isnan(image[i])) {
-                image[i] = image[i - 1];
-            }
+    if (ckd->stray_skip) {
+        std::cout << "Not applying stray light" << std::endl;
+        return 0;
+    }
+    for (int i {}; i < static_cast<int>(image.size()); ++i) {
+        if (std::isnan(image[i])) {
+            image[i] = image[i - 1];
         }
-        // If present, use the interpolating stray light
-        // kernel. Otherwise, use the single kernel approach.
-        if (ckd->stray.n_kernels > 0) {
-            std::vector<double> conv_result(ckd->npix, 0.0);
-            for (int i_kernel {}; i_kernel < ckd->stray.n_kernels; ++i_kernel) {
-                std::vector<double> image_weighted { image };
-                for (int i {}; i < ckd->npix; ++i) {
-                    image_weighted[i] *= ckd->stray.weights[i_kernel][i];
-                }
-                const int image_n_rows {
-                    ckd->stray.edges[i_kernel * box::n + box::t]
-                    - ckd->stray.edges[i_kernel * box::n + box::b]
-                };
-                const int image_n_cols {
-                    ckd->stray.edges[i_kernel * box::n + box::r]
-                    - ckd->stray.edges[i_kernel * box::n + box::l]
-                };
-                std::vector<double> sub_image(image_n_rows * image_n_cols);
-                for (int i {}; i < image_n_rows; ++i) {
-                    for (int j {}; j < image_n_cols; ++j) {
-                        sub_image[i * image_n_cols + j] =
-                          image_weighted
-                          [(i + ckd->stray.edges[i_kernel * box::n + box::b])
-                           * ckd->dim_detector_spec
-                           + j
-                           + ckd->stray.edges[i_kernel * box::n + box::l]];
-                    }
-                }
-                std::vector<double> conv_result_sub {};
-                convolve_fft(image_n_rows,
-                             image_n_cols,
-                             sub_image,
-                             ckd->stray.kernel_rows[i_kernel],
-                             ckd->stray.kernel_cols[i_kernel],
-                             ckd->stray.kernel_fft_sizes[i_kernel],
-                             ckd->stray.kernels_fft[i_kernel],
-                             conv_result_sub);
-                for (int i {}; i < image_n_rows; ++i) {
-                    for (int j {}; j < image_n_cols; ++j) {
-                        conv_result
-                          [(i + ckd->stray.edges[i_kernel * box::n + box::b])
-                           * ckd->dim_detector_spec + j
-                           + ckd->stray.edges[i_kernel * box::n + box::l]] +=
-                          conv_result_sub[i * image_n_cols + j];
-                    }
-                }
-            }
-            std::vector<double> image_conv(ckd->npix);
+    }
+    // If present, use the interpolating stray light
+    // kernel. Otherwise, use the single kernel approach.
+    if (ckd->stray.n_kernels > 0) {
+        std::vector<double> conv_result(ckd->npix, 0.0);
+        for (int i_kernel {}; i_kernel < ckd->stray.n_kernels; ++i_kernel) {
+            std::vector<double> image_weighted { image };
             for (int i {}; i < ckd->npix; ++i) {
-                image_conv[i] =
-                  (1.0 - ckd->stray.eta[i]) * image[i] + conv_result[i];
+                image_weighted[i] *= ckd->stray.weights[i_kernel][i];
             }
-            std::swap(image_conv, image);
-            return 0;
-        }
-        vector<double> image_temp {};
-        // Diffuse kernel.
-        convolve_fft(
-            ckd->dim_detector_spat,
-            ckd->dim_detector_spec,
-            image,
-            ckd->stray_kernel_n_rows,
-            ckd->stray_kernel_n_cols,
-            ckd->stray_kernel_fft_size,
-            ckd->stray_kernel_fft,
-            image_temp
-        );
-        // Ghost kernel.
-        const int sz_trans { static_cast<int>(
-              ckd->stray_transformed_n_rows * ckd->stray_transformed_n_cols) };
-        vector<double> transformed(sz_trans);
-        // Finish off matrix transformation with indices and deltas from
-        // the CKD.
-        int delta_idx = 0;
-        for (int i {}; i < sz_trans; ++i) {
-            const int idx { ckd->stray_transform_indices[i] };
-            transformed[i] =
-              ckd->stray_transform_deltas[delta_idx] * image[idx]
-              + ckd->stray_transform_deltas[delta_idx + 1] * image[idx + ckd->dim_detector_spec]
-              + ckd->stray_transform_deltas[delta_idx + 2] * image[idx + 1]
-              + ckd->stray_transform_deltas[delta_idx + 3] * image[idx + ckd->dim_detector_spec + 1];
-            delta_idx += 4;
-        }
-
-        vector<double> result_moving(sz_trans);
-
-        convolve_fft(
-            ckd->stray_transformed_n_rows,
-            ckd->stray_transformed_n_cols,
-            transformed,
-            ckd->stray_kernel_n_rows,
-            ckd->stray_kernel_n_cols,
-            ckd->stray_kernel_fft_size,
-            ckd->stray_moving_kernel_fft,
-            result_moving
-        );
-        // result is basically image_temp but it has the dimension
-        // detector_n_rows+2*padding and the image is slightly shifted
-        // (the corner of the image is not at 0,0). All that is left is to
-        // unshift it and we are done.
-        const size_t padding = (ckd->stray_transformed_n_rows - ckd->dim_detector_spat) / 2;
-        for (size_t i = 0; i < ckd->dim_detector_spat; ++i) {
-            for (size_t j = 0; j < ckd->dim_detector_spec; ++j) {
-                image_temp[i * ckd->dim_detector_spec + j] += result_moving[(i + padding) * (ckd->dim_detector_spec + 2 * padding) + j + padding];
+            const int image_n_rows {
+                ckd->stray.edges[i_kernel * box::n + box::t]
+                - ckd->stray.edges[i_kernel * box::n + box::b]
+            };
+            const int image_n_cols {
+                ckd->stray.edges[i_kernel * box::n + box::r]
+                - ckd->stray.edges[i_kernel * box::n + box::l]
+            };
+            std::vector<double> sub_image(image_n_rows * image_n_cols);
+            for (int i {}; i < image_n_rows; ++i) {
+                for (int j {}; j < image_n_cols; ++j) {
+                    sub_image[i * image_n_cols + j] =
+                      image_weighted
+                      [(i + ckd->stray.edges[i_kernel * box::n + box::b])
+                       * ckd->dim_detector_spec
+                       + j
+                       + ckd->stray.edges[i_kernel * box::n + box::l]];
+                }
+            }
+            std::vector<double> conv_result_sub {};
+            convolve_fft(image_n_rows,
+                         image_n_cols,
+                         sub_image,
+                         ckd->stray.kernel_rows[i_kernel],
+                         ckd->stray.kernel_cols[i_kernel],
+                         ckd->stray.kernel_fft_sizes[i_kernel],
+                         ckd->stray.kernels_fft[i_kernel],
+                         conv_result_sub);
+            for (int i {}; i < image_n_rows; ++i) {
+                for (int j {}; j < image_n_cols; ++j) {
+                    conv_result
+                      [(i + ckd->stray.edges[i_kernel * box::n + box::b])
+                       * ckd->dim_detector_spec + j
+                       + ckd->stray.edges[i_kernel * box::n + box::l]] +=
+                      conv_result_sub[i * image_n_cols + j];
+                }
             }
         }
-        // And add the non-straylight part (1-eta).
-        for (size_t ipix=0 ; ipix<ckd->npix ; ipix++) {
-            image[ipix] = (1.0-ckd->stray_eta)*image[ipix] + image_temp[ipix];
+        std::vector<double> image_conv(ckd->npix);
+        for (int i {}; i < ckd->npix; ++i) {
+            image_conv[i] =
+              (1.0 - ckd->stray.eta[i]) * image[i] + conv_result[i];
+        }
+        std::swap(image_conv, image);
+        return 0;
+    }
+    vector<double> image_temp {};
+    // Diffuse kernel.
+    convolve_fft(
+      ckd->dim_detector_spat,
+      ckd->dim_detector_spec,
+      image,
+      ckd->stray_kernel_n_rows,
+      ckd->stray_kernel_n_cols,
+      ckd->stray_kernel_fft_size,
+      ckd->stray_kernel_fft,
+      image_temp
+                 );
+    // Ghost kernel.
+    const int sz_trans { static_cast<int>(
+          ckd->stray_transformed_n_rows * ckd->stray_transformed_n_cols) };
+    vector<double> transformed(sz_trans);
+    // Finish off matrix transformation with indices and deltas from
+    // the CKD.
+    int delta_idx = 0;
+    for (int i {}; i < sz_trans; ++i) {
+        const int idx { ckd->stray_transform_indices[i] };
+        transformed[i] =
+          ckd->stray_transform_deltas[delta_idx] * image[idx]
+          + ckd->stray_transform_deltas[delta_idx + 1] * image[idx + ckd->dim_detector_spec]
+          + ckd->stray_transform_deltas[delta_idx + 2] * image[idx + 1]
+          + ckd->stray_transform_deltas[delta_idx + 3] * image[idx + ckd->dim_detector_spec + 1];
+        delta_idx += 4;
+    }
+
+    vector<double> result_moving(sz_trans);
+
+    convolve_fft(
+      ckd->stray_transformed_n_rows,
+      ckd->stray_transformed_n_cols,
+      transformed,
+      ckd->stray_kernel_n_rows,
+      ckd->stray_kernel_n_cols,
+      ckd->stray_kernel_fft_size,
+      ckd->stray_moving_kernel_fft,
+      result_moving
+                 );
+    // result is basically image_temp but it has the dimension
+    // detector_n_rows+2*padding and the image is slightly shifted
+    // (the corner of the image is not at 0,0). All that is left is to
+    // unshift it and we are done.
+    const size_t padding = (ckd->stray_transformed_n_rows - ckd->dim_detector_spat) / 2;
+    for (size_t i = 0; i < ckd->dim_detector_spat; ++i) {
+        for (size_t j = 0; j < ckd->dim_detector_spec; ++j) {
+            image_temp[i * ckd->dim_detector_spec + j] += result_moving[(i + padding) * (ckd->dim_detector_spec + 2 * padding) + j + padding];
         }
     }
+    // And add the non-straylight part (1-eta).
+    for (size_t ipix=0 ; ipix<ckd->npix ; ipix++) {
+        image[ipix] = (1.0-ckd->stray_eta)*image[ipix] + image_temp[ipix];
+    }
     return 0;
+}
 
-} // }}}
-
-int Frame::apply_prnu( // {{{
-    CKD *ckd
-)
+int Frame::apply_prnu(CKD *ckd)
 {
-    // Pixel-response non-uniformity.
-    if (!ckd->prnu_skip) {
-        // Correct for pixel response non-uniformity.
-        for (size_t ipix=0 ; ipix<ckd->npix ; ipix++) {
-            if (!ckd->mask[ipix]) {
-                image[ipix] *= ckd->prnu_prnu[ipix];
-                //if (ckd->prnu_prnu[ipix] == 0) {cout<<"prnu0ind="<<ipix<<";";}
-            }
+    // Pixel-response non-uniformity
+    if (ckd->prnu_skip) {
+        std::cout << "Not applying PRNU" << std::endl;
+        return 0;
+    }
+    for (size_t ipix=0 ; ipix<ckd->npix ; ipix++) {
+        if (!ckd->mask[ipix]) {
+            image[ipix] *= ckd->prnu_prnu[ipix];
         }
-        //std::cout << ckd->npix;
-        /*
-        for (size_t k {}; k < image.size(); k++){
-            cout << image[k] << ";";
-        }
-        cout << endl;*/
-        //image = ckd->prnu_prnu;
     }
     return 0;
+}
 
-} // }}}
-
-int Frame::apply_nonlinearity( // {{{
-    CKD *ckd
-)
+int Frame::apply_nonlinearity(CKD *ckd)
 {
-
-    if (!ckd->nonlin_skip) {
-        // Choose the relevant exposure time.
-        double mindiff = abs(ckd->nonlin_exptimes[0]-exposure_time);
-        size_t iexptime_best = 0;
-        for (size_t iexptime=1 ; iexptime<ckd->dim_nonlin_exptime ; iexptime++) {
-            if (abs(ckd->nonlin_exptimes[iexptime]-exposure_time) < mindiff) {
-                mindiff = abs(ckd->nonlin_exptimes[iexptime]-exposure_time);
-                iexptime_best = iexptime;
-            }
-        }
-        // Use the B-spline to evaluate the fit on the desired input (the signal).
-        Bspline b(this,ckd->nonlin_order,ckd->dim_nonlin_knot,ckd->nonlin_knots.data());
-        vector<size_t> ideriv = {0,1};
-        double *nonlin_fit_cur = &ckd->nonlin_fit[iexptime_best*ckd->dim_nonlin_spline];
-        double *nonlin_signal_scale_cur = &ckd->nonlin_signal_scale[iexptime_best];
-        for (size_t ipix=0 ; ipix<ckd->npix ; ipix++) {
-            if (!ckd->mask[ipix]) {
-                double abscissa = image[ipix] / (*nonlin_signal_scale_cur);
-                handle(b.jacapply(1,&abscissa,nonlin_fit_cur,&image[ipix]));
-            }
-            nonlin_fit_cur += ckd->dim_nonlin_spline*ckd->dim_nonlin_exptime;
-            nonlin_signal_scale_cur += ckd->dim_nonlin_exptime;
+    if (ckd->nonlin_skip) {
+        return 0;
+    }
+    // Choose the relevant exposure time.
+    double mindiff = abs(ckd->nonlin_exptimes[0]-exposure_time);
+    size_t iexptime_best = 0;
+    for (size_t iexptime=1 ; iexptime<ckd->dim_nonlin_exptime ; iexptime++) {
+        if (abs(ckd->nonlin_exptimes[iexptime]-exposure_time) < mindiff) {
+            mindiff = abs(ckd->nonlin_exptimes[iexptime]-exposure_time);
+            iexptime_best = iexptime;
         }
     }
-
+    // Use the B-spline to evaluate the fit on the desired input (the signal).
+    Bspline b(this,ckd->nonlin_order,ckd->dim_nonlin_knot,ckd->nonlin_knots.data());
+    vector<size_t> ideriv = {0,1};
+    double *nonlin_fit_cur = &ckd->nonlin_fit[iexptime_best*ckd->dim_nonlin_spline];
+    double *nonlin_signal_scale_cur = &ckd->nonlin_signal_scale[iexptime_best];
+    for (size_t ipix=0 ; ipix<ckd->npix ; ipix++) {
+        if (!ckd->mask[ipix]) {
+            double abscissa = image[ipix] / (*nonlin_signal_scale_cur);
+            handle(b.jacapply(1,&abscissa,nonlin_fit_cur,&image[ipix]));
+        }
+        nonlin_fit_cur += ckd->dim_nonlin_spline*ckd->dim_nonlin_exptime;
+        nonlin_signal_scale_cur += ckd->dim_nonlin_exptime;
+    }
     return 0;
+}
 
-} // }}}
-
-int Frame::apply_dark_current( // {{{
-    CKD *ckd
-)
+int Frame::apply_dark_current(CKD *ckd)
 {
 
     // This one only writes the image with dark current.
     image_with_current = image; // Copy contents.
 
-    if (!ckd->dark_skip) {
+    if (ckd->dark_skip) {
+        std::cout << "Not applying dark current" << std::endl;
+        return 0;
+    }
+    // Evaluate the fit. The B-splines are fixed to a polynomial where the first term
+    // is the value at nominal temperature.
+    vector<double> knots = {ckd->dark_nominal_temperature,ckd->dark_nominal_temperature+1.0};
+    Bspline b(this,ckd->dim_dark_order,2,knots.data());
+    vector<double> terms(ckd->dim_dark_order);
 
-        // Evaluate the fit. The B-splines are fixed to a polynomial where the first term
-        // is the value at nominal temperature.
-        vector<double> knots = {ckd->dark_nominal_temperature,ckd->dark_nominal_temperature+1.0};
-        Bspline b(this,ckd->dim_dark_order,2,knots.data());
-        vector<double> terms(ckd->dim_dark_order);
-
-        handle(b.jaccalc(1,&detector_temperature,terms.data()));
-        for (size_t ipix=0 ; ipix<ckd->npix ; ipix++) {
-            if (!ckd->mask[ipix]) {
-                for (size_t iorder=0 ; iorder<ckd->dim_dark_order ; iorder++) {
-                    image_with_current[ipix] += ckd->dark_current[ipix*ckd->dim_dark_order+iorder]*terms[iorder] * exposure_time; // Add dark current.
-                }
+    handle(b.jaccalc(1,&detector_temperature,terms.data()));
+    for (size_t ipix=0 ; ipix<ckd->npix ; ipix++) {
+        if (!ckd->mask[ipix]) {
+            for (size_t iorder=0 ; iorder<ckd->dim_dark_order ; iorder++) {
+                image_with_current[ipix] += ckd->dark_current[ipix*ckd->dim_dark_order+iorder]*terms[iorder] * exposure_time; // Add dark current.
             }
         }
     }
-
     return 0;
+}
 
-} // }}}
-
-int Frame::apply_dark_offset( // {{{
-    CKD *ckd
-)
+int Frame::apply_dark_offset(CKD *ckd)
 {
+    if (ckd->dark_skip) {
+        std::cout << "Not applying dark offset" << std::endl;
+        return 0;
+    }
+    // Evaluate the fit. The B-splines are fixed to a polynomial where the first term
+    // is the value at nominal temperature.
+    vector<double> knots = {ckd->dark_nominal_temperature,ckd->dark_nominal_temperature+1.0};
+    Bspline b(this,ckd->dim_dark_order,2,knots.data());
+    vector<double> terms(ckd->dim_dark_order);
 
-    if (!ckd->dark_skip) {
-
-        // Evaluate the fit. The B-splines are fixed to a polynomial where the first term
-        // is the value at nominal temperature.
-        vector<double> knots = {ckd->dark_nominal_temperature,ckd->dark_nominal_temperature+1.0};
-        Bspline b(this,ckd->dim_dark_order,2,knots.data());
-        vector<double> terms(ckd->dim_dark_order);
-
-        handle(b.jaccalc(1,&detector_temperature,terms.data()));
-        image = image_with_current;
-        for (size_t ipix=0 ; ipix<ckd->npix ; ipix++) {
-            if (!ckd->mask[ipix]) {
-                for (size_t iorder=0 ; iorder<ckd->dim_dark_order ; iorder++) {
-                    image[ipix] += ckd->dark_offset[ipix*ckd->dim_dark_order+iorder]*terms[iorder]; // Add dark offset.
-                }
+    handle(b.jaccalc(1,&detector_temperature,terms.data()));
+    image = image_with_current;
+    for (size_t ipix=0 ; ipix<ckd->npix ; ipix++) {
+        if (!ckd->mask[ipix]) {
+            for (size_t iorder=0 ; iorder<ckd->dim_dark_order ; iorder++) {
+                image[ipix] += ckd->dark_offset[ipix*ckd->dim_dark_order+iorder]*terms[iorder]; // Add dark offset.
             }
         }
     }
-
     return 0;
-
-} // }}}
-
+}

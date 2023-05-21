@@ -58,7 +58,22 @@ int Program::execute( // {{{
 
     // Construct and read the CKD.
     unique_ptr<CKD> ckd = make_unique<CKD>(this);
-    handle(ckd->read(set_main,LEVEL_L1B,false)); // Boolean flag is the flag to have a CKD to write.
+    handle(ckd->read(set_main,LEVEL_L1B,false));
+    if (!set_main.dark_apply) {
+        ckd->dark_skip = true;
+    }
+    if (!set_main.nonlin_apply) {
+        ckd->nonlin_skip = true;
+    }
+    if (!set_main.prnu_apply) {
+        ckd->prnu_skip = true;
+    }
+    if (!set_main.stray_apply) {
+        ckd->stray_skip = true;
+    }
+    if (!set_main.rad_apply) {
+        ckd->rad_skip = true;
+    }
 
     size_t il1x_start;
     L1X_inputfile l1x_inputfile(this);

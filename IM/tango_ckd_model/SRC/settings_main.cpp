@@ -47,6 +47,11 @@ int Settings_main::init_common( // {{{
     recognize_setting(t_dead);
     recognize_setting(exposure_time);
     recognize_setting(nr_coadditions);
+    recognize_setting(dark_apply);
+    recognize_setting(nonlin_apply);
+    recognize_setting(stray_apply);
+    recognize_setting(prnu_apply);
+    recognize_setting(rad_apply);
 
     return 0;
 

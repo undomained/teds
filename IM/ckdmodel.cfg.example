@@ -22,6 +22,16 @@ image_start = 0
 # them). For experimental purposes you may use a smaller number to
 # save time.
 image_end = 0
+# Whether to apply dark offset and current (default true)
+dark_apply = 1
+# Whether to apply nonlinearity (default true)
+nonlin_apply = 1
+# Whether to apply stray light (default true)
+stray_apply = 1
+# Whether to apply PRNU (default true)
+prnu_apply = 1
+# Whether to apply radiometric calibration constants (default true)
+rad_apply = 1
 [isrf]
 # Whether to convolve input spectra (execute = 1) with the ISRF. If
 # not (execute = 0), the LBL are simply linearly interpolated onto the

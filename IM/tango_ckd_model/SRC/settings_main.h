@@ -37,6 +37,11 @@ class Settings_main : public Settings {
     double t_dead {};
     double exposure_time {};
     int nr_coadditions {};
+    bool dark_apply { true };
+    bool nonlin_apply { true };
+    bool stray_apply { true };
+    bool prnu_apply { true };
+    bool rad_apply { true };
 
     // Constructor.
     Settings_main(

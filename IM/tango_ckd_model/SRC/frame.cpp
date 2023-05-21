@@ -28,89 +28,61 @@ Frame::Frame( // {{{
 // Destructor.
 Frame::~Frame() {}
 
-int Frame::resample( // {{{
+int Frame::resample(
     CKD *ckd, // Calibration key data.
     int fct // Enahncement factor.
 )
 {
-
-    check_error(fct < 1,"Error: Positive number needed for enhancement factor. Use 1 or no input for keeping original sampling.");
-
     size_t dim_spec_enhance = fct*(dim_spec_truth-1)+1;
-    vector<double> wavelength_resample(dim_spec_enhance);
     vector<double> intens_resample(ckd->dim_fov*dim_spec_enhance);
-    for (size_t iwave_orig=0 ; iwave_orig<dim_spec_truth-1 ; iwave_orig++) {
-        wavelength_resample[iwave_orig*fct] = wavelength[iwave_orig];
-        for (int ibonus=1 ; ibonus<fct ; ibonus++) {
-            wavelength_resample[iwave_orig*fct+ibonus] = (ibonus*wavelength[iwave_orig+1] + (fct-ibonus)*wavelength[iwave_orig]) / fct;
-        }
-    }
-    wavelength_resample[dim_spec_enhance-1] = wavelength[dim_spec_truth-1];
-
-    const size_t n_items = 3;
-    const vector<double *> sources = { intens.data() };
-    const vector<double *> targets = { intens_resample.data() };
 
     // Interpolate onto CKD FOVs. Both the source and destination
     // abscissae are equidistant and start with zero and end with the
     // same number.
     size_t ivp = 0;
     for (size_t ifov=0 ; ifov<ckd->dim_fov ; ifov++) {
-        if (ckd->vp_mask[ivp]) {
-            for (size_t ispec=0 ; ispec<dim_spec_enhance ; ispec++) {
-                for (size_t item=0 ; item<n_items ; item++) {
-                    targets[item][ispec] = NC_FILL_DOUBLE;
-                }
-            }
-
-        } else {
-
-            // Floating-point index.
-            double idx =
-                static_cast<double>(ifov) /
-                (static_cast<double>(ckd->fov_nfov_vp[ivp]) - 1.0) *
-                (static_cast<double>(dim_spat_truth) - 1.0)
-            ; // This should move equidistantly from zero to N-1 where N
+        // Floating-point index.
+        double idx =
+          static_cast<double>(ifov) /
+          (static_cast<double>(ckd->fov_nfov_vp[ivp]) - 1.0) *
+          (static_cast<double>(dim_spat_truth) - 1.0)
+          ; // This should move equidistantly from zero to N-1 where N
             // is the input domain size. There are nfov samples.
-            size_t intidx = floor(idx);
-            if (intidx == dim_spat_truth-1) intidx--; // So that regular interpolation can take place.
-            double weightright = idx - intidx;
-            double weightleft = 1.0 - weightright;
-            size_t &leftidx = intidx;
-            size_t rightidx = leftidx+1;
+        size_t intidx = floor(idx);
+        if (intidx == dim_spat_truth-1) intidx--; // So that regular interpolation can take place.
+        double weightright = idx - intidx;
+        double weightleft = 1.0 - weightright;
+        size_t &leftidx = intidx;
+        size_t rightidx = leftidx+1;
 
-            // If the input is not enhanced, this is not the most efficient
-            // implementation in the world, involving an interpolation to
-            // exactly the same target. But otherwise, I am juggling with
-            // pointers and hopefully, this is still a very small part of
-            // the calculation time.
-            vector<double> intens_intermediate(dim_spec_truth);
-            vector<double> intermediate(dim_spec_truth);
-            for (size_t ispec=0 ; ispec<dim_spec_truth ; ispec++) {
-                intermediate[ispec] =
-                  weightleft * sources[0][ivp * dim_spat_truth * dim_spec_truth
-                                          + leftidx * dim_spec_truth + ispec]
-                  + weightright * sources[0][
-                    ivp * dim_spat_truth * dim_spec_truth
-                    + rightidx * dim_spec_truth + ispec];
-            }
-            linear_interpol(
-              dim_spec_truth, // Size of the original array.
-              dim_spec_enhance, // Size of the array of interpolated values.
-              wavelength.data(), // Independent variable of original array.
-              wavelength_resample.data(), // Independent variable of target array.
-              intermediate.data(), // Dependent variable of original array.
-              &targets[0][ifov*dim_spec_enhance]); // Dependent variable of target array (output).
+        // If the input is not enhanced, this is not the most efficient
+        // implementation in the world, involving an interpolation to
+        // exactly the same target. But otherwise, I am juggling with
+        // pointers and hopefully, this is still a very small part of
+        // the calculation time.
+        vector<double> intermediate(dim_spec_truth);
+        for (size_t ispec=0 ; ispec<dim_spec_truth ; ispec++) {
+            intermediate[ispec] =
+              weightleft * intens[ivp * dim_spat_truth * dim_spec_truth
+                                  + leftidx * dim_spec_truth + ispec]
+              + weightright * intens[
+                ivp * dim_spat_truth * dim_spec_truth
+                + rightidx * dim_spec_truth + ispec];
         }
+        linear_interpol(
+          dim_spec_truth, // Size of the original array.
+          dim_spec_enhance, // Size of the array of interpolated values.
+          wavelength.data(), // Independent variable of original array.
+          wavelength.data(), // Independent variable of target array.
+          intermediate.data(), // Dependent variable of original array.
+          &intens_resample[ifov*dim_spec_enhance]); // Dependent variable of target array (output).
     }
 
     // Overwrite truth with new truth.
-    dim_spec_truth = dim_spec_enhance; //KR
-    // dim_spat_truth is dead.
-    wavelength = wavelength_resample; //KR
-    intens = intens_resample;//KR
+    dim_spec_truth = dim_spec_enhance;
+    intens = intens_resample;
     return 0;
-} // }}}
+}
 
 int Frame::convert_units( // {{{
     CKD *ckd

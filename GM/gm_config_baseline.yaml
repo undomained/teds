@@ -1,5 +1,5 @@
 field_of_regard:
-    nact: 101                   #number of ACT angles (line of sights)
+    nact: 100                   #number of ACT angles (line of sights)
     nalt: 100                   #number of ALT scn lines
     alpha_act_min: -1.72        #minimum ACT angle [degree]
     alpha_act_max: +1.72        #maximum ACT angle [degree]

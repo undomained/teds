@@ -5,3 +5,7 @@ filename:
     level0_input:   'Tango_Carbon_l0_'                   #level 0 input
     level1b_output: 'Tango_Carbon_l1b_'                  #level 1b output
     binning_table:  'binning_table'                      #Instrument binning table
+    
+settings:
+    van_cittert_steps: 4  #van Citter iteration for stray light correction (0=no correction) 
+    geolocation:  0       #calculate geolocation (0 no, 1 yes), currently only 0 possible

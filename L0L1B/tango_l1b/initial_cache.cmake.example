@@ -33,7 +33,7 @@ set(CMAKE_BUILD_TYPE Release CACHE STRING "")
 # With Lapack
 set(LIBRARIES netcdf_c++4 netcdf z dl fftw3 lapack CACHE STRING "")
 # With MKL
-#set(LIBRARIES netcdf_c++4 netcdf hdf5_hl hdf5 z dl fftw3 mkl_gf_lp64 mkl_sequential mkl_core CACHE STRING "")
+#set(LIBRARIES netcdf_c++4 netcdf z dl fftw3 mkl_gf_lp64 mkl_sequential mkl_core CACHE STRING "")
 
 # Whether to build with MPI support (usually automatically detected)
 #set(USE_MPI ON CACHE BOOL "")

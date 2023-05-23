@@ -65,7 +65,7 @@ int Binningtable::read( // {{{
 
     NetCDF_object *nc = bin_file->nc.get(); // Short-access.
     NcGroup grp;
-    string groupname = format("Table_{:02d}",id);
+    string groupname = format("Table_%2.2i",id);
     netcdf_check(nc,grp = nc->ncid->getGroup(groupname.c_str()));
     vector<uint32_t> binning_table_read(bin_file->dim_binningtable_spat*bin_file->dim_binningtable_spec);
     netcdf_check(nc,grp.getVar("binning_table").getVar(binning_table_read.data())); // From file, that is after pre-binning.

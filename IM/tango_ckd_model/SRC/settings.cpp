@@ -23,7 +23,7 @@ int Settings::init( // {{{
     // First, we will browse to the correct tag. Then, we will continue until the
     // end of the file or until the next tag comes.
     bool tag_found = false;
-    string tag_brackets = "[" + tag + "]";
+    string tag_brackets = format("[%s]",tag.c_str());
 
     // Loop per line.
     string line;

@@ -333,10 +333,12 @@ int L1A::remove_image( // {{{
 
 // Smooth over bad values. This is necessary for stray light which
 // uses all the image pixels.
-static auto fillHoles(const int npix, double* image) -> void
+static auto fillHoles(const std::vector<bool>& pixelmask,
+                      const int npix,
+                      double* image) -> void
 {
     for (int i {}; i < npix; ++i) {
-        if (std::abs(image[i]) > 1e8) {
+        if (pixelmask[i] || std::abs(image[i]) > 1e8) {
             // Unless we are at either end of the image array, take
             // the average of the neighboring values.
             if (i == 0) {
@@ -633,6 +635,8 @@ int L1A::calibrate_detector( // {{{
             CKD *ckd = ckd_gen; // This temporarily hides the binned CKD,
             if (ckd->stray_skip || opt.stray_van_cittert_steps == 0) {
                 std::cout << "Skipping stray light correction" << std::endl;
+            } else {
+                fillHoles(pixelmask, static_cast<int>(ckd->npix), image);
             }
             if (!ckd->stray_skip && ckd->stray.n_kernels == 0) {
                 // Inside this scope, use the general CKD.
@@ -661,7 +665,6 @@ int L1A::calibrate_detector( // {{{
                 vector<double> frame_ideal(detector_size);
                 vector<double> conv(detector_size);  // (K x frame_ideal)
                 vector<double> frame_transformed(detector_transformed_size);
-                fillHoles(static_cast<int>(ckd->npix), image);
                 for (int i {}; i < detector_size; ++i) {
                     frame_ideal[i] = image[i];
                 }

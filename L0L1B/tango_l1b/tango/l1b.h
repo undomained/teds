@@ -114,6 +114,7 @@ class L1B : public Processor { // {{{
     // Raw Radiance.
     NcVar var_radiance_raw;
     NcVar var_radiance_raw_noise;
+    NcVar var_radiance_mask;
     // Demodulation.
     NcVar var_intens;
     NcVar var_small_q;
@@ -167,6 +168,7 @@ class L1B : public Processor { // {{{
         time,
         radiance_raw,
         radiance_raw_noise,
+        radiance_mask,
         intens,
         intens_noise,
         small_q,

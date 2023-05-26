@@ -281,6 +281,19 @@ int L1B::process_init( // {{{
         netcdf_check(nc_l1b,var_radiance_raw_noise.putAtt("units","ph nm-1 s-1 sr-1 m-2"));
         netcdf_check(nc_l1b,var_radiance_raw_noise.setChunking(NcVar::nc_CHUNKED, chunksize_intensity));
         netcdf_check(nc_l1b,var_radiance_raw_noise.setCompression(true, true, 1));
+
+        // Radiance mask
+        var_radiance_mask =
+          grp_observation.addVar("radiance_mask", ncUbyte, dims_spectra_int);
+        var_radiance_mask.putAtt("long_name", "radiance mask");
+        constexpr std::array<uint8_t, 2> mask_values { 0, 1 };
+        var_radiance_mask.putAtt("flag_values",
+                                 netCDF::ncUbyte,
+                                 mask_values.size(),
+                                 mask_values.data());
+        var_radiance_mask.putAtt("flag_meanings", "good bad");
+        var_radiance_mask.setChunking(NcVar::nc_CHUNKED, chunksize_intensity);
+        var_radiance_mask.setCompression(true, true, 1);
     }
 
     // NetCDF variables for geolocation.
@@ -391,6 +404,7 @@ int L1B::process_init( // {{{
     if (ckd->lev > LEVEL_RADCAL) {
         mpi_nc_vars.emplace_back(std::pair{ MpiNcVarId::radiance_raw, var_radiance_raw });
         mpi_nc_vars.emplace_back(std::pair{ MpiNcVarId::radiance_raw_noise, var_radiance_raw_noise });
+        mpi_nc_vars.emplace_back(std::pair{ MpiNcVarId::radiance_mask, var_radiance_mask });
     }
     if (set->geolocation) {
         mpi_nc_vars.emplace_back(std::pair{ MpiNcVarId::lat, var_lat });
@@ -521,6 +535,7 @@ int L1B::process_batch(size_t ibatch, const Calibration_options& opt)
     vector<double> saa;
     vector<double> radiance_raw;
     vector<double> radiance_raw_noise;
+    vector<bool> radiance_mask;
     vector<double> intensity_radiance;
     vector<double> intensity_radiance_noise;
     vector<double> intens;
@@ -542,6 +557,7 @@ int L1B::process_batch(size_t ibatch, const Calibration_options& opt)
     if (ckd->lev > LEVEL_RADCAL) {
         radiance_raw.resize(ckd->dim_fov_spec_total,NC_FILL_DOUBLE);
         radiance_raw_noise.resize(ckd->dim_fov_spec_total,NC_FILL_DOUBLE);
+        radiance_mask.resize(ckd->dim_fov_spec_total, 0);
         intensity_radiance.resize(ckd->dim_fov*dim_int_wave,NC_FILL_DOUBLE);
         intensity_radiance_noise.resize(ckd->dim_fov*dim_int_wave,NC_FILL_DOUBLE);
     }
@@ -588,6 +604,8 @@ int L1B::process_batch(size_t ibatch, const Calibration_options& opt)
                     radiance_raw_cur[ibin] = specs.signal[ibin];
                     intensity_radiance_cur[ibin] = specs.signal[ibin];
                     intensity_radiance_noise_cur[ibin] = specs.noise[ibin];
+                } else {
+                    radiance_mask[ifov * nbin + ibin] = specs.mask[ibin];
                 }
             }
         }
@@ -625,6 +643,14 @@ int L1B::process_batch(size_t ibatch, const Calibration_options& opt)
             }
             netcdf_check(nc_l1b,var_radiance_raw.putVar(strt_spec,cnt_spec,intensity_radiance.data()));
             netcdf_check(nc_l1b,var_radiance_raw_noise.putVar(strt_spec,cnt_spec,intensity_radiance_noise.data()));
+            std::vector<uint8_t> pixel_mask_u8(radiance_mask.size());
+            for (size_t i {}; i < pixel_mask_u8.size(); ++i) {
+                pixel_mask_u8[i] = static_cast<uint8_t>(radiance_mask[i]);
+            }
+            netcdf_check(nc_l1b,
+                         var_radiance_mask.putVar(strt_spec,
+                                                  cnt_spec,
+                                                  pixel_mask_u8.data()));
         }
         if (set->geolocation) {
             vector<size_t> cnt_geo = {1,ckd->dim_fov};
@@ -693,6 +719,9 @@ int L1B::process_batch(size_t ibatch, const Calibration_options& opt)
                 break;
             case MpiNcVarId::radiance_raw_noise:
                 copy(intensity_radiance_noise);
+                break;
+            case MpiNcVarId::radiance_mask:
+                copy(radiance_mask);
                 break;
             case MpiNcVarId::intens:
                 copy(intens);

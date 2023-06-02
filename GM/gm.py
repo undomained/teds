@@ -88,8 +88,8 @@ def geometry_module(paths, global_config, local_config):
     """
 
     # sys.path.append(global_local_config['path']['e2es_path']+'lib')
-    from modules.lib import libGM
-    from modules.lib import constants
+    from end_to_end.lib import libGM
+    from end_to_end.lib import constants
 
     # the gm output is orginazed in dictionaries of the format dic[nalt, nact]
 
@@ -136,17 +136,23 @@ def geometry_module(paths, global_config, local_config):
         ninit = ninit + 1
 
     if global_config["profile"] == "single_swath":
-        nn = 1
-        check = (
-            isinstance(global_config["single_swath"]["sza"], float)
-            and isinstance(global_config["single_swath"]["saa"], float)
-            and isinstance(global_config["single_swath"]["vza"], float)
-            and isinstance(global_config["single_swath"]["vaa"], float)
-            and isinstance(global_config["single_swath"]["albedo"], float)
-        )
-        if check == False:
+
+        ncheck = len(global_config["single_swath"]["sza"]) + \
+                 len(global_config["single_swath"]["saa"]) + \
+                 len(global_config["single_swath"]["vza"]) + \
+                 len(global_config["single_swath"]["vaa"])
+       
+        if (ncheck != 4*global_config['single_swath']['numb_atm_scenes']):
             sys.exit("input error in gm, code 2")
 
+        for iscen in range(global_config['single_swath']['numb_atm_scenes']+1):
+            outofrange = \
+                (global_config['single_swath']['scene_trans_index'][iscen] > 99) & \
+                (global_config['single_swath']['scene_trans_index'][iscen] < 0) 
+            if(outofrange):
+                sys.exit('config parameter scene_trans_index out of range')
+
+            
         nact = local_config["field_of_regard"]["nact"]
         nalt = 1
 
@@ -159,12 +165,17 @@ def geometry_module(paths, global_config, local_config):
 
         lat_grid[0][:] = np.nan
         lon_grid[0][:] = np.nan
-        sza[0, :] = global_config["single_swath"]["sza"]
-        saa[0, :] = global_config["single_swath"]["saa"]
-        vza[0, :] = global_config["single_swath"]["vza"]
-        vaa[0, :] = global_config["single_swath"]["vaa"]
-        ninit = ninit + 1
 
+        for iscen in range(global_config['single_swath']['numb_atm_scenes']):
+            ind_start = global_config['single_swath']['scene_trans_index'][iscen]
+            ind_end   = global_config['single_swath']['scene_trans_index'][iscen+1]
+            sza[0, ind_start:ind_end] = global_config["single_swath"]["sza"][iscen]
+            saa[0, ind_start:ind_end] = global_config["single_swath"]["saa"][iscen]
+            vza[0, ind_start:ind_end] = global_config["single_swath"]["vza"][iscen]
+            vaa[0, ind_start:ind_end] = global_config["single_swath"]["vaa"][iscen]
+
+        ninit = ninit + 1
+    
     if (global_config["profile"] == "S2_microHH"):
         nact = local_config["field_of_regard"]["nact"]
         nalt = local_config["field_of_regard"]["nalt"]

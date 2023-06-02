@@ -6,11 +6,11 @@ from tqdm import tqdm
 from copy import deepcopy
 import netCDF4 as nc
 
-from modules.lib import libNumTools
-from modules.lib import libRT
-from modules.lib import libATM
-from modules.lib import libINV
-from modules.lib import libNumTools
+from end_to_end.lib import libNumTools
+from end_to_end.lib import libRT
+from end_to_end.lib import libATM
+from end_to_end.lib import libINV
+from end_to_end.lib import libNumTools
 
 def get_l1b(path, filename):
 
@@ -330,7 +330,7 @@ def level1b_to_level2_processor(paths, global_config, local_config):
     afgl_path = paths.project + paths.data_afgl
     run_id = '_'+global_config['run_id']
 
-    filename = local_config['filename']['l1b_input']+'_'+global_config['profile']+'_siml1b'+run_id
+    filename = local_config['filename']['l1b_input']+'_'+global_config['profile']+run_id
 
     # get the l1b files    
     l1b = get_l1b(l1b_path, filename)
@@ -357,7 +357,7 @@ def level1b_to_level2_processor(paths, global_config, local_config):
     atm.get_data_AFGL(paths.project + paths.data_afgl+local_config['std_atm'])
 
     # scale to some reference column mixing ratios
-    xco2_ref = 400.  # ppm
+    xco2_ref = 405.  # ppm
     xco2 = np.sum(atm.CO2) / np.sum(atm.air) * 1.E6
     atm.CO2 = xco2_ref/xco2 * atm.CO2
 
@@ -405,7 +405,7 @@ def level1b_to_level2_processor(paths, global_config, local_config):
     retrieval_init['trace gases'] = {'CO2': {'init': 300,      'scaling': 1E-6, 'ref_profile': ref_CO2},
                                      'CH4': {'init': 1700,     'scaling': 1E-9, 'ref_profile': ref_CH4},
                                      'H2O': {'init': 1000,     'scaling': 1E-6, 'ref_profile': ref_H2O}}
-    retrieval_init['surface'] = {'alb0': 0.17, 'alb1': 0.0}
+
 #    retrieval_init['surface'] = {'alb0': 0.17}
     retrieval_init['wavelength lbl'] = wave_lbl
     retrieval_init['solar irradiance'] = sun_lbl
@@ -422,7 +422,6 @@ def level1b_to_level2_processor(paths, global_config, local_config):
 
     for ialt in tqdm(range(nalt)):
         for iact in range(nact):
-
             wavelength = l1b['wavelength'][iact, :]
             nwave = l1b['wavelength'].size
             istart = np.argmin(np.abs(wavelength - wave_start))
@@ -437,6 +436,16 @@ def level1b_to_level2_processor(paths, global_config, local_config):
            
             atm_ret = deepcopy(atm)  # to initialize each retrieval with the same atmosphere
 
+            #derive first guess albedo from the maximum reflectance   
+            ymeas_max=np.max(l1b['radiance'][ialt, iact, istart:iend+1])
+            idx = np.where(l1b['radiance'][ialt, iact, istart:iend+1] == ymeas_max)[0][0]
+            sun = isrf.isrf_convolution(sun_lbl)
+            alb_first_guess = l1b['radiance'][ialt, iact,idx]/sun[idx]*np.pi/np.cos(np.deg2rad(l1b['sza'][ialt, iact]))
+            retrieval_init['surface'] = {'alb0': alb_first_guess, 'alb1': 0.0}
+
+            print(l1b['radiance'][ialt, iact, istart:iend+1])
+            print(l1b['noise'][ialt, iact, istart:iend+1])
+            sys.exit()
             # Observation geometry
             measurement[ialt, iact] = {}
             measurement[ialt, iact]['wavelength'] = wave_meas[:]
@@ -444,13 +453,16 @@ def level1b_to_level2_processor(paths, global_config, local_config):
             measurement[ialt, iact]['muv'] = np.cos(np.deg2rad(l1b['vza'][ialt, iact]))
             measurement[ialt, iact]['ymeas'] = l1b['radiance'][ialt, iact, istart:iend+1]
             measurement[ialt, iact]['Smeas'] = np.eye(nwave)*l1b['noise'][ialt, iact, istart:iend+1]**2
-            measurement[ialt, iact]['sun'] = isrf.isrf_convolution(sun_lbl)
+            measurement[ialt, iact]['sun'] = sun
             # Non-scattering least squares fit
             l2product[ialt, iact] = libINV.Gauss_Newton_iteration(
                 retrieval_init, atm_ret, optics, measurement[ialt,
                                                              iact], isrf, local_config['retrieval_init']['max_iter'],
                 local_config['retrieval_init']['chi2_lim'])
 
+            if(not l2product[ialt, iact]['convergence']):
+                print('pixel did not converge (ialt,iact) = ', ialt,iact)
+                
             # Define proxy product
             l2product[ialt, iact]['XCO2 proxy'] = l2product[ialt, iact]['XCO2']/l2product[ialt, iact]['XCH4']*xch4_model
             l2product[ialt, iact]['XCH4 proxy'] = l2product[ialt, iact]['XCH4']/l2product[ialt, iact]['XCO2']*xco2_model

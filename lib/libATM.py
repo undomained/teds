@@ -26,8 +26,8 @@ import configparser
 from pyproj import Geod
 import matplotlib.pyplot as plt
 
-from modules.lib import constants
-from modules.lib import libNumTools
+from end_to_end.lib import constants
+from end_to_end.lib import libNumTools
 
 ###########################################################
 

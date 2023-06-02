@@ -22,7 +22,7 @@ from time import sleep
 from tqdm import tqdm
 import sys
 
-from modules.lib import hapi as hp
+from end_to_end.lib import hapi as hp
 
 trap = io.StringIO()
 debug = 0
@@ -140,13 +140,8 @@ def transmission(sun_lbl, optics, surface, mu0, muv, deriv=False):
     # returns:
     #            rad_trans: single scattering relative radiance [wavelength] [1/sr]
     """
-
-    while True:
-        if 0. <= mu0 <= 1. and -1. <= muv <= 1.:
-            break
-        else:
-            print("ERROR! transmission: input out of range.")
-            raise StopExecution
+    if not(0. <= mu0 <= 1. and -1. <= muv <= 1.):
+        sys.exit("ERROR! transmission: input out of range.")
 
     # Number of wavelengths and layers
     nwave = optics.prop['taua'][:, 0].size

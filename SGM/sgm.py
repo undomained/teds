@@ -197,11 +197,11 @@ def scene_generation_module(paths, global_config, local_config):
     None.
 
     """
-    from modules.lib import libSGM
-    from modules.lib import libATM
-    from modules.lib import libRT
-    from modules.lib import libSURF
-    from modules.lib import libNumTools
+    from end_to_end.lib import libSGM
+    from end_to_end.lib import libATM
+    from end_to_end.lib import libRT
+    from end_to_end.lib import libSURF
+    from end_to_end.lib import libNumTools
 
     run_id = '_'+global_config['run_id']
 
@@ -218,14 +218,25 @@ def scene_generation_module(paths, global_config, local_config):
     # get a model atmosphere form AFGL files
     # =============================================================================
 
-    albedo = np.empty([nalt, nact])
+    albedo = np.zeros([nalt, nact])
 
     if(global_config['profile'] == 'individual_spectra'):
         albedo[0, :] = global_config["individual_spectra"]["albedo"][:]
 
     if(global_config['profile'] == 'single_swath'):
-        albedo[0, :] = global_config["single_swath"]["albedo"]
+        
+        for iscen in range(global_config['single_swath']['numb_atm_scenes']+1):
+            outofrange = \
+                (global_config['single_swath']['scene_trans_index'][iscen] > 100) & \
+                (global_config['single_swath']['scene_trans_index'][iscen] < 0) 
+            if(outofrange):
+                sys.exit('config parameter scene_trans_index out of range')
 
+        for iscen in range(global_config['single_swath']['numb_atm_scenes']):
+             ind_start = global_config['single_swath']['scene_trans_index'][iscen]
+             ind_end   = global_config['single_swath']['scene_trans_index'][iscen+1]            
+             albedo[0, ind_start:ind_end] = global_config["single_swath"]["albedo"][iscen]
+        
     if((global_config['profile'] == 'S2_hom_atm') or (global_config['profile'] == 'S2_microHH')):
 
         # get collocated S2 data
@@ -235,7 +246,8 @@ def scene_generation_module(paths, global_config, local_config):
         if(file_exists and (not(local_config['s2_forced']))):
             albedo = np.load(paths.project+paths.data_tmp+albedo_tmp_file)
         else:
-            albedo = libSGM.get_sentinel2_albedo(gm_data, local_config)
+            dump_dir = paths.project +paths.data_tmp 
+            albedo = libSGM.get_sentinel2_albedo(gm_data, local_config, dump_dir)
             np.save(paths.project+paths.data_tmp+albedo_tmp_file, albedo)    # .npy extension is added if not given
 
     # =============================================================================
@@ -260,31 +272,34 @@ def scene_generation_module(paths, global_config, local_config):
 
     if((global_config['profile'] == 'S2_microHH')):
 
-        # get collocated mciroHH data
-        microHH_tmp_file = 'microHH2_'+run_id+'.pkl'
-
-        if ((not os.path.exists(paths.project + paths.data_tmp +microHH_tmp_file)) or local_config['microHH_forced']):
-            data_path = paths.project+paths.data_microHH+ local_config['microHH']['sim']
-            microHH = libATM.get_microHH_atm(gm_data['lat'], gm_data['lon'], data_path,
-                                             local_config['microHH'],
-                                             local_config['kernel_parameter'])
-            # Dump microHH dictionary into temporary pkl file
-            pickle.dump(microHH, open(paths.project+paths.data_tmp+microHH_tmp_file, 'wb'))
-
-        else:
-
-            # Read microHH from pickle file
-            microHH = pickle.load(open(paths.project+paths.data_tmp+microHH_tmp_file, 'rb'))
-
         nlay = local_config['atmosphere']['nlay']  # number of layers
         dzlay = local_config['atmosphere']['dzlay']
 
         afgl_file = paths.project+paths.data_afgl+local_config['std_atm']
         atm_std = libATM.get_AFGL_atm_homogenous_distribtution(afgl_file, nlay, dzlay)
 
-        atm = libATM.combine_microHH_standard_atm(microHH, atm_std)
+        if(local_config('only_afgl')):
+            atm = atm_std
+        else:         
+            # get collocated mciroHH data
+            microHH_tmp_file = 'microHH2_'+run_id+'.pkl'
 
-        pickle.dump(atm, open(paths.project+paths.data_tmp+'microHH_plot.pkl', 'wb'))
+            if ((not os.path.exists(paths.project + paths.data_tmp +microHH_tmp_file)) or local_config['microHH_forced']):
+                data_path = paths.project+paths.data_microHH+ local_config['microHH']['sim']
+                microHH = libATM.get_microHH_atm(gm_data['lat'], gm_data['lon'], data_path,
+                                                 local_config['microHH'],
+                                                 local_config['kernel_parameter'])
+                # Dump microHH dictionary into temporary pkl file
+                pickle.dump(microHH, open(paths.project+paths.data_tmp+microHH_tmp_file, 'wb'))
+
+            else:
+                
+                # Read microHH from pickle file
+                microHH = pickle.load(open(paths.project+paths.data_tmp+microHH_tmp_file, 'rb'))
+
+            atm = libATM.combine_microHH_standard_atm(microHH, atm_std)
+
+            pickle.dump(atm, open(paths.project+paths.data_tmp+'microHH_plot.pkl', 'wb'))
 
     # =============================================================================
     #  Radiative transfer simulations

@@ -3,14 +3,11 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import sys
-from tqdm import tqdm
-from copy import deepcopy
 
-from modules.lib import libRT
-from modules.lib import libSURF
+from end_to_end.lib import libRT
+from end_to_end.lib import libSURF
 
 ###########################################################
-
 
 def Gauss_Newton_iteration(retrieval_init, atm, optics, measurement, isrf, max_iter, chi2_lim):
     """
@@ -50,7 +47,8 @@ def Gauss_Newton_iteration(retrieval_init, atm, optics, measurement, isrf, max_i
 
     surface = libSURF.surface_prop(retrieval_init['wavelength lbl'])
 
-    while (convergence == False):
+    convergence = False
+    for iteration in range(retrieval_init['maximum iteration']):
         alb_lst = []
         for key in retrieval_init['trace gases'].keys():
             if (key == 'CO2'):
@@ -94,13 +92,15 @@ def Gauss_Newton_iteration(retrieval_init, atm, optics, measurement, isrf, max_i
         Gain = np.dot(Sx, np.dot(Kmat.T, Syinv))               # gain matrix
         xstat = np.dot(Gain, ytilde)                           # least square solution
 
+
         # print(x0_lst[0:1])
         # print('==========================================')
-        # plt.plot(Gain[0, :], color='blue')
-        # index = 1
-        # Sx_tmp = np.linalg.inv(np.dot(Kmat[:, 0:index].T, np.dot(Syinv, Kmat[:, 0:index])))
-        # Gain[0:index,:] = np.dot(Sx_tmp, np.dot(Kmat[:, 0:index].T, Syinv))               # gain matrix
-        # plt.plot(Gain[0, :], color='green')
+        # print(iteration, xstat)
+        # plt.plot(measurement['ymeas'], color='blue', label='l1b')
+        # plt.plot(fwd['rad'], color='green', label='fwd')
+        # plt.xlabel('spec index')
+        # plt.ylabel('radiance')
+        # plt.legend()        
         # sys.exit()
 
         x_lst_precision = []
@@ -122,21 +122,12 @@ def Gauss_Newton_iteration(retrieval_init, atm, optics, measurement, isrf, max_i
         if iteration > 2:
             if (np.abs(Chi_sqrt[iteration]-Chi_sqrt[iteration-1]) < retrieval_init['chi2 limit']):
                 convergence = True
-
-        if iteration == retrieval_init['maximum iteration']:
-            convergence = True
-
+                break
         iteration = iteration+1
 
     output = {}
     output['chi2'] = Chi_sqrt[iteration-1]
-
-    # plt.plot(measurement['ymeas'], color = 'blue', label = 'meas')
-    # plt.plot(fwd['rad'], color = 'red', label = 'model')
-    # plt.legend()
-    # plt.title('chi2 = ' + str(Chi_sqrt[iteration-1]))
-    # sys.exit('in Inv')
-
+    output['convergence'] = convergence
     output['number_iter'] = iteration
     # define output product, first update all parameter
     for key in retrieval_init['trace gases'].keys():

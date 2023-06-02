@@ -17,10 +17,9 @@ import numpy as np
 import netCDF4 as nc
 from scipy.signal import fftconvolve
 
-from modules.lib import libRT
-from modules.lib import libNumTools
-from modules.lib import hapi
-
+from end_to_end.lib import libRT
+from end_to_end.lib import libNumTools
+from end_to_end.lib import hapi
 
 def get_raw_sentinel2_data(lat, lon, S2_reading_log):
 

@@ -1,6 +1,6 @@
 retrieval_init:                 #initialization parameter for inversion
-    max_iter: 15
-    chi2_lim: 0.1
+    max_iter: 35
+    chi2_lim: 0.05
     
 atmosphere:
     nlay: 30                    #number of atmospheric layers

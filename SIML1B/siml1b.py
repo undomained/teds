@@ -9,7 +9,7 @@ from copy import deepcopy
 import netCDF4 as nc
 from tqdm import tqdm
 
-from modules.lib import libNumTools
+from end_to_end.lib import libNumTools
 
 
 def sparse_isrf_convolution(isrf, mask, spectrum):
@@ -233,7 +233,7 @@ def simplified_instrument_model_and_l1b_processor(paths, global_config, local_co
 
     # output to netcdf file
     siml1b_path = paths.project + paths.data_interface + paths.interface_l1b
-    filename = local_config['filename']['siml1b_output'] + '_'+global_config['profile']+'_siml1b'+run_id
+    filename = local_config['filename']['siml1b_output'] + '_'+global_config['profile']+run_id
     print(siml1b_path)
     print(filename)
     sim_output(siml1b_path, filename, gm_data, l1b_output)

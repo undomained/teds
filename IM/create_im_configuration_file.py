@@ -33,7 +33,7 @@ def im_configuration(paths, global_config, local_config):
     expo_time_filename = local_config['filename'] ['ckd_expo_time']+'.txt'
     coadd_fact_filename = local_config['filename'] ['ckd_coadding']+'.txt'
     #get averaged SZA from geometry file
-    gm_data_file = local_config['filename']['gm_input']+global_config['profile']+'_'+global_config['run_id']
+    gm_data_file = local_config['filename']['gm']+global_config['profile']+'_'+global_config['run_id']
     file = paths.project+paths.data_interface+paths.interface_gm+gm_data_file + '.nc'
     gm_data = nc.Dataset(file, mode='r')
     sza_avg = np.mean(gm_data['sza'][:, :])

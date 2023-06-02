@@ -17,7 +17,7 @@ def l0l1b_configuration(paths, global_config, local_config):
     # Process name. In the present implementation this is always l1b.
     lines.append('process = l1b\n')
     #location of ckd file
-    lines.append('ckd_file_in = ' + paths.project + paths.data_interface+paths.interface_ckd  + local_config['filename'] ['ckd_input']+'.nc\n')
+    lines.append('ckd_file_in = ' + paths.project + paths.data_interface+paths.interface_ckd  + local_config['filename'] ['ckd']+'.nc\n')
     #location of ckd binning table
     lines.append('binningtable_filename =' + paths.project + paths.data_interface+paths.interface_ckd  + local_config['filename']['binning_table']+'.nc\n')
     #========================l1b group=========================================
@@ -29,11 +29,11 @@ def l0l1b_configuration(paths, global_config, local_config):
     # Whether to determine geolocation. Use 0 for now.
     lines.append('geolocation = '+str(local_config['settings']['geolocation']) +'\n')
     #Location of the nL1A product (input detector images)
-    lines.append('l1a_files = '+ paths.project + paths.data_interface+paths.interface_l0  + str(local_config['filename']['level0_input'])+file_ext)
+    lines.append('l1a_files = '+ paths.project + paths.data_interface+paths.interface_l0  + str(local_config['filename']['level0'])+file_ext)
     #Location of the level1b data
-    lines.append('outputfile = ' + paths.project + paths.data_interface+paths.interface_l1b  + local_config['filename']['level1b_output']+ file_ext)
+    lines.append('outputfile = ' + paths.project + paths.data_interface+paths.interface_l1b  + local_config['filename']['level1b']+ file_ext)
     #location of gm input
-    lines.append('geometry_file = ' + paths.project + paths.data_interface+paths.interface_gm  + local_config['filename']['gm_input']+ file_ext)
+    lines.append('geometry_file = ' + paths.project + paths.data_interface+paths.interface_gm  + local_config['filename']['gm']+ file_ext)
     # enable sub-module of level 0 to 1b processor (1 = switch on, 0 = switch off)
     # dark current
     lines.append('dark_apply = '+str(local_config['settings']['sw_dark'])+'\n')

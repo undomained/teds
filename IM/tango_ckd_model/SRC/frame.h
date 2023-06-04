@@ -59,9 +59,7 @@ class Frame : public Logger { // {{{
         CKD *ckd
     );
 
-    int apply_straylight(
-        CKD *ckd
-    );
+    int apply_straylight(const Settings_main& set, CKD *ckd);
 
     int apply_prnu(
         CKD *ckd

@@ -1,8 +1,0 @@
-[I] main: CKD instrument model  (21 Apr 2023)
-[D] main: Commit: c1289e996038591a2c1bf728d75f26febcb33ae7
-[D] main: Settings file: 'tango_ckd_model/' (Last modified Sun Apr 30 21:08:43 2023).
-[D] main: End of settings file.
-[E] main: Error: tag [main] not found in settings file.
-[E] main: Error raised on line 99 in routine init in file /home/jochen/TANGO_E2ES/software/IM/tango_ckd_model/SRC/settings.cpp.
-[E] main: Error progressed on line 57 in routine execute in file /home/jochen/TANGO_E2ES/software/IM/tango_ckd_model/SRC/program.cpp.
-[I] main: Program exited with error.

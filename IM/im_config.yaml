@@ -9,6 +9,8 @@ settings:
     bin_id:          1                                   #across track binning
     co_adding:       3                                   #along track co-addng
     exp_time:        0.066                               #exposure time [sec]
+     # Whether to use interpolating stray light kernels
+    stray_interpolating: yes
 
 isrf:
     convolution:     1                                   #switch spectral convolution (1=yes), (0=no)

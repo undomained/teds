@@ -21,6 +21,8 @@ struct Calibration_options {
     uint32_t nonlin_niter = 100; // Number of iterations that will be allowed when performing the inversion that applies the non-linearity correction.
     double nonlin_tol = 1.0e-3; // Convergence tolerance when performing the inversion that applies the non-linearity correction.
     int stray_van_cittert_steps = 3; // Number of Van Cittert iterations to perform straylight correction.
+    // Whether to use interpolating stray light kernels
+    bool stray_interpolating { true };
 };
 
 // Calibration settings. This is a base class. Each CKD has her own settings
@@ -89,6 +91,7 @@ class Settings_proc : public Settings {
     bool& nonlin_apply { opt.nonlin_apply };
     bool& prnu_apply { opt.prnu_apply };
     bool& rad_apply { opt.rad_apply };
+    bool& stray_interpolating { opt.stray_interpolating };
 
     // Apply main settings to the processor.
     int apply_main_settings(

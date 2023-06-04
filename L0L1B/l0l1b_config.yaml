@@ -7,5 +7,7 @@ filename:
     binning_table:  'binning_table'                      #Instrument binning table
     
 settings:
-    van_cittert_steps: 4  #van Citter iteration for stray light correction (0=no correction) 
+    van_cittert_steps: 4  #van Citter iteration for stray light correction (0=no correction)
+    # Whether to use inteprolating stray light kernels
+    stray_interpolating: yes
     geolocation:  0       #calculate geolocation (0 no, 1 yes), currently only 0 possible

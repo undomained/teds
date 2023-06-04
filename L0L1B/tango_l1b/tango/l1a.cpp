@@ -638,7 +638,8 @@ int L1A::calibrate_detector( // {{{
             } else {
                 fillHoles(pixelmask, static_cast<int>(ckd->npix), image);
             }
-            if (!ckd->stray_skip && ckd->stray.n_kernels == 0) {
+            if (!ckd->stray_skip
+                && (!opt.stray_interpolating || ckd->stray.n_kernels == 0)) {
                 // Inside this scope, use the general CKD.
                 // which will be revealed again after the straylight step.
 
@@ -720,7 +721,8 @@ int L1A::calibrate_detector( // {{{
                     image[i] = frame_ideal[i];
                 }
             }
-            if (!ckd->stray_skip && ckd->stray.n_kernels > 0) {
+            if (!ckd->stray_skip && ckd->stray.n_kernels > 0
+                && opt.stray_interpolating) {
                 // "Ideal" image, i.e. the one without stray light
                 std::vector<double> image_ideal(ckd->npix);
                 for (int i {}; i < ckd->npix; ++i) {

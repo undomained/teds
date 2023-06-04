@@ -277,7 +277,7 @@ int Program::execute( // {{{
         if (il1x_start > L1X_UNBIN) {
 
             // Step: Straylight.
-            handle(frm->apply_straylight(ckd.get()));
+            handle(frm->apply_straylight(set_main, ckd.get()));
 
             // L1X output UNBIN.
             handle(l1x[L1X_UNBIN]->write(

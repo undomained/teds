@@ -3,6 +3,7 @@
 #include "fourier.h"
 #include "bspline.h"
 #include "netcdf_object.h"
+#include "settings_main.h"
 #include "settings_l1b.h"
 #include "settings_isrf.h"
 #include "settings_geo.h"
@@ -405,9 +406,7 @@ int Frame::draw_on_detector( // {{{
     return 0;
 } // }}}
 
-int Frame::apply_straylight( // {{{
-    CKD *ckd
-)
+int Frame::apply_straylight(const Settings_main& set, CKD *ckd)
 {
     if (ckd->stray_skip) {
         std::cout << "Not applying stray light" << std::endl;
@@ -420,7 +419,7 @@ int Frame::apply_straylight( // {{{
     }
     // If present, use the interpolating stray light
     // kernel. Otherwise, use the single kernel approach.
-    if (ckd->stray.n_kernels > 0) {
+    if (set.stray_interpolating &&  ckd->stray.n_kernels > 0) {
         std::vector<double> conv_result(ckd->npix, 0.0);
         for (int i_kernel {}; i_kernel < ckd->stray.n_kernels; ++i_kernel) {
             std::vector<double> image_weighted { image };

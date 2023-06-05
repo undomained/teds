@@ -2,15 +2,53 @@ import numpy as np
 import sys
 import yaml
 import netCDF4 as nc
-
-from modules.lib import libINV
+from copy import deepcopy
 
 #   main program ##############################################################
 
+def get_l1b(path, filename):
 
-def sim_modified_output(path, filename, l1b_output):
+    #getting l1b data from file
+    
+    file = path+filename+'.nc'
 
-    nwav = l1b_output['wavelength'].size
+    input = nc.Dataset(file, mode='r')
+
+    l1b_data = {}
+    l1b_data['sza'] = deepcopy(input['GEOLOCATION_DATA']['sza'][:])
+    l1b_data['saa'] = deepcopy(input['GEOLOCATION_DATA']['saa'][:])
+    l1b_data['vza'] = deepcopy(input['GEOLOCATION_DATA']['vza'][:])
+    l1b_data['vaa'] = deepcopy(input['GEOLOCATION_DATA']['vaa'][:])
+    l1b_data['latitude']   = deepcopy(input['GEOLOCATION_DATA']['lat'][:])
+    l1b_data['longitude']  = deepcopy(input['GEOLOCATION_DATA']['lon'][:])
+    l1b_data['wavelength'] = deepcopy(input['OBSERVATION_DATA']['wavelengths'][:])
+    l1b_data['radiance']   = deepcopy(input['OBSERVATION_DATA']['radiance'][:])
+    l1b_data['noise']      = deepcopy(input['OBSERVATION_DATA']['radiance_noise'][:])
+
+    input.close()
+
+    return(l1b_data)
+
+def get_gm_data(path, filename):
+
+    file = path+filename+'.nc'
+    input = nc.Dataset(file, mode='r')
+
+    gm_data = {}
+    gm_data['sza'] = deepcopy(input['sza'][:, :])
+    gm_data['saa'] = deepcopy(input['saa'][:, :])
+    gm_data['vza'] = deepcopy(input['vza'][:, :])
+    gm_data['vaa'] = deepcopy(input['vaa'][:, :])
+    gm_data['lat'] = deepcopy(input['lat'][:, :])
+    gm_data['lon'] = deepcopy(input['lon'][:, :])
+
+    input.close()
+
+    return(gm_data)
+
+def sim_modified_output(path, filename, gm_data, l1b_output):
+
+    nwav = l1b_output['wavelength'][0,:].size
     nact = l1b_output['radiance'][0, :, 0].size
     nalt = l1b_output['radiance'][:, 0, 0].size
 
@@ -23,62 +61,68 @@ def sim_modified_output(path, filename, l1b_output):
 
     # first geometry data
 
-    l1b_sza = output.createVariable('sza', np.float64, ('bins_along_track', 'bins_across_track',))
+    geo_data = output.createGroup('GEOLOCATION_DATA')
+
+    l1b_sza = geo_data.createVariable('sza', np.float64, ('bins_along_track', 'bins_across_track',))
     l1b_sza.units = 'degree'
     l1b_sza.long_name = 'solar zenith angle'
-    l1b_sza.fill_value = 1.E-50
     l1b_sza.valid_min = 0.
     l1b_sza.valid_max = 90.
-    l1b_sza[:, :] = l1b_output['sza'][:, :]
+    l1b_sza.FillValue = -32767
+    l1b_sza[:, :] = gm_data['sza'][:, :]
 
-    l1b_saa = output.createVariable('saa', np.float64, ('bins_along_track', 'bins_across_track',))
+    l1b_saa = geo_data.createVariable('saa', np.float64, ('bins_along_track', 'bins_across_track',))
     l1b_saa.units = 'degree'
     l1b_saa.long_name = 'solar azimuth angle'
-    l1b_saa.fill_value = 1.E-50
     l1b_saa.valid_min = 0.
     l1b_saa.valid_max = +360.
-    l1b_saa[:, :] = l1b_output['saa'][:, :]
+    l1b_saa.FillValue = -32767
+    l1b_saa[:, :] = gm_data['saa'][:, :]
 
-    l1b_vza = output.createVariable('vza', np.float64, ('bins_along_track', 'bins_across_track',))
+    l1b_vza = geo_data.createVariable('vza', np.float64, ('bins_along_track', 'bins_across_track',))
     l1b_vza.units = 'degree'
     l1b_vza.long_name = 'viewing zenith angle'
-    l1b_vza.fill_value = 1.E-50
     l1b_vza.valid_min = 0.
     l1b_vza.valid_max = 90.
-    l1b_vza[:, :] = l1b_output['vza'][:, :]
+    l1b_vza.FillValue = -32767
+    l1b_vza[:, :] = gm_data['vza'][:, :]
 
-    l1b_vaa = output.createVariable('vaa', np.float64, ('bins_along_track', 'bins_across_track',))
+    l1b_vaa = geo_data.createVariable('vaa', np.float64, ('bins_along_track', 'bins_across_track',))
     l1b_vaa.units = 'degree'
     l1b_vaa.long_name = 'viewing azimuth angle'
-    l1b_vaa.fill_value = 1.E-50
+    l1b_vaa.FillValue = -32767
     l1b_vaa.valid_min = 0.
     l1b_vaa.valid_max = +360.
-    l1b_vaa[:, :] = l1b_output['vaa'][:, :]
+    
+    l1b_vaa[:, :] = gm_data['vaa'][:, :]
 
-    l1b_lat = output.createVariable('lat', np.float64, ('bins_along_track', 'bins_across_track',))
+    l1b_lat = geo_data.createVariable('lat', np.float64, ('bins_along_track', 'bins_across_track',))
     l1b_lat.units = 'degree'
     l1b_lat.long_name = 'latitude'
-    l1b_lat.fill_value = 1.E-50
+    l1b_lat.FillValue = -32767
     l1b_lat.valid_min = -90.
     l1b_lat.valid_max = +90.
-    l1b_lat[:, :] = l1b_output['latitude'][:]
+    l1b_lat[:, :] = gm_data['lat'][:, :]
 
-    l1b_lon = output.createVariable('lon', np.float64, ('bins_along_track', 'bins_across_track',))
+    l1b_lon = geo_data.createVariable('lon', np.float64, ('bins_along_track', 'bins_across_track',))
     l1b_lon.units = 'degree'
     l1b_lon.long_name = 'longitude'
-    l1b_lon.fill_value = 1.E-50
+    l1b_lon.FillValue = -32767
     l1b_lon.valid_min = -90.
     l1b_lon.valid_max = +90.
-    l1b_lon[:, :] = l1b_output['longitude'][:]
+    l1b_lon[:, :] = gm_data['lon'][:, :]
+
+    obs_data = output.createGroup('OBSERVATION_DATA')
 
     # second radiometric data
-    l1b_wave = output.createVariable('wavelength', np.float64, ('bins_spectral',))
+    l1b_wave = obs_data.createVariable('wavelengths', np.float64, ('bins_across_track', 'bins_spectral',))
     l1b_wave.units = 'nm'
-    l1b_wave.long_name = 'wavelength'
-    l1b_wave.fill_value = 1.E-50
+    l1b_wave.long_name = 'wavelengths'
+    l1b_wave.FillValue = -32767
     l1b_wave.valid_min = 0.
     l1b_wave.valid_max = 80000.
-    l1b_wave[:] = l1b_output['wavelength'][:]
+    for iact in range(nact):
+        l1b_wave[iact, :] = l1b_output['wavelength'][iact,:]
 
     # l1b_sun             = output.createVariable('solar irradiance model', np.float64, ('bins_spectral',))
     # l1b_sun.units       = 'photons/(nm m2 s)'
@@ -88,18 +132,19 @@ def sim_modified_output(path, filename, l1b_output):
     # l1b_sun.valid_max   = 1.E25
     # l1b_sun[:]         = l1b_output['solar_irradiance'][:]
 
-    l1b_rad = output.createVariable('radiance', np.float64, ('bins_along_track', 'bins_across_track', 'bins_spectral',))
+    l1b_rad = obs_data.createVariable('radiance', np.float64, ('bins_along_track',
+                                      'bins_across_track', 'bins_spectral',))
     l1b_rad.units = 'photons/(sr nm m2 s)'
     l1b_rad.long_name = 'observed Earth radiance'
-    l1b_rad.fill_value = 1.E-50
+    l1b_rad.FillValue = -32767
     l1b_rad.valid_min = 0.
     l1b_rad.valid_max = 1.E25
-    l1b_rad[:] = l1b_output['radiance'][:]
+    l1b_rad[:] = l1b_output['radiance'][:, :, :]
 
-    l1b_sig = output.createVariable('noise', np.float64, ('bins_along_track', 'bins_across_track', 'bins_spectral',))
+    l1b_sig = obs_data.createVariable('radiance_noise', np.float64, ('bins_along_track', 'bins_across_track', 'bins_spectral',))
     l1b_sig.units = 'photons/(sr nm m2 s)'
     l1b_sig.long_name = 'relative radiance noise (1-sigma)'
-    l1b_sig.fill_value = 1.E-50
+    l1b_sig.FillValue = -32767
     l1b_sig.valid_min = 0.
     l1b_sig.valid_max = 1.E24
     l1b_sig[:] = l1b_output['noise'][:]
@@ -108,22 +153,18 @@ def sim_modified_output(path, filename, l1b_output):
 
     return
 
-
-def radiance_offset(global_config, rad_offset):
-
-    siml1b_path = global_config['path']['e2es_project'] + global_config['path']['siml1b_path']
-    l1b_path = global_config['path']['e2es_project'] + global_config['path']['interface_data']
-    config = yaml.safe_load(open(siml1b_path+'siml1b_config.yaml'))
+def radiance_offset(paths, global_config, local_config, rad_offset):
+    
     run_id = '_'+global_config['run_id']
-
-    # output to netcdf file
-    filename = config['path']['siml1b_output']+config['filename']['siml1b_output'] \
-        + '_'+global_config['profile']+'_exp0001'
-
+    l1b_path = paths.project + paths.data_interface + paths.interface_l1b
+    
     # paths and config parameter
 
-    l1b = libINV.get_l1b(l1b_path, filename)
+    l1b_path = paths.project + paths.data_interface + paths.interface_l1b
+    l1b_filename = local_config['filename']['siml1b_output'] + '_'+global_config['profile']+run_id
 
+    l1b = get_l1b(l1b_path, l1b_filename)
+    
     nalt = l1b['radiance'][:, 0, 0].size
     nact = l1b['radiance'][0, :, 0].size
     nwav = l1b['radiance'][0, 0, :].size
@@ -153,10 +194,14 @@ def radiance_offset(global_config, rad_offset):
         l1b_scaled['noise'][ialt, :, :] = l1b['noise'][0, :, :]
     l1b_scaled['wavelength'] = l1b['wavelength']
 
+    # get geometry data
+    filename = local_config['filename']['gm_input']+'_'+global_config['profile']+run_id
+    gm_path = paths.project + paths.data_interface + paths.interface_gm
+    gm_data = get_gm_data(gm_path, filename)
+
     # output to netcdf file
-    filename = config['path']['siml1b_output']+config['filename']['siml1b_output'] \
-        + '_'+global_config['profile']+run_id
-    sim_modified_output(l1b_path, filename, l1b_scaled)
+
+    sim_modified_output(l1b_path, l1b_filename, gm_data, l1b_scaled)
 
     print('=> radiometric offset added successfully for runid ' +
           global_config['run_id'] + ' of profile ' + global_config['profile'])

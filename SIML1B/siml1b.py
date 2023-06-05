@@ -238,6 +238,6 @@ def simplified_instrument_model_and_l1b_processor(paths, global_config, local_co
     print(filename)
     sim_output(siml1b_path, filename, gm_data, l1b_output)
 
-    print('=>sim calcultion finished successfully for runid ' +
+    print('=>siml1b calculation finished successfully for runid ' +
           global_config['run_id'] + ' of profile ' + global_config['profile'])
     return

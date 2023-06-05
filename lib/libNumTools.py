@@ -5,29 +5,29 @@ import os
 import yaml
 import matplotlib.pyplot as plt
 import scipy
+import math
 
 
-def get_isrf(isrf_parameter, wave, wave_meas):
+# def get_isrf(isrf_parameter, wave, wave_meas):
 
-    dmeas = wave_meas.size
-    dlbl = wave.size
-    isrfct = np.zeros(shape=(dmeas, dlbl))
+#     dmeas = wave_meas.size
+#     dlbl = wave.size
+#     isrfct = np.zeros(shape=(dmeas, dlbl))
 
-    if (isrf_parameter['type'] == 'Gaussian'):
-        fwhm = isrf_parameter['fwhm']
-        const = fwhm**2/(4*np.log(2))
+#     if (isrf_parameter['type'] == 'Gaussian'):
+#         fwhm = isrf_parameter['fwhm']
+#         const = fwhm**2/(4*np.log(2))
 
-        for l, wmeas in enumerate(wave_meas):
-            wdiff = wave - wmeas
-            mask1 = wdiff >= -1.5*fwhm
-            mask2 = wdiff <= 1.5*fwhm
-            idx = np.logical_and(mask1, mask2)
-            isrfct[l, idx] = np.exp(-wdiff[idx]**2/const)
-            isrfct[l, :] = isrfct[l, :]/np.sum(isrfct[l, :])
+#         for l, wmeas in enumerate(wave_meas):
+#             wdiff = wave - wmeas
+#             mask1 = wdiff >= -1.5*fwhm
+#             mask2 = wdiff <= 1.5*fwhm
+#             idx = np.logical_and(mask1, mask2)
+#             isrfct[l, idx] = np.exp(-wdiff[idx]**2/const)
+#             isrfct[l, :] = isrfct[l, :]/np.sum(isrfct[l, :])
 
-    mask = isrfct > 0.
-
-    return isrfct, mask
+    
+#     return isrfct, mask
 
 
 class isrfct:
@@ -57,6 +57,26 @@ class isrfct:
 
             self.isrf['istart'] = istart
             self.isrf['iend'] = iend
+
+        if (parameter['type'] =='generalized_normal'):
+            fwhm = parameter['fwhm']
+            bcoeff = parameter['bcoeff']
+            const = np.log(2)**bcoeff/(fwhm*math.gamma(1+bcoeff))
+
+            istart = []
+            iend = []
+            for l, wmeas in enumerate(self.wave_target):
+                wdiff = self.wave_input - wmeas
+                istart.append(np.argmin(np.abs(wdiff + 1.5*parameter['fwhm'])))
+                iend.append(np.argmin(np.abs(wdiff - 1.5*parameter['fwhm'])))
+
+                self.isrf['isrf'][l, istart[l]:iend[l]] = const*2**(-(2*np.abs(wdiff[istart[l]:iend[l]])/fwhm)**(1/bcoeff))
+                self.isrf['isrf'][l, :] = self.isrf['isrf'][l, :] / np.sum(self.isrf['isrf'][l, :])
+
+            self.isrf['istart'] = istart
+            self.isrf['iend'] = iend
+
+        return
 
     def isrf_convolution(self, spectrum):
 

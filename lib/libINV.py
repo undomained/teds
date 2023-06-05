@@ -96,6 +96,8 @@ def Gauss_Newton_iteration(retrieval_init, atm, optics, measurement, isrf, max_i
         # print(x0_lst[0:1])
         # print('==========================================')
         # print(iteration, xstat)
+        
+        # fig = plt.figure(figsize=(10, 8), dpi=100)
         # plt.plot(measurement['ymeas'], color='blue', label='l1b')
         # plt.plot(fwd['rad'], color='green', label='fwd')
         # plt.xlabel('spec index')

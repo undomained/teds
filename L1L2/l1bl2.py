@@ -11,6 +11,7 @@ from end_to_end.lib import libRT
 from end_to_end.lib import libATM
 from end_to_end.lib import libINV
 from end_to_end.lib import libNumTools
+import matplotlib.pyplot as plt
 
 def get_l1b(path, filename):
 
@@ -50,6 +51,16 @@ def level2_output(path, filename, l2product, retrieval_init, l1bproduct):
     output_l2.createDimension('number_layers', nlay)     # spectral axis
     output_l2.createDimension('bins_across_track', nact)     # across track axis
     output_l2.createDimension('bins_along_track', nalt)     # along track axis
+                      
+    l2_conv = output_l2.createVariable('convergence', np.int32, ('bins_along_track', 'bins_across_track',))
+    l2_conv.units = '1'
+    l2_conv.long_name = 'convergence'
+    l2_conv.valid_min = 0
+    l2_conv.valid_max = 1
+    l2_conv.FillValue = -32767
+    for ialt in range(nalt):
+        for iact in range(nact):
+            l2_conv[ialt, iact] = int(l2product[ialt, iact]['convergence'])
 
     l2_zlay = output_l2.createVariable('zlay', np.float64, ('number_layers',))
     l2_zlay.units = 'm'
@@ -78,7 +89,7 @@ def level2_output(path, filename, l2product, retrieval_init, l1bproduct):
     l2_numb_iter = output_l2.createVariable('max iter', np.int32, ('bins_along_track', 'bins_across_track',))
     l2_numb_iter.units = '1'
     l2_numb_iter.long_name = 'number of iterations'
-    l2_numb_iter.valid_min = 0.
+    l2_numb_iter.valid_min = 0
     l2_numb_iter.valid_max = retrieval_init['maximum iteration']
     l2_numb_iter.FillValue = -32767
 
@@ -330,11 +341,25 @@ def level1b_to_level2_processor(paths, global_config, local_config):
     afgl_path = paths.project + paths.data_afgl
     run_id = '_'+global_config['run_id']
 
-    filename = local_config['filename']['l1b_input']+'_'+global_config['profile']+run_id
+    filename = local_config['filename']['level1b']+'_'+global_config['profile']+run_id
 
     # get the l1b files    
     l1b = get_l1b(l1b_path, filename)
     
+    # get pixel mask
+    if(local_config['pixel_mask']):
+        print('take pixel mask')
+        mask  = np.load(l1b_path+local_config['filename']['pixel_mask']+'.npy')
+    else:       
+        nact  = l1b['radiance'][0,:,0].size
+        nwave = l1b['radiance'][0,0,:].size
+        mask  = np.full((nact, nwave), True)
+        
+    # fig = plt.figure(figsize=(10, 8), dpi=100)
+    # radiance = l1b['radiance'][0, :,:]
+    # masked_data = np.ma.masked_where( np.invert(mask).data, radiance)
+    # plt.imshow(masked_data, vmin = 1.E16,vmax = 4.E16, cmap = 'viridis', aspect = 4)
+
     # Internal lbl spectral grid
     wave_start = local_config['spec_settings']['wavestart']
     wave_end = local_config['spec_settings']['waveend']
@@ -420,10 +445,12 @@ def level1b_to_level2_processor(paths, global_config, local_config):
     l2product = np.ndarray((nalt, nact), np.object_)
     measurement = np.ndarray((nalt, nact), np.object_)
 
+    XCO2 = np.zeros(nact)
+
     for ialt in tqdm(range(nalt)):
         for iact in range(nact):
-            wavelength = l1b['wavelength'][iact, :]
-            nwave = l1b['wavelength'].size
+            wavelength = l1b['wavelength'][iact,mask[iact,:]].data
+#            wavelength = l1b['wavelength'][iact, :]
             istart = np.argmin(np.abs(wavelength - wave_start))
             iend = np.argmin(np.abs(wavelength - wave_end))
             wave_meas = wavelength[istart:iend+1]  # nm
@@ -436,24 +463,25 @@ def level1b_to_level2_processor(paths, global_config, local_config):
            
             atm_ret = deepcopy(atm)  # to initialize each retrieval with the same atmosphere
 
-            #derive first guess albedo from the maximum reflectance   
-            ymeas_max=np.max(l1b['radiance'][ialt, iact, istart:iend+1])
-            idx = np.where(l1b['radiance'][ialt, iact, istart:iend+1] == ymeas_max)[0][0]
             sun = isrf.isrf_convolution(sun_lbl)
-            alb_first_guess = l1b['radiance'][ialt, iact,idx]/sun[idx]*np.pi/np.cos(np.deg2rad(l1b['sza'][ialt, iact]))
-            retrieval_init['surface'] = {'alb0': alb_first_guess, 'alb1': 0.0}
 
-            print(l1b['radiance'][ialt, iact, istart:iend+1])
-            print(l1b['noise'][ialt, iact, istart:iend+1])
-            sys.exit()
             # Observation geometry
             measurement[ialt, iact] = {}
             measurement[ialt, iact]['wavelength'] = wave_meas[:]
             measurement[ialt, iact]['mu0'] = np.cos(np.deg2rad(l1b['sza'][ialt, iact]))
             measurement[ialt, iact]['muv'] = np.cos(np.deg2rad(l1b['vza'][ialt, iact]))
-            measurement[ialt, iact]['ymeas'] = l1b['radiance'][ialt, iact, istart:iend+1]
-            measurement[ialt, iact]['Smeas'] = np.eye(nwave)*l1b['noise'][ialt, iact, istart:iend+1]**2
+            measurement[ialt, iact]['ymeas'] = l1b['radiance'][ialt, iact, mask[iact,:]][istart:iend+1].data
+            measurement[ialt, iact]['Smeas'] = np.eye(nwave)*(l1b['noise'][ialt, iact, mask[iact,:]][istart:iend+1].data)**2
+#            measurement[ialt, iact]['ymeas'] = l1b['radiance'][ialt, iact, istart:iend+1]
+#            measurement[ialt, iact]['Smeas'] = np.eye(nwave)*(l1b['noise'][ialt, iact, istart:iend+1])**2
             measurement[ialt, iact]['sun'] = sun
+
+            #derive first guess albedo from the maximum reflectance   
+            ymeas_max=np.max(measurement[ialt, iact]['ymeas'])
+            idx = np.where(measurement[ialt, iact]['ymeas'] == ymeas_max)[0][0]
+            alb_first_guess = measurement[ialt, iact]['ymeas'][idx]/sun[idx]*np.pi/np.cos(np.deg2rad(l1b['sza'][ialt, iact]))
+            retrieval_init['surface'] = {'alb0': alb_first_guess, 'alb1': 0.0}
+
             # Non-scattering least squares fit
             l2product[ialt, iact] = libINV.Gauss_Newton_iteration(
                 retrieval_init, atm_ret, optics, measurement[ialt,
@@ -471,15 +499,20 @@ def level1b_to_level2_processor(paths, global_config, local_config):
             l2product[ialt, iact]['XCO2 proxy precision'] = rel_error * l2product[ialt, iact]['XCO2']
             l2product[ialt, iact]['XCH4 proxy precision'] = rel_error * l2product[ialt, iact]['XCH4']
 
+            XCO2[iact] = l2product[ialt, iact]['XCO2 proxy']
     # output to netcdf file
 
+    print('=============================')
+    print(np.mean(XCO2)*1.E6)
+    print('=============================')
+    
     l2_path = paths.project + paths.data_interface + paths.interface_l2 
     run_id = '_'+global_config['run_id']
-    filename = local_config['filename']['l2_output'] + '_'+global_config['profile']+run_id
+    filename = local_config['filename']['level2'] + '_'+global_config['profile']+run_id
     level2_output(l2_path, filename, l2product, retrieval_init, l1b)
-
-    filename = local_config['filename']['l2_output'] + '_'+global_config['profile']+'_diags_'+run_id
-    level2_diags_output(l2_path, filename, l2product, measurement)
-
+    # have to be fixed because of variable spectral size of measurement vector
+#    filename = local_config['filename']['l2_output'] + '_'+global_config['profile']+'_diags_'+run_id
+#    level2_diags_output(l2_path, filename, l2product, measurement)
     print('=> l1bl2 finished successfully for run_id ' + run_id + ' of profile '+ global_config['profile'] )
+
     return

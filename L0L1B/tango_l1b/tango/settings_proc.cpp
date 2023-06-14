@@ -55,7 +55,6 @@ int Settings_proc::init_common( // {{{
     recognize_setting(nonlin_apply);
     recognize_setting(prnu_apply);
     recognize_setting(rad_apply);
-    recognize_setting(stray_interpolating);
 
     // Own settings. This routine is overwritten by the inheriting class.
     handle(init_step(stream,key,value,recognized));

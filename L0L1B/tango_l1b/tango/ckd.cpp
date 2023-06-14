@@ -264,71 +264,50 @@ int CKD::read( // {{{
         stray_skip = intskip == 1;
 
         if (!stray_skip) {
-            netcdf_check(&nc_in,stray_kernel_n_rows = grp.getDim("stray_kernel_n_rows").getSize());
-            netcdf_check(&nc_in,stray_kernel_n_cols = grp.getDim("stray_kernel_n_cols").getSize());
-            // Need to divide by 2 because of complex numbers
-            netcdf_check(&nc_in,stray_kernel_fft_size = grp.getDim("stray_kernel_fft_size").getSize()/2);
-            stray_kernel_fft.resize(stray_kernel_fft_size);
-            netcdf_check(&nc_in,grp.getVar("stray_kernel_fft").getVar(stray_kernel_fft.data()));
-            stray_moving_kernel_fft.resize(stray_kernel_fft_size);
-            netcdf_check(&nc_in,grp.getVar("stray_moving_kernel_fft").getVar(stray_moving_kernel_fft.data()));
-            netcdf_check(&nc_in,stray_transformed_n_rows = grp.getDim("stray_transformed_n_rows").getSize());
-            netcdf_check(&nc_in,stray_transformed_n_cols = grp.getDim("stray_transformed_n_cols").getSize());
-            stray_transform_indices.resize(stray_transformed_n_rows*stray_transformed_n_cols);
-            netcdf_check(&nc_in,grp.getVar("stray_transform_indices").getVar(stray_transform_indices.data()));
-            stray_transform_deltas.resize(4*stray_transformed_n_rows*stray_transformed_n_cols);
-            netcdf_check(&nc_in,grp.getVar("stray_transform_deltas").getVar(stray_transform_deltas.data()));
-            netcdf_check(&nc_in,grp.getVar("stray_eta").getVar(&stray_eta));
-            handle(read_opt(&nc_in,grp,opt_stray));
-            if (const auto g { grp.getGroup("interpolating") }; !g.isNull()) {
-                stray.n_kernels =
-                  static_cast<int>(g.getDim("kernels").getSize());
-                stray.n_spatial =
-                  static_cast<int>(g.getDim("spatial").getSize());
-                stray.n_spectral =
-                  static_cast<int>(g.getDim("spectral").getSize());
-                stray.kernel_rows.resize(stray.n_kernels);
-                g.getVar("kernel_rows").getVar(stray.kernel_rows.data());
-                stray.kernel_cols.resize(stray.n_kernels);
-                g.getVar("kernel_cols").getVar(stray.kernel_cols.data());
-                stray.kernel_fft_sizes.resize(stray.n_kernels);
-                g.getVar("kernel_fft_sizes")
-                  .getVar(stray.kernel_fft_sizes.data());
-                stray.kernels_fft.resize(stray.n_kernels);
-                for (int i {}; i < stray.n_kernels; ++i) {
-                    stray.kernels_fft[i].resize(stray.kernel_fft_sizes[i]);
-                }
-                std::vector<size_t> start { 0 };
-                for (int i_kernel {}; i_kernel < stray.n_kernels; ++i_kernel) {
-                    // Need to multiply by 2 because of complex numbers
-                    std::vector<size_t> count {
-                        2 * static_cast<size_t>(
-                          stray.kernel_fft_sizes.at(i_kernel))
-                    };
-                    g.getVar("kernels_fft")
-                      .getVar(start,
-                              count,
-                              stray.kernels_fft.at(i_kernel).data());
-                    start.front() += count.front();
-                }
-                stray.eta.resize(stray.n_spatial * stray.n_spectral);
-                g.getVar("eta").getVar(stray.eta.data());
-                stray.weights.resize(
-                  stray.n_kernels,
-                  std::vector<double>(stray.n_spatial * stray.n_spectral));
-                std::vector<double> buf(stray.n_kernels * stray.n_spatial
-                                        * stray.n_spectral);
-                g.getVar("weights").getVar(buf.data());
-                for (int i {}; i < stray.n_kernels; ++i) {
-                    for (int j {}; j < stray.n_spatial * stray.n_spectral;
-                         ++j) {
-                        stray.weights[i][j] =
-                          buf[i * stray.n_spatial * stray.n_spectral + j];
-                    }
-                }
-                stray.edges.resize(4 * stray.n_kernels);
-                g.getVar("edges").getVar(stray.edges.data());
+            stray.n_kernels = static_cast<int>(grp.getDim("kernels").getSize());
+            stray.n_spatial = static_cast<int>(grp.getDim("spatial").getSize());
+            stray.n_spectral =
+              static_cast<int>(grp.getDim("spectral").getSize());
+            stray.kernel_rows.resize(stray.n_kernels);
+            grp.getVar("kernel_rows").getVar(stray.kernel_rows.data());
+            stray.kernel_cols.resize(stray.n_kernels);
+            grp.getVar("kernel_cols").getVar(stray.kernel_cols.data());
+            stray.kernel_fft_sizes.resize(stray.n_kernels);
+            grp.getVar("kernel_fft_sizes")
+              .getVar(stray.kernel_fft_sizes.data());
+            stray.kernels_fft.resize(stray.n_kernels);
+            for (int i {}; i < stray.n_kernels; ++i) {
+                stray.kernels_fft[i].resize(stray.kernel_fft_sizes[i]);
             }
+            std::vector<size_t> start { 0 };
+            for (int i_kernel {}; i_kernel < stray.n_kernels; ++i_kernel) {
+                // Need to multiply by 2 because of complex numbers
+                const std::vector<size_t> count {
+                    2 * static_cast<size_t>(
+                      stray.kernel_fft_sizes.at(i_kernel))
+                };
+                grp.getVar("kernels_fft")
+                  .getVar(start,
+                          count,
+                          stray.kernels_fft.at(i_kernel).data());
+                start.front() += count.front();
+            }
+            stray.eta.resize(stray.n_spatial * stray.n_spectral);
+            grp.getVar("eta").getVar(stray.eta.data());
+            stray.weights.resize(
+              stray.n_kernels,
+              std::vector<double>(stray.n_spatial * stray.n_spectral));
+            std::vector<double> buf(stray.n_kernels * stray.n_spatial
+                                    * stray.n_spectral);
+            grp.getVar("weights").getVar(buf.data());
+            for (int i {}; i < stray.n_kernels; ++i) {
+                for (int j {}; j < stray.n_spatial * stray.n_spectral; ++j) {
+                    stray.weights[i][j] =
+                      buf[i * stray.n_spatial * stray.n_spectral + j];
+                }
+            }
+            stray.edges.resize(4 * stray.n_kernels);
+            grp.getVar("edges").getVar(stray.edges.data());
         }
 
         // Copy this input to the output.

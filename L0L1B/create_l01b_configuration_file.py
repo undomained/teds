@@ -25,7 +25,6 @@ def l0l1b_configuration(paths, global_config, local_config):
     # Iteration limit for the stray light deconvolution procedure. Set to
     # 0 turn off the stray light correction.
     lines.append('stray_van_cittert_steps = '+str(local_config['settings']['van_cittert_steps'])+'\n')
-    lines.append('stray_interpolating = '+str(local_config['settings']['stray_interpolating'])+'\n')
     # Whether to determine geolocation. Use 0 for now.
     lines.append('geolocation = '+str(local_config['settings']['geolocation']) +'\n')
     #Location of the nL1A product (input detector images)

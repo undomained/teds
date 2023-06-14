@@ -417,116 +417,76 @@ int Frame::apply_straylight(const Settings_main& set, CKD *ckd)
             image[i] = image[i - 1];
         }
     }
-    // If present, use the interpolating stray light
-    // kernel. Otherwise, use the single kernel approach.
-    if (set.stray_interpolating &&  ckd->stray.n_kernels > 0) {
-        std::vector<double> conv_result(ckd->npix, 0.0);
-        for (int i_kernel {}; i_kernel < ckd->stray.n_kernels; ++i_kernel) {
-            std::vector<double> image_weighted { image };
-            for (int i {}; i < ckd->npix; ++i) {
-                image_weighted[i] *= ckd->stray.weights[i_kernel][i];
-            }
-            const int image_n_rows {
-                ckd->stray.edges[i_kernel * box::n + box::t]
-                - ckd->stray.edges[i_kernel * box::n + box::b]
-            };
-            const int image_n_cols {
-                ckd->stray.edges[i_kernel * box::n + box::r]
-                - ckd->stray.edges[i_kernel * box::n + box::l]
-            };
-            std::vector<double> sub_image(image_n_rows * image_n_cols);
-            for (int i {}; i < image_n_rows; ++i) {
-                for (int j {}; j < image_n_cols; ++j) {
-                    sub_image[i * image_n_cols + j] =
-                      image_weighted
-                      [(i + ckd->stray.edges[i_kernel * box::n + box::b])
-                       * ckd->dim_detector_spec
-                       + j
-                       + ckd->stray.edges[i_kernel * box::n + box::l]];
-                }
-            }
-            std::vector<double> conv_result_sub {};
-            convolve_fft(image_n_rows,
-                         image_n_cols,
-                         sub_image,
-                         ckd->stray.kernel_rows[i_kernel],
-                         ckd->stray.kernel_cols[i_kernel],
-                         ckd->stray.kernel_fft_sizes[i_kernel],
-                         ckd->stray.kernels_fft[i_kernel],
-                         conv_result_sub);
-            for (int i {}; i < image_n_rows; ++i) {
-                for (int j {}; j < image_n_cols; ++j) {
-                    conv_result
-                      [(i + ckd->stray.edges[i_kernel * box::n + box::b])
-                       * ckd->dim_detector_spec + j
-                       + ckd->stray.edges[i_kernel * box::n + box::l]] +=
-                      conv_result_sub[i * image_n_cols + j];
-                }
-            }
-        }
-        std::vector<double> image_conv(ckd->npix);
+    std::vector<double> conv_result(ckd->npix, 0.0);
+    for (int i_kernel {}; i_kernel < ckd->stray.n_kernels; ++i_kernel) {
+        std::vector<double> image_weighted { image };
         for (int i {}; i < ckd->npix; ++i) {
-            image_conv[i] =
-              (1.0 - ckd->stray.eta[i]) * image[i] + conv_result[i];
+            image_weighted[i] *= ckd->stray.weights[i_kernel][i];
         }
-        std::swap(image_conv, image);
-        return 0;
-    }
-    vector<double> image_temp {};
-    // Diffuse kernel.
-    convolve_fft(
-      ckd->dim_detector_spat,
-      ckd->dim_detector_spec,
-      image,
-      ckd->stray_kernel_n_rows,
-      ckd->stray_kernel_n_cols,
-      ckd->stray_kernel_fft_size,
-      ckd->stray_kernel_fft,
-      image_temp
-                 );
-    // Ghost kernel.
-    const int sz_trans { static_cast<int>(
-          ckd->stray_transformed_n_rows * ckd->stray_transformed_n_cols) };
-    vector<double> transformed(sz_trans);
-    // Finish off matrix transformation with indices and deltas from
-    // the CKD.
-    int delta_idx = 0;
-    for (int i {}; i < sz_trans; ++i) {
-        const int idx { ckd->stray_transform_indices[i] };
-        transformed[i] =
-          ckd->stray_transform_deltas[delta_idx] * image[idx]
-          + ckd->stray_transform_deltas[delta_idx + 1] * image[idx + ckd->dim_detector_spec]
-          + ckd->stray_transform_deltas[delta_idx + 2] * image[idx + 1]
-          + ckd->stray_transform_deltas[delta_idx + 3] * image[idx + ckd->dim_detector_spec + 1];
-        delta_idx += 4;
-    }
-
-    vector<double> result_moving(sz_trans);
-
-    convolve_fft(
-      ckd->stray_transformed_n_rows,
-      ckd->stray_transformed_n_cols,
-      transformed,
-      ckd->stray_kernel_n_rows,
-      ckd->stray_kernel_n_cols,
-      ckd->stray_kernel_fft_size,
-      ckd->stray_moving_kernel_fft,
-      result_moving
-                 );
-    // result is basically image_temp but it has the dimension
-    // detector_n_rows+2*padding and the image is slightly shifted
-    // (the corner of the image is not at 0,0). All that is left is to
-    // unshift it and we are done.
-    const size_t padding = (ckd->stray_transformed_n_rows - ckd->dim_detector_spat) / 2;
-    for (size_t i = 0; i < ckd->dim_detector_spat; ++i) {
-        for (size_t j = 0; j < ckd->dim_detector_spec; ++j) {
-            image_temp[i * ckd->dim_detector_spec + j] += result_moving[(i + padding) * (ckd->dim_detector_spec + 2 * padding) + j + padding];
+        const int image_n_rows {
+            ckd->stray.edges[i_kernel * box::n + box::t]
+            - ckd->stray.edges[i_kernel * box::n + box::b]
+        };
+        const int image_n_cols {
+            ckd->stray.edges[i_kernel * box::n + box::r]
+            - ckd->stray.edges[i_kernel * box::n + box::l]
+        };
+        std::vector<double> sub_image(image_n_rows * image_n_cols);
+        for (int i {}; i < image_n_rows; ++i) {
+            for (int j {}; j < image_n_cols; ++j) {
+                sub_image[i * image_n_cols + j] =
+                  image_weighted
+                  [(i + ckd->stray.edges[i_kernel * box::n + box::b])
+                   * ckd->dim_detector_spec
+                   + j
+                   + ckd->stray.edges[i_kernel * box::n + box::l]];
+            }
+        }
+        std::vector<double> conv_result_sub {};
+        convolve_fft(image_n_rows,
+                     image_n_cols,
+                     sub_image,
+                     ckd->stray.kernel_rows[i_kernel],
+                     ckd->stray.kernel_cols[i_kernel],
+                     ckd->stray.kernel_fft_sizes[i_kernel],
+                     ckd->stray.kernels_fft[i_kernel],
+                     conv_result_sub);
+        for (int i {}; i < image_n_rows; ++i) {
+            for (int j {}; j < image_n_cols; ++j) {
+                conv_result
+                  [(i + ckd->stray.edges[i_kernel * box::n + box::b])
+                   * ckd->dim_detector_spec + j
+                   + ckd->stray.edges[i_kernel * box::n + box::l]] +=
+                  conv_result_sub[i * image_n_cols + j];
+            }
         }
     }
-    // And add the non-straylight part (1-eta).
-    for (size_t ipix=0 ; ipix<ckd->npix ; ipix++) {
-        image[ipix] = (1.0-ckd->stray_eta)*image[ipix] + image_temp[ipix];
+    std::vector<double> image_conv(ckd->npix);
+    for (int i {}; i < ckd->npix; ++i) {
+        image_conv[i] =
+          (1.0 - ckd->stray.eta[i]) * image[i] + conv_result[i];
     }
+
+    std::vector<double> diff { image_conv };
+    double sum_ideal {};
+    double sum_diff {};
+    for (int i {}; i < static_cast<int>(diff.size()); ++i) {
+        diff[i] -= image[i];
+        sum_ideal += image[i];
+        sum_diff += diff[i];
+    }
+    std::cout << "sum ratio " << -1e2 * sum_diff / sum_ideal << std::endl;
+    // write(image_conv, 512);
+    write(ckd->stray.eta, 512);
+    // write(conv_result, 512);
+    // std::vector<double> image_conv_1;
+    // read("/home/raul/tmp/image0.bin", image_conv_1);
+    // for (int i {}; i < static_cast<int>(diff.size()); ++i) {
+    //     diff[i] = image_conv[i] - image_conv_1[i];
+    // }
+    // write(diff, 512);
+
+    std::swap(image_conv, image);
     return 0;
 }
 

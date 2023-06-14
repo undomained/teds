@@ -26,7 +26,6 @@ def im_configuration(paths, global_config, local_config):
     lines.append('binning_table_id = '+str(local_config['settings']['bin_id']) + '\n')
     # Exposure time in s
     lines.append('exposure_time = '+str(local_config['settings']['exp_time']) + '\n')
-    lines.append('stray_interpolating = '+str(local_config['settings']['stray_interpolating']) + '\n')
     #========Determine optimal exposure time (sec) and co-adding factor from LUTs =========================
     # Read exposure time as a function of SZA and FMC
     path = paths.project+paths.data_interface+paths.interface_ckd

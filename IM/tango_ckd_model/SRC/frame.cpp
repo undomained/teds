@@ -466,26 +466,6 @@ int Frame::apply_straylight(const Settings_main& set, CKD *ckd)
         image_conv[i] =
           (1.0 - ckd->stray.eta[i]) * image[i] + conv_result[i];
     }
-
-    std::vector<double> diff { image_conv };
-    double sum_ideal {};
-    double sum_diff {};
-    for (int i {}; i < static_cast<int>(diff.size()); ++i) {
-        diff[i] -= image[i];
-        sum_ideal += image[i];
-        sum_diff += diff[i];
-    }
-    std::cout << "sum ratio " << -1e2 * sum_diff / sum_ideal << std::endl;
-    // write(image_conv, 512);
-    write(ckd->stray.eta, 512);
-    // write(conv_result, 512);
-    // std::vector<double> image_conv_1;
-    // read("/home/raul/tmp/image0.bin", image_conv_1);
-    // for (int i {}; i < static_cast<int>(diff.size()); ++i) {
-    //     diff[i] = image_conv[i] - image_conv_1[i];
-    // }
-    // write(diff, 512);
-
     std::swap(image_conv, image);
     return 0;
 }

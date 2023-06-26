@@ -1,0 +1,20 @@
+# =============================================================================
+# 
+#  Current version of the Tango E2E simulator can handle the following profiles
+#   1.  individual_spectra: In this case only one single spectrum is processed. The IM 
+#       and L1 processor cannot be used in this case but are replaced by the simplified moduel siml1.
+#   2.  single_swath: This profile acounts for a single swath and a homogenous 
+#       reference scene. It is meant to test the IM and the L1 processor
+#   3.  S2_microHH: Same as S2_hom_atm but for microHH CO2 plume simulations    
+# =============================================================================
+profile: 'S2_microHH'  
+
+run_id: 'exp_7.3'
+
+setup:
+    flag_gm:     False
+    flag_sgm:    False
+    flag_im:     False
+    flag_l0l1b:  False
+    flag_l1bl2:  True
+    

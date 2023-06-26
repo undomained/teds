@@ -1,0 +1,30 @@
+# =============================================================================
+# 
+#  Current version of the Tango E2E simulator can handle the following profiles
+#   1.  individual_spectra: In this case only one single spectrum is processed. The IM 
+#       and L1 processor cannot be used in this case but are replaced by the simplified moduel siml1.
+#   2.  single_swath: This profile acounts for a single swath and a homogenous 
+#       reference scene. It is meant to test the IM and the L1 processor
+#   3.  S2_hom_atm: This simulates a full data granuale of 30 x 30 km2 using 
+#       flexibale geometry information and Sentinel 2 albedo data. 
+#   4.  S2_microHH: Same as S2_hom_atm but for microHH CO2 plume simulations    
+# =============================================================================
+profile: 'single_swath'  
+
+run_id: 'straylight_analysis'
+
+setup:
+    flag_gm:     False
+    flag_sgm:    True
+    flag_im:     True
+    flag_l0l1b:  True
+    flag_l1bl2:  True
+           
+single_swath:                        #gm settings for reference scene, should be all lists with 
+    numb_atm_scenes: 2
+    scene_trans_index: [0,50,100]    #ACT index of transition. should start with 0 and end with 100 for full illumination
+    sza: [70.,70.]                   #solar zenith angle[degree]
+    saa: [0.,0.]                     #solar azimuth angle [degree]
+    vza: [0.,0.]                     #viewing zenith angle [degree]
+    vaa: [0.,0.]                     #viewing azimuth angle [degree]        
+    albedo: [0.15, 0.70]             #Lambertian surface alebdo of reference scene

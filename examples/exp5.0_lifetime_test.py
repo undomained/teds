@@ -1,118 +1,257 @@
+"""
+     wrapper script for Tango's end-to-end simulator
+     implementation to test detector degradation due to exposure to gamma radiation 
+     using single swath profile
+     This source code is licensed under the 3-clause BSD license found in
+     the LICENSE file in the root directory of this project.
+"""
+# define  path to search for module
+import sys
+path = "../"
+if(str(path) not in sys.path):
+    sys.path.append(path)
 
-# exp4: single image performance with full IM and L0L1B
-#       can be used for ckd degradation study
-
-import context
+path = "../end_to_end/lib/"
+if(str(path) not in sys.path):
+    sys.path.append(path)
+    
+# import E2ES modules 
+from end_to_end.lib import paths
 from end_to_end.GM.gm import geometry_module
 from end_to_end.SGM.sgm import scene_generation_module
 from end_to_end.IM.create_im_configuration_file import im_configuration
-from end_to_end.L0L1B.create_l01b_configuration_file import l0l1b_configuration
-from end_to_end.L0L1B.pixel_mask import determine_pixel_mask
-from end_to_end.SIML1B.siml1b import simplified_instrument_model_and_l1b_processor
+from end_to_end.L1AL1B.create_l1a1b_configuration_file import l1al1b_configuration
+from end_to_end.L1AL1B.pixel_mask import determine_pixel_mask
 from end_to_end.L1L2.l1bl2 import level1b_to_level2_processor
 
+#import other modules
 import yaml
 import shutil
-import sys
 import subprocess
+
+# ====================configuration part ======================================
+
+class Emptyclass:
+    pass
+
+#run id
+run_id = 'exp5'
+
+# paths and file names
+locations = Emptyclass()
+locations.__setattr__('gm', {})
+locations.gm['output'] = paths.project + paths.data_interface + \
+    paths.interface_gm + 'Tango_Carbon_gm_' + run_id + '.nc'
+
+locations.__setattr__('sgm', {})
+locations.sgm['gm_input'] = paths.project + paths.data_interface + \
+    paths.interface_gm + 'Tango_Carbon_gm_' + run_id + '.nc'
+locations.sgm['S2_dump'] = paths.project + \
+    paths.data_tmp + 'Tango_Carbon_S2_' + run_id + '.npy'
+locations.sgm['afgl_input'] = paths.project + \
+    paths.data_afgl + 'prof.AFGL.US.std'
+locations.sgm['microHH_dump'] = paths.project + \
+    paths.data_tmp + 'Tango_Carbon_microHH_' + run_id + '.pkl'
+locations.sgm['microHH_data_path'] = paths.project + \
+    paths.data_microHH + 'Jaenschwalde_simulation1/'
+locations.sgm['xsec_dump'] = paths.project + \
+    paths.data_tmp + 'Tango_Carbon_xsec_' + run_id + '.pkl'
+locations.sgm['sun_reference'] = paths.project + paths.data_sol_spec + \
+    'hybrid_reference_spectrum_c2021-03-04_with_unc.nc'
+locations.sgm['rad_output'] = paths.project + paths.data_interface + \
+    paths.interface_sgm + 'Tango_Carbon_sgm_radiance_' + run_id + '.nc'
+locations.sgm['geo_output'] = paths.project + paths.data_interface + \
+    paths.interface_sgm + 'Tango_Carbon_sgm_atmosphere_' + run_id + '.nc'
+
+locations.__setattr__('im', {})
+locations.im['ckd_input'] = paths.project + paths.data_interface + \
+    paths.interface_ckd + 'OWL640S_low-gain_radiation_ckd_dose0.0_21kernel.nc'
+locations.im['rad_input'] = paths.project + paths.data_interface + \
+    paths.interface_sgm + 'Tango_Carbon_sgm_radiance_' + run_id + '.nc'
+locations.im['binning_table'] = paths.project + \
+    paths.data_interface + paths.interface_ckd + 'binning_table.nc'
+locations.im['ckd_expo_time'] = paths.project + \
+    paths.data_interface + paths.interface_ckd + 'optimal_exposure.txt'
+locations.im['ckd_coadding'] = paths.project + \
+    paths.data_interface + paths.interface_ckd + 'optimal_coadding.txt'
+locations.im['IM_path'] = paths.project + paths.IM_module
+locations.im['output'] = paths.project + paths.data_interface + \
+    paths.interface_l1a + 'Tango_Carbon_l1a_' + run_id + '.nc'
+locations.im['gm_input'] = paths.project + paths.data_interface + \
+    paths.interface_gm + 'Tango_Carbon_gm_' + run_id + '.nc'
+
+locations.__setattr__('l1al1b', {})
+locations.l1al1b['ckd_input']     = paths.project + paths.data_interface + \
+    paths.interface_ckd + 'OWL640S_low-gain_radiation_ckd_dose0.0_21kernel.nc'
+locations.l1al1b['binning_table'] = paths.project + paths.data_interface + \
+    paths.interface_ckd + 'binning_table.nc'
+locations.l1al1b['l1a_input']     = paths.project + paths.data_interface + \
+    paths.interface_l1a + 'Tango_Carbon_l1a_' + run_id + '.nc'
+locations.l1al1b['l1b_output']    = paths.project + paths.data_interface + \
+    paths.interface_l1b + 'Tango_Carbon_l1b_' + run_id + '.nc'
+locations.l1al1b['gm_input']      = paths.project + paths.data_interface + \
+    paths.interface_gm + 'Tango_Carbon_gm_' + run_id + '.nc'
+locations.l1al1b['L1AL1B_path']   = paths.project + paths.L1AL1B_module
+
+locations.__setattr__('l1bl2', {})
+locations.l1bl2['l1b_input'] = paths.project + paths.data_interface + \
+    paths.interface_l1b + 'Tango_Carbon_l1b_' + run_id + '.nc'
+locations.l1bl2['pixel_mask'] = ''  #needs to be specified only if mask =True
+locations.l1bl2['afgl_input'] = paths.project + \
+    paths.data_afgl + 'prof.AFGL.US.std'
+locations.l1bl2['sun_reference'] = paths.project + paths.data_sol_spec + \
+    'hybrid_reference_spectrum_c2021-03-04_with_unc.nc'
+locations.l1bl2['l2_output'] = paths.project + paths.data_interface + \
+    paths.interface_l2 + 'Tango_Carbon_l2_' + run_id + '.nc'
+locations.l1bl2['xsec_dump'] = paths.project + \
+    paths.data_tmp + 'Tango_Carbon_xsec_l2_' + run_id + '.pkl'
+locations.l1bl2['l2_diags'] = ''
+
+#scene specification for profile single_pixel and swath
+scene_spec= Emptyclass() 
+# number of different model atmospheres
+scene_spec.__setattr__('numb_atm_scenes', [])
+# ACT index of transition. should start with 0 and end with 100 for full illumination
+scene_spec.__setattr__('scene_trans_index', [])
+scene_spec.__setattr__('sza', [])  # solar zenith angle[degree]
+scene_spec.__setattr__('saa', [])  # solar azimuth angle [degree]
+scene_spec.__setattr__('vza', [])  # viewing zenith angle [degree]
+scene_spec.__setattr__('vaa', [])  # viewing azimuth angle [degree]
+# Lambertian surface alebdo of reference scene
+scene_spec.__setattr__('albedo', [])
+
+scene_spec.numb_atm_scenes= 1
+scene_spec.scene_trans_index = [0, 100]
+scene_spec.sza = [70.]
+scene_spec.saa= [0.]
+scene_spec.vza= [0.]
+scene_spec.vaa= [0.]
+scene_spec.albedo= [0.15]
+
+# =============================================================================
+#
+#  Current version of the Tango E2E simulator can handle the following profiles
+#   1.  individual_spectra: In this case only one single spectrum is processed.
+#       The IM and L1 processor cannot be used in this case but are replaced by
+#       the simplified moduel siml1. scene_spec required
+#   2.  single_swath: This profile acounts for a single swath and a homogenous
+#       reference scene. It is meant to test the IM and the L1 processor
+#       scene_spec required
+#   3.  S2_microHH: This simulates a full data granuale of 30 x 30 km2 using
+#       flexibale geometry information and Sentinel 2 albedo data and
+#       microHH CO2 plume simulations. scene_spec not required
+# =============================================================================
+
+profile= 'single_swath'   #needed to initialize gm and sgm consistently
+
+# ====================main part ================================================
 
 if __name__ == "__main__":
     # end to end global config file
     
-    import paths
-    import constants
-
     dose = ['0.0', '1.8', '6.4', '8.6', '13.1', '15.5'] #different radiation doses in kRad
     
-    global_config = yaml.safe_load(open("./exp5.0_lifetime_test.yaml"))
-
     # ======= geometry module ======================================
-    # choose baseline GM config
-    if(global_config['setup']['flag_gm']):
 
-        shutil.copyfile(paths.project+ paths.GM_module+'gm_config_baseline.yaml', \
-                        paths.project+ paths.GM_module+'gm_config.yaml',)
+    shutil.copyfile(paths.project + paths.GM_module+'gm_config_baseline.yaml', \
+                    paths.project + paths.GM_module+'gm_config.yaml',)
 
-        gm_config = yaml.safe_load(open(paths.project+paths.GM_module+'gm_config.yaml'))
-        geometry_module(paths, global_config, gm_config)
+    gm_config= yaml.safe_load(open(paths.project+paths.GM_module+'gm_config.yaml'))
+    geometry_module(locations.gm, profile, scene_spec, gm_config)
 
     # ======= scene generator module ===============================
-    # choose baseline SGM config
-    if(global_config['setup']['flag_sgm']):
-        shutil.copyfile(paths.project+paths.SGM_module+'sgm_config_baseline.yaml', \
-                        paths.project+paths.SGM_module+'sgm_config.yaml',)
-        sgm_config = yaml.safe_load(open(paths.project+paths.SGM_module+ "sgm_config.yaml"))
-        scene_generation_module(paths, global_config, sgm_config)
 
-    # ======= The instrument model =================================        
-    if(global_config['setup']['flag_im']):
-        ckd_file = 'OWL640S_low-gain_radiation_ckd_dose0.0_21kernel'
-        im_config = yaml.safe_load(open(paths.project+paths.IM_module+"im_config.yaml"))
-        im_config['filename']['ckd']        = ckd_file
-        im_config['noise']['switch']        = 0
-        im_config['settings']['bin_id']     = 1
-        im_config['settings']['sw_stray']   = 0
-        im_configuration(paths,global_config, im_config)     
-        cmd_str = paths.project+paths.IM_module + 'tango_ckd_model/build/ckdmodel im_config.cfg'
-        subprocess.run(cmd_str, shell=True, cwd=paths.project+paths.IM_module)
+    shutil.copyfile(paths.project+paths.SGM_module+'sgm_config_baseline.yaml', \
+                    paths.project+paths.SGM_module+'sgm_config.yaml',)
+    sgm_config= yaml.safe_load(open(paths.project+paths.SGM_module + "sgm_config.yaml"))
+    scene_generation_module(locations.sgm, profile, scene_spec, sgm_config)
+
+    #    First we generate a reference case fo dose 0.0
+    #    l1b is stored in'Tango_Carbon_l1b_ref_' + run_id + '.nc'
+    # ======= The instrument model =================================
+
+    im_config= yaml.safe_load(open(paths.project+paths.IM_module+"im_config.yaml"))
+    im_config['noise']['switch']= 0
+    im_config['settings']['bin_id']= 1
+    im_config['settings']['sw_stray']= 1
+    locations.im['ckd_input'] = paths.project + paths.data_interface + \
+        paths.interface_ckd + 'OWL640S_low-gain_radiation_ckd_dose0.0_21kernel.nc'
+    locations.im['output'] = paths.project + paths.data_interface + \
+        paths.interface_l1a + 'Tango_Carbon_l1a_ref_' + run_id + '.nc'
+    im_configuration(locations.im, im_config)
+    cmd_str= paths.project+paths.IM_module + 'tango_ckd_model/build/ckdmodel im_config.cfg'
+    subprocess.run(cmd_str, shell=True, cwd=paths.project+paths.IM_module)
 
     # ======= The L0L1 pocessor ====================================
-    if(global_config['setup']['flag_l0l1b']):
-        ckd_file = 'OWL640S_low-gain_radiation_ckd_dose0.0_21kernel'
-        l0l1b_config = yaml.safe_load(open(paths.project+paths.L0L1B_module + "l0l1b_config.yaml"))
-        l0l1b_config['settings']['van_cittert_steps'] = 0  #
-        l0l1b_config['filename']['ckd'] = ckd_file
-        l0l1b_config['filename']['level1b'] = l0l1b_config['filename']['level1b']+'ref_'
-        l0l1b_configuration(paths, global_config, l0l1b_config)     
-        cmd_str = paths.project+paths.L0L1B_module + 'tango_l1b/build/tango_l1b '+ paths.project+paths.L0L1B_module +'l0l1b_config.cfg'
-        subprocess.run(cmd_str, shell=True, cwd=paths.project+paths.L0L1B_module)
 
-    for ds in dose:        #loop over differnet ckd files
-
-        # ======= The instrument model =================================   
-        if(global_config['setup']['flag_im']):
-            ckd_file = 'OWL640S_low-gain_radiation_ckd_dose'+ds+'_21kernel'   
-            im_config = yaml.safe_load(open(paths.project+paths.IM_module+"im_config.yaml"))
-            im_config['filename']['ckd']        = ckd_file
-            im_config['noise']['switch']        = 0
-            im_config['settings']['bin_id']     = 1
-            im_config['settings']['sw_stray']   = 0
-            im_configuration(paths,global_config, im_config)     
-            cmd_str = paths.project+paths.IM_module + 'tango_ckd_model/build/ckdmodel im_config.cfg'
-            subprocess.run(cmd_str, shell=True, cwd=paths.project+paths.IM_module)
-
-        
-        # ======= The L0L1 pocessor ====================================
-        if(global_config['setup']['flag_l0l1b']):
-            ckd_file = 'OWL640S_low-gain_radiation_ckd_dose0.0_21kernel'
-            l0l1b_config = yaml.safe_load(open(paths.project+paths.L0L1B_module + "l0l1b_config.yaml"))
-            l0l1b_config['settings']['van_cittert_steps'] = 0  #
-            l0l1b_config['filename']['ckd'] = ckd_file
-            l0l1b_config['filename']['level0'] = im_config['filename']['level1a']
-            l0l1b_configuration(paths, global_config, l0l1b_config)     
-            cmd_str = paths.project+paths.L0L1B_module + 'tango_l1b/build/tango_l1b '+ paths.project+paths.L0L1B_module +'l0l1b_config.cfg'
-            subprocess.run(cmd_str, shell=True, cwd=paths.project+paths.L0L1B_module)
+    l1al1b_config= yaml.safe_load(open(paths.project+paths.L1AL1B_module + "l1al1b_config.yaml"))
+    l1al1b_config['settings']['van_cittert_steps']= 4
+    locations.l1al1b['ckd_input']     = paths.project + paths.data_interface + \
+        paths.interface_ckd + 'OWL640S_low-gain_radiation_ckd_dose0.0_21kernel.nc'
+    locations.l1al1b['l1a_input']     = paths.project + paths.data_interface + \
+        paths.interface_l1a + 'Tango_Carbon_l1a_ref_' + run_id + '.nc'
+    locations.l1al1b['l1b_output']    = paths.project + paths.data_interface + \
+        paths.interface_l1b + 'Tango_Carbon_l1b_ref_' + run_id + '.nc'
+    l1al1b_configuration(locations.l1al1b, l1al1b_config)
+    cmd_str= paths.project+paths.L1AL1B_module + 'tango_l1b/build/tango_l1b ' + paths.project+paths.L1AL1B_module + 'l1al1b_config.cfg'
+    subprocess.run(cmd_str, shell=True,
+                   cwd=paths.project+paths.L1AL1B_module)
     
-            file1b = l0l1b_config['filename']['level1b']+global_config['profile']+'_'+global_config['run_id']+'.nc'
-            file1b_ref = l0l1b_config['filename']['level1b']+'ref_'+global_config['profile']+'_'+global_config['run_id']+'.nc'
-            print(file1b_ref)
-            l0l1b_config['filename']['pixel_mask'] = l0l1b_config['filename']['pixel_mask'] + 'T3_'+'dose_'+ds
-            determine_pixel_mask(paths,l0l1b_config['filename']['pixel_mask'], file1b, file1b_ref)
+    for ds in dose:        #loop over different doses and so different ckd files
 
+        # with constant stray light kernel
+        im_config= yaml.safe_load(open(paths.project+paths.IM_module+"im_config.yaml"))
+        im_config['noise']['switch']= 0
+        im_config['settings']['bin_id']= 1
+        im_config['settings']['sw_stray']= 1
+        locations.im['ckd_input'] = paths.project + paths.data_interface + \
+            paths.interface_ckd + 'OWL640S_low-gain_radiation_ckd_dose'+ds+'_21kernel.nc'
+        locations.im['output'] = paths.project + paths.data_interface + \
+            paths.interface_l1a + 'Tango_Carbon_l1adose'+ ds + run_id + '.nc'
+        im_configuration(locations.im, im_config)
+        cmd_str= paths.project+paths.IM_module + 'tango_ckd_model/build/ckdmodel im_config.cfg'
+        subprocess.run(cmd_str, shell=True, cwd=paths.project+paths.IM_module)
+
+        # ======= The L0L1 pocessor ====================================
+        #use here always ckds for dose 0.0 to simulated degradation
+        l1al1b_config= yaml.safe_load(open(paths.project+paths.L1AL1B_module + "l1al1b_config.yaml"))
+        l1al1b_config['settings']['van_cittert_steps']= 4
+        locations.l1al1b['ckd_input']     = paths.project + paths.data_interface + \
+            paths.interface_ckd + 'OWL640S_low-gain_radiation_ckd_dose0.0_21kernel.nc'
+        locations.l1al1b['l1a_input']     = paths.project + paths.data_interface + \
+            paths.interface_l1a + 'Tango_Carbon_l1adose' + ds + run_id + '.nc'
+        locations.l1al1b['l1b_output']    = paths.project + paths.data_interface + \
+            paths.interface_l1b + 'Tango_Carbon_l1bdose'+ds + run_id + '.nc'
+        l1al1b_configuration(locations.l1al1b, l1al1b_config)            
+        cmd_str= paths.project+paths.L1AL1B_module + 'tango_l1b/build/tango_l1b ' + \
+            paths.project+paths.L1AL1B_module + 'l1al1b_config.cfg'
+        subprocess.run(cmd_str, shell=True,
+                       cwd=paths.project+paths.L1AL1B_module)
+
+        #compare the reference l1b with the simulated one to define a pixel mask
+        file1b = paths.project + paths.data_interface + \
+            paths.interface_l1b + 'Tango_Carbon_l1bdose'+ ds + run_id + '.nc'
+        file1b_ref = paths.project + paths.data_interface + \
+            paths.interface_l1b + 'Tango_Carbon_l1b_ref_' + run_id + '.nc'
+        filename_pixel_mask = paths.project + paths.data_interface + \
+            paths.interface_l1b + 'Tango_Carbon_l1b_pixel_mask_dose'+ds + run_id + '.npy'
+        determine_pixel_mask(filename_pixel_mask, file1b, file1b_ref)
 
         # ======= L1 to L2 processor ===================================
-        if(global_config['setup']['flag_l1bl2']):
-            # choose baseline L1BL2 config
-            shutil.copyfile(paths.project+paths.L1L2_module + 'l1bl2_config_baseline.yaml',
-                            paths.project+paths.L1L2_module + 'l1bl2_config.yaml',)
-            l1bl2_config = yaml.safe_load(open(paths.project+paths.L1L2_module + "l1bl2_config.yaml"))
-            l1bl2_config['filename']['level2'] = 'Tango_Carbon_l2_dose'+ds
-            l1bl2_config['pixel_mask'] = True
-            l1bl2_config['filename']['pixel_mask'] = l1bl2_config['filename']['pixel_mask'] +'T3_'+ 'dose_'+ds
-            l1bl2_config['isrf_settings']['type'] =  'Gaussian' 
-            l1bl2_config['isrf_settings']['fwhm'] = 0.45
 
-            level1b_to_level2_processor(paths, global_config, l1bl2_config)
+        shutil.copyfile(paths.project+paths.L1L2_module + 'l1bl2_config_baseline.yaml',
+                        paths.project+paths.L1L2_module + 'l1bl2_config.yaml',)
+
+        l1bl2_config= yaml.safe_load(open(paths.project+paths.L1L2_module + "l1bl2_config.yaml"))
+        l1bl2_config['pixel_mask']= True
+        l1bl2_config['isrf_settings']['type']= 'Gaussian'  # type of ISRF, currently only Gaussian or generalized_normal
+        l1bl2_config['isrf_settings']['fwhm']=  0.45       # fwhm  [nm]
+        locations.l1bl2['l1b_input']    = paths.project + paths.data_interface + \
+            paths.interface_l1b + 'Tango_Carbon_l1bdose' + ds + run_id + '.nc'
+        locations.l1bl2['pixel_mask'] = filename_pixel_mask
+        locations.l1bl2['l2_output'] = paths.project + paths.data_interface + \
+            paths.interface_l2 + 'Tango_Carbon_l2dose' + ds + run_id + '.nc'
+        level1b_to_level2_processor(locations.l1bl2, l1bl2_config)
  
     print('Experiment 5 sucessfully performed.')
     sys.exit()

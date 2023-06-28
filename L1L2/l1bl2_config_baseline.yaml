@@ -18,7 +18,7 @@ filename:
     
 spec_settings:              #settings for line-by-line spectra
     wavestart:   1590       #initial wavelength (indicator)
-    waveend:     1664       #final wavlength of measurement
+    waveend:     1675       #final wavlength of measurement
     wave_extend: 2.0        #shortwave and longwave extension of the measurement grid [nm]
     dwave:       0.002      #nm
 

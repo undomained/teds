@@ -1,18 +1,19 @@
 # =============================================================================
 # geometry module for different E2E simulator profiles
+#
+#     This source code is licensed under the 3-clause BSD license found in
+#     the LICENSE file in the root directory of this project.
 # =============================================================================
 import numpy as np
 import sys
-import yaml
 import netCDF4 as nc
 
-def gm_output(path, filename, vza, vaa, sza, saa, lat_grid, lon_grid,):
+def gm_output(filename, vza, vaa, sza, saa, lat_grid, lon_grid,):
 
     nact = len(lat_grid[0])
     nalt = len(lat_grid)
 
-    file = path+filename+'.nc'
-    output = nc.Dataset(file, mode='w')
+    output = nc.Dataset(filename, mode='w')
 
     output.title = 'Tango Carbon E2ES GM output'
 
@@ -72,18 +73,9 @@ def gm_output(path, filename, vza, vaa, sza, saa, lat_grid, lon_grid,):
     return
 
 
-def geometry_module(paths, global_config, local_config):
+def geometry_module(locations, profile, scene_spec, local_config):
     """
     Geometry module to specify geometry.
-
-    Parameters
-    ----------
-    global_local_config : YAML loaded file
-        It is filename.
-
-    Returns
-    -------
-    None.
 
     """
 
@@ -94,19 +86,16 @@ def geometry_module(paths, global_config, local_config):
     # the gm output is orginazed in dictionaries of the format dic[nalt, nact]
 
     ninit = 0
-    if global_config["profile"] == "individual_spectra":
+    if profile == "individual_spectra":
         # Generate the gm output to calculate E2E performance for individual spectra
         # first check consistencies of 'indivual_spectra' nput.
 
-        nn = len(global_config["individual_spectra"]["sza"])
+        nn = len(scene_spec.sza)
 
         ns = (
             nn
-            + len(global_config["individual_spectra"]["saa"])
-            + len(global_config["individual_spectra"]["vza"])
-            + len(global_config["individual_spectra"]["vaa"])
-            + len(global_config["individual_spectra"]["albedo"])
-        ) / 5
+            + len(scene_spec.saa) + len(scene_spec.vza) \
+            + len(scene_spec.vaa)+ len(scene_spec.albedo)) / 5
 
         if nn != ns:
             sys.exit("input error in gm, code 1")
@@ -129,26 +118,23 @@ def geometry_module(paths, global_config, local_config):
         nact = len(lat_grid[0])
         nalt = len(lat_grid)
 
-        sza[0, :] = global_config["individual_spectra"]["sza"][:]
-        saa[0, :] = global_config["individual_spectra"]["saa"][:]
-        vza[0, :] = global_config["individual_spectra"]["vza"][:]
-        vaa[0, :] = global_config["individual_spectra"]["vaa"][:]
+        sza[0, :] = scene_spec.sza[:]
+        saa[0, :] = scene_spec.saa[:]
+        vza[0, :] = scene_spec.vza[:]
+        vaa[0, :] = scene_spec.vaa[:]
         ninit = ninit + 1
 
-    if global_config["profile"] == "single_swath":
+    if profile == "single_swath":
 
-        ncheck = len(global_config["single_swath"]["sza"]) + \
-                 len(global_config["single_swath"]["saa"]) + \
-                 len(global_config["single_swath"]["vza"]) + \
-                 len(global_config["single_swath"]["vaa"])
+        ncheck = len(scene_spec.sza) + len(scene_spec.saa) + \
+                 len(scene_spec.vza) + len(scene_spec.vaa)
        
-        if (ncheck != 4*global_config['single_swath']['numb_atm_scenes']):
+        if (ncheck != 4*scene_spec.numb_atm_scenes):
             sys.exit("input error in gm, code 2")
 
-        for iscen in range(global_config['single_swath']['numb_atm_scenes']+1):
-            outofrange = \
-                (global_config['single_swath']['scene_trans_index'][iscen] > 99) & \
-                (global_config['single_swath']['scene_trans_index'][iscen] < 0) 
+        for iscen in range(scene_spec.numb_atm_scenes+1):
+            outofrange = (scene_spec.scene_trans_index[iscen] > 99) & \
+                (scene_spec.scene_trans_index[iscen] < 0) 
             if(outofrange):
                 sys.exit('config parameter scene_trans_index out of range')
 
@@ -166,17 +152,17 @@ def geometry_module(paths, global_config, local_config):
         lat_grid[0][:] = np.nan
         lon_grid[0][:] = np.nan
 
-        for iscen in range(global_config['single_swath']['numb_atm_scenes']):
-            ind_start = global_config['single_swath']['scene_trans_index'][iscen]
-            ind_end   = global_config['single_swath']['scene_trans_index'][iscen+1]
-            sza[0, ind_start:ind_end] = global_config["single_swath"]["sza"][iscen]
-            saa[0, ind_start:ind_end] = global_config["single_swath"]["saa"][iscen]
-            vza[0, ind_start:ind_end] = global_config["single_swath"]["vza"][iscen]
-            vaa[0, ind_start:ind_end] = global_config["single_swath"]["vaa"][iscen]
+        for iscen in range(scene_spec.numb_atm_scenes):
+            ind_start = scene_spec.scene_trans_index[iscen]
+            ind_end   = scene_spec.scene_trans_index[iscen+1]
+            sza[0, ind_start:ind_end] = scene_spec.sza[iscen]
+            saa[0, ind_start:ind_end] = scene_spec.saa[iscen]
+            vza[0, ind_start:ind_end] = scene_spec.vza[iscen]
+            vaa[0, ind_start:ind_end] = scene_spec.vaa[iscen]
 
         ninit = ninit + 1
     
-    if (global_config["profile"] == "S2_microHH"):
+    if (profile == "S2_microHH"):
         nact = local_config["field_of_regard"]["nact"]
         nalt = local_config["field_of_regard"]["nalt"]
 
@@ -259,17 +245,11 @@ def geometry_module(paths, global_config, local_config):
         ninit = ninit + 1
 
     if ninit != 1:
-        sys.exit("something went wrong in gm, code=3")
+        sys.exit("something went wrong in gm, code=3, ninit = " +  str(ninit))
 
     # write data to output file
-    filename = local_config["files"]["output_filename"] + "_" + global_config["profile"] + "_" + global_config["run_id"]
-    path = paths.project + paths.data_interface + paths.interface_gm
-    gm_output(path, filename, vza, vaa, sza, saa, lat_grid, lon_grid)
+    gm_output(locations['output'], vza, vaa, sza, saa, lat_grid, lon_grid)
 
     print(
-        "=>gm calcultion finished successfully for profile "
-        + global_config["profile"]
-        + " and runid "
-        + global_config["run_id"]
-    )
+        "=>gm calcultion finished successfully for profile ")
     return

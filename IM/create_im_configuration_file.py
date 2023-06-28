@@ -1,12 +1,14 @@
+#==============================================================================
 # using the local config to generate the im_config.cfg file
+#     This source code is licensed under the 3-clause BSD license found in
+#     the LICENSE file in the root directory of this project.
+#==============================================================================
 import sys
 import numpy as np
 import netCDF4 as nc
 
-def im_configuration(paths, global_config, local_config):     
+def im_configuration(locations, local_config):     
     # using the local and global configs from the yaml files we setup the IM config file of the c++ code
-
-    file_ext     = global_config['profile']+'_'+global_config['run_id']+'.nc\n'
     
     #modify it accordingly to the yaml file   
     #ckd
@@ -14,34 +16,28 @@ def im_configuration(paths, global_config, local_config):
     #==========================main============================================
     lines.append('[main]\n') 
     # Location of the CKD file
-    lines.append('ckd_file_in = ' + paths.project+paths.data_interface+paths.interface_ckd+local_config['filename'] ['ckd']+'.nc\n')
+    lines.append('ckd_file_in = ' +locations['ckd_input'] + '\n')
     # Location of SGM output (input spectra)
-    lines.append('l1x_input = ' + paths.project+paths.data_interface+paths.interface_sgm + local_config['filename']['sgm']+ file_ext)
+    lines.append('l1x_input = ' + locations['rad_input'] + '\n')
     # Location of binning table file
-    lines.append('binningtable_filename = ' + paths.project+paths.data_interface+paths.interface_ckd + local_config['filename']['binning_table']+'.nc\n')
+    lines.append('binningtable_filename = ' +locations['binning_table'] + '\n')
     # Location of L1A product (output)
-    lines.append('l1a_outputfile = ' + paths.project+paths.data_interface+paths.interface_l0 + local_config['filename']['level1a']+file_ext)
+    lines.append('l1a_outputfile = ' + locations['output'] + '\n')
     # Which NetCDF group to use from the binning table file.
     # Here it is the same as the binning factor in ACT dimension.
     lines.append('binning_table_id = '+str(local_config['settings']['bin_id']) + '\n')
     # Exposure time in s
     lines.append('exposure_time = '+str(local_config['settings']['exp_time']) + '\n')
     #========Determine optimal exposure time (sec) and co-adding factor from LUTs =========================
-    # Read exposure time as a function of SZA and FMC
-    path = paths.project+paths.data_interface+paths.interface_ckd
-    expo_time_filename = local_config['filename'] ['ckd_expo_time']+'.txt'
-    coadd_fact_filename = local_config['filename'] ['ckd_coadding']+'.txt'
-    #get averaged SZA from geometry file
-    gm_data_file = local_config['filename']['gm']+global_config['profile']+'_'+global_config['run_id']
-    file = paths.project+paths.data_interface+paths.interface_gm+gm_data_file + '.nc'
-    gm_data = nc.Dataset(file, mode='r')
+
+    gm_data = nc.Dataset(locations['gm_input'], mode='r')
     sza_avg = np.mean(gm_data['sza'][:, :])
     #LUT for optimal exposure and coadding factors    
     fmc_lut = np.arange(1,6)
-    data    = np.genfromtxt(path + expo_time_filename)
+    data    = np.genfromtxt(locations['ckd_expo_time'])
     sza_lut = data[:,0]
     exposure_time_lut = data[:,1:]
-    data    = np.genfromtxt(path + coadd_fact_filename)
+    data    = np.genfromtxt(locations['ckd_coadding'])
     coad_fact_lut     = np.int16(data[:,1:])
     #find right indices
     ind_sza = np.argmin(np.abs(sza_lut-sza_avg))
@@ -85,7 +81,7 @@ def im_configuration(paths, global_config, local_config):
     lines.append('seed = '+str(local_config['noise']['seed']) + '\n')
     
     # write IM config file 
-    new_config = open(paths.project+paths.IM_module+'im_config.cfg','w')
+    new_config = open(locations['IM_path']+'im_config.cfg','w')
     new_config.writelines(lines)
     new_config.close()
     return

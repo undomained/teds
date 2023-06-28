@@ -1,4 +1,8 @@
-# library GM functions
+#==============================================================================
+#   Tools for geometry module
+#   This source code is licensed under the 3-clause BSD license found in
+#   the LICENSE file in the root directory of this project.
+#==============================================================================
 
 import math
 import sys

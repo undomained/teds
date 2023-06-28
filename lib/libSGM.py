@@ -1,25 +1,21 @@
-# library SGM functions
+#==============================================================================
+#   library with tools for the scene generation module
+#   This source code is licensed under the 3-clause BSD license found in
+#   the LICENSE file in the root directory of this project.
+#==============================================================================
 
 import sys
 import numpy as np
-import scipy
 from copy import deepcopy
 from shapely import Point
 from shapely import Polygon
-import geopandas
 from geopandas import GeoDataFrame
 from pystac_client import Client
 from scipy.interpolate import RegularGridInterpolator
 import rioxarray
 import shapely
 import matplotlib.pyplot as plt
-import numpy as np
-import netCDF4 as nc
-from scipy.signal import fftconvolve
-
-from end_to_end.lib import libRT
 from end_to_end.lib import libNumTools
-from end_to_end.lib import hapi
 
 def get_raw_sentinel2_data(lat, lon, S2_reading_log):
 
@@ -74,7 +70,6 @@ def get_raw_sentinel2_data(lat, lon, S2_reading_log):
             collection_filtered.append(granule)
         if(S2_reading_log):
             print(f'Number matched: {search.matched()}')
-            print(f'Target area: {traget_box.area}')
             print(f'Current area: {all_boxes.area}')
             print(f'Number of granules: {len(collection_filtered)}')
 

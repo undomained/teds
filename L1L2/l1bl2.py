@@ -1,3 +1,9 @@
+#==============================================================================
+#     level-1b to level-2 processor
+#     This source code is licensed under the 3-clause BSD license found in
+#     the LICENSE file in the root directory of this project.
+#==============================================================================
+
 import os
 import sys
 import numpy as np
@@ -13,13 +19,11 @@ from end_to_end.lib import libINV
 from end_to_end.lib import libNumTools
 import matplotlib.pyplot as plt
 
-def get_l1b(path, filename):
+def get_l1b(filename):
 
     #getting l1b data from file
     
-    file = path+filename+'.nc'
-
-    input = nc.Dataset(file, mode='r')
+    input = nc.Dataset(filename, mode='r')
 
     l1b_data = {}
     l1b_data['sza'] = deepcopy(input['GEOLOCATION_DATA']['sza'][:])
@@ -36,7 +40,7 @@ def get_l1b(path, filename):
 
     return(l1b_data)
 
-def level2_output(path, filename, l2product, retrieval_init, l1bproduct):
+def level2_output(filename, l2product, retrieval_init, l1bproduct):
 
     #output of level 2 data
     
@@ -44,8 +48,7 @@ def level2_output(path, filename, l2product, retrieval_init, l1bproduct):
     nact = len(l2product[0])
     nlay = len(l2product[0][0]['XCO2 col avg kernel'])
 
-    file = path+filename+'.nc'
-    output_l2 = nc.Dataset(file, mode='w')
+    output_l2 = nc.Dataset(filename, mode='w')
 
     output_l2.title = 'Tango Carbon E2ES L2 product'
     output_l2.createDimension('number_layers', nlay)     # spectral axis
@@ -256,7 +259,7 @@ def level2_output(path, filename, l2product, retrieval_init, l1bproduct):
     return
 
 
-def level2_diags_output(path, filename, l2product, measurement):
+def level2_diags_output(filename, l2product, measurement):
 
     #this function writes some ectra diagnostics to a file that are not included in the level 2 data product.
     
@@ -264,8 +267,7 @@ def level2_diags_output(path, filename, l2product, measurement):
     nact = len(l2product[0])
     nwave = len(measurement[0, 0]['wavelength'])
 
-    file = path+filename+'.nc'
-    output_l2diag = nc.Dataset(file, mode='w')
+    output_l2diag = nc.Dataset(filename, mode='w')
 
     output_l2diag.title = 'Tango Carbon E2ES L2 diagnostics'
     output_l2diag.createDimension('bins_spectral', nwave)     # spectral axis
@@ -333,23 +335,15 @@ def level2_diags_output(path, filename, l2product, measurement):
 
     return
 
-def level1b_to_level2_processor(paths, global_config, local_config):
-
-    # paths and local_config parameter
-
-    l1b_path = paths.project + paths.data_interface + paths.interface_l1b
-    afgl_path = paths.project + paths.data_afgl
-    run_id = '_'+global_config['run_id']
-
-    filename = local_config['filename']['level1b']+'_'+global_config['profile']+run_id
+def level1b_to_level2_processor(locations, local_config):
 
     # get the l1b files    
-    l1b = get_l1b(l1b_path, filename)
+    l1b = get_l1b(locations['l1b_input'])
     
     # get pixel mask
     if(local_config['pixel_mask']):
         print('take pixel mask')
-        mask  = np.load(l1b_path+local_config['filename']['pixel_mask']+'.npy')
+        mask  = np.load(locations['pixel_mask'])
     else:       
         nact  = l1b['radiance'][0,:,0].size
         nwave = l1b['radiance'][0,0,:].size
@@ -379,7 +373,7 @@ def level1b_to_level2_processor(paths, global_config, local_config):
     # model atmosphere
 
     atm = libATM.atmosphere_data(zlay, zlev, psurf)
-    atm.get_data_AFGL(paths.project + paths.data_afgl+local_config['std_atm'])
+    atm.get_data_AFGL(locations['afgl_input'])
 
     # scale to some reference column mixing ratios
     xco2_ref = 405.  # ppm
@@ -396,29 +390,28 @@ def level1b_to_level2_processor(paths, global_config, local_config):
     # XH2O = np.sum(atm.H2O)/np.sum(atm.air)
     # print(XCO2*1.E6, XCH4*1.E9, XH2O*1E6)
 
-    sun = libRT.read_sun_spectrum_TSIS1HSRS(paths.project+paths.data_sol_spec+'/hybrid_reference_spectrum_c2021-03-04_with_unc.nc')
+    sun = libRT.read_sun_spectrum_TSIS1HSRS(locations['sun_reference'])
     sun_lbl = libRT.interpolate_sun(sun, wave_lbl)
 
     # Download molecular absorption parameter
     iso_ids = [('CH4', 32), ('H2O', 1), ('CO2', 7)]  # see hapi manual  sec 6.6
     molec = libRT.molecular_data(wave_lbl)
-    molec.get_data_HITRAN('../data/hapi_data/', iso_ids)
+    molec.get_data_HITRAN('./data/hapi_data/', iso_ids)
 
     # Calculate optical properties
-    xsec_file = paths.project + paths.data_tmp +  'optics_prop_l1bl2'+run_id+'.pkl'
     # If pickle file exists read from file
-    if ((not os.path.exists(xsec_file)) or local_config['xsec_forced']):
+    if ((not os.path.exists(locations['xsec_dump'])) or local_config['xsec_forced']):
         # Init class with optics.prop dictionary
         optics = libRT.optic_abs_prop(wave_lbl, zlay)
         # Molecular absorption optical properties
         optics.cal_molec_xsec(molec, atm)
         # Dump optics.prop dictionary into temporary pkl file
-        pkl.dump(optics.prop, open(xsec_file, 'wb'))
+        pkl.dump(optics.prop, open(locations['xsec_dump'], 'wb'))
     else:
         # Init class with optics.prop dictionary
         optics = libRT.optic_abs_prop(wave_lbl, zlay)
         # Read optics.prop dictionary from pickle file
-        optics.prop = pkl.load(open(xsec_file, 'rb'))
+        optics.prop = pkl.load(open(locations['xsec_dump'], 'rb'))
 
     optics.set_opt_depth_species(atm, ['molec_01', 'molec_32', 'molec_07'])
 
@@ -472,8 +465,6 @@ def level1b_to_level2_processor(paths, global_config, local_config):
             measurement[ialt, iact]['muv'] = np.cos(np.deg2rad(l1b['vza'][ialt, iact]))
             measurement[ialt, iact]['ymeas'] = l1b['radiance'][ialt, iact, mask[iact,:]][istart:iend+1].data
             measurement[ialt, iact]['Smeas'] = np.eye(nwave)*(l1b['noise'][ialt, iact, mask[iact,:]][istart:iend+1].data)**2
-#            measurement[ialt, iact]['ymeas'] = l1b['radiance'][ialt, iact, istart:iend+1]
-#            measurement[ialt, iact]['Smeas'] = np.eye(nwave)*(l1b['noise'][ialt, iact, istart:iend+1])**2
             measurement[ialt, iact]['sun'] = sun
 
             #derive first guess albedo from the maximum reflectance   
@@ -503,16 +494,12 @@ def level1b_to_level2_processor(paths, global_config, local_config):
     # output to netcdf file
 
     print('=============================')
-    print(np.mean(XCO2)*1.E6)
+    print(np.mean(XCO2)*1.E6, np.std(XCO2)*1.E6)
     print('=============================')
     
-    l2_path = paths.project + paths.data_interface + paths.interface_l2 
-    run_id = '_'+global_config['run_id']
-    filename = local_config['filename']['level2'] + '_'+global_config['profile']+run_id
-    level2_output(l2_path, filename, l2product, retrieval_init, l1b)
-    # have to be fixed because of variable spectral size of measurement vector
-#    filename = local_config['filename']['l2_output'] + '_'+global_config['profile']+'_diags_'+run_id
-#    level2_diags_output(l2_path, filename, l2product, measurement)
-    print('=> l1bl2 finished successfully for run_id ' + run_id + ' of profile '+ global_config['profile'] )
+    level2_output(locations['l2_output'], l2product, retrieval_init, l1b)
+    # have to be fixed because of variable spectral size of measurement vector using masked arrays
+#    level2_diags_output(locations['l2_diags'], l2product, measurement)
+    print('=> l1bl2 finished successfully' )
 
     return

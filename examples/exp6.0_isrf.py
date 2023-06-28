@@ -4,64 +4,168 @@ We consxier two parameters of the generalized normal distribution function,
     (1) parameter b describing the block shape of the ISRF for given FWHM
     (2) parameter a which is the FWHM
 """
-import context
+
+# define  path to search for module
+import sys
+path = "../"
+if(str(path) not in sys.path):
+    sys.path.append(path)
+
+path = "../end_to_end/lib/"
+if(str(path) not in sys.path):
+    sys.path.append(path)
+    
+# import E2ES modules 
+from end_to_end.lib import paths
 from end_to_end.GM.gm import geometry_module
 from end_to_end.SGM.sgm import scene_generation_module
-from end_to_end.SIML1B.siml1b import simplified_instrument_model_and_l1b_processor
-from end_to_end.SIML1B.radiance_offset import radiance_offset
 from end_to_end.L1L2.l1bl2 import level1b_to_level2_processor
+from end_to_end.SIML1B.siml1b import simplified_instrument_model_and_l1b_processor
 
+#import other modules
 import yaml
-import sys
-import numpy as np
 import shutil
 
+# ====================configuration part ======================================
+
+
+class Emptyclass:
+    pass
+
+#run id
+run_id = 'exp6'
+
+# paths and file names
+locations = Emptyclass()
+locations.__setattr__('gm', {})
+locations.gm['output'] = paths.project + paths.data_interface + \
+    paths.interface_gm + 'Tango_Carbon_gm_' + run_id + '.nc'
+
+locations.__setattr__('sgm', {})
+locations.sgm['gm_input'] = paths.project + paths.data_interface + \
+    paths.interface_gm + 'Tango_Carbon_gm_' + run_id + '.nc'
+locations.sgm['S2_dump'] = paths.project + \
+    paths.data_tmp + 'Tango_Carbon_S2_' + run_id + '.npy'
+locations.sgm['afgl_input'] = paths.project + \
+    paths.data_afgl + 'prof.AFGL.US.std'
+locations.sgm['microHH_dump'] = paths.project + \
+    paths.data_tmp + 'Tango_Carbon_microHH_' + run_id + '.pkl'
+locations.sgm['microHH_data_path'] = paths.project + \
+    paths.data_microHH + 'Jaenschwalde_simulation1/'
+locations.sgm['xsec_dump'] = paths.project + \
+    paths.data_tmp + 'Tango_Carbon_xsec_' + run_id + '.pkl'
+locations.sgm['sun_reference'] = paths.project + paths.data_sol_spec + \
+    'hybrid_reference_spectrum_c2021-03-04_with_unc.nc'
+locations.sgm['rad_output'] = paths.project + paths.data_interface + \
+    paths.interface_sgm + 'Tango_Carbon_sgm_radiance_' + run_id + '.nc'
+locations.sgm['geo_output'] = paths.project + paths.data_interface + \
+    paths.interface_sgm + 'Tango_Carbon_sgm_atmosphere_' + run_id + '.nc'
+
+locations.__setattr__('siml1b', {})
+locations.siml1b['sgm_input']  = paths.project + paths.data_interface + \
+    paths.interface_sgm + 'Tango_Carbon_sgm_radiance_' + run_id + '.nc'
+locations.siml1b['gm_input']   = paths.project + paths.data_interface + \
+    paths.interface_gm + 'Tango_Carbon_gm_' + run_id + '.nc'
+locations.siml1b['l1b_output'] = paths.project + paths.data_interface + \
+    paths.interface_l1b + 'Tango_Carbon_l1b_' + run_id + '.nc'
+
+locations.__setattr__('l1bl2', {})
+locations.l1bl2['l1b_input'] = paths.project + paths.data_interface + \
+    paths.interface_l1b + 'Tango_Carbon_l1b_' + run_id + '.nc'
+locations.l1bl2['pixel_mask'] = ''  #needs to be specified only if mask =True
+locations.l1bl2['afgl_input'] = paths.project + \
+    paths.data_afgl + 'prof.AFGL.US.std'
+locations.l1bl2['sun_reference'] = paths.project + paths.data_sol_spec + \
+    'hybrid_reference_spectrum_c2021-03-04_with_unc.nc'
+locations.l1bl2['l2_output'] = paths.project + paths.data_interface + \
+    paths.interface_l2 + 'Tango_Carbon_l2_' + run_id + '.nc'
+locations.l1bl2['xsec_dump'] = paths.project + \
+    paths.data_tmp + 'Tango_Carbon_xsec_l2_' + run_id + '.pkl'
+locations.l1bl2['l2_diags'] = ''
+
+#scene specification for profile single_pixel and swath
+scene_spec= Emptyclass() 
+scene_spec.__setattr__('sza', [])  # solar zenith angle[degree]
+scene_spec.__setattr__('saa', [])  # solar azimuth angle [degree]
+scene_spec.__setattr__('vza', [])  # viewing zenith angle [degree]
+scene_spec.__setattr__('vaa', [])  # viewing azimuth angle [degree]
+# Lambertian surface alebdo of reference scene
+scene_spec.__setattr__('albedo', [])
+
+scene_spec.sza   = [70., 60, 50, 40, 30, 20, 10, 0] 
+scene_spec.saa   = [0.,  0., 0., 0., 0., 0., 0., 0] 
+scene_spec.vza   = [0.,  0., 0., 0., 0., 0., 0., 0] 
+scene_spec.vaa   = [0.,  0., 0., 0., 0., 0., 0., 0] 
+scene_spec.albedo= [0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15] 
+
+# =============================================================================
+#
+#  Current version of the Tango E2E simulator can handle the following profiles
+#   1.  individual_spectra: In this case only one single spectrum is processed.
+#       The IM and L1 processor cannot be used in this case but are replaced by
+#       the simplified moduel siml1. scene_spec required
+#   2.  single_swath: This profile acounts for a single swath and a homogenous
+#       reference scene. It is meant to test the IM and the L1 processor
+#       scene_spec required
+#   3.  S2_microHH: This simulates a full data granuale of 30 x 30 km2 using
+#       flexibale geometry information and Sentinel 2 albedo data and
+#       microHH CO2 plume simulations. scene_spec not required
+# =============================================================================
+
+profile= 'individual_spectra'   #needed to initialize gm and sgm consistently
+
+settings= {}
+settings['gm']      = True
+settings['sgm']     = True
+settings['siml1b']  = True
+settings['l1bl2']   = True
+settings['sw_isrf_block'] = True
+settings['sw_isrf_fwhm']  = True
+# ====================main part ================================================
 if __name__ == "__main__":
 
-    import paths
-
-    global_config = yaml.safe_load(open("./exp6.0_isrf.yaml"))
-
     # ======= geometry module ======================================
-    # choose baseline GM config
-    if(global_config['setup']['flag_gm']):
-        
-        shutil.copyfile(paths.project+ paths.GM_module+'gm_config_baseline.yaml', \
-                        paths.project+ paths.GM_module+'gm_config.yaml',)
 
-        gm_config = yaml.safe_load(open(paths.project+paths.GM_module+'gm_config.yaml'))
-        geometry_module(paths,global_config, gm_config)
+    if(settings['gm']):
+
+        shutil.copyfile(paths.project + paths.GM_module+'gm_config_baseline.yaml', \
+                        paths.project + paths.GM_module+'gm_config.yaml',)
+
+        gm_config= yaml.safe_load(open(paths.project+paths.GM_module+'gm_config.yaml'))
+        geometry_module(locations.gm, profile, scene_spec, gm_config)
+
 
     # ======= scene generator module ===============================
-    # choose baseline SGM config
-    if(global_config['setup']['flag_sgm']):
-        
+
+    if(settings['sgm']):
+
         shutil.copyfile(paths.project+paths.SGM_module+'sgm_config_baseline.yaml', \
                         paths.project+paths.SGM_module+'sgm_config.yaml',)
-        sgm_config = yaml.safe_load(open(paths.project+paths.SGM_module+ "sgm_config.yaml"))
-        scene_generation_module(paths, global_config, sgm_config)
+        sgm_config= yaml.safe_load(open(paths.project+paths.SGM_module + "sgm_config.yaml"))
+        scene_generation_module(locations.sgm, profile, scene_spec, sgm_config)
 
     # ======= The simplified IM and L1B model ======================
-    if(global_config['setup']['flag_siml1b']):
+    if(settings['siml1b']):
         # choose baseline simplified IM and L1B config
         
         shutil.copyfile(paths.project+paths.SIML1B_module+'siml1b_config_baseline.yaml', \
                         paths.project+paths.SIML1B_module+'siml1b_config.yaml',)
 
         siml1b_config = yaml.safe_load(open(paths.project+paths.SIML1B_module + "siml1b_config.yaml"))
-        simplified_instrument_model_and_l1b_processor(paths, global_config, siml1b_config)
-
+        simplified_instrument_model_and_l1b_processor(locations.siml1b, siml1b_config)
+    
     # ======= L1 to L2 processor ===================================
-    if(global_config['setup']['flag_l1bl2']):
+    if(settings['l1bl2']):
         # choose baseline L1BL2 config
-        
+
         shutil.copyfile(paths.project+paths.L1L2_module + 'l1bl2_config_baseline.yaml',
                         paths.project+paths.L1L2_module + 'l1bl2_config.yaml',)
-        l1bl2_config = yaml.safe_load(open(paths.project+paths.L1L2_module + "l1bl2_config.yaml"))
-        l1bl2_config['pixel_mask'] = False
+
+        l1bl2_config= yaml.safe_load(open(paths.project+paths.L1L2_module + "l1bl2_config.yaml"))
+        l1bl2_config['pixel_mask']= False
         l1bl2_config['isrf_settings']['type'] =  'generalized_normal' 
 
-        if(global_config['sw_isrf_block']):
+        if(settings['sw_isrf_block']):
             l1bl2_config['isrf_settings']['fwhm'] = 0.45
             for ibcoeff in range(0,11):
     
@@ -76,18 +180,20 @@ if __name__ == "__main__":
                 print('fwhm: ',l1bl2_config['isrf_settings']['fwhm'],' bcoeff: ', l1bl2_config['isrf_settings']['bcoeff'])
                 print('========================================')
     
-                level1b_to_level2_processor(paths,global_config, l1bl2_config)
-    
                 str_bcoeff = "%.3f" % (l1bl2_config['isrf_settings']['bcoeff'])
-                shutil.copyfile(
-                    paths.project+paths.data_interface + paths.interface_l2 + 'Tango_Carbon_l2_individual_spectra_exp0006.nc',
-                    paths.project+paths.data_interface + paths.interface_l2 +'Tango_Carbon_l2_exp0006.1_bcoeff'+str_bcoeff+'.nc',)
 
-        if(global_config['sw_isrf_fwhm']):
+                locations.l1bl2['l2_output'] = paths.project + paths.data_interface + \
+                    paths.interface_l2 + 'Tango_Carbon_l2__bcoeff'+str_bcoeff + run_id + '.nc'
+
+                level1b_to_level2_processor(locations.l1bl2, l1bl2_config)
+                sys.exit()
+
+        if(settings['sw_isrf_fwhm']):
+
+            l1bl2_config['isrf_settings']['bcoeff'] = 0.45
 
             for iacoeff in range(0,11):
     
-                l1bl2_config['isrf_settings']['bcoeff'] = 0.45
                 l1bl2_config['isrf_settings']['fwhm'] = 0.43 + 0.004*iacoeff
                 
                 if(iacoeff == 0):
@@ -98,10 +204,11 @@ if __name__ == "__main__":
                 print('========================================')
                 print('fwhm: ',l1bl2_config['isrf_settings']['fwhm'],' bcoeff: ', l1bl2_config['isrf_settings']['bcoeff'])
                 print('========================================')
-    
-                level1b_to_level2_processor(paths,global_config, l1bl2_config)
-    
+
                 str_acoeff = "%.3f" % (l1bl2_config['isrf_settings']['fwhm'])
-                shutil.copyfile(
-                    paths.project+paths.data_interface + paths.interface_l2 + 'Tango_Carbon_l2_individual_spectra_exp0006.nc',
-                    paths.project+paths.data_interface + paths.interface_l2 +'Tango_Carbon_l2_exp0006.2_acoeff'+str_acoeff+'.nc',)
+    
+                locations.l1bl2['l2_output'] = paths.project + paths.data_interface + \
+                    paths.interface_l2 + 'Tango_Carbon_l2__acoeff'+str_acoeff + run_id + '.nc'
+        
+                level1b_to_level2_processor(locations.l1bl2, l1bl2_config)
+    

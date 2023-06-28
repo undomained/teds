@@ -1,15 +1,9 @@
-# CONTAINS
-# function clausius_clapeyron(T)
-# function read_spectrum_l1_l2_h5py(filenamel1, filenamel2, i, j, wave_start, wave_end, information=False)
-# function read_sun_spectrum_S5P(filename)
-# function read_sun_spectrum_TSIS1HSRS(filename)
-# function transmission(optics, surface, mu0, muv, phi)
-# class atmosphere_data()
-# class molecular_data()
-# class optic_abs_prop()
-# class StopExecution(Exception)
-# class surface_prop()
-###########################################################
+#==============================================================================
+#   Tools to generate model atmosphere
+#   This source code is licensed under the 3-clause BSD license found in
+#   the LICENSE file in the root directory of this project.
+#==============================================================================
+
 import os
 import io
 import sys

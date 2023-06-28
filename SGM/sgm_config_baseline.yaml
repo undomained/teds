@@ -10,6 +10,8 @@ atmosphere:
     
 std_atm: 'prof.AFGL.US.std'     #AFGL model atmosphere
     
+only_afgl: False
+
 microHH:
     sim: 'Jaenschwalde_simulation1/'
     time_stamp: '0036000'

@@ -1,12 +1,3 @@
-filename:
-    ckd:            'ckd_kernels_int_full'               #IM calibration key data
-    gm:             'Tango_Carbon_gm_'                   #geometry data from GM
-    sgm:            'Tango_Carbon_sgm_radiance_'         #SGM radiance input
-    level0:         'Tango_Carbon_l0_'                   #level 0 input
-    level1b:        'Tango_Carbon_l1b_'                  #level 1b output
-    binning_table:  'binning_table'                      #Instrument binning table
-    pixel_mask:     'level1b_pixel_mask'                 #level 1b pixel mask
-
 settings:
     van_cittert_steps: 4  #van Citter iteration for stray light correction (0=no correction)
     # Whether to use inteprolating stray light kernels

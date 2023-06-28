@@ -21,10 +21,9 @@ def sparse_isrf_convolution(isrf, mask, spectrum):
     return(spectrum_conv)
 
 
-def get_sgm_rad_data(path, filename, ialt):
+def get_sgm_rad_data(filename, ialt):
 
-    file = path+filename+'.nc'
-    input = nc.Dataset(file, mode='r')
+    input = nc.Dataset(filename, mode='r')
 
     sgm_data = {}
     sgm_data['wavelength line-by-line'] = input['wavelength'][:]
@@ -36,10 +35,9 @@ def get_sgm_rad_data(path, filename, ialt):
     return(sgm_data)
 
 
-def get_gm_data(path, filename):
+def get_gm_data(filename):
 
-    file = path+filename+'.nc'
-    input = nc.Dataset(file, mode='r')
+    input = nc.Dataset(filename, mode='r')
 
     gm_data = {}
     gm_data['sza'] = deepcopy(input['sza'][:, :])
@@ -53,14 +51,13 @@ def get_gm_data(path, filename):
 
     return(gm_data)
 
-def sim_output(path, filename, gm_data, l1b_output):
+def sim_output(filename, gm_data, l1b_output):
 
     nwav = l1b_output['wavelength'].size
     nact = l1b_output['radiance'][0, :, 0].size
     nalt = l1b_output['radiance'][:, 0, 0].size
 
-    file = path+filename+'.nc'
-    output = nc.Dataset(file, mode='w')
+    output = nc.Dataset(filename, mode='w')
     output.title = 'Tango Carbon Level-1 B'
     output.createDimension('bins_spectral', nwav)        # spectral axis
     output.createDimension('bins_across_track', nact)    # across track axis
@@ -164,16 +161,12 @@ def sim_output(path, filename, gm_data, l1b_output):
 #   main program ##############################################################
 
 
-def simplified_instrument_model_and_l1b_processor(paths, global_config, local_config):
+def simplified_instrument_model_and_l1b_processor(locations, local_config):
 
-    sgm_path = paths.project + paths.data_interface + paths.interface_sgm 
-
-    run_id = '_'+global_config['run_id']
     
     # get geometry data
-    filename = local_config['filename']['gm_input']+'_'+global_config['profile']+run_id
-    gm_path = paths.project + paths.data_interface + paths.interface_gm
-    gm_data = get_gm_data(gm_path, filename)
+
+    gm_data = get_gm_data(locations['gm_input'])
 
     # target wavelengths grid
     l1b_output = {}
@@ -191,19 +184,18 @@ def simplified_instrument_model_and_l1b_processor(paths, global_config, local_co
 
     # get line-by-line spectral grid and define some pointers
 
-    filename = local_config['filename']['sgm_input']+'_'+global_config['profile']+run_id
-    sgm_data = get_sgm_rad_data(sgm_path, filename, ialt=0)
+    sgm_data = get_sgm_rad_data(locations['sgm_input'], ialt=0)
     wave_lbl = sgm_data['wavelength line-by-line']
     wave = l1b_output['wavelength']
 
-    # define isrf object
+    # define isrf objecpaths.project + paths.data_interface + \
     isrf = libNumTools.isrfct(wave, wave_lbl)
     isrf.get_isrf(local_config['isrf_settings'])
 
     for ialt in tqdm(range(nalt)):
 
         # get lbl data from sgm file for scan line ialt
-        sgm_data = get_sgm_rad_data(sgm_path, filename, ialt)
+        sgm_data = get_sgm_rad_data(locations['sgm_input'], ialt)
 
         for iact in range(nact):
             spectrum_lbl = sgm_data['radiance line-by-line'][iact, :]
@@ -232,12 +224,8 @@ def simplified_instrument_model_and_l1b_processor(paths, global_config, local_co
         l1b_output['radiance'] = ymeas
 
     # output to netcdf file
-    siml1b_path = paths.project + paths.data_interface + paths.interface_l1b
-    filename = local_config['filename']['siml1b_output'] + '_'+global_config['profile']+run_id
-    print(siml1b_path)
-    print(filename)
-    sim_output(siml1b_path, filename, gm_data, l1b_output)
 
-    print('=>siml1b calculation finished successfully for runid ' +
-          global_config['run_id'] + ' of profile ' + global_config['profile'])
+    sim_output(locations['l1b_output'], gm_data, l1b_output)
+
+    print('=>siml1b calculation finished successfully')
     return

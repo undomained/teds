@@ -116,19 +116,8 @@ class CKD : public Logger { // {{{
     bool prnu_skip = false; // Flag for skipping PRNU step.
     vector<double> prnu_prnu; // Pixel response non-uniformity.
 
-    // Straylight CKD.
-    bool stray_skip = false; // Flag for skipping straylight step.
-    bool stray_dry_run;
-    size_t stray_kernel_n_rows;
-    size_t stray_kernel_n_cols;
-    size_t stray_kernel_fft_size;
-    vector<complex<double> > stray_kernel_fft;
-    vector<complex<double> > stray_moving_kernel_fft;
-    size_t stray_transformed_n_rows;
-    size_t stray_transformed_n_cols;
-    vector<int> stray_transform_indices;
-    vector<double> stray_transform_deltas;
-    double stray_eta;
+    // Stray light CKD
+    bool stray_skip { false };
     struct
     {
         int n_kernels {};
@@ -226,13 +215,6 @@ class CKD : public Logger { // {{{
         level_t lev_target,
         bool write
     );
-
-    // Writes the current step into the CKD making the total CKD one step more
-    // mature (increasing its level by one).
-    // It is assumed that all diagnostic CKD of the current step exists.
-    // For L1B and later, this routine does not do anything, it does not even
-    // look at the output NetCDF structure.
-    int writestep();
 
     // Checks calibration options.
     int check_opts(

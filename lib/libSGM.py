@@ -17,6 +17,7 @@ import shapely
 import matplotlib.pyplot as plt
 from end_to_end.lib import libNumTools
 
+
 def get_raw_sentinel2_data(lat, lon, S2_reading_log):
 
     # generate a geometry object with the latitude-longitude points

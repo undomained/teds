@@ -62,6 +62,7 @@ locations.sgm['rad_output'] = paths.project + paths.data_interface + \
     paths.interface_sgm + 'Tango_Carbon_sgm_radiance_' + run_id + '.nc'
 locations.sgm['geo_output'] = paths.project + paths.data_interface + \
     paths.interface_sgm + 'Tango_Carbon_sgm_atmosphere_' + run_id + '.nc'
+locations.sgm['hapi_path'] =  paths.project + paths.data_harpi
 
 locations.__setattr__('im', {})
 locations.im['ckd_input'] = paths.project + paths.data_interface + \
@@ -106,43 +107,7 @@ locations.l1bl2['l2_output'] = paths.project + paths.data_interface + \
 locations.l1bl2['xsec_dump'] = paths.project + \
     paths.data_tmp + 'Tango_Carbon_xsec_l2_' + run_id + '.pkl'
 locations.l1bl2['l2_diags'] = ''
-
-#scene specification for profile single_pixel and swath
-scene_spec= Emptyclass() 
-# number of different model atmospheres
-scene_spec.__setattr__('numb_atm_scenes', [])
-# ACT index of transition. should start with 0 and end with 100 for full illumination
-scene_spec.__setattr__('scene_trans_index', [])
-scene_spec.__setattr__('sza', [])  # solar zenith angle[degree]
-scene_spec.__setattr__('saa', [])  # solar azimuth angle [degree]
-scene_spec.__setattr__('vza', [])  # viewing zenith angle [degree]
-scene_spec.__setattr__('vaa', [])  # viewing azimuth angle [degree]
-# Lambertian surface alebdo of reference scene
-scene_spec.__setattr__('albedo', [])
-
-scene_spec.numb_atm_scenes= 1
-scene_spec.scene_trans_index = [0, 100]
-scene_spec.sza = [70.]
-scene_spec.saa= [0.]
-scene_spec.vza= [0.]
-scene_spec.vaa= [0.]
-scene_spec.albedo= [0.15]
-
-# =============================================================================
-#
-#  Current version of the Tango E2E simulator can handle the following profiles
-#   1.  individual_spectra: In this case only one single spectrum is processed.
-#       The IM and L1 processor cannot be used in this case but are replaced by
-#       the simplified moduel siml1. scene_spec required
-#   2.  single_swath: This profile acounts for a single swath and a homogenous
-#       reference scene. It is meant to test the IM and the L1 processor
-#       scene_spec required
-#   3.  S2_microHH: This simulates a full data granuale of 30 x 30 km2 using
-#       flexibale geometry information and Sentinel 2 albedo data and
-#       microHH CO2 plume simulations. scene_spec not required
-# =============================================================================
-
-profile= 'single_swath'   #needed to initialize gm and sgm consistently
+locations.l1bl2['hapi_path'] =  paths.project + paths.data_harpi
 
 # ====================main part ================================================
 
@@ -153,18 +118,19 @@ if __name__ == "__main__":
     
     # ======= geometry module ======================================
 
-    shutil.copyfile(paths.project + paths.GM_module+'gm_config_baseline.yaml', \
-                    paths.project + paths.GM_module+'gm_config.yaml',)
+    config= yaml.safe_load(open(paths.project+paths.GM_module+'gm_config_baseline.yaml'))
+    gm_config = {**locations.gm, **config, **scene_spec}
+    gm_config['profile'] = profile
 
-    gm_config= yaml.safe_load(open(paths.project+paths.GM_module+'gm_config.yaml'))
-    geometry_module(locations.gm, profile, scene_spec, gm_config)
+    geometry_module(gm_config)
 
     # ======= scene generator module ===============================
 
-    shutil.copyfile(paths.project+paths.SGM_module+'sgm_config_baseline.yaml', \
-                    paths.project+paths.SGM_module+'sgm_config.yaml',)
-    sgm_config= yaml.safe_load(open(paths.project+paths.SGM_module + "sgm_config.yaml"))
-    scene_generation_module(locations.sgm, profile, scene_spec, sgm_config)
+    sgm_config= yaml.safe_load(open(paths.project+paths.SGM_module + "sgm_config_baseline.yaml"))
+    sgm_config = {**locations.sgm, **sgm_config, **scene_spec}
+    sgm_config['profile'] = profile
+
+    scene_generation_module(sgm_config)
 
     #    First we generate a reference case fo dose 0.0
     #    l1b is stored in'Tango_Carbon_l1b_ref_' + run_id + '.nc'
@@ -239,19 +205,18 @@ if __name__ == "__main__":
 
         # ======= L1 to L2 processor ===================================
 
-        shutil.copyfile(paths.project+paths.L1L2_module + 'l1bl2_config_baseline.yaml',
-                        paths.project+paths.L1L2_module + 'l1bl2_config.yaml',)
-
-        l1bl2_config= yaml.safe_load(open(paths.project+paths.L1L2_module + "l1bl2_config.yaml"))
+        l1bl2_config= yaml.safe_load(open(paths.project+paths.L1L2_module + "l1bl2_config_baseline.yaml"))
         l1bl2_config['pixel_mask']= True
         l1bl2_config['isrf_settings']['type']= 'Gaussian'  # type of ISRF, currently only Gaussian or generalized_normal
         l1bl2_config['isrf_settings']['fwhm']=  0.45       # fwhm  [nm]
         locations.l1bl2['l1b_input']    = paths.project + paths.data_interface + \
             paths.interface_l1b + 'Tango_Carbon_l1bdose' + ds + run_id + '.nc'
-        locations.l1bl2['pixel_mask'] = filename_pixel_mask
+        locations.l1bl2['pixel_mask_input'] = filename_pixel_mask
         locations.l1bl2['l2_output'] = paths.project + paths.data_interface + \
             paths.interface_l2 + 'Tango_Carbon_l2dose' + ds + run_id + '.nc'
-        level1b_to_level2_processor(locations.l1bl2, l1bl2_config)
+        l1bl2_config = {**locations.l1bl2, **l1bl2_config}
+
+        level1b_to_level2_processor(l1bl2_config)
  
     print('Experiment 5 sucessfully performed.')
     sys.exit()

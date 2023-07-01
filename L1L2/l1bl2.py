@@ -16,7 +16,6 @@ from end_to_end.lib import libNumTools
 from end_to_end.lib import libRT
 from end_to_end.lib import libATM
 from end_to_end.lib import libINV
-from end_to_end.lib import libNumTools
 import matplotlib.pyplot as plt
 
 def get_l1b(filename):
@@ -335,15 +334,15 @@ def level2_diags_output(filename, l2product, measurement):
 
     return
 
-def level1b_to_level2_processor(locations, local_config):
+def level1b_to_level2_processor(config):
 
     # get the l1b files    
-    l1b = get_l1b(locations['l1b_input'])
+    l1b = get_l1b(config['l1b_input'])
     
     # get pixel mask
-    if(local_config['pixel_mask']):
+    if(config['pixel_mask']):
         print('take pixel mask')
-        mask  = np.load(locations['pixel_mask'])
+        mask  = np.load(config['pixel_mask_input'])
     else:       
         nact  = l1b['radiance'][0,:,0].size
         nwave = l1b['radiance'][0,0,:].size
@@ -355,16 +354,16 @@ def level1b_to_level2_processor(locations, local_config):
     # plt.imshow(masked_data, vmin = 1.E16,vmax = 4.E16, cmap = 'viridis', aspect = 4)
 
     # Internal lbl spectral grid
-    wave_start = local_config['spec_settings']['wavestart']
-    wave_end = local_config['spec_settings']['waveend']
-    wave_extend = local_config['spec_settings']['wave_extend']
-    dwave_lbl = local_config['spec_settings']['dwave']
+    wave_start = config['spec_settings']['wavestart']
+    wave_end = config['spec_settings']['waveend']
+    wave_extend = config['spec_settings']['wave_extend']
+    dwave_lbl = config['spec_settings']['dwave']
     wave_lbl = np.arange(wave_start-wave_extend, wave_end+wave_extend, dwave_lbl)  # nm
 
     # Vertical layering
-    nlay = local_config['atmosphere']['nlay']
-    dzlay = local_config['atmosphere']['dzlay']
-    psurf = local_config['atmosphere']['psurf']
+    nlay = config['atmosphere']['nlay']
+    dzlay = config['atmosphere']['dzlay']
+    psurf = config['atmosphere']['psurf']
     nlev = nlay + 1  # number of levels
 
     zlay = (np.arange(nlay-1, -1, -1)+0.5)*dzlay  # altitude of layer midpoint
@@ -373,7 +372,7 @@ def level1b_to_level2_processor(locations, local_config):
     # model atmosphere
 
     atm = libATM.atmosphere_data(zlay, zlev, psurf)
-    atm.get_data_AFGL(locations['afgl_input'])
+    atm.get_data_AFGL(config['afgl_input'])
 
     # scale to some reference column mixing ratios
     xco2_ref = 405.  # ppm
@@ -390,35 +389,35 @@ def level1b_to_level2_processor(locations, local_config):
     # XH2O = np.sum(atm.H2O)/np.sum(atm.air)
     # print(XCO2*1.E6, XCH4*1.E9, XH2O*1E6)
 
-    sun = libRT.read_sun_spectrum_TSIS1HSRS(locations['sun_reference'])
+    sun = libRT.read_sun_spectrum_TSIS1HSRS(config['sun_reference'])
     sun_lbl = libRT.interpolate_sun(sun, wave_lbl)
 
     # Download molecular absorption parameter
     iso_ids = [('CH4', 32), ('H2O', 1), ('CO2', 7)]  # see hapi manual  sec 6.6
     molec = libRT.molecular_data(wave_lbl)
-    molec.get_data_HITRAN('./data/hapi_data/', iso_ids)
+    molec.get_data_HITRAN(config['hapi_path'], iso_ids)
 
     # Calculate optical properties
     # If pickle file exists read from file
-    if ((not os.path.exists(locations['xsec_dump'])) or local_config['xsec_forced']):
+    if ((not os.path.exists(config['xsec_dump'])) or config['xsec_forced']):
         # Init class with optics.prop dictionary
         optics = libRT.optic_abs_prop(wave_lbl, zlay)
         # Molecular absorption optical properties
         optics.cal_molec_xsec(molec, atm)
         # Dump optics.prop dictionary into temporary pkl file
-        pkl.dump(optics.prop, open(locations['xsec_dump'], 'wb'))
+        pkl.dump(optics.prop, open(config['xsec_dump'], 'wb'))
     else:
         # Init class with optics.prop dictionary
         optics = libRT.optic_abs_prop(wave_lbl, zlay)
         # Read optics.prop dictionary from pickle file
-        optics.prop = pkl.load(open(locations['xsec_dump'], 'rb'))
+        optics.prop = pkl.load(open(config['xsec_dump'], 'rb'))
 
     optics.set_opt_depth_species(atm, ['molec_01', 'molec_32', 'molec_07'])
 
     # Initialization of the least squares fit
     retrieval_init = {}
-    retrieval_init['chi2 limit'] = local_config['retrieval_init']['chi2_lim']
-    retrieval_init['maximum iteration'] = local_config['retrieval_init']['max_iter']
+    retrieval_init['chi2 limit'] = config['retrieval_init']['chi2_lim']
+    retrieval_init['maximum iteration'] = config['retrieval_init']['max_iter']
     retrieval_init['zlay'] = zlay
     retrieval_init['trace gases'] = {'CO2': {'init': 300,      'scaling': 1E-6, 'ref_profile': ref_CO2},
                                      'CH4': {'init': 1700,     'scaling': 1E-9, 'ref_profile': ref_CH4},
@@ -452,7 +451,7 @@ def level1b_to_level2_processor(locations, local_config):
 
             # define isrf object
             isrf = libNumTools.isrfct(wave_meas, wave_lbl)
-            isrf.get_isrf(local_config['isrf_settings'])
+            isrf.get_isrf(config['isrf_settings'])
            
             atm_ret = deepcopy(atm)  # to initialize each retrieval with the same atmosphere
 
@@ -476,8 +475,8 @@ def level1b_to_level2_processor(locations, local_config):
             # Non-scattering least squares fit
             l2product[ialt, iact] = libINV.Gauss_Newton_iteration(
                 retrieval_init, atm_ret, optics, measurement[ialt,
-                                                             iact], isrf, local_config['retrieval_init']['max_iter'],
-                local_config['retrieval_init']['chi2_lim'])
+                                                             iact], isrf, config['retrieval_init']['max_iter'],
+                config['retrieval_init']['chi2_lim'])
 
             if(not l2product[ialt, iact]['convergence']):
                 print('pixel did not converge (ialt,iact) = ', ialt,iact)
@@ -497,9 +496,9 @@ def level1b_to_level2_processor(locations, local_config):
     print(np.mean(XCO2)*1.E6, np.std(XCO2)*1.E6)
     print('=============================')
     
-    level2_output(locations['l2_output'], l2product, retrieval_init, l1b)
+    level2_output(config['l2_output'], l2product, retrieval_init, l1b)
     # have to be fixed because of variable spectral size of measurement vector using masked arrays
-#    level2_diags_output(locations['l2_diags'], l2product, measurement)
+#    level2_diags_output(config['l2_diags'], l2product, measurement)
     print('=> l1bl2 finished successfully' )
 
     return

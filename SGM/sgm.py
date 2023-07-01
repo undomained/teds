@@ -7,7 +7,6 @@
 import numpy as np
 import sys
 import os
-import yaml
 import pickle
 import matplotlib.pyplot as plt
 import netCDF4 as nc
@@ -183,7 +182,7 @@ def sgm_output(filename_rad, filename_atm, rad_output, atm, albedo):
 
     return
 
-def scene_generation_module(locations, profile, scene_spec, local_config):
+def scene_generation_module(config):
     """
 
     Parameters
@@ -203,7 +202,7 @@ def scene_generation_module(locations, profile, scene_spec, local_config):
 
     # first get the geometry data
 
-    gm_data = get_gm_data(locations['gm_input'])
+    gm_data = get_gm_data(config['gm_input'])
 
     nact = gm_data['sza'][0].size
     nalt = len(gm_data['sza'])
@@ -214,74 +213,74 @@ def scene_generation_module(locations, profile, scene_spec, local_config):
 
     albedo = np.zeros([nalt, nact])
 
-    if(profile == 'individual_spectra'):
-        albedo[0, :] = scene_spec.albedo[:]
+    if(config['profile'] == 'individual_spectra'):
+        albedo[0, :] = config['albedo'][:]
 
-    if(profile == 'single_swath'):
+    if(config['profile'] == 'single_swath'):
         
-        for iscen in range(scene_spec.numb_atm_scenes+1):
-            outofrange = (scene_spec.scene_trans_index[iscen] > 100) & \
-                (scene_spec.scene_trans_index[iscen] < 0) 
+        for iscen in range(config['numb_atm_scenes']+1):
+            outofrange = (config['scene_trans_index'][iscen] > 100) & \
+                (config['scene_trans_index'][iscen] < 0) 
             if(outofrange):
                 sys.exit('config parameter scene_trans_index out of range')
 
-        for iscen in range(scene_spec.numb_atm_scenes):
-             ind_start = scene_spec.scene_trans_index[iscen]
-             ind_end   = scene_spec.scene_trans_index[iscen+1]            
-             albedo[0, ind_start:ind_end] = scene_spec.albedo[iscen]
+        for iscen in range(config['numb_atm_scenes']):
+             ind_start = config['scene_trans_index'][iscen]
+             ind_end   = config['scene_trans_index'][iscen+1]            
+             albedo[0, ind_start:ind_end] = config['albedo'][iscen]
         
-    if((profile == 'S2_microHH')):
+    if((config['profile'] == 'S2_microHH')):
 
         # get collocated S2 data
 
-        file_exists = os.path.isfile(locations['S2_dump'])
-        if(file_exists and (not(local_config['s2_forced']))):
-            albedo = np.load(locations['S2_dump'])
+        file_exists = os.path.isfile(config['S2_dump'])
+        if(file_exists and (not(config['s2_forced']))):
+            albedo = np.load(config['S2_dump'])
         else:
-            albedo = libSGM.get_sentinel2_albedo(gm_data, local_config)
-            np.save(locations['S2_dump'], albedo)    # .npy extension is added if not given
+            albedo = libSGM.get_sentinel2_albedo(gm_data, config)
+            np.save(config['S2_dump'], albedo)    # .npy extension is added if not given
 
     # =============================================================================
     # get a model atmosphere form AFGL files
     # =============================================================================
 
-    if((profile == 'individual_spectra') or(profile == 'single_swath')):
+    if((config['profile'] == 'individual_spectra') or(config['profile'] == 'single_swath')):
 
-        nlay = local_config['atmosphere']['nlay']  # number of layers
-        dzlay = local_config['atmosphere']['dzlay']
+        nlay = config['atmosphere']['nlay']  # number of layers
+        dzlay = config['atmosphere']['dzlay']
 
         # we assume the same standard atmosphere for all pixels of the granule
 
-        atm_std = libATM.get_AFGL_atm_homogenous_distribtution(locations['afgl_input'], nlay, dzlay)
+        atm_std = libATM.get_AFGL_atm_homogenous_distribtution(config['afgl_input'], nlay, dzlay)
 
         atm = np.ndarray((nalt, nact), np.object_)
         for ialt in range(nalt):
             for iact in range(nact):
                 atm[ialt, iact] = deepcopy(atm_std)
 
-    if(profile == 'S2_microHH'):
+    if(config['profile'] == 'S2_microHH'):
 
-        nlay = local_config['atmosphere']['nlay']  # number of layers
-        dzlay = local_config['atmosphere']['dzlay']
+        nlay = config['atmosphere']['nlay']  # number of layers
+        dzlay = config['atmosphere']['dzlay']
 
-        atm_std = libATM.get_AFGL_atm_homogenous_distribtution(locations['afgl_input'], nlay, dzlay)
+        atm_std = libATM.get_AFGL_atm_homogenous_distribtution(config['afgl_input'], nlay, dzlay)
 
-        if(local_config['only_afgl']):
+        if(config['only_afgl']):
             atm = atm_std
         else:         
             # get collocated mciroHH data
 
-            if ((not os.path.exists(locations['microHH_dump'])) or local_config['microHH_forced']):
-                microHH = libATM.get_microHH_atm(gm_data['lat'], gm_data['lon'], locations['microHH_data_path'],
-                                                 local_config['microHH'],
-                                                 local_config['kernel_parameter'])
+            if ((not os.path.exists(config['microHH_dump'])) or config['microHH_forced']):
+                microHH = libATM.get_microHH_atm(gm_data['lat'], gm_data['lon'], config['microHH_data_path'],
+                                                 config['microHH'],
+                                                 config['kernel_parameter'])
                 # Dump microHH dictionary into temporary pkl file
-                pickle.dump(microHH, open(locations['microHH_dump'], 'wb'))
+                pickle.dump(microHH, open(config['microHH_dump'], 'wb'))
 
             else:
                 
                 # Read microHH from pickle file
-                microHH = pickle.load(open(locations['microHH_dump'], 'rb'))
+                microHH = pickle.load(open(config['microHH_dump'], 'rb'))
 
             atm = libATM.combine_microHH_standard_atm(microHH, atm_std)
 
@@ -292,8 +291,8 @@ def scene_generation_module(locations, profile, scene_spec, local_config):
 
     # define line-by-line wavelength grid
     rad_output = {}
-    rad_output['wavelength lbl'] = np.arange(local_config['spec_settings']['wave_start'], local_config['spec_settings']['wave_end'],
-                                             local_config['spec_settings']['dwave'])  # nm
+    rad_output['wavelength lbl'] = np.arange(config['spec_settings']['wave_start'], config['spec_settings']['wave_end'],
+                                             config['spec_settings']['dwave'])  # nm
 
     nwav = len(rad_output['wavelength lbl'])
     # generate optics object for one representative model atmosphere of the domain
@@ -309,18 +308,18 @@ def scene_generation_module(locations, profile, scene_spec, local_config):
 
     # If pickle file exists read from file
     # os.path.exists(xsec_file) or conf['xsec_forced']
-    if ((not os.path.exists(locations['xsec_dump'])) or local_config['xsec_forced']):
-        molec.get_data_HITRAN('./data/hapi_data/', iso_ids)
+    if ((not os.path.exists(config['xsec_dump'])) or config['xsec_forced']):
+        molec.get_data_HITRAN(config['hapi_path'], iso_ids)
         # Molecular absorption optical properties
         optics.cal_molec_xsec(molec, atm[nalt_ref][nact_ref])
         # Dump optics.prop dictionary into temporary pkl file
-        pickle.dump(optics.prop, open(locations['xsec_dump'], 'wb'))
+        pickle.dump(optics.prop, open(config['xsec_dump'], 'wb'))
     else:
         # Read optics.prop dictionary from pickle file
-        optics.prop = pickle.load(open(locations['xsec_dump'], 'rb'))
+        optics.prop = pickle.load(open(config['xsec_dump'], 'rb'))
 
     # solar irradiance spectrum
-    sun = libRT.read_sun_spectrum_TSIS1HSRS(locations['sun_reference'])
+    sun = libRT.read_sun_spectrum_TSIS1HSRS(config['sun_reference'])
     rad_output['solar irradiance'] = np.interp(rad_output['wavelength lbl'], sun['wl'], sun['phsm2nm'])
 
     # Calculate surface data
@@ -346,7 +345,7 @@ def scene_generation_module(locations, profile, scene_spec, local_config):
     # sgm output to radiometric and geophysical output file
     # =============================================================================
 
-    sgm_output(locations['rad_output'], locations['geo_output'], rad_output, atm, albedo)
+    sgm_output(config['rad_output'], config['geo_output'], rad_output, atm, albedo)
 
     print('=>sgm calcultion finished successfully')
     return

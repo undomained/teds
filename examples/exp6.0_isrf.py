@@ -60,6 +60,7 @@ locations.sgm['rad_output'] = paths.project + paths.data_interface + \
     paths.interface_sgm + 'Tango_Carbon_sgm_radiance_' + run_id + '.nc'
 locations.sgm['geo_output'] = paths.project + paths.data_interface + \
     paths.interface_sgm + 'Tango_Carbon_sgm_atmosphere_' + run_id + '.nc'
+locations.sgm['hapi_path'] =  paths.project + paths.data_harpi
 
 locations.__setattr__('siml1b', {})
 locations.siml1b['sgm_input']  = paths.project + paths.data_interface + \
@@ -82,21 +83,15 @@ locations.l1bl2['l2_output'] = paths.project + paths.data_interface + \
 locations.l1bl2['xsec_dump'] = paths.project + \
     paths.data_tmp + 'Tango_Carbon_xsec_l2_' + run_id + '.pkl'
 locations.l1bl2['l2_diags'] = ''
+locations.l1bl2['hapi_path'] =  paths.project + paths.data_harpi
 
 #scene specification for profile single_pixel and swath
-scene_spec= Emptyclass() 
-scene_spec.__setattr__('sza', [])  # solar zenith angle[degree]
-scene_spec.__setattr__('saa', [])  # solar azimuth angle [degree]
-scene_spec.__setattr__('vza', [])  # viewing zenith angle [degree]
-scene_spec.__setattr__('vaa', [])  # viewing azimuth angle [degree]
-# Lambertian surface alebdo of reference scene
-scene_spec.__setattr__('albedo', [])
-
-scene_spec.sza   = [70., 60, 50, 40, 30, 20, 10, 0] 
-scene_spec.saa   = [0.,  0., 0., 0., 0., 0., 0., 0] 
-scene_spec.vza   = [0.,  0., 0., 0., 0., 0., 0., 0] 
-scene_spec.vaa   = [0.,  0., 0., 0., 0., 0., 0., 0] 
-scene_spec.albedo= [0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15] 
+scene_spec = {}
+scene_spec['sza']    = [70., 60, 50, 40, 30, 20, 10, 0] 
+scene_spec['saa']    = [0.,  0., 0., 0., 0., 0., 0., 0] 
+scene_spec['vza']    = [0.,  0., 0., 0., 0., 0., 0., 0] 
+scene_spec['vaa']    = [0.,  0., 0., 0., 0., 0., 0., 0] 
+scene_spec['albedo'] = [0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15] 
 
 # =============================================================================
 #
@@ -128,42 +123,38 @@ if __name__ == "__main__":
 
     if(settings['gm']):
 
-        shutil.copyfile(paths.project + paths.GM_module+'gm_config_baseline.yaml', \
-                        paths.project + paths.GM_module+'gm_config.yaml',)
-
-        gm_config= yaml.safe_load(open(paths.project+paths.GM_module+'gm_config.yaml'))
-        geometry_module(locations.gm, profile, scene_spec, gm_config)
-
+        config= yaml.safe_load(open(paths.project+paths.GM_module+'gm_config_baseline.yaml'))
+        gm_config = {**locations.gm, **config, **scene_spec}
+        gm_config['profile'] = profile
+        
+        geometry_module(gm_config)
 
     # ======= scene generator module ===============================
 
     if(settings['sgm']):
 
-        shutil.copyfile(paths.project+paths.SGM_module+'sgm_config_baseline.yaml', \
-                        paths.project+paths.SGM_module+'sgm_config.yaml',)
-        sgm_config= yaml.safe_load(open(paths.project+paths.SGM_module + "sgm_config.yaml"))
-        scene_generation_module(locations.sgm, profile, scene_spec, sgm_config)
+        sgm_config= yaml.safe_load(open(paths.project+paths.SGM_module + "sgm_config_baseline.yaml"))
+        sgm_config = {**locations.sgm, **sgm_config, **scene_spec}
+        sgm_config['profile'] = profile
+
+        scene_generation_module(sgm_config)
 
     # ======= The simplified IM and L1B model ======================
     if(settings['siml1b']):
-        # choose baseline simplified IM and L1B config
         
-        shutil.copyfile(paths.project+paths.SIML1B_module+'siml1b_config_baseline.yaml', \
-                        paths.project+paths.SIML1B_module+'siml1b_config.yaml',)
-
-        siml1b_config = yaml.safe_load(open(paths.project+paths.SIML1B_module + "siml1b_config.yaml"))
-        simplified_instrument_model_and_l1b_processor(locations.siml1b, siml1b_config)
+        siml1b_config= yaml.safe_load(open(paths.project+paths.SIML1B_module + "siml1b_config_baseline.yaml"))
+        siml1b_config = {**locations.siml1b, **siml1b_config}
+        siml1b_config['profile'] = profile
+        simplified_instrument_model_and_l1b_processor(siml1b_config)
     
     # ======= L1 to L2 processor ===================================
     if(settings['l1bl2']):
         # choose baseline L1BL2 config
 
-        shutil.copyfile(paths.project+paths.L1L2_module + 'l1bl2_config_baseline.yaml',
-                        paths.project+paths.L1L2_module + 'l1bl2_config.yaml',)
-
         l1bl2_config= yaml.safe_load(open(paths.project+paths.L1L2_module + "l1bl2_config.yaml"))
         l1bl2_config['pixel_mask']= False
         l1bl2_config['isrf_settings']['type'] =  'generalized_normal' 
+        l1bl2_config = {**locations.l1bl2, **l1bl2_config}
 
         if(settings['sw_isrf_block']):
             l1bl2_config['isrf_settings']['fwhm'] = 0.45
@@ -182,11 +173,10 @@ if __name__ == "__main__":
     
                 str_bcoeff = "%.3f" % (l1bl2_config['isrf_settings']['bcoeff'])
 
-                locations.l1bl2['l2_output'] = paths.project + paths.data_interface + \
+                l1bl2_config['l2_output'] = paths.project + paths.data_interface + \
                     paths.interface_l2 + 'Tango_Carbon_l2__bcoeff'+str_bcoeff + run_id + '.nc'
 
-                level1b_to_level2_processor(locations.l1bl2, l1bl2_config)
-                sys.exit()
+                level1b_to_level2_processor(l1bl2_config)
 
         if(settings['sw_isrf_fwhm']):
 
@@ -207,8 +197,8 @@ if __name__ == "__main__":
 
                 str_acoeff = "%.3f" % (l1bl2_config['isrf_settings']['fwhm'])
     
-                locations.l1bl2['l2_output'] = paths.project + paths.data_interface + \
+                l1bl2_config['l2_output'] = paths.project + paths.data_interface + \
                     paths.interface_l2 + 'Tango_Carbon_l2__acoeff'+str_acoeff + run_id + '.nc'
         
-                level1b_to_level2_processor(locations.l1bl2, l1bl2_config)
-    
+                level1b_to_level2_processor(l1bl2_config)
+                

@@ -10,12 +10,7 @@ atmosphere:
     psurf: 101300               #surface pressure [Pa]
 
 std_atm: 'prof.AFGL.US.std'     #path to AFGL model atmosphere
-    
-filename:
-    level2:       'Tango_Carbon_l2'       #output file for geophysical scene
-    level1b:      'Tango_Carbon_l1b'      #gm output file
-    pixel_mask:   'level1b_pixel_mask'    #pixel mask
-    
+        
 spec_settings:              #settings for line-by-line spectra
     wavestart:   1590       #initial wavelength (indicator)
     waveend:     1675       #final wavlength of measurement

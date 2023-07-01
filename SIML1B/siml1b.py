@@ -161,18 +161,18 @@ def sim_output(filename, gm_data, l1b_output):
 #   main program ##############################################################
 
 
-def simplified_instrument_model_and_l1b_processor(locations, local_config):
+def simplified_instrument_model_and_l1b_processor(config):
 
     
     # get geometry data
 
-    gm_data = get_gm_data(locations['gm_input'])
+    gm_data = get_gm_data(config['gm_input'])
 
     # target wavelengths grid
     l1b_output = {}
-    l1b_output['wavelength'] = np.arange(local_config['spec_settings']['wave_start'],
-                                         local_config['spec_settings']['wave_end'],
-                                         local_config['spec_settings']['dwave'])  # nm
+    l1b_output['wavelength'] = np.arange(config['spec_settings']['wave_start'],
+                                         config['spec_settings']['wave_end'],
+                                         config['spec_settings']['dwave'])  # nm
 
     # basic dimensions
     nwav = l1b_output['wavelength'].size
@@ -184,18 +184,18 @@ def simplified_instrument_model_and_l1b_processor(locations, local_config):
 
     # get line-by-line spectral grid and define some pointers
 
-    sgm_data = get_sgm_rad_data(locations['sgm_input'], ialt=0)
+    sgm_data = get_sgm_rad_data(config['sgm_input'], ialt=0)
     wave_lbl = sgm_data['wavelength line-by-line']
     wave = l1b_output['wavelength']
 
     # define isrf objecpaths.project + paths.data_interface + \
     isrf = libNumTools.isrfct(wave, wave_lbl)
-    isrf.get_isrf(local_config['isrf_settings'])
+    isrf.get_isrf(config['isrf_settings'])
 
     for ialt in tqdm(range(nalt)):
 
         # get lbl data from sgm file for scan line ialt
-        sgm_data = get_sgm_rad_data(locations['sgm_input'], ialt)
+        sgm_data = get_sgm_rad_data(config['sgm_input'], ialt)
 
         for iact in range(nact):
             spectrum_lbl = sgm_data['radiance line-by-line'][iact, :]
@@ -203,14 +203,14 @@ def simplified_instrument_model_and_l1b_processor(locations, local_config):
             ymeas[ialt, iact, :] = isrf.isrf_convolution(spectrum_lbl)
 
     # noise model based on SNR = a I / (sqrt (aI +b )) ; a[(e- m2 sr s nm) / phot], and [b] = e-
-    snr = local_config['snr_model']['a_snr'] * ymeas / \
-        (np.sqrt(local_config['snr_model']['a_snr']*ymeas + local_config['snr_model']['b_snr']))
+    snr = config['snr_model']['a_snr'] * ymeas / \
+        (np.sqrt(config['snr_model']['a_snr']*ymeas + config['snr_model']['b_snr']))
 
     l1b_output['radiance_noise'] = ymeas/snr  # units [1]
 
     # random noise
     # Get nwav random numbers that are normally distributed with standard deviation 1
-    np.random.seed(local_config['snr_model']['seed'])
+    np.random.seed(config['snr_model']['seed'])
 
     ynoise = np.empty([nalt, nact, nwav])
     for ialt in range(nalt):
@@ -218,14 +218,14 @@ def simplified_instrument_model_and_l1b_processor(locations, local_config):
             noise_dis = np.random.normal(0., 1., nwav)
             # noise contribution
             ynoise[ialt, iact, :] = 1./snr[ialt, iact, :]*noise_dis*ymeas[ialt, iact, :]
-    if(local_config['sim_with_noise']):
+    if(config['sim_with_noise']):
         l1b_output['radiance'] = ymeas+ynoise
     else:
         l1b_output['radiance'] = ymeas
 
     # output to netcdf file
 
-    sim_output(locations['l1b_output'], gm_data, l1b_output)
+    sim_output(config['l1b_output'], gm_data, l1b_output)
 
     print('=>siml1b calculation finished successfully')
     return

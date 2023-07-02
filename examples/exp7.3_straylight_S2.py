@@ -122,15 +122,15 @@ locations.l1bl2['hapi_path'] =  paths.project + paths.data_harpi
 profile= 'S2_microHH'   #needed to initialize gm and sgm consistently
 
 settings= {}
-settings['gm']    = True
-settings['sgm']   = True
+settings['gm']    = False
+settings['sgm']   = False
 settings['im']    = False
 settings['l1al1b']= False
-settings['l1bl2'] = False
-# ====================main part ================================================
+settings['l1bl2'] = True
+# ====================main part ===============================================
 if __name__ == "__main__":
 
-    # ======= geometry module ======================================
+    # ======= geometry module =================================================
 
     if(settings['gm']):
 
@@ -140,7 +140,7 @@ if __name__ == "__main__":
         
         geometry_module(gm_config)
 
-    # ======= scene generator module ===============================
+    # ======= scene generator module ==========================================
 
     if(settings['sgm']):
 
@@ -150,125 +150,50 @@ if __name__ == "__main__":
 
         scene_generation_module(sgm_config)
 
-        sys.exit()
-
-    # ======= The instrument model =================================
+    # ======= The instrument model ============================================
 
     if(settings['im']):
 
         # with constant stray light kernel
         im_config= yaml.safe_load(open(paths.project+paths.IM_module+"im_config.yaml"))
-        im_config['noise']['switch']= 1
+        im_config['noise']['switch']= 0
         im_config['settings']['bin_id']= 1
         im_config['settings']['sw_stray']= 1
+        locations.im['ckd_input'] = paths.project + paths.data_interface + \
+            paths.interface_ckd + 'OWL640S_low-gain_radiation_ckd_dose0.0_21kernel.nc'
         im_configuration(locations.im, im_config)
         cmd_str= paths.project+paths.IM_module + 'tango_ckd_model/build/ckdmodel im_config.cfg'
         subprocess.run(cmd_str, shell=True, cwd=paths.project+paths.IM_module)
 
-    # ======= The L0L1 pocessor ====================================
+    # ======= The L0L1 pocessor ===============================================
+
     if(settings['l1al1b']):
 
         l1al1b_config= yaml.safe_load(open(paths.project+paths.L1AL1B_module + "l1al1b_config.yaml"))
-        l1al1b_config['settings']['van_cittert_steps']= 4
+        l1al1b_config['settings']['van_cittert_steps']= 0
+        locations.l1al1b['ckd_input'] = paths.project + paths.data_interface + \
+            paths.interface_ckd + 'OWL640S_low-gain_radiation_ckd_dose0.0_21kernel.nc'
+        locations.l1al1b['l1b_output'] = paths.project + paths.data_interface + \
+            paths.interface_l1b + 'Tango_Carbon_l1b_wout_stray_corr_'+ run_id + '.nc'
         l1al1b_configuration(locations.l1al1b, l1al1b_config)
-        cmd_str= paths.project+paths.L1AL1B_module + 'tango_l1b/build/tango_l1b ' + paths.project+paths.L1AL1B_module + 'l1al1b_config.cfg'
+        cmd_str= paths.project+paths.L1AL1B_module + 'tango_l1b/build/tango_l1b ' + \
+            paths.project+paths.L1AL1B_module + 'l1al1b_config.cfg'
         subprocess.run(cmd_str, shell=True,
                        cwd=paths.project+paths.L1AL1B_module)
 
-    # ======= L1 to L2 processor ===================================
-    if(settings['l1bl2']):
-        # choose baseline L1BL2 config
+    # ======= L1 to L2 processor ==============================================
 
+    if(settings['l1bl2']):
+        
+        # choose baseline L1BL2 config
         l1bl2_config= yaml.safe_load(open(paths.project+paths.L1L2_module + "l1bl2_config_baseline.yaml"))
         l1bl2_config['pixel_mask']= False
         l1bl2_config['isrf_settings']['type']= 'Gaussian'  # type of ISRF, currently only Gaussian or generalized_normal
         l1bl2_config['isrf_settings']['fwhm']=  0.45  # fwhm  [nm]
+        locations.l1bl2['l1b_input'] = paths.project + paths.data_interface + \
+            paths.interface_l1b + 'Tango_Carbon_l1b_wout_stray_corr_' + run_id + '.nc'
+        locations.l1bl2['l2_output'] = paths.project + paths.data_interface + \
+            paths.interface_l2 + 'Tango_Carbon_l2_wout_stray_corr_' +  run_id + '.nc'
         l1bl2_config = {**locations.l1bl2, **l1bl2_config}
         l1bl2_config['profile'] = profile
         level1b_to_level2_processor(l1bl2_config)
-
-if __name__ == "__main__":
-    # end to end global config file
-    
-    import paths
-    import constants
-
-    global_config = yaml.safe_load(open("./exp7.3_straylight_S2.yaml"))
-
-    # ======= geometry module ======================================
-    # choose baseline GM config
-    if(global_config['setup']['flag_gm']):
-
-        shutil.copyfile(paths.project+ paths.GM_module+'gm_config_baseline.yaml', \
-                        paths.project+ paths.GM_module+'gm_config.yaml',)
-
-        gm_config = yaml.safe_load(open(paths.project+paths.GM_module+'gm_config.yaml'))
-        geometry_module(paths, global_config, gm_config)
-
-    # ======= scene generator module ===============================
-    # choose baseline SGM config
-    if(global_config['setup']['flag_sgm']):
-        
-        shutil.copyfile(paths.project+paths.SGM_module+'sgm_config_baseline.yaml', \
-                        paths.project+paths.SGM_module+'sgm_config.yaml',)
-        sgm_config = yaml.safe_load(open(paths.project+paths.SGM_module+ "sgm_config.yaml"))
-        scene_generation_module(paths, global_config, sgm_config)
-
-    # ======= The instrument model =================================        
-        
-    if(global_config['setup']['flag_im']):
-        
-        #with constant stray light kernel
-        im_config = yaml.safe_load(open(paths.project+paths.IM_module+"im_config.yaml"))
-        im_config['noise']['switch'] = 1
-        im_config['settings']['bin_id']              = 1
-        im_config['settings']['sw_stray']            = 1
-        im_config['filename']['ckd'] =    'OWL640S_low-gain_radiation_ckd_dose0.0_21kernel'
-        im_configuration(paths,global_config, im_config)
-        cmd_str = paths.project+paths.IM_module + 'tango_ckd_model/build/ckdmodel im_config.cfg'
-        subprocess.run(cmd_str, shell=True, cwd=paths.project+paths.IM_module)
-
-    # ======= The L0L1 pocessor ====================================
-    if(global_config['setup']['flag_l0l1b']):
-        
-        l0l1b_config = yaml.safe_load(open(paths.project+paths.L0L1B_module + "l0l1b_config.yaml"))
-        l0l1b_config['settings']['van_cittert_steps']   = 4
-        l0l1b_config['filename']['level1b'] = l0l1b_config['filename']['level1b'] + 'with_stray_corr_'
-        l0l1b_config['filename']['ckd'] =    'OWL640S_low-gain_radiation_ckd_dose0.0_21kernel'
-        l0l1b_configuration(paths, global_config, l0l1b_config)     
-        cmd_str = paths.project+paths.L0L1B_module + 'tango_l1b/build/tango_l1b '+ paths.project+paths.L0L1B_module +'l0l1b_config.cfg'
-        subprocess.run(cmd_str, shell=True, cwd=paths.project+paths.L0L1B_module)
-
-        # l0l1b_config = yaml.safe_load(open(paths.project+paths.L0L1B_module + "l0l1b_config.yaml"))
-        # l0l1b_config['settings']['van_cittert_steps']   = 0
-        # l0l1b_config['filename']['level1b'] = l0l1b_config['filename']['level1b'] + 'wout_stray_corr_'
-        # l0l1b_config['filename']['ckd'] =    'OWL640S_low-gain_radiation_ckd_dose0.0_21kernel'
-        # l0l1b_configuration(paths, global_config, l0l1b_config)     
-        # cmd_str = paths.project+paths.L0L1B_module + 'tango_l1b/build/tango_l1b '+ paths.project+paths.L0L1B_module +'l0l1b_config.cfg'
-        # subprocess.run(cmd_str, shell=True, cwd=paths.project+paths.L0L1B_module)
-        
-    # ======= L1 to L2 processor ===================================
-    if(global_config['setup']['flag_l1bl2']):
-        # choose baseline L1BL2 config
-        
-        shutil.copyfile(paths.project+paths.L1L2_module + 'l1bl2_config_baseline.yaml',
-                        paths.project+paths.L1L2_module + 'l1bl2_config.yaml',)
-
-        # l1bl2_config = yaml.safe_load(open(paths.project+paths.L1L2_module + "l1bl2_config.yaml"))
-        # l1bl2_config['filename']['level1b'] = l1bl2_config['filename']['level1b'] + 'with_stray_corr_' 
-        # l1bl2_config['filename']['level2']  = l1bl2_config['filename']['level2']  + 'with_stray_corr_' 
-        # l1bl2_config['pixel_mask'] = False
-        # l1bl2_config['isrf_settings']['type'] = 'Gaussian'                         #type of ISRF, currently only Gaussian or generalized_normal
-        # l1bl2_config['isrf_settings']['fwhm'] =  0.45                              #fwhm  [nm]
-
-        # level1b_to_level2_processor(paths, global_config, l1bl2_config)
-
-        l1bl2_config = yaml.safe_load(open(paths.project+paths.L1L2_module + "l1bl2_config.yaml"))
-        l1bl2_config['filename']['level1b'] = l1bl2_config['filename']['level1b'] + '_with_stray_corr' 
-        l1bl2_config['filename']['level2']  = l1bl2_config['filename']['level2']  + '_with_stray_corr' 
-        l1bl2_config['pixel_mask'] = False
-        l1bl2_config['isrf_settings']['type'] = 'Gaussian'                         #type of ISRF, currently only Gaussian or generalized_normal
-        l1bl2_config['isrf_settings']['fwhm'] =  0.45                              #fwhm  [nm]
-
-        level1b_to_level2_processor(paths, global_config, l1bl2_config)
-

@@ -1,0 +1,24 @@
+[I] main: tango_cal  (28 Jun 2023)
+[D] main: Commit: 92924d1793613c14e2f60f21e037eadacb814c5a with changes
+[D] main: Settings file: 'tutorial/l1al1b.cfg' (Last modified Thu Jul  6 14:18:41 2023).
+[D] main: [main]
+[D] main: process = l1b
+[D] main: ckd_file_in = data/ckd.nc
+[D] main: binningtable_filename = data/binning_table.nc
+[D] main: [l1b]
+[D] main: stray_van_cittert_steps = 0
+[D] main: geolocation = 0
+[D] main: l1a_files = data/l1a.nc
+[D] main: outputfile = data/l1b.nc
+[D] main: geometry_file = data/geometry.nc
+[D] main: dark_apply = 1
+[D] main: nonlin_apply = 1
+[D] main: prnu_apply = 1
+[D] main: rad_apply = 1
+[D] main: End of settings file.
+[I] l1b: Starting process.
+[I] l1b: Estimated MPI buffer size  per process: 0.000 GB
+[I] l1b: Estimated MPI buffer size on process 0: 0.000 GB (0.0% of the orbit)
+[I] l1b: Number of batches: 100
+[I] l1b: Total number of measurements: 100
+[I] main: Program successfully finished.

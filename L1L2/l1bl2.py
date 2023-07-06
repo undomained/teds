@@ -11,6 +11,7 @@ import pickle as pkl
 from tqdm import tqdm
 from copy import deepcopy
 import netCDF4 as nc
+import yaml
 
 from end_to_end.lib import libNumTools
 from end_to_end.lib import libRT
@@ -502,3 +503,8 @@ def level1b_to_level2_processor(config):
     print('=> l1bl2 finished successfully' )
 
     return
+
+
+if __name__ == '__main__':
+    config = yaml.safe_load(open(sys.argv[1]))
+    level1b_to_level2_processor(config)

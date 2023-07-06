@@ -1,0 +1,28 @@
+# Configuration file for running the geometry module
+
+profile: 'S2_microHH'
+
+field_of_regard:
+    nact: 100                   #number of ACT angles (line of sights)
+    nalt: 100                   #number of ALT scn lines
+    alpha_act_min: -1.72        #minimum ACT angle [degree]
+    alpha_act_max: +1.72        #maximum ACT angle [degree]
+
+geometry:                       #target reference point
+    lat_initial: 51.83472       #latitude [degree]  #Jaenschwalde
+    lon_initial: 14.46277       #longitude [degree]
+
+time:
+    time_incremental: 0.0416667 #time increment between ALT scan lines [s]
+    year: 2022                  #observation time at reference point, year
+    month: 7                    #month
+    day: 4                      #day
+    hour: 12                    #hour
+    minute: 00                  #miute
+    timezone: +1                #hours difference from Greenwich
+
+satellite:
+    alpha_roll: 0.              #roll angle [degree]
+    sat_height: 500000          #orbit height [m]
+
+output: 'data/geometry.nc'

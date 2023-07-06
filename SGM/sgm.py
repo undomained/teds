@@ -13,8 +13,10 @@ import os
 import pickle
 import matplotlib.pyplot as plt
 import netCDF4 as nc
+import yaml
 from tqdm import tqdm
 from copy import deepcopy
+
 
 def get_gm_data(filename):
 
@@ -352,3 +354,8 @@ def scene_generation_module(config):
 
     print('=>sgm calcultion finished successfully')
     return
+
+
+if __name__ == '__main__':
+    config = yaml.safe_load(open(sys.argv[1]))
+    scene_generation_module(config)

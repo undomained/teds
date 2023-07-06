@@ -7,6 +7,8 @@
 import numpy as np
 import sys
 import netCDF4 as nc
+import yaml
+
 
 def gm_output(filename, vza, vaa, sza, saa, lat_grid, lon_grid,):
 
@@ -252,3 +254,8 @@ def geometry_module(config):
     print(
         "=>gm calcultion finished successfully. ")
     return
+
+
+if __name__ == '__main__':
+    config = yaml.safe_load(open(sys.argv[1]))
+    geometry_module(config)

@@ -21,7 +21,7 @@ sun_reference: 'data/solar_spectrum.nc'
 
 hapi_path: 'data/hapi/'
 
-xsec_dump: 'data/xsec_dump.pkl'
+xsec_dump: 'data/xsec_dump_L2.pkl'
 
 l2_output: 'data/l2.nc'
 

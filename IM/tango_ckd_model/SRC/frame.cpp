@@ -19,7 +19,6 @@
 
 #include <numeric>
 #include <cmath>
-#include <toolbox/io.h>
 
 // Constructor.
 Frame::Frame( // {{{

@@ -219,20 +219,20 @@ def scene_generation_module(config):
     albedo = np.zeros([nalt, nact])
 
     if(config['profile'] == 'individual_spectra'):
-        albedo[0, :] = config['albedo'][:]
+        albedo[0, :] = config['scene_spec']['albedo'][:]
 
     if(config['profile'] == 'single_swath'):
         
-        for iscen in range(config['numb_atm_scenes']+1):
-            outofrange = (config['scene_trans_index'][iscen] > 100) & \
-                (config['scene_trans_index'][iscen] < 0) 
+        for iscen in range(config['scene_spec']['numb_atm']+1):
+            outofrange = (config['scene_spec']['scene_trans_index'][iscen] > 100) & \
+                (config['scene_spec']['scene_trans_index'][iscen] < 0) 
             if(outofrange):
                 sys.exit('config parameter scene_trans_index out of range')
 
-        for iscen in range(config['numb_atm_scenes']):
-             ind_start = config['scene_trans_index'][iscen]
-             ind_end   = config['scene_trans_index'][iscen+1]            
-             albedo[0, ind_start:ind_end] = config['albedo'][iscen]
+        for iscen in range(config['scene_spec']['numb_atm']):
+             ind_start = config['scene_spec']['scene_trans_index'][iscen]
+             ind_end   = config['scene_spec']['scene_trans_index'][iscen+1]            
+             albedo[0, ind_start:ind_end] = config['scene_spec']['albedo'][iscen]
         
     if((config['profile'] == 'S2_microHH')):
 
@@ -354,7 +354,6 @@ def scene_generation_module(config):
 
     print('=>sgm calcultion finished successfully')
     return
-
 
 if __name__ == '__main__':
     config = yaml.safe_load(open(sys.argv[1]))

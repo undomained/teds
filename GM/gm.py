@@ -92,12 +92,12 @@ def geometry_module(config):
         # Generate the gm output to calculate E2E performance for individual spectra
         # first check consistencies of 'indivual_spectra' nput.
 
-        nn = len(config['sza'])
+        nn = len(config['scene_spec']['sza'])
 
         ns = (
             nn
-            + len(config['saa']) + len(config['vza']) \
-            + len(config['vaa'])+ len(config['albedo'])) / 5
+            + len(config['scene_spec']['saa']) + len(config['scene_spec']['vza']) \
+            + len(config['scene_spec']['vaa'])+ len(config['scene_spec']['albedo'])) / 5
 
         if nn != ns:
             sys.exit("input error in gm, code 1")
@@ -120,23 +120,23 @@ def geometry_module(config):
         nact = len(lat_grid[0])
         nalt = len(lat_grid)
 
-        sza[0, :] = config['sza'][:]
-        saa[0, :] = config['saa'][:]
-        vza[0, :] = config['vza'][:]
-        vaa[0, :] = config['vaa'][:]
+        sza[0, :] = config['scene_spec']['sza'][:]
+        saa[0, :] = config['scene_spec']['saa'][:]
+        vza[0, :] = config['scene_spec']['vza'][:]
+        vaa[0, :] = config['scene_spec']['vaa'][:]
         ninit = ninit + 1
 
-    if config['profile'] == "single_swath":
+    if (config['profile'] == "single_swath"):
 
-        ncheck = len(config['sza']) + len(config['saa']) + \
-                 len(config['vza']) + len(config['vaa'])
+        ncheck = len(config['scene_spec']['sza']) + len(config['scene_spec']['saa']) + \
+                 len(config['scene_spec']['vza']) + len(config['scene_spec']['vaa'])
        
-        if (ncheck != 4*config['numb_atm_scenes']):
+        if (ncheck != 4*config['scene_spec']['numb_atm']):
             sys.exit("input error in gm, code 2")
 
-        for iscen in range(config['numb_atm_scenes']+1):
-            outofrange = (config['scene_trans_index'][iscen] > 99) & \
-                (config['scene_trans_index'][iscen] < 0) 
+        for iscen in range(config['scene_spec']['numb_atm']+1):
+            outofrange = (config['scene_spec']['scene_trans_index'][iscen] > 99) & \
+                (config['scene_spec']['scene_trans_index'][iscen] < 0) 
             if(outofrange):
                 sys.exit('config parameter scene_trans_index out of range')
 
@@ -154,13 +154,13 @@ def geometry_module(config):
         lat_grid[0][:] = np.nan
         lon_grid[0][:] = np.nan
 
-        for iscen in range(config['numb_atm_scenes']):
-            ind_start = config['scene_trans_index'][iscen]
-            ind_end   = config['scene_trans_index'][iscen+1]
-            sza[0, ind_start:ind_end] = config['sza'][iscen]
-            saa[0, ind_start:ind_end] = config['saa'][iscen]
-            vza[0, ind_start:ind_end] = config['vza'][iscen]
-            vaa[0, ind_start:ind_end] = config['vaa'][iscen]
+        for iscen in range(config['scene_spec']['numb_atm']):
+            ind_start = config['scene_spec']['scene_trans_index'][iscen]
+            ind_end   = config['scene_spec']['scene_trans_index'][iscen+1]
+            sza[0, ind_start:ind_end] = config['scene_spec']['sza'][iscen]
+            saa[0, ind_start:ind_end] = config['scene_spec']['saa'][iscen]
+            vza[0, ind_start:ind_end] = config['scene_spec']['vza'][iscen]
+            vaa[0, ind_start:ind_end] = config['scene_spec']['vaa'][iscen]
 
         ninit = ninit + 1
     
@@ -254,8 +254,3 @@ def geometry_module(config):
     print(
         "=>gm calcultion finished successfully. ")
     return
-
-
-if __name__ == '__main__':
-    config = yaml.safe_load(open(sys.argv[1]))
-    geometry_module(config)

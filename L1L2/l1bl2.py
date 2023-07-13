@@ -40,20 +40,31 @@ def get_l1b(filename):
 
     return(l1b_data)
 
-def level2_output(filename, l2product, retrieval_init, l1bproduct):
+def level2_output(filename, l2product, retrieval_init, l1bproduct, settings):
 
     #output of level 2 data
     
-    nalt = len(l2product)
+    nalt_l2 = len(l2product)
+    nalt = len(l1bproduct)
     nact = len(l2product[0])
     nlay = len(l2product[0][0]['XCO2 col avg kernel'])
 
+    if(settings['sw_ALT_select']):
+        nalt_start = settings['first_ALT_index']
+        nalt_end = settings['last_ALT_index'] 
+    else:
+        nalt_start = 0 
+        nalt_end = nalt
+    nalt_l2 = nalt_end-nalt_start
+
+    print(nalt_start, nalt_end)
+    
     output_l2 = nc.Dataset(filename, mode='w')
 
     output_l2.title = 'Tango Carbon E2ES L2 product'
     output_l2.createDimension('number_layers', nlay)     # spectral axis
     output_l2.createDimension('bins_across_track', nact)     # across track axis
-    output_l2.createDimension('bins_along_track', nalt)     # along track axis
+    output_l2.createDimension('bins_along_track', nalt_l2)     # along track axis
                       
     l2_conv = output_l2.createVariable('convergence', np.int32, ('bins_along_track', 'bins_across_track',))
     l2_conv.units = '1'
@@ -61,7 +72,7 @@ def level2_output(filename, l2product, retrieval_init, l1bproduct):
     l2_conv.valid_min = 0
     l2_conv.valid_max = 1
     l2_conv.FillValue = -32767
-    for ialt in range(nalt):
+    for ialt in range(nalt_l2):
         for iact in range(nact):
             l2_conv[ialt, iact] = int(l2product[ialt, iact]['convergence'])
 
@@ -79,7 +90,7 @@ def level2_output(filename, l2product, retrieval_init, l1bproduct):
     l2_lat.valid_min = -90.
     l2_lat.valid_max = +90.
     l2_lat.FillValue = -32767
-    l2_lat[:, :] = l1bproduct['latitude'][:nalt, :nact]
+    l2_lat[:, :] = l1bproduct['latitude'][nalt_start:nalt_end, :nact]
 
     l2_lon = output_l2.createVariable('longitude', np.float64, ('bins_along_track', 'bins_across_track',))
     l2_lon.units = 'degree'
@@ -87,7 +98,7 @@ def level2_output(filename, l2product, retrieval_init, l1bproduct):
     l2_lon.valid_min = -90.
     l2_lon.valid_max = +90.
     l2_lon.FillValue = -32767
-    l2_lon[:, :] = l1bproduct['longitude'][:nalt, :nact]
+    l2_lon[:, :] = l1bproduct['longitude'][nalt_start:nalt_end, :nact]
 
     l2_numb_iter = output_l2.createVariable('max iter', np.int32, ('bins_along_track', 'bins_across_track',))
     l2_numb_iter.units = '1'
@@ -96,7 +107,7 @@ def level2_output(filename, l2product, retrieval_init, l1bproduct):
     l2_numb_iter.valid_max = retrieval_init['maximum iteration']
     l2_numb_iter.FillValue = -32767
 
-    for ialt in range(nalt):
+    for ialt in range(nalt_l2):
         for iact in range(nact):
             l2_numb_iter[ialt, iact] = l2product[ialt, iact]['number_iter']
 
@@ -106,7 +117,7 @@ def level2_output(filename, l2product, retrieval_init, l1bproduct):
     l2_chi2.valid_min = 0.
     l2_chi2.valid_max = 100.
     l2_chi2.FillValue = -32767
-    for ialt in range(nalt):
+    for ialt in range(nalt_l2):
         for iact in range(nact):
             l2_chi2[ialt, iact] = l2product[ialt, iact]['chi2']
 
@@ -116,7 +127,7 @@ def level2_output(filename, l2product, retrieval_init, l1bproduct):
     l2_alb.valid_min = 0.
     l2_alb.valid_max = 1.
     l2_alb.FillValue = -32767
-    for ialt in range(nalt):
+    for ialt in range(nalt_l2):
         for iact in range(nact):
             l2_alb[ialt, iact] = l2product[ialt, iact]['alb0']
 
@@ -148,7 +159,7 @@ def level2_output(filename, l2product, retrieval_init, l1bproduct):
     l2_XCO2_avgk.valid_max = 10.
     l2_XCO2_avgk.FillValue = -32767
 
-    for ialt in range(nalt):
+    for ialt in range(nalt_l2):
         for iact in range(nact):
             tmp = (l2product[ialt, iact]['XCO2']*scale['CO2'])
             l2_XCO2[ialt, iact] = tmp
@@ -178,7 +189,7 @@ def level2_output(filename, l2product, retrieval_init, l1bproduct):
     l2_XCH4_avgk.valid_max = 10.
     l2_XCH4_avgk.FillValue = -32767
 
-    for ialt in range(nalt):
+    for ialt in range(nalt_l2):
         for iact in range(nact):
             l2_XCH4[ialt, iact] = (l2product[ialt, iact]['XCH4']*scale['CH4'])
             l2_XCH4_prec[ialt, iact] = l2product[ialt, iact]['XCH4 precision']*scale['CH4']
@@ -207,7 +218,7 @@ def level2_output(filename, l2product, retrieval_init, l1bproduct):
     l2_XH2O_avgk.valid_max = 10.
     l2_XH2O_avgk.FillValue = -32767
 
-    for ialt in range(nalt):
+    for ialt in range(nalt_l2):
         for iact in range(nact):
             l2_XH2O[ialt, iact] = l2product[ialt, iact]['XH2O']*scale['H2O']
             l2_XH2O_prec[ialt, iact] = l2product[ialt, iact]['XH2O precision']*scale['H2O']
@@ -230,7 +241,7 @@ def level2_output(filename, l2product, retrieval_init, l1bproduct):
     l2_XCO2_proxy_prec.valid_max = 0.1*maxval['CO2']
     l2_XCO2_proxy_prec.FillValue = -32767
 
-    for ialt in range(nalt):
+    for ialt in range(nalt_l2):
         for iact in range(nact):
             l2_XCO2_proxy[ialt, iact] = l2product[ialt, iact]['XCO2 proxy']*scale['CO2']
             l2_XCO2_proxy_prec[ialt, iact] = l2product[ialt, iact]['XCO2 proxy precision']*scale['CO2']
@@ -250,7 +261,7 @@ def level2_output(filename, l2product, retrieval_init, l1bproduct):
     l2_XCH4_proxy_prec.valid_max = 0.1*maxval['CH4']
     l2_XCH4_proxy_prec.FillValue = -32767
 
-    for ialt in range(nalt):
+    for ialt in range(nalt_l2):
         for iact in range(nact):
             l2_XCH4_proxy[ialt, iact] = l2product[ialt, iact]['XCH4 proxy']*scale['CH4']
             l2_XCH4_proxy_prec[ialt, iact] = l2product[ialt, iact]['XCH4 proxy precision']*scale['CH4']
@@ -341,7 +352,7 @@ def level1b_to_level2_processor(config):
     l1b = get_l1b(config['l1b_input'])
     
     # get pixel mask
-    if(config['pixel_mask']):
+    if(config['retrieval_init']['sw_pixel_mask']):
         print('take pixel mask')
         mask  = np.load(config['pixel_mask_input'])
     else:       
@@ -435,12 +446,25 @@ def level1b_to_level2_processor(config):
     xch4_model = 1.8E-6
     xco2_model = 405.E-6
 
-    l2product = np.ndarray((nalt, nact), np.object_)
-    measurement = np.ndarray((nalt, nact), np.object_)
 
     XCO2 = np.zeros(nact)
 
-    for ialt in tqdm(range(nalt)):
+    if(config['retrieval_init']['sw_ALT_select']):
+        nalt_start = config['retrieval_init']['first_ALT_index']
+        nalt_end = config['retrieval_init']['last_ALT_index'] 
+    else:
+        nalt_start = 0 
+        nalt_end = nalt
+    nalt_l2 = nalt_end-nalt_start
+    
+    print(nalt_start, nalt_end)
+
+    l2product = np.ndarray((nalt_l2, nact), np.object_)
+    measurement = np.ndarray((nalt_l2, nact), np.object_)
+
+    # We introduce two types of ialt indices, ialt points to l1b data structure and ilat_l2 to l2 data structure. 
+    # Later is different to l1b structure because of option for image selection (sw_ALT_select).
+    for ialt_l2, ialt in enumerate(tqdm(range(nalt_start,nalt_end))):
         for iact in range(nact):
             wavelength = l1b['wavelength'][iact,mask[iact,:]].data
 #            wavelength = l1b['wavelength'][iact, :]
@@ -459,45 +483,45 @@ def level1b_to_level2_processor(config):
             sun = isrf.isrf_convolution(sun_lbl)
 
             # Observation geometry
-            measurement[ialt, iact] = {}
-            measurement[ialt, iact]['wavelength'] = wave_meas[:]
-            measurement[ialt, iact]['mu0'] = np.cos(np.deg2rad(l1b['sza'][ialt, iact]))
-            measurement[ialt, iact]['muv'] = np.cos(np.deg2rad(l1b['vza'][ialt, iact]))
-            measurement[ialt, iact]['ymeas'] = l1b['radiance'][ialt, iact, mask[iact,:]][istart:iend+1].data
-            measurement[ialt, iact]['Smeas'] = np.eye(nwave)*(l1b['noise'][ialt, iact, mask[iact,:]][istart:iend+1].data)**2
-            measurement[ialt, iact]['sun'] = sun
+            measurement[ialt_l2, iact] = {}
+            measurement[ialt_l2, iact]['wavelength'] = wave_meas[:]
+            measurement[ialt_l2, iact]['mu0'] = np.cos(np.deg2rad(l1b['sza'][ialt, iact]))
+            measurement[ialt_l2, iact]['muv'] = np.cos(np.deg2rad(l1b['vza'][ialt, iact]))
+            measurement[ialt_l2, iact]['ymeas'] = l1b['radiance'][ialt, iact, mask[iact,:]][istart:iend+1].data
+            measurement[ialt_l2, iact]['Smeas'] = np.eye(nwave)*(l1b['noise'][ialt, iact, mask[iact,:]][istart:iend+1].data)**2
+            measurement[ialt_l2, iact]['sun'] = sun
 
             #derive first guess albedo from the maximum reflectance   
-            ymeas_max=np.max(measurement[ialt, iact]['ymeas'])
-            idx = np.where(measurement[ialt, iact]['ymeas'] == ymeas_max)[0][0]
-            alb_first_guess = measurement[ialt, iact]['ymeas'][idx]/sun[idx]*np.pi/np.cos(np.deg2rad(l1b['sza'][ialt, iact]))
+            ymeas_max=np.max(measurement[ialt_l2, iact]['ymeas'])
+            idx = np.where(measurement[ialt_l2, iact]['ymeas'] == ymeas_max)[0][0]
+            alb_first_guess = measurement[ialt_l2, iact]['ymeas'][idx]/sun[idx]*np.pi/np.cos(np.deg2rad(l1b['sza'][ialt, iact]))
             retrieval_init['surface'] = {'alb0': alb_first_guess, 'alb1': 0.0}
 
             # Non-scattering least squares fit
-            l2product[ialt, iact] = libINV.Gauss_Newton_iteration(
-                retrieval_init, atm_ret, optics, measurement[ialt,
+            l2product[ialt_l2, iact] = libINV.Gauss_Newton_iteration(
+                retrieval_init, atm_ret, optics, measurement[ialt_l2,
                                                              iact], isrf, config['retrieval_init']['max_iter'],
                 config['retrieval_init']['chi2_lim'])
 
-            if(not l2product[ialt, iact]['convergence']):
-                print('pixel did not converge (ialt,iact) = ', ialt,iact)
+            if(not l2product[ialt_l2, iact]['convergence']):
+                print('pixel did not converge (ialt,iact) = ', ialt_l2,iact)
                 
             # Define proxy product
-            l2product[ialt, iact]['XCO2 proxy'] = l2product[ialt, iact]['XCO2']/l2product[ialt, iact]['XCH4']*xch4_model
-            l2product[ialt, iact]['XCH4 proxy'] = l2product[ialt, iact]['XCH4']/l2product[ialt, iact]['XCO2']*xco2_model
-            rel_error = np.sqrt((l2product[ialt, iact]['XCO2 precision']/l2product[ialt, iact]['XCO2'])**2 +
-                                (l2product[ialt, iact]['XCH4 precision']/l2product[ialt, iact]['XCH4'])**2)
-            l2product[ialt, iact]['XCO2 proxy precision'] = rel_error * l2product[ialt, iact]['XCO2']
-            l2product[ialt, iact]['XCH4 proxy precision'] = rel_error * l2product[ialt, iact]['XCH4']
+            l2product[ialt_l2, iact]['XCO2 proxy'] = l2product[ialt_l2, iact]['XCO2']/l2product[ialt_l2, iact]['XCH4']*xch4_model
+            l2product[ialt_l2, iact]['XCH4 proxy'] = l2product[ialt_l2, iact]['XCH4']/l2product[ialt_l2, iact]['XCO2']*xco2_model
+            rel_error = np.sqrt((l2product[ialt_l2, iact]['XCO2 precision']/l2product[ialt_l2, iact]['XCO2'])**2 +
+                                (l2product[ialt_l2, iact]['XCH4 precision']/l2product[ialt_l2, iact]['XCH4'])**2)
+            l2product[ialt_l2, iact]['XCO2 proxy precision'] = rel_error * l2product[ialt_l2, iact]['XCO2']
+            l2product[ialt_l2, iact]['XCH4 proxy precision'] = rel_error * l2product[ialt_l2, iact]['XCH4']
 
-            XCO2[iact] = l2product[ialt, iact]['XCO2 proxy']
+            XCO2[iact] = l2product[ialt_l2, iact]['XCO2 proxy']
     # output to netcdf file
 
-    print('=============================')
-    print(np.mean(XCO2)*1.E6, np.std(XCO2)*1.E6)
-    print('=============================')
+        print('=============================')
+        print(np.mean(XCO2)*1.E6, np.std(XCO2)*1.E6)
+        print('=============================')
     
-    level2_output(config['l2_output'], l2product, retrieval_init, l1b)
+    level2_output(config['l2_output'], l2product, retrieval_init, l1b, config['retrieval_init'])
     # have to be fixed because of variable spectral size of measurement vector using masked arrays
 #    level2_diags_output(config['l2_diags'], l2product, measurement)
     print('=> l1bl2 finished successfully' )

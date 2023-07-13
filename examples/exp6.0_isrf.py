@@ -18,6 +18,7 @@ if(str(path) not in sys.path):
 # import E2ES modules 
 from end_to_end.lib import paths
 from end_to_end.GM.gm import geometry_module
+from end_to_end.GM.create_gm_yaml_file import create_gm_config_file
 from end_to_end.SGM.sgm import scene_generation_module
 from end_to_end.L1L2.l1bl2 import level1b_to_level2_processor
 from end_to_end.SIML1B.siml1b import simplified_instrument_model_and_l1b_processor
@@ -33,7 +34,7 @@ class Emptyclass:
     pass
 
 #run id
-run_id = 'exp6'
+run_id = 'exp6.0'
 
 # paths and file names
 locations = Emptyclass()
@@ -86,12 +87,13 @@ locations.l1bl2['l2_diags'] = ''
 locations.l1bl2['hapi_path'] =  paths.project + paths.data_harpi
 
 #scene specification for profile single_pixel and swath
-scene_spec = {}
-scene_spec['sza']    = [70., 60, 50, 40, 30, 20, 10, 0] 
-scene_spec['saa']    = [0.,  0., 0., 0., 0., 0., 0., 0] 
-scene_spec['vza']    = [0.,  0., 0., 0., 0., 0., 0., 0] 
-scene_spec['vaa']    = [0.,  0., 0., 0., 0., 0., 0., 0] 
-scene_spec['albedo'] = [0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15] 
+scene = {}
+scene['scene_spec'] = {}
+scene['scene_spec']['sza']    = [70., 60, 50, 40, 30, 20, 10, 0] 
+scene['scene_spec']['saa']    = [0.,  0., 0., 0., 0., 0., 0., 0] 
+scene['scene_spec']['vza']    = [0.,  0., 0., 0., 0., 0., 0., 0] 
+scene['scene_spec']['vaa']    = [0.,  0., 0., 0., 0., 0., 0., 0] 
+scene['scene_spec']['albedo'] = [0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15] 
 
 # =============================================================================
 #
@@ -110,12 +112,14 @@ scene_spec['albedo'] = [0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15]
 profile= 'individual_spectra'   #needed to initialize gm and sgm consistently
 
 settings= {}
-settings['gm']      = True
-settings['sgm']     = True
-settings['siml1b']  = True
-settings['l1bl2']   = True
-settings['sw_isrf_block'] = True
-settings['sw_isrf_fwhm']  = True
+settings['gm']            = True
+settings['sgm']           = False
+settings['siml1b']        = False
+settings['l1bl2']         = False
+settings['sw_isrf_block'] = False
+settings['sw_isrf_fwhm']  = False
+settings['save_yaml']     = True
+
 # ====================main part ================================================
 if __name__ == "__main__":
 
@@ -124,9 +128,11 @@ if __name__ == "__main__":
     if(settings['gm']):
 
         config= yaml.safe_load(open(paths.project+paths.GM_module+'gm_config_baseline.yaml'))
-        gm_config = {**locations.gm, **config, **scene_spec}
+        gm_config = {**locations.gm, **config, **scene }
         gm_config['profile'] = profile
-        
+        if(settings['save_yaml']):
+            gm_yaml = paths.project+paths.GM_module+'gm_config_'+run_id + '.yaml'
+            create_gm_config_file(gm_yaml, gm_config)
         geometry_module(gm_config)
 
     # ======= scene generator module ===============================
@@ -134,7 +140,7 @@ if __name__ == "__main__":
     if(settings['sgm']):
 
         sgm_config= yaml.safe_load(open(paths.project+paths.SGM_module + "sgm_config_baseline.yaml"))
-        sgm_config = {**locations.sgm, **sgm_config, **scene_spec}
+        sgm_config = {**locations.sgm, **sgm_config, **scene}
         sgm_config['profile'] = profile
 
         scene_generation_module(sgm_config)

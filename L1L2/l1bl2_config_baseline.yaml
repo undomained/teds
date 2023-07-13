@@ -1,9 +1,11 @@
 retrieval_init:                 #initialization parameter for inversion
     max_iter: 35
     chi2_lim: 0.05
-
-pixel_mask: False
-
+    sw_pixel_mask: False
+    sw_ALT_select: True
+    first_ALT_index: 10
+    last_ALT_index: 12
+    
 atmosphere:
     nlay: 30                    #number of atmospheric layers
     dzlay: 1000                 #geometrical thickness of the layers [m]
@@ -11,7 +13,7 @@ atmosphere:
 
 std_atm: 'prof.AFGL.US.std'     #path to AFGL model atmosphere
         
-spec_settings:              #settings for line-by-line spectra
+spec_settings:              #spectra fit window
     wavestart:   1590       #initial wavelength (indicator)
     waveend:     1675       #final wavlength of measurement
     wave_extend: 2.0        #shortwave and longwave extension of the measurement grid [nm]
@@ -30,5 +32,5 @@ isrf_settings:
 surface:
     wave_alb: [1600, 1650]  #wavelengths at which the surface albedo is specified in the output
     
-xsec_forced: True          #flag to froce new cross section calculation
+xsec_forced: False          #flag to froce new cross section calculation
 

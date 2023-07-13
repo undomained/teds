@@ -16,11 +16,13 @@ if(str(path) not in sys.path):
 # import E2ES modules 
 from end_to_end.lib import paths
 from end_to_end.GM.gm import geometry_module
+from end_to_end.GM.create_gm_yaml_file import create_gm_config_file
 from end_to_end.SGM.sgm import scene_generation_module
+from end_to_end.SGM.create_sgm_yaml_file import create_sgm_config_file
 from end_to_end.IM.create_im_configuration_file import im_configuration
 from end_to_end.L1AL1B.create_l1a1b_configuration_file import l1al1b_configuration
 from end_to_end.L1L2.l1bl2 import level1b_to_level2_processor
-
+from end_to_end.L1L2.create_l1bl2_configuration_file import create_l2_config_file
 
 import yaml
 import sys
@@ -107,14 +109,15 @@ locations.l1bl2['l2_diags'] = ''
 locations.l1bl2['hapi_path'] =  paths.project + paths.data_harpi
 
 #scene specification for profile single_pixel and swath
-scene_spec = {}
-scene_spec['numb_atm_scenes']= 2
-scene_spec['scene_trans_index'] = [0, 50, 100]
-scene_spec['sza'] = [70., 70.]
-scene_spec['saa']= [0., 0.]
-scene_spec['vza']= [0., 0.]
-scene_spec['vaa']= [0., 0.]
-scene_spec['albedo']= [0.15, 0.70]
+scene = {}
+scene['scene_spec'] = {}
+scene['scene_spec']['numb_atm']= 2
+scene['scene_spec']['scene_trans_index'] = [0, 50, 100]
+scene['scene_spec']['sza'] = [70., 70.]
+scene['scene_spec']['saa']= [0., 0.]
+scene['scene_spec']['vza']= [0., 0.]
+scene['scene_spec']['vaa']= [0., 0.]
+scene['scene_spec']['albedo']= [0.15, 0.70]
 
 # =============================================================================
 #
@@ -133,11 +136,11 @@ scene_spec['albedo']= [0.15, 0.70]
 profile = 'single_swath'  
 
 settings= {}
-settings['gm']    = True
+settings['gm']    = False
 settings['sgm']   = True
-settings['im']    = True
-settings['l1al1b']= True
-settings['l1bl2'] = True
+settings['im']    = False
+settings['l1al1b']= False
+settings['l1bl2'] = False
 settings['save_yaml'] = True
 
 if __name__ == "__main__":
@@ -148,13 +151,11 @@ if __name__ == "__main__":
     if(settings['gm']):
 
         config= yaml.safe_load(open(paths.project+paths.GM_module+'gm_config_baseline.yaml'))
-        gm_config = {**locations.gm, **config, **scene_spec}
+        gm_config = {**locations.gm, **config, **scene}
         gm_config['profile'] = profile
         if(settings['save_yaml']):
-            filename = paths.project+paths.GM_module+'gm_config_'+run_id
-            with open(f'{filename}.yaml', 'w',) as f :
-                yaml.dump(gm_config,f,sort_keys=False) 
-
+            gm_yaml = paths.project+paths.GM_module+'gm_config_'+run_id + '.yaml'
+            create_gm_config_file(gm_yaml, gm_config)
         geometry_module(gm_config)
 
     # ======= scene generator module ===============================
@@ -162,13 +163,11 @@ if __name__ == "__main__":
     if(settings['sgm']):
                 
         sgm_config= yaml.safe_load(open(paths.project+paths.SGM_module + "sgm_config_baseline.yaml"))
-        sgm_config = {**locations.sgm, **sgm_config, **scene_spec}
+        sgm_config = {**locations.sgm, **sgm_config, **scene}
         sgm_config['profile'] = profile
         if(settings['save_yaml']):
-            filename = paths.project+paths.SGM_module+'sgm_config_'+run_id
-            with open(f'{filename}.yaml', 'w',) as f :
-                yaml.dump(sgm_config,f,sort_keys=False) 
-
+            sgm_yaml = paths.project+paths.SGM_module+'sgm_config_'+run_id + '.yaml'
+            create_sgm_config_file(sgm_yaml, sgm_config)
         scene_generation_module(sgm_config)
 
     # ======= The instrument model =================================        
@@ -289,10 +288,8 @@ if __name__ == "__main__":
             paths.interface_l2 + 'Tango_Carbon_l2_21kernel_corrected_b1_' + run_id + '.nc'
         l1bl2_config = {**locations.l1bl2, **l1bl2_config}
         if(settings['save_yaml']):
-            filename = paths.project+paths.L1L2_module+'l1l2_config_21kernel_corr_'+run_id
-            with open(f'{filename}.yaml', 'w',) as f :
-                yaml.dump(l1bl2_config,f,sort_keys=False) 
-
+            l1bl2_yaml = paths.project+paths.L1L2_module+'l1l2_config_21kernel_corr_'+'.yaml'
+            create_l2_config_file(l1bl2_yaml, l1bl2_config)
         level1b_to_level2_processor(l1bl2_config)
 
         #stray light 21 kernel, not corrected
@@ -307,10 +304,8 @@ if __name__ == "__main__":
             paths.interface_l2 + 'Tango_Carbon_l2_21kernel_not_corrected_b1_' + run_id + '.nc'
         l1bl2_config = {**locations.l1bl2, **l1bl2_config}
         if(settings['save_yaml']):
-            filename = paths.project+paths.L1L2_module+'l1l2_config_21kernel_not_corr_'+run_id
-            with open(f'{filename}.yaml', 'w',) as f :
-                yaml.dump(l1bl2_config,f,sort_keys=False) 
-
+            l1bl2_yaml = paths.project+paths.L1L2_module+'l1l2_config_21kernel_corr_'+'.yaml'
+            create_l2_config_file(l1bl2_yaml, l1bl2_config)
         level1b_to_level2_processor(l1bl2_config)
 
         #stray light 1 kernel, corrected
@@ -325,10 +320,8 @@ if __name__ == "__main__":
             paths.interface_l2 + 'Tango_Carbon_l2_1kernel_corrected_b1_' + run_id + '.nc'
         l1bl2_config = {**locations.l1bl2, **l1bl2_config}
         if(settings['save_yaml']):
-            filename = paths.project+paths.L1L2_module+'l1l2_config_1kernel_corr_'+run_id
-            with open(f'{filename}.yaml', 'w',) as f :
-                yaml.dump(l1bl2_config,f,sort_keys=False) 
-
+            l1bl2_yaml = paths.project+paths.L1L2_module+'l1l2_config_21kernel_corr_'+'.yaml'
+            create_l2_config_file(l1bl2_yaml, l1bl2_config)
         level1b_to_level2_processor(l1bl2_config)
 
         l1bl2_config = yaml.safe_load(open(paths.project+paths.L1L2_module + "l1bl2_config_baseline.yaml"))
@@ -342,10 +335,8 @@ if __name__ == "__main__":
             paths.interface_l2 + 'Tango_Carbon_l2_1kernel_not_corrected_b1_' + run_id + '.nc'
         l1bl2_config = {**locations.l1bl2, **l1bl2_config}
         if(settings['save_yaml']):
-            filename = paths.project+paths.L1L2_module+'l1l2_config_1kernel_not_corr_'+run_id
-            with open(f'{filename}.yaml', 'w',) as f :
-                yaml.dump(l1bl2_config,f,sort_keys=False) 
-
+            l1bl2_yaml = paths.project+paths.L1L2_module+'l1l2_config_21kernel_corr_'+'.yaml'
+            create_l2_config_file(l1bl2_yaml, l1bl2_config)
         level1b_to_level2_processor(l1bl2_config)
 
     print('Experiment 7.2 sucessfully performed.')

@@ -245,6 +245,8 @@ def scene_generation_module(config):
             albedo = libSGM.get_sentinel2_albedo(gm_data, config)
             np.save(config['S2_dump'], albedo)    # .npy extension is added if not given
 
+#    albedo[:,:] = 0.15
+    
     # =============================================================================
     # get a model atmosphere form AFGL files
     # =============================================================================

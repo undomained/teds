@@ -3,6 +3,10 @@
 retrieval_init:                 #initialization parameter for inversion
     max_iter: 35
     chi2_lim: 0.05
+    sw_pixel_mask: ''
+    sw_ALT_select: yes
+    first_ALT_index: 0
+    last_ALT_index: 1
 
 pixel_mask: False
 

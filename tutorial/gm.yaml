@@ -1,12 +1,20 @@
 # Configuration file for running the geometry module
 
-profile: 'S2_microHH'
+profile: S2_microHH
 
 field_of_regard:
     nact: 100                   #number of ACT angles (line of sights)
     nalt: 100                   #number of ALT scn lines
     alpha_act_min: -1.72        #minimum ACT angle [degree]
     alpha_act_max: +1.72        #maximum ACT angle [degree]
+
+scene_spec:
+  numb_atm: 1
+  scene_trans_index: [0, 100]
+  sza: [0.70]
+  saa: [0.0]
+  vza: [0.0]
+  vaa: [0.0]
 
 geometry:                       #target reference point
     lat_initial: 51.83472       #latitude [degree]  #Jaenschwalde

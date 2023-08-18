@@ -254,3 +254,8 @@ def geometry_module(config):
     print(
         "=>gm calcultion finished successfully. ")
     return
+
+
+if __name__ == '__main__':
+    config = yaml.safe_load(open(sys.argv[1]))
+    geometry_module(config)

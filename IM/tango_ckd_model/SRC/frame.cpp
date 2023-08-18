@@ -348,8 +348,7 @@ int Frame::uncalibrate_spectra( // {{{
     for (size_t ifov=0 ; ifov<ckd->dim_fov ; ifov++) {
         if (!ckd->vp_mask[ivp]) {
             for (size_t iel=0 ; iel<ckd->dim_detector_spec ; iel++) {
-                // intens_cur[iel] *= exposure_time / rad_spectra_cur[iel];
-                intens_cur[iel] = 1e17 * exposure_time / rad_spectra_cur[iel];
+                intens_cur[iel] *= exposure_time / rad_spectra_cur[iel];
             }
         }
         rad_spectra_cur += ckd->dim_detector_spec;

@@ -18,18 +18,6 @@ tot_air_moles = (101325.0 / 9.81) / mm_air  # moles
 mm_co2 = .04401    # kg/mole
 
 
-def readmicrohhdump(microhhdumpfilename):
-    # TODO needs to be changed
-    # have to add end-to-end path as pickle load needsx it
-    import sys
-    sys.path.insert(0, '/deos/manugv/git/end_to_end')
-    # read data
-    f = open('end_to_end/data/microHH_dump.pkl', 'rb')
-    data = pickle.load(f)
-    f.close()
-    return data
-
-
 def readsgmatmosphere(sgmatmosphere_file, gas):
     f = Dataset(sgmatmosphere_file, "r")
     if gas == "co2":

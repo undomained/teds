@@ -11,17 +11,23 @@ import numpy as np
 import sys
 import os
 import pickle
-import matplotlib.pyplot as plt
 import netCDF4 as nc
 import yaml
 from tqdm import tqdm
 from copy import deepcopy
 
 
+class Dict2Class:
+    """
+    Convert a dictionaly to a class
+    """
+
+    def __init__(self, arg_dict):
+        self.__dict__.update(arg_dict)
+
+
 def get_gm_data(filename):
-
     input = nc.Dataset(filename, mode='r')
-
     gm_data = {}
     gm_data['sza'] = deepcopy(input['sza'][:, :])
     gm_data['saa'] = deepcopy(input['saa'][:, :])
@@ -29,10 +35,8 @@ def get_gm_data(filename):
     gm_data['vaa'] = deepcopy(input['vaa'][:, :])
     gm_data['lat'] = deepcopy(input['lat'][:, :])
     gm_data['lon'] = deepcopy(input['lon'][:, :])
-
     input.close()
-
-    return(gm_data)
+    return gm_data
 
 
 def sgm_output(filename_rad, filename_atm, rad_output, atm, albedo):
@@ -101,7 +105,7 @@ def sgm_output(filename_rad, filename_atm, rad_output, atm, albedo):
     sgm_zlay.valid_min = 0.
     sgm_zlay.valid_max = 1.E+5
     sgm_zlay.FillValue = -32767
-    
+
     for ialt in range(nalt):
         for iact in range(nact):
             sgm_zlay[ialt, iact, :] = atm[ialt][iact].zlay
@@ -184,12 +188,11 @@ def sgm_output(filename_rad, filename_atm, rad_output, atm, albedo):
             sgm_col_h2o[ialt, iact] = np.sum(atm[ialt, iact].H2O[:])/XAIR*1.e6  # [ppmv]
 
     output_atm.close()
-
     return
+
 
 def scene_generation_module(config):
     """
-
     Parameters
     ----------
     global_config : TYPE
@@ -218,40 +221,39 @@ def scene_generation_module(config):
 
     albedo = np.zeros([nalt, nact])
 
-    if(config['profile'] == 'individual_spectra'):
+    if (config['profile'] == 'individual_spectra'):
         albedo[0, :] = config['scene_spec']['albedo'][:]
 
-    if(config['profile'] == 'single_swath'):
-        
+    if (config['profile'] == 'single_swath'):
         for iscen in range(config['scene_spec']['numb_atm']+1):
             outofrange = (config['scene_spec']['scene_trans_index'][iscen] > 100) & \
                 (config['scene_spec']['scene_trans_index'][iscen] < 0) 
-            if(outofrange):
+            if (outofrange):
                 sys.exit('config parameter scene_trans_index out of range')
 
         for iscen in range(config['scene_spec']['numb_atm']):
-             ind_start = config['scene_spec']['scene_trans_index'][iscen]
-             ind_end   = config['scene_spec']['scene_trans_index'][iscen+1]            
-             albedo[0, ind_start:ind_end] = config['scene_spec']['albedo'][iscen]
-        
-    if((config['profile'] == 'S2_microHH')):
+            ind_start = config['scene_spec']['scene_trans_index'][iscen]
+            ind_end = config['scene_spec']['scene_trans_index'][iscen+1]
+            albedo[0, ind_start:ind_end] = config['scene_spec']['albedo'][iscen]
+
+    if (config['profile'] == 'S2_microHH'):
 
         # get collocated S2 data
 
         file_exists = os.path.isfile(config['S2_dump'])
-        if(file_exists and (not(config['s2_forced']))):
+        if (file_exists and (not config['s2_forced'])):
             albedo = np.load(config['S2_dump'])
         else:
             albedo = libSGM.get_sentinel2_albedo(gm_data, config)
             np.save(config['S2_dump'], albedo)    # .npy extension is added if not given
 
 #    albedo[:,:] = 0.15
-    
+
     # =============================================================================
     # get a model atmosphere form AFGL files
     # =============================================================================
 
-    if((config['profile'] == 'individual_spectra') or(config['profile'] == 'single_swath')):
+    if ((config['profile'] == 'individual_spectra') or (config['profile'] == 'single_swath')):
 
         nlay = config['atmosphere']['nlay']  # number of layers
         dzlay = config['atmosphere']['dzlay']
@@ -265,16 +267,16 @@ def scene_generation_module(config):
             for iact in range(nact):
                 atm[ialt, iact] = deepcopy(atm_std)
 
-    if(config['profile'] == 'S2_microHH'):
+    if (config['profile'] == 'S2_microHH'):
 
         nlay = config['atmosphere']['nlay']  # number of layers
         dzlay = config['atmosphere']['dzlay']
 
         atm_std = libATM.get_AFGL_atm_homogenous_distribtution(config['afgl_input'], nlay, dzlay)
 
-        if(config['only_afgl']):
+        if (config['only_afgl']):
             atm = atm_std
-        else:         
+        else:
             # get collocated mciroHH data
 
             if ((not os.path.exists(config['microHH_dump'])) or config['microHH_forced']):
@@ -282,12 +284,11 @@ def scene_generation_module(config):
                                                  config['microHH'],
                                                  config['kernel_parameter'])
                 # Dump microHH dictionary into temporary pkl file
-                pickle.dump(microHH, open(config['microHH_dump'], 'wb'))
+                pickle.dump(microHH.__dict__, open(config['microHH_dump'], 'wb'))
 
             else:
-                
                 # Read microHH from pickle file
-                microHH = pickle.load(open(config['microHH_dump'], 'rb'))
+                microHH = Dict2Class(pickle.load(open(config['microHH_dump'], 'rb')))
 
             atm = libATM.combine_microHH_standard_atm(microHH, atm_std)
 
@@ -356,6 +357,7 @@ def scene_generation_module(config):
 
     print('=>sgm calcultion finished successfully')
     return
+
 
 if __name__ == '__main__':
     config = yaml.safe_load(open(sys.argv[1]))

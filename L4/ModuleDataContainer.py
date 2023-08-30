@@ -11,14 +11,6 @@ class DataCont:
     pass
 
 
-
-class Dicttoclass:
-    def __init__(self, **kwargs):
-        for key, value in kwargs.items():
-            if isinstance(value, dict):
-                self.__dict__[key] = Struct(**value)
-            else:
-                self.__dict__[key] = value
-
-
-    
+class Dict2Class:
+    def __init__(self, arg_dict):
+        self.__dict__.update(arg_dict)

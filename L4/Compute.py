@@ -37,20 +37,18 @@ def emissions(filename):
         print("   Data read successfully")
         # without averaging kernel
         back = median(data.actual_column)
-        emission, precision = emissionprecision(data.actual_column - back,
+        emission, precision = emissionprecision((data.actual_column - back)/params["emission"],
                                                 data.lvl2data - back,
                                                 data.lvl2precision,
                                                 params["plumethreshold"])
-        emission = emission * params["emission"]
         print(f"LSQ estimated emission is{emission: .2f} kg/s")
         print(f"LSQ estimated level-4 precision is{precision: .2e} kg/s")
         # with averaging kernel correction
         corrected_column = 1e6 * (sum(data.dactual_column * data.avg_kernel, axis=2))/data.actual_column_air
-        emission, precision = emissionprecision(corrected_column - back,
+        emission, precision = emissionprecision((corrected_column - back)/params["emission"],
                                                 data.lvl2data - back,
                                                 data.lvl2precision,
                                                 params["plumethreshold"])
-        emission = emission * params["emission"]
         print(f"LSQ estimated emission after averaging kernel correction is{emission: .2f} kg/s")
         print(f"LSQ estimated level-4 precision after averaging kernel correction is{precision: .2e} kg/s")
 

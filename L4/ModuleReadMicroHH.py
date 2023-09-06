@@ -10,7 +10,7 @@ import numpy as np
 from netCDF4 import Dataset, num2date
 import configparser
 from scipy.interpolate import RegularGridInterpolator
-from ModuleDataContainer import DataCont
+from .ModuleDataContainer import DataCont
 
 
 def _get_default_files(dir_data):

@@ -12,9 +12,9 @@ from scipy.interpolate import LinearNDInterpolator as RGI
 from shapely.geometry import LineString
 from scipy.ndimage import gaussian_filter1d
 
-from ModuleDataContainer import DataCont
-from ModulePlume import get_thresholdbasedplume
-from ModuleRemoveBackground import remove_background
+from .ModuleDataContainer import DataCont
+from .ModulePlume import get_thresholdbasedplume
+from .ModuleRemoveBackground import remove_background
 
 
 def rearrange_data(x, y, _ix, _nx):

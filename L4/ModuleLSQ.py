@@ -12,7 +12,7 @@ Usage: One of these
 """
 
 import numpy as np
-from ModulePlume import cdfthresholdbasedplume
+from .ModulePlume import cdfthresholdbasedplume
 
 
 def lsq_precision(error_variance, ydata):

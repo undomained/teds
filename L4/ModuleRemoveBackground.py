@@ -10,7 +10,7 @@ Created on Fri Jun 12 2023.
 from scipy.optimize import curve_fit
 import numpy as np
 from scipy import signal
-from ModuleDataContainer import DataCont
+from .ModuleDataContainer import DataCont
 
 
 def gauss_linear(x, H0, H1, A, x0, sigma):

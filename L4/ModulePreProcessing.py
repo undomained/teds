@@ -6,11 +6,10 @@ Created on Mon Aug 14 12:54:22 2023
 @author: manugv
 """
 
-from ModuleReadMicroHH import read_simulated_variable, get_interpolate_uv
-import pickle
+from .ModuleReadMicroHH import read_simulated_variable, get_interpolate_uv
 from netCDF4 import Dataset
 from ..lib.libNumTools import TransformCoords
-from ModuleDataContainer import DataCont
+from .ModuleDataContainer import DataCont
 
 
 mm_air = 0.0289647  # kg/mole
@@ -21,9 +20,14 @@ mm_co2 = .04401    # kg/mole
 def readsgmatmosphere(sgmatmosphere_file, gas):
     f = Dataset(sgmatmosphere_file, "r")
     if gas == "co2":
-        co2col = f["col_co2"][:].data
+        gascol = f["col_co2"][:].data
+        dgascol = f["dcol_co2"][:].data
+    elif gas == "ch4":
+        gascol = f["col_ch4"][:].data
+        dgascol = f["dcol_ch4"][:].data
+    air = f["col_air"][:].data
     f.close()
-    return co2col
+    return gascol, dgascol, air
 
 
 def readlevel2retrieval(lvl2_file, gas):
@@ -35,12 +39,15 @@ def readlevel2retrieval(lvl2_file, gas):
     if gas == "co2":
         data.__setattr__("lvl2data", f["XCO2"][:])
         data.__setattr__("lvl2precision", f["precision XCO2"][:])
-    if gas == "no2":
-        data.__setattr__("XNO2", f["XNO2"][:])
-        data.__setattr__("XNO2precision", f["precision NCO2"][:])
-    if gas == "ch4":
-        data.__setattr__("XCH4", f["XCH4"][:])
-        data.__setattr__("XCH4precision", f["precision XCH4"][:])
+        data.__setattr__("avg_kernel", f["col avg kernel XCO2"][:])
+    elif gas == "no2":
+        data.__setattr__("lvl2data", f["XNO2"][:])
+        data.__setattr__("lvl2precision", f["precision XNO2"][:])
+        data.__setattr__("avg_kernel", f["col avg kernel XNO2"][:])
+    elif gas == "ch4":
+        data.__setattr__("lvl2data", f["XCH4"][:])
+        data.__setattr__("lvl2precision", f["precision XCH4"][:])
+        data.__setattr__("avg_kernel", f["col avg kernel XCH4"][:])
     f.close()
     data.__setattr__("grid", grid)
     return data
@@ -67,8 +74,11 @@ def getendtoendsimdata(params):
     # data.grid.__setattr__("y_nodes", ym)
     data.__setattr__("source", simparam["lat_lon_src"])
     if ~bool(simparam["sgm_atmosphere"]):
-        co2 = readsgmatmosphere(simparam["sgm_atmosphere"], simparam["gas"])
-        data.__setattr__("actual_column", co2)
+        gas, dgas, air = readsgmatmosphere(simparam["sgm_atmosphere"], simparam["gas"])
+        data.__setattr__("actual_column", gas)
+        data.__setattr__("actual_column_air", air)
+        data.__setattr__("dactual_column", dgas)
+
     data.__setattr__("ppm_to_kg_gas", mm_co2*tot_air_moles/1e6)
     return data
 

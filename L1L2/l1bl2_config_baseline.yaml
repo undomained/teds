@@ -3,8 +3,9 @@ retrieval_init:                 #initialization parameter for inversion
     chi2_lim: 0.05
     sw_pixel_mask: False
     sw_ALT_select: True
-    first_ALT_index: 10
-    last_ALT_index: 12
+    first_ALT_index: 55
+    last_ALT_index: 56
+    sw_prof_init: 'sgm'         #switch between 'afgl' and 'sgm' initialization 
     
 atmosphere:
     nlay: 30                    #number of atmospheric layers
@@ -27,7 +28,6 @@ isrf_settings:
 #isrf_settings:
 #    type:       'Gaussian'                         #type of ISRF, currently only Gaussian or generalized_normal
 #    fwhm:       0.45                               #fwhm  [nm]
-#    bcoeff:     0.45                                #only for generalized_normal, bcoeff=1/2 means Gaussian
 
 surface:
     wave_alb: [1600, 1650]  #wavelengths at which the surface albedo is specified in the output

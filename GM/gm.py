@@ -19,7 +19,7 @@ def gm_output(filename, vza, vaa, sza, saa, lat_grid, lon_grid,):
 
     output.title = 'Tango Carbon E2ES GM output'
 
-    output.createDimension('bins_across_track', nact)     # across track axis
+    output.createDimension('bins_across_track', nact)    # across track axis
     output.createDimension('bins_along_track', nalt)     # along track axis
 
     gm_sza = output.createVariable('sza', np.float64, ('bins_along_track', 'bins_across_track',))
@@ -89,7 +89,7 @@ def geometry_module(config):
 
     ninit = 0
     if config['profile'] == "individual_spectra":
-        # Generate the gm output to calculate E2E performance for individual spectra
+        # Generate the gm output for individual spectra
         # first check consistencies of 'indivual_spectra' nput.
 
         nn = len(config['scene_spec']['sza'])

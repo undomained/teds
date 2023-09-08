@@ -13,7 +13,7 @@ from end_to_end.lib import libSURF
 
 ###########################################################
 
-def Gauss_Newton_iteration(retrieval_init, atm, optics, measurement, isrf, max_iter, chi2_lim):
+def Gauss_Newton_iteration(retrieval_init, atm, optics, measurement, max_iter, chi2_lim, isrf_convolution):
     """
     Non-linear least square fit using Gauss-Newton iteration
     """
@@ -52,6 +52,11 @@ def Gauss_Newton_iteration(retrieval_init, atm, optics, measurement, isrf, max_i
     surface = libSURF.surface_prop(retrieval_init['wavelength lbl'])
 
     convergence = False
+    runtime_cum = {}
+    runtime_cum['opt'] = 0.
+    runtime_cum['rtm'] = 0.
+    runtime_cum['conv'] = 0.
+    runtime_cum['kern'] = 0.
     for iteration in range(retrieval_init['maximum iteration']):
         alb_lst = []
         for key in retrieval_init['trace gases'].keys():
@@ -74,9 +79,23 @@ def Gauss_Newton_iteration(retrieval_init, atm, optics, measurement, isrf, max_i
         surface.get_albedo_poly(alb_lst)
 
         # Calculate nonscattered forward model
-        fwd = libRT.nonscat_fwd_model(isrf, retrieval_init['solar irradiance'],
+        fwd, runtime = libRT.nonscat_fwd_model(isrf_convolution, retrieval_init['solar irradiance'],
                                       atm,  optics, surface, measurement['mu0'],
                                       measurement['muv'], dev)
+
+        # # check kernels using finit difference
+
+        # fwd, runtime = libRT.nonscat_fwd_model(isrf_convolution, retrieval_init['solar irradiance'],
+        #                               atm,  optics, surface, measurement['mu0'],
+        #                               measurement['muv'], dev)
+
+        # klay = 25
+        # plt.plot(measurement['wavelength'],np.sum(fwd['layer_molec_07'], axis = 1))
+        # plt.plot(measurement['wavelength'],1.01*fwd['molec_07'][:])
+        # sys.exit()        
+        for key in runtime.keys():
+            runtime_cum[key] = runtime_cum[key] + runtime[key]
+            
 
         ytilde = measurement['ymeas'] - fwd['rad']  # Difference between forward model and measured spectrum
 
@@ -171,17 +190,27 @@ def Gauss_Newton_iteration(retrieval_init, atm, optics, measurement, isrf, max_i
         if(value == 'molec_07'):  # CO2
             col = np.sum(retrieval_init['trace gases']['CO2']['ref_profile'])
             for klay in range(nlay):
-                delta_prof = retrieval_init['trace gases']['CO2']['ref_profile'][klay]/col
+                delta_prof = col/retrieval_init['trace gases']['CO2']['ref_profile'][klay]
                 output['XCO2 col avg kernel'][klay] = np.sum(Gain[ispec, :]*fwd['layer_'+value][:, klay])*delta_prof
         if(value == 'molec_32'):  # CH4
             col = np.sum(retrieval_init['trace gases']['CH4']['ref_profile'])
             for klay in range(nlay):
-                delta_prof = retrieval_init['trace gases']['CH4']['ref_profile'][klay]/col
+                delta_prof = col/retrieval_init['trace gases']['CH4']['ref_profile'][klay]
                 output['XCH4 col avg kernel'][klay] = np.sum(Gain[ispec, :]*fwd['layer_'+value][:, klay])*delta_prof
         if(value == 'molec_01'):  # H2O
             col = np.sum(retrieval_init['trace gases']['H2O']['ref_profile'])
             for klay in range(nlay):
-                delta_prof = retrieval_init['trace gases']['H2O']['ref_profile'][klay]/col
+                delta_prof = col/retrieval_init['trace gases']['H2O']['ref_profile'][klay]
                 output['XH2O col avg kernel'][klay] = np.sum(Gain[ispec, :]*fwd['layer_'+value][:, klay])*delta_prof
 
-    return output
+    # print(np.sum(output['XCO2 col avg kernel']*retrieval_init['trace gases']['CO2']['ref_profile']))
+    # print(np.sum(retrieval_init['trace gases']['CO2']['ref_profile']))
+    
+    # plt.plot(output['XCO2 col avg kernel'], atm.zlay*1.E-3, label = 'CO2', color = 'blue')
+    # plt.plot(output['XCH4 col avg kernel'], atm.zlay*1.E-3, label = 'CH4', color = 'red')
+    # plt.plot(output['XH2O col avg kernel'], atm.zlay*1.E-3, label = 'H2O', color = 'orange')
+    # plt.legend()
+    # plt.xlabel('col avg kernel [1]')
+    # plt.ylabel('z [km]')
+    # sys.exit()
+    return output, runtime_cum

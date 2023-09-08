@@ -1,33 +1,90 @@
 # collection of numerical tools
 import numpy as np
 import sys
-import os
-import yaml
 import matplotlib.pyplot as plt
 import scipy
 import math
+from numba import njit
+
+@njit(cache=True)
+def convolution(spectrum, isrf, istart, iend):
+    #spectral convolution of the spectrum with the isrf
+    sh = isrf.shape
+    spectrum_conv = np.zeros(sh[0])
+    for iwav in range(sh[0]):
+        spectrum_conv[iwav] = np.dot(isrf[iwav, istart[iwav]:iend[iwav]], spectrum[istart[iwav]:iend[iwav]])
+    return spectrum_conv
+
+def get_isrf_gaussian(parameter, wave_target, wave_input):
+    #get a  Gaussian isrf specified by parameter dictionary
+    fwhm = parameter['fwhm']
+    isrf = {}
+    nwave_target = wave_target.size
+    nwave_input = wave_input.size
+    isrf["isrf"] = np.zeros((nwave_target, nwave_input))
+    const = fwhm**2/(4*np.log(2))
+    istart = []
+    iend = []
+    for ii, wmeas in enumerate(wave_target):
+        wdiff = wave_input - wmeas
+        istart.append(np.argmin(np.abs(wdiff + 1.5*fwhm)))
+        iend.append(np.argmin(np.abs(wdiff - 1.5*fwhm)))
+        isrf["isrf"][ii, istart[ii]:iend[ii]] = np.exp(-wdiff[istart[ii]:iend[ii]]**2/const)
+        isrf["isrf"][ii, :] = isrf["isrf"][ii, :] / np.sum(isrf["isrf"][ii, :])
+    isrf["istart"] = np.array(istart)
+    isrf["iend"] = np.array(iend)
+    return isrf
 
 
-# def get_isrf(isrf_parameter, wave, wave_meas):
+def get_isrf_generalized_normal(parameter, wave_target, wave_input):
+    # get generalized_normal distribution function as isrf
+    isrf = {}
+    nwave_target = wave_target.size
+    nwave_input = wave_input.size
+    isrf["isrf"] = np.zeros((nwave_target, nwave_input))
+    fwhm = parameter['fwhm']
+    bcoeff = parameter['bcoeff']
+    const = np.log(2)**bcoeff/(fwhm*np.math.gamma(1+bcoeff))
+    istart = []
+    iend = []
+    for ii, wmeas in enumerate(wave_target):
+        wdiff = wave_input - wmeas
+        istart.append(np.argmin(np.abs(wdiff + 1.5*parameter['fwhm'])))
+        iend.append(np.argmin(np.abs(wdiff - 1.5*parameter['fwhm'])))
+        isrf["isrf"][ii, istart[ii]:iend[ii]] = const*2**(-(2*np.abs(wdiff[istart[ii]:iend[ii]])/fwhm)**(1/bcoeff))
+        isrf["isrf"][ii, :] = isrf["isrf"][ii, :] / np.sum(isrf["isrf"][ii, :])
+    isrf["istart"] = np.array(istart)
+    isrf["iend"] = np.array(iend)
+    return isrf
 
-#     dmeas = wave_meas.size
-#     dlbl = wave.size
-#     isrfct = np.zeros(shape=(dmeas, dlbl))
 
-#     if (isrf_parameter['type'] == 'Gaussian'):
-#         fwhm = isrf_parameter['fwhm']
-#         const = fwhm**2/(4*np.log(2))
+def get_isrf(wave_target, wave_input, parameter):
+    """Compute kernel and return a convolution function
 
-#         for l, wmeas in enumerate(wave_meas):
-#             wdiff = wave - wmeas
-#             mask1 = wdiff >= -1.5*fwhm
-#             mask2 = wdiff <= 1.5*fwhm
-#             idx = np.logical_and(mask1, mask2)
-#             isrfct[l, idx] = np.exp(-wdiff[idx]**2/const)
-#             isrfct[l, :] = isrfct[l, :]/np.sum(isrfct[l, :])
+    Parameters
+    ----------
+    wave_target : Array (Float)
+        Target waves used for convolution
+    wave_input : Array(Float)
+        wave input
+    parameter : Dict
+        Dictionary containing settings for convolution
 
-    
-#     return isrfct, mask
+    Return
+    --------
+    Convolution function which takes a signal as input
+
+    """
+    if parameter['type'] == 'Gaussian':
+        isrf = get_isrf_gaussian(parameter, wave_target, wave_input)
+    elif (parameter['type'] == 'generalized_normal'):
+        isrf = get_isrf_generalized_normal(parameter, wave_target, wave_input)
+
+    # convolution function with numba cannot be directly added here
+    def conv(spectrum, isrf=isrf):
+        return convolution(spectrum, isrf['isrf'], isrf['istart'], isrf['iend'])
+    return conv
+
 
 
 class isrfct:

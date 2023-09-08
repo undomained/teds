@@ -3,9 +3,9 @@ settings:
     # Whether to use inteprolating stray light kernels
     stray_interpolating: yes
     geolocation:  0       #calculate geolocation (0 no, 1 yes), currently only 0 possible
-    van_cittert_steps: 4  #van Citter iteration for stray light correction (0=no correction) 
+    van_cittert_steps: 0  #van Citter iteration for stray light correction (0=no correction) 
     geolocation:       0                                  #calculate geolocation (0 no, 1 yes), currently only 0 possible
-    sw_dark:           1                                   #switch dark current (1 on, 0 off)
-    sw_nonlin:         1                                   #switch non-linearity (1 on, 0 off)
-    sw_prnu:           1                                   #switch pixel response non-uniformity (1 on, 0 off)
+    sw_dark:           0                                   #switch dark current (1 on, 0 off)
+    sw_nonlin:         0                                   #switch non-linearity (1 on, 0 off)
+    sw_prnu:           0                                   #switch pixel response non-uniformity (1 on, 0 off)
     sw_rad:            1                                   #switch radiometric calibration (1 on, 0 off)

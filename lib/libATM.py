@@ -59,7 +59,7 @@ def get_microHH_atm(s2_lat, s2_lon, path_data, microHH_settings, kernel_settings
     nx_plus = np.int32(distance_2d/data.grid.dx)+1
 
     print('Expanding microHH domain...')
-    # Expand the microHH data granule, need
+    # Expand the microHH data granule
 
     xadd = np.arange(1, nx_plus+1)*data.grid.dx + data.grid.xc[nx-1]
     data.grid.xc = np.concatenate((data.grid.xc, xadd))

@@ -36,7 +36,7 @@ class Emptyclass:
     pass
 
 #run id
-run_id = 'exp1.0_bin5'
+run_id = 'exp1.0_sgm_with_noise'
 
 # paths and file names
 locations = Emptyclass()
@@ -113,6 +113,8 @@ locations.l1bl2['xsec_dump'] = paths.project + \
     paths.data_tmp + 'Tango_Carbon_xsec_l2_' + run_id + '.pkl'
 locations.l1bl2['l2_diags'] = ''
 locations.l1bl2['hapi_path'] =  paths.project + paths.data_harpi
+locations.l1bl2['sgm_input'] = paths.project + paths.data_interface + \
+    paths.interface_sgm + 'Tango_Carbon_sgm_atmosphere_' + run_id + '.nc'
 
 # =============================================================================
 #
@@ -131,11 +133,11 @@ locations.l1bl2['hapi_path'] =  paths.project + paths.data_harpi
 profile= 'S2_microHH'   #needed to initialize gm and sgm consistently
 
 settings= {}
-settings['gm']    = False
-settings['sgm']   = False
-settings['im']    = True
-settings['l1al1b']= True
-settings['l1bl2'] = True
+settings['gm']        = False
+settings['sgm']       = False
+settings['im']        = False
+settings['l1al1b']    = False
+settings['l1bl2']     = True
 settings['save_yaml'] = True
 
 # ====================main part ================================================
@@ -171,8 +173,8 @@ if __name__ == "__main__":
 
         # with constant stray light kernel
         im_config= yaml.safe_load(open(paths.project+paths.IM_module+"im_config.yaml"))
-        im_config['noise']['switch']= 0
-        im_config['settings']['bin_id']= 5
+        im_config['noise']['switch']= 1
+        im_config['settings']['bin_id']= 1
         im_config['settings']['sw_stray']= 0
         im_configuration(locations.im, im_config)
         cmd_str= paths.project+paths.IM_module + 'tango_ckd_model/build/ckdmodel im_config.cfg'

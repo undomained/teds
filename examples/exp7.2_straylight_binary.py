@@ -22,12 +22,12 @@ from end_to_end.SGM.create_sgm_yaml_file import create_sgm_config_file
 from end_to_end.IM.create_im_configuration_file import im_configuration
 from end_to_end.L1AL1B.create_l1a1b_configuration_file import l1al1b_configuration
 from end_to_end.L1L2.l1bl2 import level1b_to_level2_processor
-from end_to_end.L1L2.create_l1bl2_configuration_file import create_l2_config_file
+from end_to_end.L1L2.create_l2_yaml_file import create_l1bl2_config_file
 
 import yaml
 import sys
 import subprocess
-
+import time
 # ====================configuration part ======================================
 
 class Emptyclass:
@@ -113,11 +113,11 @@ scene = {}
 scene['scene_spec'] = {}
 scene['scene_spec']['numb_atm']= 2
 scene['scene_spec']['scene_trans_index'] = [0, 50, 100]
-scene['scene_spec']['sza'] = [70., 70.]
+scene['scene_spec']['sza'] = [0., 0.]
 scene['scene_spec']['saa']= [0., 0.]
 scene['scene_spec']['vza']= [0., 0.]
 scene['scene_spec']['vaa']= [0., 0.]
-scene['scene_spec']['albedo']= [0.15, 0.70]
+scene['scene_spec']['albedo']= [0.15, 0.15]
 
 # =============================================================================
 #
@@ -137,10 +137,10 @@ profile = 'single_swath'
 
 settings= {}
 settings['gm']    = False
-settings['sgm']   = True
+settings['sgm']   = False
 settings['im']    = False
 settings['l1al1b']= False
-settings['l1bl2'] = False
+settings['l1bl2'] = True
 settings['save_yaml'] = True
 
 if __name__ == "__main__":
@@ -168,8 +168,10 @@ if __name__ == "__main__":
         if(settings['save_yaml']):
             sgm_yaml = paths.project+paths.SGM_module+'sgm_config_'+run_id + '.yaml'
             create_sgm_config_file(sgm_yaml, sgm_config)
+        time1 = time.time()
         scene_generation_module(sgm_config)
-
+        sgm_time = time.time() -time1
+        print('\n sgm time:', sgm_time )
     # ======= The instrument model =================================        
     if(settings['im']):
         
@@ -289,9 +291,10 @@ if __name__ == "__main__":
         l1bl2_config = {**locations.l1bl2, **l1bl2_config}
         if(settings['save_yaml']):
             l1bl2_yaml = paths.project+paths.L1L2_module+'l1l2_config_21kernel_corr_'+'.yaml'
-            create_l2_config_file(l1bl2_yaml, l1bl2_config)
+            create_l1bl2_config_file(l1bl2_yaml, l1bl2_config)
         level1b_to_level2_processor(l1bl2_config)
-
+        sys.exit()
+        
         #stray light 21 kernel, not corrected
         l1bl2_config = yaml.safe_load(open(paths.project+paths.L1L2_module + "l1bl2_config_baseline.yaml"))
         l1bl2_config['pixel_mask']= False
@@ -305,7 +308,7 @@ if __name__ == "__main__":
         l1bl2_config = {**locations.l1bl2, **l1bl2_config}
         if(settings['save_yaml']):
             l1bl2_yaml = paths.project+paths.L1L2_module+'l1l2_config_21kernel_corr_'+'.yaml'
-            create_l2_config_file(l1bl2_yaml, l1bl2_config)
+            create_l1bl2_config_file(l1bl2_yaml, l1bl2_config)
         level1b_to_level2_processor(l1bl2_config)
 
         #stray light 1 kernel, corrected
@@ -321,7 +324,7 @@ if __name__ == "__main__":
         l1bl2_config = {**locations.l1bl2, **l1bl2_config}
         if(settings['save_yaml']):
             l1bl2_yaml = paths.project+paths.L1L2_module+'l1l2_config_21kernel_corr_'+'.yaml'
-            create_l2_config_file(l1bl2_yaml, l1bl2_config)
+            create_l1bl2_config_file(l1bl2_yaml, l1bl2_config)
         level1b_to_level2_processor(l1bl2_config)
 
         l1bl2_config = yaml.safe_load(open(paths.project+paths.L1L2_module + "l1bl2_config_baseline.yaml"))
@@ -336,7 +339,7 @@ if __name__ == "__main__":
         l1bl2_config = {**locations.l1bl2, **l1bl2_config}
         if(settings['save_yaml']):
             l1bl2_yaml = paths.project+paths.L1L2_module+'l1l2_config_21kernel_corr_'+'.yaml'
-            create_l2_config_file(l1bl2_yaml, l1bl2_config)
+            create_l1bl2_config_file(l1bl2_yaml, l1bl2_config)
         level1b_to_level2_processor(l1bl2_config)
 
     print('Experiment 7.2 sucessfully performed.')

@@ -40,12 +40,32 @@ def get_l1b(filename):
 
     return(l1b_data)
 
+def get_sgm_atm(filen_sgm_atm):
+
+    data = nc.Dataset(filen_sgm_atm, mode='r')
+
+    atm_sgm  = {}
+    surf_sgm = {}
+    surf_sgm['albedo']    = deepcopy(data['albedo'][:])
+    atm_sgm['zlay']       = deepcopy(data['zlay'][:])
+    atm_sgm['zlev']       = deepcopy(data['zlev'][:])
+    atm_sgm['dcol_co2']   = deepcopy(data['dcol_co2'][:])
+    atm_sgm['dcol_ch4']   = deepcopy(data['dcol_ch4'][:])
+    atm_sgm['dcol_h2o']   = deepcopy(data['dcol_h2o'][:])
+    atm_sgm['col_co2']    = deepcopy(data['col_co2'][:])
+    atm_sgm['col_ch4']    = deepcopy(data['col_ch4'][:])
+    atm_sgm['col_h2o']    = deepcopy(data['col_h2o'][:])
+
+    data.close()
+
+    return(surf_sgm, atm_sgm)
+
 def level2_output(filename, l2product, retrieval_init, l1bproduct, settings):
 
     #output of level 2 data
     
     nalt_l2 = len(l2product)
-    nalt = len(l1bproduct)
+    nalt = l1bproduct['latitude'][:, 0].size
     nact = len(l2product[0])
     nlay = len(l2product[0][0]['XCO2 col avg kernel'])
 
@@ -56,8 +76,6 @@ def level2_output(filename, l2product, retrieval_init, l1bproduct, settings):
         nalt_start = 0 
         nalt_end = nalt
     nalt_l2 = nalt_end-nalt_start
-
-    print(nalt_start, nalt_end)
     
     output_l2 = nc.Dataset(filename, mode='w')
 
@@ -292,7 +310,7 @@ def level2_diags_output(filename, l2product, measurement):
     l2diag_wave.valid_min = 0.
     l2diag_wave.valid_max = 4000.
     l2diag_wave.FillValue = -32767
-    
+    l2product[ialt_l2, iact]['number_iter']
     l2diag_measurement = output_l2diag.createVariable('measurement',
                                                       np.float64, ('bins_along_track', 'bins_across_track', 'bins_spectral'))
     l2diag_measurement.units = 'photons/(nm m2 s sr)'
@@ -348,9 +366,13 @@ def level2_diags_output(filename, l2product, measurement):
 
 def level1b_to_level2_processor(config):
 
+
     # get the l1b files    
     l1b = get_l1b(config['l1b_input'])
-    
+
+    # get sgm geo data 
+    surf_sgm, atm_sgm = get_sgm_atm(config['sgm_input'])
+        
     # get pixel mask
     if(config['retrieval_init']['sw_pixel_mask']):
         print('take pixel mask')
@@ -382,19 +404,9 @@ def level1b_to_level2_processor(config):
     zlev = np.arange(nlev-1, -1, -1)*dzlay  # altitude of layer interfaces = levels
 
     # model atmosphere
-
+    
     atm = libATM.atmosphere_data(zlay, zlev, psurf)
     atm.get_data_AFGL(config['afgl_input'])
-
-    # scale to some reference column mixing ratios
-    xco2_ref = 405.  # ppm
-    xco2 = np.sum(atm.CO2) / np.sum(atm.air) * 1.E6
-    atm.CO2 = xco2_ref/xco2 * atm.CO2
-
-    # Safe reference water, ch4 and co2 profiles
-    ref_H2O = atm.H2O
-    ref_CH4 = atm.CH4
-    ref_CO2 = atm.CO2
 
     # XCO2 = np.sum(atm.CO2)/np.sum(atm.air)
     # XCH4 = np.sum(atm.CH4)/np.sum(atm.air)
@@ -431,9 +443,9 @@ def level1b_to_level2_processor(config):
     retrieval_init['chi2 limit'] = config['retrieval_init']['chi2_lim']
     retrieval_init['maximum iteration'] = config['retrieval_init']['max_iter']
     retrieval_init['zlay'] = zlay
-    retrieval_init['trace gases'] = {'CO2': {'init': 300,      'scaling': 1E-6, 'ref_profile': ref_CO2},
-                                     'CH4': {'init': 1700,     'scaling': 1E-9, 'ref_profile': ref_CH4},
-                                     'H2O': {'init': 1000,     'scaling': 1E-6, 'ref_profile': ref_H2O}}
+    retrieval_init['trace gases'] = {'CO2': {'init': 300,      'scaling': 1E-6},
+                                     'CH4': {'init': 1700,     'scaling': 1E-9},
+                                     'H2O': {'init': 1000,     'scaling': 1E-6}}
 
 #    retrieval_init['surface'] = {'alb0': 0.17}
     retrieval_init['wavelength lbl'] = wave_lbl
@@ -446,8 +458,10 @@ def level1b_to_level2_processor(config):
     xch4_model = 1.8E-6
     xco2_model = 405.E-6
 
-
     XCO2 = np.zeros(nact)
+    XCO2_true_smoothed = np.zeros(nact)
+    XCO2_true = np.zeros(nact)
+    XCO2_prec = np.zeros(nact)
 
     if(config['retrieval_init']['sw_ALT_select']):
         nalt_start = config['retrieval_init']['first_ALT_index']
@@ -457,32 +471,61 @@ def level1b_to_level2_processor(config):
         nalt_end = nalt
     nalt_l2 = nalt_end-nalt_start
     
-    print(nalt_start, nalt_end)
-
     l2product = np.ndarray((nalt_l2, nact), np.object_)
     measurement = np.ndarray((nalt_l2, nact), np.object_)
 
+    # plt.plot(l1b['wavelength'][0,mask[0,:]], l1b['radiance'][0,0,mask[0,:]])
+    # plt.plot(l1b['wavelength'][10,mask[10,:]], l1b['radiance'][0,10,mask[10,:]])
+    # sys.exit()
     # We introduce two types of ialt indices, ialt points to l1b data structure and ilat_l2 to l2 data structure. 
     # Later is different to l1b structure because of option for image selection (sw_ALT_select).
+
+    runtime_cum = {}
+    runtime_cum['opt'] = 0.
+    runtime_cum['rtm'] = 0.
+    runtime_cum['conv'] = 0.
+    runtime_cum['kern'] = 0.
+
     for ialt_l2, ialt in enumerate(tqdm(range(nalt_start,nalt_end))):
         for iact in range(nact):
+            
+            #initialization of pixel retrieval
+            xco2_ref = 405.  # ppm
+            xco2 = np.sum(atm.CO2) / np.sum(atm.air) * 1.E6
+
+            if(config['retrieval_init']['sw_prof_init']=='afgl'):
+                retrieval_init['trace gases']['CO2']['ref_profile'] =  atm.CO2*xco2_ref/xco2
+                retrieval_init['trace gases']['CH4']['ref_profile'] =  atm.CH4
+                retrieval_init['trace gases']['H2O']['ref_profile'] =  atm.H2O
+            elif(config['retrieval_init']['sw_prof_init']=='sgm'): 
+                retrieval_init['trace gases']['CO2']['ref_profile'] =  atm_sgm['dcol_co2'][ialt,iact,:]*xco2_ref/xco2
+                retrieval_init['trace gases']['CH4']['ref_profile'] =  atm_sgm['dcol_ch4'][ialt,iact,:]
+                retrieval_init['trace gases']['H2O']['ref_profile'] =  atm_sgm['dcol_h2o'][ialt,iact,:]
+            else:
+                sys.exit('sw_prof_init of l1bl2 configuration not set correctly!')
+                
             wavelength = l1b['wavelength'][iact,mask[iact,:]].data
-#            wavelength = l1b['wavelength'][iact, :]
             istart = np.argmin(np.abs(wavelength - wave_start))
             iend = np.argmin(np.abs(wavelength - wave_end))
             wave_meas = wavelength[istart:iend+1]  # nm
             
-            nwave = wave_meas.size
+            # define isrf function
+            
+            isrf_convolution = libNumTools.get_isrf(wave_meas, wave_lbl, config['isrf_settings'])
 
-            # define isrf object
-            isrf = libNumTools.isrfct(wave_meas, wave_lbl)
-            isrf.get_isrf(config['isrf_settings'])
-           
             atm_ret = deepcopy(atm)  # to initialize each retrieval with the same atmosphere
 
-            sun = isrf.isrf_convolution(sun_lbl)
+#            sun = isrf.isrf_convolution(sun_lbl)
+
+            sun = isrf_convolution(sun_lbl)
+            
+#            plt.plot(wave_meas,sun)
+#            plt.plot(wave_meas,sun)
+#            plt.plot(wave_meas, sun-sun2)
+#            sys.exit()
 
             # Observation geometry
+            nwave = wave_meas.size
             measurement[ialt_l2, iact] = {}
             measurement[ialt_l2, iact]['wavelength'] = wave_meas[:]
             measurement[ialt_l2, iact]['mu0'] = np.cos(np.deg2rad(l1b['sza'][ialt, iact]))
@@ -498,10 +541,13 @@ def level1b_to_level2_processor(config):
             retrieval_init['surface'] = {'alb0': alb_first_guess, 'alb1': 0.0}
 
             # Non-scattering least squares fit
-            l2product[ialt_l2, iact] = libINV.Gauss_Newton_iteration(
-                retrieval_init, atm_ret, optics, measurement[ialt_l2,
-                                                             iact], isrf, config['retrieval_init']['max_iter'],
-                config['retrieval_init']['chi2_lim'])
+            l2product[ialt_l2, iact],runtime = libINV.Gauss_Newton_iteration(
+                retrieval_init, atm_ret, optics, measurement[ialt_l2, iact],
+                config['retrieval_init']['max_iter'], config['retrieval_init']['chi2_lim'], 
+                isrf_convolution)
+
+            for key in runtime.keys():
+                runtime_cum[key] = runtime_cum[key] + runtime[key]
 
             if(not l2product[ialt_l2, iact]['convergence']):
                 print('pixel did not converge (ialt,iact) = ', ialt_l2,iact)
@@ -514,18 +560,32 @@ def level1b_to_level2_processor(config):
             l2product[ialt_l2, iact]['XCO2 proxy precision'] = rel_error * l2product[ialt_l2, iact]['XCO2']
             l2product[ialt_l2, iact]['XCH4 proxy precision'] = rel_error * l2product[ialt_l2, iact]['XCH4']
 
-            XCO2[iact] = l2product[ialt_l2, iact]['XCO2 proxy']
+            XCO2[iact] = l2product[ialt_l2, iact]['XCO2 proxy']*1.E6
+            XCO2_prec[iact] = l2product[ialt_l2, iact]['XCO2 proxy precision']*1.E6
     # output to netcdf file
+            XCO2_true_smoothed[iact] = np.dot(l2product[ialt_l2, iact]['XCO2 col avg kernel'], atm_sgm['dcol_co2'][ialt,iact,:])/np.sum(atm.air)*1.E6
+            XCO2_true[iact] = np.sum(atm_sgm['dcol_co2'][ialt,iact,:])/np.sum(atm.air)*1.E6
+            print(iact,nact, "{:.2f}".format(XCO2[iact]), "{:.2f}".format(XCO2[iact]), "{:.2f}".format(XCO2_prec[iact]), l2product[ialt_l2, iact]['number_iter'], l2product[ialt_l2, iact]['chi2'])
+            if(iact==20):
+                sys.exit()
+            
+        # plt.plot((XCO2-XCO2_true_smoothed), color = 'blue', label='ret. error')
+        # plt.plot((XCO2-atm_sgm['col_co2'][ialt,:]),color = 'red', label = 'smoothing error')
+        # plt.xlabel('ACT index')
+        # plt.ylabel('$\delta$XCO$_2$ [ppm]')
+        # plt.legend()
+        # plt.show()
+        # sys.exit()
+#        print('=============================')
+#        print(np.mean(XCO2)*1.E6, np.std(XCO2)*1.E6, np.mean(XCO2_prec)*1.E6)
+#        print('=============================')
 
-        print('=============================')
-        print(np.mean(XCO2)*1.E6, np.std(XCO2)*1.E6)
-        print('=============================')
-    
     level2_output(config['l2_output'], l2product, retrieval_init, l1b, config['retrieval_init'])
     # have to be fixed because of variable spectral size of measurement vector using masked arrays
 #    level2_diags_output(config['l2_diags'], l2product, measurement)
     print('=> l1bl2 finished successfully' )
 
+    print(runtime_cum)
     return
 
 

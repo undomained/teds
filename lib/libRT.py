@@ -14,6 +14,7 @@ import h5py
 from time import sleep
 from tqdm import tqdm
 import sys
+import time
 
 from end_to_end.lib import hapi as hp
 
@@ -56,13 +57,10 @@ def read_sun_spectrum_S5P(filename):
     # out: dictionary with wavelength [nm], irradiance [mW nm-1 m-2], irradiance [ph s-1 cm-2 nm-1]
     """
     # check whether input is in range
-    while True:
-        if os.path.exists(filename):
-            break
-        else:
-            print("ERROR! read_spectrum_S5P: filename does not exist.")
-            raise StopExecution
-
+    
+    if not os.path.exists(filename):
+        print("ERROR! read_spectrum_S5P: filename does not exist.")
+        sys.exit()
     # Read data from file
     raw = np.genfromtxt(filename, skip_header=42, unpack=True)
 
@@ -88,12 +86,9 @@ def read_sun_spectrum_TSIS1HSRS(filename):
     # out: dictionary with wavelength [nm], irradiance [W m-2 nm-1]
     """
     # check whether input is in range
-    while True:
-        if os.path.exists(filename):
-            break
-        else:
-            print("ERROR! read_spectrum_TSIS1HSRS: filename does not exist.")
-            sys.exit(filename)
+    if not os.path.exists(filename):
+        print("ERROR! read_spectrum_TSIS1HSRS: filename does not exist.")
+        sys.exit(filename)
 
     # Open netcdf file
     ds = nc.Dataset(filename)
@@ -161,37 +156,46 @@ def transmission(sun_lbl, optics, surface, mu0, muv, deriv=False):
 ############################################################
 
 
-def nonscat_fwd_model(isrf, sun_lbl,
+def nonscat_fwd_model(isrf_convolution, sun_lbl,
                       atm,  optics, surface, mu0, muv, dev=None):
 
     species = [spec for spec in dev if spec[0:5] == 'molec']
 
+    runtime = {}
+    time1 = time.time()
     optics.set_opt_depth_species(atm, species)
-
+    runtime['opt'] = time.time()-time1
     deriv = True
-    rad_lbl, dev_tau_lbl, dev_alb_lbl = transmission(sun_lbl, optics, surface, mu0, muv, deriv)
 
+    time1 = time.time()
+    rad_lbl, dev_tau_lbl, dev_alb_lbl = transmission(sun_lbl, optics, surface, mu0, muv, deriv)
+    runtime['rtm'] = time.time()-time1
+
+    time1 = time.time()
     fwd = {}
 
-    fwd['rad'] = isrf.isrf_convolution(rad_lbl)
+    fwd['rad']  = isrf_convolution(rad_lbl)
     fwd['rad_lbl'] = rad_lbl
-    fwd['alb0'] = isrf.isrf_convolution(dev_alb_lbl)
-    fwd['alb1'] = isrf.isrf_convolution(dev_alb_lbl*surface.spec)
-    fwd['alb2'] = isrf.isrf_convolution(dev_alb_lbl*surface.spec**2)
-    fwd['alb3'] = isrf.isrf_convolution(dev_alb_lbl*surface.spec**3)
+    fwd['alb0'] = isrf_convolution(dev_alb_lbl)
+    fwd['alb1'] = isrf_convolution(dev_alb_lbl*surface.spec)
+    fwd['alb2'] = isrf_convolution(dev_alb_lbl*surface.spec**2)
+    fwd['alb3'] = isrf_convolution(dev_alb_lbl*surface.spec**3)
 
+    runtime['conv'] = time.time()-time1
+    
+    time1 = time.time()
     nwave = fwd['rad'].size
     nlay = optics.prop[species[0]]['taualt'][0, :].size
 
     for spec in species:
         # derivative with respect to a scaling of the total optical depth
-        fwd[spec] = isrf.isrf_convolution(np.sum(optics.prop[spec]['taualt'], axis=1)*dev_tau_lbl)
+        fwd[spec] = isrf_convolution(np.sum(optics.prop[spec]['taualt'], axis=1)*dev_tau_lbl)
         # derivative with respect to a scaling of the layer optical deoth
         fwd['layer_'+spec] = np.zeros((nwave, nlay))
         for klay in range(optics.prop[spec]['taualt'][0, :].size):
-            fwd['layer_'+spec][:, klay] = isrf.isrf_convolution(optics.prop[spec]['taualt'][:, klay]*dev_tau_lbl)
-
-    return fwd
+            fwd['layer_'+spec][:, klay] = isrf_convolution(optics.prop[spec]['taualt'][:, klay]*dev_tau_lbl)
+    runtime['kern'] = time.time()-time1
+    return fwd,runtime
 
 ###########################################################
 
@@ -337,14 +341,6 @@ class optic_abs_prop:
         # returns:   
         #            prop[taua]: total absorption optical thickness array [wavelength, nlay] [-]
         """
-        # check whether input is in range
-        while True:
-            if len(species) > 0:
-                break
-            else:
-                print("ERROR! optic_prop.combine: name of prop dictionary required.")
-                raise StopExecution
-
         nlay = self.zlay.size
         nwave = self.wave.size
 

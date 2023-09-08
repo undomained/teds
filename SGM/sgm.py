@@ -40,7 +40,6 @@ def get_gm_data(filename):
 
 
 def sgm_output(filename_rad, filename_atm, rad_output, atm, albedo):
-
     nalt = len(rad_output['radiance'][:, 0, 0])
     nact = len(rad_output['radiance'][0, :, 0])
     nlbl = len(rad_output['radiance'][0, 0, :])
@@ -126,7 +125,7 @@ def sgm_output(filename_rad, filename_atm, rad_output, atm, albedo):
         'dcol_co2', np.float64, ('bins_along_track', 'bins_across_track', 'number_layers',))
     sgm_dcol_co2.units = 'molec./cm2'
     sgm_dcol_co2.long_name = 'CO2 layer column density'
-    sgm_dcol_co2.valid_max = 1.E+23
+    sgm_dcol_co2.valid_max = 1.E+26
     sgm_dcol_co2.FillValue = -32767
 
     for ialt in range(nalt):
@@ -138,7 +137,7 @@ def sgm_output(filename_rad, filename_atm, rad_output, atm, albedo):
     sgm_dcol_ch4.units = 'molec./cm2'
     sgm_dcol_ch4.long_name = 'CH4 layer column density'
     sgm_dcol_ch4.valid_min = 0.
-    sgm_dcol_ch4.valid_max = 1.E+23
+    sgm_dcol_ch4.valid_max = 1.E+26
     sgm_dcol_ch4.FillValue = -32767
 
     for ialt in range(nalt):
@@ -150,7 +149,7 @@ def sgm_output(filename_rad, filename_atm, rad_output, atm, albedo):
     sgm_dcol_h2o.units = 'molec./cm2'
     sgm_dcol_h2o.long_name = 'H2O layer column density'
     sgm_dcol_h2o.valid_min = 0.
-    sgm_dcol_h2o.valid_max = 1.E+23
+    sgm_dcol_h2o.valid_max = 1.E+28
     sgm_dcol_h2o.FillValue = -32767
 
     for ialt in range(nalt):
@@ -160,25 +159,32 @@ def sgm_output(filename_rad, filename_atm, rad_output, atm, albedo):
     # total coljmn of CO2, CH4, and H2O
 
     sgm_col_co2 = output_atm.createVariable('col_co2', np.float64, ('bins_along_track', 'bins_across_track',))
-    sgm_col_co2.units = 'molec./cm2'
-    sgm_col_co2.long_name = 'CO2 total column density'
+    sgm_col_co2.units = 'ppmv'
+    sgm_col_co2.long_name = 'CO2 dry air mol column mixing ratio'
     sgm_col_co2.valid_min = 0.
-    sgm_col_co2.valid_max = 1.E+25
+    sgm_col_co2.valid_max = 1.E+28
     sgm_col_co2.FillValue = -32767
 
     sgm_col_ch4 = output_atm.createVariable('col_ch4', np.float64, ('bins_along_track', 'bins_across_track',))
-    sgm_col_ch4.units = 'molec./cm2'
-    sgm_col_ch4.long_name = 'CH4 total column density'
+    sgm_col_ch4.units = 'ppbv'
+    sgm_col_ch4.long_name = 'CH4 dry air mol column mixing ratio'
     sgm_col_ch4.valid_min = 0.
-    sgm_col_ch4.valid_max = 1.E+25
+    sgm_col_ch4.valid_max = 1.E+28
     sgm_col_ch4.FillValue = -32767
 
     sgm_col_h2o = output_atm.createVariable('col_h2o', np.float64, ('bins_along_track', 'bins_across_track',))
-    sgm_col_h2o.units = 'molec./cm2'
-    sgm_col_h2o.long_name = 'H2O total column density'
+    sgm_col_h2o.units = 'ppmv'
+    sgm_col_h2o.long_name = 'H2O dry air mol column mixing ratio'
     sgm_col_h2o.valid_min = 0.
-    sgm_col_h2o.valid_max = 1.E+25
+    sgm_col_h2o.valid_max = 1.E+28
     sgm_col_h2o.FillValue = -32767
+    
+    sgm_col_air = output_atm.createVariable('col_air', np.float64, ('bins_along_track', 'bins_across_track',))
+    sgm_col_air.units = 'molec./cm2'
+    sgm_col_air.long_name = 'air total column density'
+    sgm_col_air.valid_min = 0.
+    sgm_col_air.valid_max = 1.E+32
+    sgm_col_air.FillValue = -32767
 
     for ialt in range(nalt):
         for iact in range(nact):
@@ -186,6 +192,7 @@ def sgm_output(filename_rad, filename_atm, rad_output, atm, albedo):
             sgm_col_co2[ialt, iact] = np.sum(atm[ialt, iact].CO2[:])/XAIR*1.e6  # [ppmv]
             sgm_col_ch4[ialt, iact] = np.sum(atm[ialt, iact].CH4[:])/XAIR*1.e9  # [ppbv]
             sgm_col_h2o[ialt, iact] = np.sum(atm[ialt, iact].H2O[:])/XAIR*1.e6  # [ppmv]
+            sgm_col_air[ialt, iact] = XAIR
 
     output_atm.close()
     return
@@ -246,9 +253,6 @@ def scene_generation_module(config):
         else:
             albedo = libSGM.get_sentinel2_albedo(gm_data, config)
             np.save(config['S2_dump'], albedo)    # .npy extension is added if not given
-
-#    albedo[:,:] = 0.15
-
     # =============================================================================
     # get a model atmosphere form AFGL files
     # =============================================================================
@@ -292,11 +296,11 @@ def scene_generation_module(config):
 
             atm = libATM.combine_microHH_standard_atm(microHH, atm_std)
 
+    
     # =============================================================================
     #  Radiative transfer simulations
     # =============================================================================
     print('radiative transfer simuation...')
-
     # define line-by-line wavelength grid
     rad_output = {}
     rad_output['wavelength lbl'] = np.arange(config['spec_settings']['wave_start'], config['spec_settings']['wave_end'],

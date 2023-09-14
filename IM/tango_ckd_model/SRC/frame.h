@@ -112,7 +112,7 @@ class Frame : public Logger { // {{{
     vector<double> image;
     vector<double> image_with_current;
 
-    vector<uint16_t> image_ints;
+    vector<int> image_ints;
 
 }; // }}}
 

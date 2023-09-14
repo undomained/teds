@@ -354,7 +354,6 @@ int Frame::uncalibrate_spectra( // {{{
         rad_spectra_cur += ckd->dim_detector_spec;
         intens_cur += ckd->dim_detector_spec;
     }
-
     return 0;
 
 } // }}}

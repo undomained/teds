@@ -167,7 +167,7 @@ int L1A::read_image( // {{{
             const vector<size_t> cnt = {nframe_inp,npix_frac};
 
             // Read normal L1A if there is no L1X maturity.
-            vector<uint16_t> raw(nframe_inp*npix_frac);
+            vector<int> raw(nframe_inp*npix_frac);
             netcdf_check(nc,grp.getVar("detector_images").getVar(strt,cnt,raw.data()));
 
             // Ultimate image.
@@ -176,7 +176,7 @@ int L1A::read_image( // {{{
             image = image_read.data() - ipix_start;
 
             // Raw frames. Each pointer can be used with normal pixel index.
-            vector<uint16_t *> rawframes(nframe_inp);
+            vector<int *> rawframes(nframe_inp);
             for (size_t iframe=0 ; iframe<nframe_inp ; iframe++) {
                 rawframes[iframe] = &raw[iframe*npix_frac] - ipix_start;
             }

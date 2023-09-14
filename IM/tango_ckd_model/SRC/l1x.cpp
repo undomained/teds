@@ -79,7 +79,7 @@ int L1X::init( // {{{
     // L1A output. This has a different data type for the image.
     if (step == L1X_L1A) {
         // Raw image.
-        netcdf_check(nc,var_img = grp.addVar("detector_images",ncUshort,{dimid_nframe,dimid_npix}));
+        netcdf_check(nc,var_img = grp.addVar("detector_images",ncInt,{dimid_nframe,dimid_npix}));
         netcdf_check(nc,var_img.putAtt("long_name","Detector image"));
         netcdf_check(nc,var_img.putAtt("units","counts"));
     }

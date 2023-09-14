@@ -418,7 +418,7 @@ int Program::execute( // {{{
         // Step: Convert to unsigned shorts.
         frm->image_ints.resize(npix_binned);
         for (size_t ipix=0 ; ipix<npix_binned ; ipix++) {
-            frm->image_ints[ipix] = static_cast<uint16_t>(frm->image[ipix]+0.5);
+            frm->image_ints[ipix] = static_cast<int>(std::round(frm->image[ipix]));
         }
 
         // L1X output L1A.

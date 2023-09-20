@@ -39,7 +39,7 @@ def get_gm_data(filename):
     return gm_data
 
 
-def sgm_output(filename_rad, filename_atm, rad_output, atm, albedo):
+def sgm_output(filename_rad, filename_atm, rad_output, atm, albedo, gm_data):
     nalt = len(rad_output['radiance'][:, 0, 0])
     nact = len(rad_output['radiance'][0, :, 0])
     nlbl = len(rad_output['radiance'][0, 0, :])
@@ -178,7 +178,7 @@ def sgm_output(filename_rad, filename_atm, rad_output, atm, albedo):
     sgm_col_h2o.valid_min = 0.
     sgm_col_h2o.valid_max = 1.E+28
     sgm_col_h2o.FillValue = -32767
-    
+
     sgm_col_air = output_atm.createVariable('col_air', np.float64, ('bins_along_track', 'bins_across_track',))
     sgm_col_air.units = 'molec./cm2'
     sgm_col_air.long_name = 'air total column density'
@@ -193,6 +193,23 @@ def sgm_output(filename_rad, filename_atm, rad_output, atm, albedo):
             sgm_col_ch4[ialt, iact] = np.sum(atm[ialt, iact].CH4[:])/XAIR*1.e9  # [ppbv]
             sgm_col_h2o[ialt, iact] = np.sum(atm[ialt, iact].H2O[:])/XAIR*1.e6  # [ppmv]
             sgm_col_air[ialt, iact] = XAIR
+
+    # add coordinates to SGM atmosphere
+    sgm_lat = output_atm.createVariable('lat', np.float64, ('bins_along_track', 'bins_across_track',))
+    sgm_lat.units = 'degree'
+    sgm_lat.long_name = 'latitude'
+    sgm_lat.valid_min = -90.
+    sgm_lat.valid_max = +90.
+    sgm_lat.FillValue = -32767
+    sgm_lat[:] = gm_data["lat"]
+
+    sgm_lon = output_atm.createVariable('lon', np.float64, ('bins_along_track', 'bins_across_track',))
+    sgm_lon.units = 'degree'
+    sgm_lon.long_name = 'longitude'
+    sgm_lon.valid_min = -180.
+    sgm_lon.valid_max = +180.
+    sgm_lon.FillValue = -32767
+    sgm_lon[:] = gm_data["lon"]
 
     output_atm.close()
     return
@@ -296,7 +313,6 @@ def scene_generation_module(config):
 
             atm = libATM.combine_microHH_standard_atm(microHH, atm_std)
 
-    
     # =============================================================================
     #  Radiative transfer simulations
     # =============================================================================
@@ -357,7 +373,7 @@ def scene_generation_module(config):
     # sgm output to radiometric and geophysical output file
     # =============================================================================
 
-    sgm_output(config['rad_output'], config['geo_output'], rad_output, atm, albedo)
+    sgm_output(config['rad_output'], config['geo_output'], rad_output, atm, albedo, gm_data)
 
     print('=>sgm calcultion finished successfully')
     return

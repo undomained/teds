@@ -1,8 +1,12 @@
 method : LSQ
 
 simulationdata:
-  level2data: "/data/manugv/OwnCloud/TANGO/TANGO_E2ES/For_Manu/Tango_Carbon_l2_full_chain.nc"
   sgm_atmosphere: "/data/manugv/git/end_to_end/data/sgm_atmosphere.nc"
+  level2data:
+    generate: True
+    precision: 0.2 # give it in %
+    # if generate is false then give a file input
+    file: "/data/manugv/OwnCloud/TANGO/TANGO_E2ES/For_Manu/Tango_Carbon_l2_full_chain.nc"
   gas: "co2"
   lat_lon_src: [51.83472, 14.46277]
 

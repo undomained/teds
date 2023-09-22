@@ -74,10 +74,10 @@ def sim_output(filename, gm_data, l1b_output):
     # observation data
     obs_data = output.createGroup('OBSERVATION_DATA')
     # second radiometric data
-    # for ialt in range(nalt):
-    #     for iact in range(nact):
-    #         l1b_wave[iact, :] = l1b_output['wavelength'][:]
-
+    _dims = ('bins_across_track', 'bins_spectral')
+    l1b_wave = np.zeros((nact, nwav))
+    for iact in range(nact):
+        l1b_wave[iact, :] = l1b_output['wavelength'][:]
     writevariablefromname(obs_data, "radoff_wavelength", _dims, l1b_output['wavelength'])
 
     _dims = ('bins_along_track', 'bins_across_track', 'bins_spectral')

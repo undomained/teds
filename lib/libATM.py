@@ -421,7 +421,7 @@ class atmosphere_data:
         ilon = np.argmin(abs(ds['longitude'][:] - longitude))
 
         # ECMWF: Geopotential [m2 s-2] converted to height [m], approximate use of g0
-        zalt_in = np.array([d/g0 for d in ds['z'][itime, :, ilat, ilon]])
+        zalt_in = np.array([d/constants.g0 for d in ds['z'][itime, :, ilat, ilon]])
         nlev_in = zalt_in.size
         # ECMWF: Pressure [hPa]
         press_in = ds['level'][:]
@@ -737,7 +737,7 @@ def combine_microHH_standard_atm(microHH, atm_std):
     atm = np.ndarray((nalt, nact), np.object_)
 
     # for NO we assume no contribution above upper model boundary of microHH
-    
+
     for ialt in tqdm(range(nalt)):
         for iact in range(nact):
             atm[ialt, iact] = deepcopy(atm_std)

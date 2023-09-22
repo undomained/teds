@@ -15,6 +15,7 @@ import netCDF4 as nc
 import yaml
 from tqdm import tqdm
 from copy import deepcopy
+from ..lib.libWrite import writevariablefromname
 
 
 class Dict2Class:
@@ -39,7 +40,7 @@ def get_gm_data(filename):
     return gm_data
 
 
-def sgm_output(filename_rad, filename_atm, rad_output, atm, albedo, gm_data):
+def sgm_output_old(filename_rad, filename_atm, rad_output, atm, albedo, gm_data):
     nalt = len(rad_output['radiance'][:, 0, 0])
     nact = len(rad_output['radiance'][0, :, 0])
     nlbl = len(rad_output['radiance'][0, 0, :])
@@ -213,6 +214,92 @@ def sgm_output(filename_rad, filename_atm, rad_output, atm, albedo, gm_data):
 
     output_atm.close()
     return
+
+
+def sgm_output(filename_rad, filename_atm, rad_output, atm, albedo, gm_data):
+    # write radiances
+    nalt, nact, nlbl = rad_output['radiance'].shape
+    # open file
+    output_rad = nc.Dataset(filename_rad, mode='w')
+    output_rad.title = 'Tango Carbon E2ES SGM radiometric scene'
+    output_rad.createDimension('bins_spectral', nlbl)     # spectral axis
+    output_rad.createDimension('bins_across_track', nact)     # across track axis
+    output_rad.createDimension('bins_along_track', nalt)     # along track axis
+    # wavelength
+    _ = writevariablefromname(output_rad, 'wavelength', ('bins_spectral',), rad_output['wavelength_lbl'])
+    # solar irradiance
+    _ = writevariablefromname(output_rad, 'solarirradiance', ('bins_spectral',), rad_output['solar irradiance'])
+    # radiance
+    _dims = ('bins_along_track', 'bins_across_track', 'bins_spectral')
+    _ = writevariablefromname(output_rad, 'radiance', _dims, rad_output['radiance'])
+    output_rad.close()
+
+    # write atmosphere
+    nlay, nlev = atm[0][0].zlay.size, atm[0][0].zlev.size
+    # file
+    output_atm = nc.Dataset(filename_atm, mode='w')
+    output_atm.title = 'Tango Carbon E2ES SGM atmospheric scene'
+    output_atm.createDimension('bins_along_track', nalt)      # along track axis
+    output_atm.createDimension('bins_across_track', nact)     # across track axis
+    output_atm.createDimension('number_layers', nlay)         # layer axis
+    output_atm.createDimension('number_levels', nlev)         # level axis
+
+    # write 3d data
+    # write the variables to an array
+    zlev = np.zeros((nalt, nact, nlev))
+    zlay = np.zeros((nalt, nact, nlay))
+    dcolco2 = np.zeros((nalt, nact, nlay))
+    dcolch4 = np.zeros((nalt, nact, nlay))
+    dcolh2o = np.zeros((nalt, nact, nlay))
+    for ialt in range(nalt):
+        for iact in range(nact):
+            zlay[ialt, iact, :] = atm[ialt][iact].zlay
+            zlev[ialt, iact, :] = atm[ialt][iact].zlev
+            dcolco2[ialt, iact, :] = atm[ialt][iact].CO2[:]
+            dcolch4[ialt, iact, :] = atm[ialt][iact].CH4[:]
+            dcolh2o[ialt, iact, :] = atm[ialt][iact].H2O[:]
+
+    _dims = ('bins_along_track', 'bins_across_track', 'number_layers')
+    # central layer height
+    _ = writevariablefromname(output_atm, 'centrallayerheight', _dims, zlay)
+    # columndensity_co2
+    _ = writevariablefromname(output_atm, 'columndensity_co2', _dims, dcolco2)
+    # columndensity_ch4
+    _ = writevariablefromname(output_atm, 'columndensity_ch4', _dims, dcolch4)
+    # columndensity_h2o
+    _ = writevariablefromname(output_atm, 'columndensity_h2o', _dims, dcolh2o)
+    # level height
+    _dims = ('bins_along_track', 'bins_across_track', 'number_levels')
+    _ = writevariablefromname(output_atm, 'levelheight', _dims, zlev)
+
+    # Total column integrated values of CO2, CH4, H2O, and air
+    col_co2 = np.zeros((nalt, nact))
+    col_ch4 = np.zeros((nalt, nact))
+    col_h2o = np.zeros((nalt, nact))
+    col_air = np.zeros((nalt, nact))
+    for ialt in range(nalt):
+        for iact in range(nact):
+            XAIR = np.sum(atm[ialt, iact].air[:])
+            col_co2[ialt, iact] = np.sum(atm[ialt, iact].CO2[:])/XAIR*1.e6  # [ppmv]
+            col_ch4[ialt, iact] = np.sum(atm[ialt, iact].CH4[:])/XAIR*1.e9  # [ppbv]
+            col_h2o[ialt, iact] = np.sum(atm[ialt, iact].H2O[:])/XAIR*1.e6  # [ppmv]
+            col_air[ialt, iact] = XAIR
+    _dims = ('bins_along_track', 'bins_across_track')
+    # albedo
+    _ = writevariablefromname(output_atm, 'albedo', _dims, albedo)
+    # column_co2
+    _ = writevariablefromname(output_atm, 'column_co2', _dims, col_co2)
+    # column_ch4
+    _ = writevariablefromname(output_atm, 'column_ch4', _dims, col_ch4)
+    # column_h2o
+    _ = writevariablefromname(output_atm, 'column_h2o', _dims, col_h2o)
+    # column_air
+    _ = writevariablefromname(output_atm, 'column_air', _dims, col_air)
+
+    # add coordinates to SGM atmosphere
+    _ = writevariablefromname(output_atm, 'latitude', _dims, gm_data["lat"])
+    _ = writevariablefromname(output_atm, 'longitude', _dims, gm_data["lon"])
+    output_atm.close()
 
 
 def scene_generation_module(config):

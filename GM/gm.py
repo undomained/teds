@@ -8,9 +8,28 @@ import numpy as np
 import sys
 import netCDF4 as nc
 import yaml
+from ..lib.libWrite import writevariablefromname
 
 
-def gm_output(filename, vza, vaa, sza, saa, lat_grid, lon_grid,):
+def gm_output(filename, vza, vaa, sza, saa, lat_grid, lon_grid):
+    nact = len(lat_grid[0])
+    nalt = len(lat_grid)
+    output = nc.Dataset(filename, mode='w')
+    output.title = 'Tango Carbon E2ES GM output'
+    output.createDimension('bins_across_track', nact)    # across track axis
+    output.createDimension('bins_along_track', nalt)     # along track axis
+    # dimensions
+    dims = ('bins_across_track', 'bins_along_track')
+    _ = writevariablefromname(output, "solarzenithangle", dims, sza)
+    _ = writevariablefromname(output, "solarazimuthangle", dims, saa)
+    _ = writevariablefromname(output, "viewingzenithangle", dims, vza)
+    _ = writevariablefromname(output, "viewingazimuthangle", dims, vaa)
+    _ = writevariablefromname(output, "latitude", dims, lat_grid)
+    _ = writevariablefromname(output, "longitude", dims, lon_grid)
+    output.close()
+
+
+def gm_output_old(filename, vza, vaa, sza, saa, lat_grid, lon_grid,):
 
     nact = len(lat_grid[0])
     nalt = len(lat_grid)
@@ -96,8 +115,8 @@ def geometry_module(config):
 
         ns = (
             nn
-            + len(config['scene_spec']['saa']) + len(config['scene_spec']['vza']) \
-            + len(config['scene_spec']['vaa'])+ len(config['scene_spec']['albedo'])) / 5
+            + len(config['scene_spec']['saa']) + len(config['scene_spec']['vza'])
+            + len(config['scene_spec']['vaa']) + len(config['scene_spec']['albedo'])) / 5
 
         if nn != ns:
             sys.exit("input error in gm, code 1")
@@ -130,17 +149,16 @@ def geometry_module(config):
 
         ncheck = len(config['scene_spec']['sza']) + len(config['scene_spec']['saa']) + \
                  len(config['scene_spec']['vza']) + len(config['scene_spec']['vaa'])
-       
+
         if (ncheck != 4*config['scene_spec']['numb_atm']):
             sys.exit("input error in gm, code 2")
 
         for iscen in range(config['scene_spec']['numb_atm']+1):
             outofrange = (config['scene_spec']['scene_trans_index'][iscen] > 99) & \
                 (config['scene_spec']['scene_trans_index'][iscen] < 0) 
-            if(outofrange):
+            if (outofrange):
                 sys.exit('config parameter scene_trans_index out of range')
 
-            
         nact = config["field_of_regard"]["nact"]
         nalt = 1
 

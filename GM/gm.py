@@ -9,17 +9,18 @@ import sys
 import netCDF4 as nc
 import yaml
 from ..lib.libWrite import writevariablefromname
-
+from ..lib.libOrbSim import Sensor, Satellite
+import datetime
 
 def gm_output(filename, vza, vaa, sza, saa, lat_grid, lon_grid):
-    nact = len(lat_grid[0])
-    nalt = len(lat_grid)
+    nact = len(lat_grid[0,:])
+    nalt = len(lat_grid[:,0])
     output = nc.Dataset(filename, mode='w')
     output.title = 'Tango Carbon E2ES GM output'
     output.createDimension('bins_across_track', nact)    # across track axis
     output.createDimension('bins_along_track', nalt)     # along track axis
     # dimensions
-    dims = ('bins_across_track', 'bins_along_track')
+    dims = ('bins_along_track', 'bins_across_track')
     _ = writevariablefromname(output, "solarzenithangle", dims, sza)
     _ = writevariablefromname(output, "solarazimuthangle", dims, saa)
     _ = writevariablefromname(output, "viewingzenithangle", dims, vza)
@@ -28,6 +29,105 @@ def gm_output(filename, vza, vaa, sza, saa, lat_grid, lon_grid):
     _ = writevariablefromname(output, "longitude", dims, lon_grid)
     output.close()
 
+def orbit_simulation(config):
+    # define the orbit
+    sat = Satellite(config['orbit'])
+
+    # propagate the orbit
+    print('\npropagate orbit')
+    dt_start = config['orbit']['epoch']
+    dt_end = dt_start + datetime.timedelta(hours=config['orbit']['propagation_duration'])
+    # compute the satellite position for every 10 seconds
+    satpos = sat.compute_position(dt_start, dt_end, dt_interval=10.0)
+
+    return {'sat': sat, 'sat_pos': satpos, 'dt_start': dt_start, 'dt_end': dt_end}
+
+
+def sensor_simulation(config, sat):
+
+    # propogate sensors
+    gpxs = []
+    sensor_config = []
+    pitch = []
+    roll = []
+    yaw = []
+
+    for key in config['sensors'].keys():
+
+        print('\ndefining sensor ' + key)
+
+        # sensor config wrt satellite reference frame
+        sensor_half_swath_deg = np.rad2deg(
+            np.arctan(0.5 * config['sensors'][key]['swath_width'] / config['orbit']['sat_height']))
+        sensor_interval_deg = 2 * sensor_half_swath_deg / config['sensors'][key]['n_ground_pixels']
+
+        # across track angle range and interval (homogenous sampling assumed)
+        act_angle_range = [-sensor_half_swath_deg, sensor_half_swath_deg, sensor_interval_deg]
+        thetas = np.arange(act_angle_range[0]+0.5*sensor_interval_deg, act_angle_range[1], act_angle_range[2])
+
+        # along track angle range
+        alt_angle_range = [-np.rad2deg(np.arctan(0.5 * config['sensors'][key]['alt_sampling']/config['orbit']['sat_height'])),
+                           np.rad2deg(np.arctan(0.5 * config['sensors'][key]['alt_sampling']/config['orbit']['sat_height']))]
+
+        # time range of observations and interval
+        dt_range = [sat['dt_start'] + datetime.timedelta(minutes=config['sensors'][key]['start_time']),
+                    sat['dt_start'] + datetime.timedelta(minutes=config['sensors'][key]['end_time']),
+                    config['sensors'][key]['integration_time']]
+
+        # make and propage the sensor
+        sensor = Sensor(act_angle_range[0], act_angle_range[1], act_angle_range[2])
+        sensor.compute_groundpoints(sat['sat_pos'], pitch=config['sensors'][key]['pitch'],
+                                    yaw=config['sensors'][key]['yaw'], roll=config['sensors'][key]['roll'])
+
+        print('compute the ground pixels (gpx)')
+        gpx = sensor.get_groundpoints(dt_range[0], dt_range[1], dt_range[2], thetas)
+
+        # collect the output data
+        sensor_config.append(config['sensors'][key])
+        sensor_config[-1]['name'] = key
+
+        gpxs.append(gpx)
+
+        pitch.append(config['sensors'][key]['pitch'])
+        yaw.append(config['sensors'][key]['yaw'])
+        roll.append(config['sensors'][key]['roll'])
+
+    return {'gpxs': gpxs, 'pitch': np.array(pitch), 'roll': np.array(roll), 'yaw': np.array(yaw)}
+
+
+def interpolate_pitch(sensors, pitch, i_time):
+
+    # assumes that ordering of sensors['pitch'] is either monotonically increasing or monotonically decreasing
+    sign = np.sign(sensors['pitch'][1] - sensors['pitch'][0])
+    # note that it will extrapolate by using the edge values
+    s_f = np.interp(sign * pitch, sign * sensors['pitch'][:], np.arange(sensors['pitch'].shape[0], dtype=float))
+
+    idx = [np.floor(s_f).astype(int), np.ceil(s_f).astype(int)]
+    w = [1 - s_f + idx[0], s_f - idx[0]]
+
+    gpx = {}
+
+    # interpolate 3D array
+    keys = ['p']
+    for key in keys:
+        gpx[key] = w[0] * sensors['gpxs'][idx[0]][key][i_time, :, :] + w[1] * sensors['gpxs'][idx[1]][key][i_time, :, :]
+
+    # interpolate 2D array
+    keys = ['lat', 'lon', 'height',  'vza', 'vaa', 'sza', 'saa']
+    for key in keys:
+        gpx[key] = w[0] * sensors['gpxs'][idx[0]][key][i_time, :] + w[1] * sensors['gpxs'][idx[1]][key][i_time, :]
+
+    # time sample
+    keys = ['sat_p', 'sat_lat', 'sat_lon', 'sat_height', 'seconds_from_epoch']
+    for key in keys:
+        gpx[key] = sensors['gpxs'][idx[0]][key][i_time]
+
+    # copy
+    keys = ['thetas', 'start_time', 'end_time', 'epoch']
+    for key in keys:
+        gpx[key] = sensors['gpxs'][idx[0]][key]
+
+    return gpx
 
 def gm_output_old(filename, vza, vaa, sza, saa, lat_grid, lon_grid,):
 
@@ -182,6 +282,24 @@ def geometry_module(config):
 
         ninit = ninit + 1
     
+    if (config['profile'] == "orbit"):
+        # configure satellite and propagate orbit
+        sat = orbit_simulation(config)
+
+        # configure sensors and compute ground pixel information
+        sensors = sensor_simulation(config, sat)
+
+        vza = sensors['gpxs'][0]['vza']
+        vaa = sensors['gpxs'][0]['vaa']
+        sza = sensors['gpxs'][0]['sza']
+        saa = sensors['gpxs'][0]['saa']
+        lat_grid = sensors['gpxs'][0]['lat']
+        lon_grid = sensors['gpxs'][0]['lon']
+        
+        # print(np.min(saa), np.max(saa))
+        # sys.exit()
+        ninit = ninit + 1
+        
     if (config['profile'] == "S2_microHH"):
         nact = config["field_of_regard"]["nact"]
         nalt = config["field_of_regard"]["nalt"]

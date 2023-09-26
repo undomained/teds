@@ -27,7 +27,7 @@ solarazimuthangle:
   name: saa
   long_name: solar azimuth angle
   units: degree
-  valid_min: 0.0
+  valid_min: -180.0
   valid_max: +360.0
   FillValue: -32767
 
@@ -43,11 +43,10 @@ viewingazimuthangle:
   name: vaa
   long_name: viewing azimuth angle
   units: degree
-  valid_min: 0.0
+  valid_min: -180.0
   valid_max: 360.0
   FillValue: -32767
 
-  
 # SGM: Radiances
 
 wavelength:
@@ -71,7 +70,7 @@ radiance:
   long_name: 'radiance line-by-line'
   units: 'photons / (sr nm m2 s)'
   valid_min: 0.
-  valid_max: 1.E30
+  valid_max: 1.E28
   FillValue: -32767
 
 # SGM: ATM
@@ -82,7 +81,6 @@ albedo:
   valid_min: 0.0
   valid_max: 1.0
   FillValue: -32767
-
 
 centrallayerheight:
   name: zlay
@@ -104,6 +102,7 @@ columndensity_co2:
   name: dcol_co2
   long_name: CO2 layer column density
   units: molec./cm2
+  valid_min: 0.
   valid_max: 1.E+28
   FillValue: -32767
 

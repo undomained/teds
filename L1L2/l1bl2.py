@@ -445,6 +445,7 @@ def level1b_to_level2_processor(config):
 
             # derive first guess albedo from the maximum reflectance
             ymeas_max = np.max(measurement[ialt_l2, iact]['ymeas'])
+
             idx = np.where(measurement[ialt_l2, iact]['ymeas'] == ymeas_max)[0][0]
             alb_first_guess = measurement[ialt_l2, iact]['ymeas'][idx] / \
                 sun[idx]*np.pi/np.cos(np.deg2rad(l1b['sza'][ialt, iact]))
@@ -478,21 +479,6 @@ def level1b_to_level2_processor(config):
             XCO2_true_smoothed[iact] = np.dot(l2product[ialt_l2, iact]['XCO2 col avg kernel'],
                                               atm_sgm['dcol_co2'][ialt, iact, :])/np.sum(atm.air)*1.E6
             XCO2_true[iact] = np.sum(atm_sgm['dcol_co2'][ialt, iact, :])/np.sum(atm.air)*1.E6
-            print(iact, nact, "{:.2f}".format(XCO2[iact]), "{:.2f}".format(XCO2[iact]), "{:.2f}".format(
-                XCO2_prec[iact]), l2product[ialt_l2, iact]['number_iter'], l2product[ialt_l2, iact]['chi2'])
-            if (iact == 20):
-                sys.exit()
-
-        # plt.plot((XCO2-XCO2_true_smoothed), color = 'blue', label='ret. error')
-        # plt.plot((XCO2-atm_sgm['col_co2'][ialt,:]),color = 'red', label = 'smoothing error')
-        # plt.xlabel('ACT index')
-        # plt.ylabel('$\delta$XCO$_2$ [ppm]')
-        # plt.legend()
-        # plt.show()
-        # sys.exit()
-#        print('=============================')
-#        print(np.mean(XCO2)*1.E6, np.std(XCO2)*1.E6, np.mean(XCO2_prec)*1.E6)
-#        print('=============================')
 
     level2_output(config['l2_output'], l2product, retrieval_init, l1b, config['retrieval_init'])
     # have to be fixed because of variable spectral size of measurement vector using masked arrays

@@ -262,7 +262,6 @@ class molecular_data:
 
 ###########################################################
 
-
 class optic_abs_prop:
     """
     # The optic_ssc_prop class collects methods to
@@ -345,19 +344,13 @@ class optic_abs_prop:
         nwave = self.wave.size
 
         conv = 1.E-4  # cross sections are given in cm^2, atmospheric densities in m^2
-
+                          
         for name in self.prop.keys():
             if(name[0:5] == 'molec'):
-                self.prop[name]['taualt'] = np.zeros((nwave, nlay))
                 spec = self.prop[name]['species']
-                for ki in range(nlay):
-                    self.prop[name]['taualt'][:, ki] = self.prop[name]['xsec'][:, ki] * \
-                        atm.__getattribute__(spec)[ki]*conv
+                self.prop[name]['taualt'] = self.prop[name]['xsec'] * (atm.__getattribute__(spec)*conv)
+    
         self.prop['taua'] = np.zeros((nwave, nlay))
         for name in species:
             self.prop['taua'] = self.prop['taua'] + self.prop[name]['taualt']
             self.prop[name]['tau_molec'] = np.zeros((nwave, nlay))
-
-        # plt.plot(np.sum(self.prop['taua'], axis=1))
-        # sys.exit('set_opt')
-        # sys.exit()

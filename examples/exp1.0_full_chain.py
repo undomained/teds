@@ -31,7 +31,6 @@ import subprocess
 
 # ====================configuration part ======================================
 
-
 class Emptyclass:
     pass
 
@@ -130,14 +129,14 @@ locations.l1bl2['sgm_input'] = paths.project + paths.data_interface + \
 #       microHH CO2 plume simulations. scene_spec not required
 # =============================================================================
 
-profile= 'S2_microHH'   #needed to initialize gm and sgm consistently
+profile= 'orbit'   #needed to initialize gm and sgm consistently
 
 settings= {}
 settings['gm']        = False
-settings['sgm']       = False
+settings['sgm']       = True
 settings['im']        = False
 settings['l1al1b']    = False
-settings['l1bl2']     = True
+settings['l1bl2']     = False
 settings['save_yaml'] = True
 
 # ====================main part ================================================

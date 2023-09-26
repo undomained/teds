@@ -5,7 +5,6 @@
 #==============================================================================
 
 import os
-import io
 import sys
 import numpy as np
 import scipy.interpolate as interpolate

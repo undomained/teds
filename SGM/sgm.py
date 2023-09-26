@@ -26,7 +26,6 @@ class Dict2Class:
     def __init__(self, arg_dict):
         self.__dict__.update(arg_dict)
 
-
 def get_gm_data(filename):
     input = nc.Dataset(filename, mode='r')
     gm_data = {}
@@ -38,183 +37,6 @@ def get_gm_data(filename):
     gm_data['lon'] = deepcopy(input['lon'][:, :])
     input.close()
     return gm_data
-
-
-def sgm_output_old(filename_rad, filename_atm, rad_output, atm, albedo, gm_data):
-    nalt = len(rad_output['radiance'][:, 0, 0])
-    nact = len(rad_output['radiance'][0, :, 0])
-    nlbl = len(rad_output['radiance'][0, 0, :])
-
-    output_rad = nc.Dataset(filename_rad, mode='w')
-
-    output_rad.title = 'Tango Carbon E2ES SGM radiometric scene'
-    output_rad.createDimension('bins_spectral', nlbl)     # spectral axis
-    output_rad.createDimension('bins_across_track', nact)     # across track axis
-    output_rad.createDimension('bins_along_track', nalt)     # along track axis
-
-    sgm_wavelbl = output_rad.createVariable('wavelength', np.float64, ('bins_spectral',))
-    sgm_wavelbl.units = 'nm'
-    sgm_wavelbl.long_name = 'wavelength line-by-line'
-    sgm_wavelbl.valid_min = 0.
-    sgm_wavelbl.valid_max = 8000.
-    sgm_wavelbl.FillValue = -32767
-    sgm_wavelbl[:] = rad_output['wavelength lbl'][:]
-
-    sgm_sunlbl = output_rad.createVariable('solar_irradiance', np.float64, ('bins_spectral',))
-    sgm_sunlbl.units = 'photons / (nm m2 s)'
-    sgm_sunlbl.long_name = 'solar irradiance line-by-line'
-    sgm_sunlbl.valid_min = 0.
-    sgm_sunlbl.valid_max = 1.E30
-    sgm_sunlbl.FillValue = -32767
-    sgm_sunlbl[:] = rad_output['solar irradiance'][:]
-
-    sgm_radlbl = output_rad.createVariable(
-        'radiance', np.float64, ('bins_along_track', 'bins_across_track', 'bins_spectral',))
-    sgm_radlbl.units = 'photons / (sr nm m2 s)'
-    sgm_radlbl.long_name = 'radiance line-by-line'
-    sgm_radlbl.valid_min = 0.
-    sgm_radlbl.valid_max = 1.E30
-    sgm_radlbl.FillValue = -32767
-    sgm_radlbl[:] = rad_output['radiance'][:]
-
-    output_rad.close()
-
-    nlay = atm[0][0].zlay.size
-    nlev = atm[0][0].zlev.size
-
-    output_atm = nc.Dataset(filename_atm, mode='w')
-
-    output_atm.title = 'Tango Carbon E2ES SGM atmospheric scene'
-    output_atm.createDimension('bins_along_track', nalt)      # along track axis
-    output_atm.createDimension('bins_across_track', nact)     # across track axis
-    output_atm.createDimension('number_layers', nlay)         # layer axis
-    output_atm.createDimension('number_levels', nlev)         # level axis
-
-    sgm_albedo = output_atm.createVariable('albedo', np.float64, ('bins_along_track', 'bins_across_track',))
-    sgm_albedo.units = '-'
-    sgm_albedo.long_name = 'Lambertian surface albedo'
-    sgm_albedo.valid_min = 0.
-    sgm_albedo.valid_max = 1.
-    sgm_albedo.FillValue = -32767
-    sgm_albedo[:] = albedo[:]
-
-    sgm_zlay = output_atm.createVariable('zlay', np.float64, ('bins_along_track',
-                                                              'bins_across_track', 'number_layers',))
-    sgm_zlay.units = 'm'
-    sgm_zlay.long_name = 'central layer height'
-    sgm_zlay.valid_min = 0.
-    sgm_zlay.valid_max = 1.E+5
-    sgm_zlay.FillValue = -32767
-
-    for ialt in range(nalt):
-        for iact in range(nact):
-            sgm_zlay[ialt, iact, :] = atm[ialt][iact].zlay
-
-    sgm_zlev = output_atm.createVariable('zlev', np.float64, ('bins_along_track',
-                                                              'bins_across_track', 'number_levels',))
-    sgm_zlev.units = 'm'
-    sgm_zlev.long_name = 'level height'
-    sgm_zlev.valid_min = 0.
-    sgm_zlev.valid_max = 1.E+5
-    sgm_zlev.FillValue = -32767
-
-    for ialt in range(nalt):
-        for iact in range(nact):
-            sgm_zlev[ialt, iact, :] = atm[ialt][iact].zlev
-
-    sgm_dcol_co2 = output_atm.createVariable(
-        'dcol_co2', np.float64, ('bins_along_track', 'bins_across_track', 'number_layers',))
-    sgm_dcol_co2.units = 'molec./cm2'
-    sgm_dcol_co2.long_name = 'CO2 layer column density'
-    sgm_dcol_co2.valid_max = 1.E+26
-    sgm_dcol_co2.FillValue = -32767
-
-    for ialt in range(nalt):
-        for iact in range(nact):
-            sgm_dcol_co2[ialt, iact, :] = atm[ialt][iact].CO2[:]
-
-    sgm_dcol_ch4 = output_atm.createVariable(
-        'dcol_ch4', np.float64, ('bins_along_track', 'bins_across_track', 'number_layers',))
-    sgm_dcol_ch4.units = 'molec./cm2'
-    sgm_dcol_ch4.long_name = 'CH4 layer column density'
-    sgm_dcol_ch4.valid_min = 0.
-    sgm_dcol_ch4.valid_max = 1.E+26
-    sgm_dcol_ch4.FillValue = -32767
-
-    for ialt in range(nalt):
-        for iact in range(nact):
-            sgm_dcol_ch4[ialt, iact, :] = atm[ialt][iact].CH4[:]
-
-    sgm_dcol_h2o = output_atm.createVariable(
-        'dcol_h2o', np.float64, ('bins_along_track', 'bins_across_track', 'number_layers',))
-    sgm_dcol_h2o.units = 'molec./cm2'
-    sgm_dcol_h2o.long_name = 'H2O layer column density'
-    sgm_dcol_h2o.valid_min = 0.
-    sgm_dcol_h2o.valid_max = 1.E+28
-    sgm_dcol_h2o.FillValue = -32767
-
-    for ialt in range(nalt):
-        for iact in range(nact):
-            sgm_dcol_h2o[ialt, iact, :] = atm[ialt][iact].H2O[:]
-
-    # total coljmn of CO2, CH4, and H2O
-
-    sgm_col_co2 = output_atm.createVariable('col_co2', np.float64, ('bins_along_track', 'bins_across_track',))
-    sgm_col_co2.units = 'ppmv'
-    sgm_col_co2.long_name = 'CO2 dry air mol column mixing ratio'
-    sgm_col_co2.valid_min = 0.
-    sgm_col_co2.valid_max = 1.E+28
-    sgm_col_co2.FillValue = -32767
-
-    sgm_col_ch4 = output_atm.createVariable('col_ch4', np.float64, ('bins_along_track', 'bins_across_track',))
-    sgm_col_ch4.units = 'ppbv'
-    sgm_col_ch4.long_name = 'CH4 dry air mol column mixing ratio'
-    sgm_col_ch4.valid_min = 0.
-    sgm_col_ch4.valid_max = 1.E+28
-    sgm_col_ch4.FillValue = -32767
-
-    sgm_col_h2o = output_atm.createVariable('col_h2o', np.float64, ('bins_along_track', 'bins_across_track',))
-    sgm_col_h2o.units = 'ppmv'
-    sgm_col_h2o.long_name = 'H2O dry air mol column mixing ratio'
-    sgm_col_h2o.valid_min = 0.
-    sgm_col_h2o.valid_max = 1.E+28
-    sgm_col_h2o.FillValue = -32767
-
-    sgm_col_air = output_atm.createVariable('col_air', np.float64, ('bins_along_track', 'bins_across_track',))
-    sgm_col_air.units = 'molec./cm2'
-    sgm_col_air.long_name = 'air total column density'
-    sgm_col_air.valid_min = 0.
-    sgm_col_air.valid_max = 1.E+32
-    sgm_col_air.FillValue = -32767
-
-    for ialt in range(nalt):
-        for iact in range(nact):
-            XAIR = np.sum(atm[ialt, iact].air[:])
-            sgm_col_co2[ialt, iact] = np.sum(atm[ialt, iact].CO2[:])/XAIR*1.e6  # [ppmv]
-            sgm_col_ch4[ialt, iact] = np.sum(atm[ialt, iact].CH4[:])/XAIR*1.e9  # [ppbv]
-            sgm_col_h2o[ialt, iact] = np.sum(atm[ialt, iact].H2O[:])/XAIR*1.e6  # [ppmv]
-            sgm_col_air[ialt, iact] = XAIR
-
-    # add coordinates to SGM atmosphere
-    sgm_lat = output_atm.createVariable('lat', np.float64, ('bins_along_track', 'bins_across_track',))
-    sgm_lat.units = 'degree'
-    sgm_lat.long_name = 'latitude'
-    sgm_lat.valid_min = -90.
-    sgm_lat.valid_max = +90.
-    sgm_lat.FillValue = -32767
-    sgm_lat[:] = gm_data["lat"]
-
-    sgm_lon = output_atm.createVariable('lon', np.float64, ('bins_along_track', 'bins_across_track',))
-    sgm_lon.units = 'degree'
-    sgm_lon.long_name = 'longitude'
-    sgm_lon.valid_min = -180.
-    sgm_lon.valid_max = +180.
-    sgm_lon.FillValue = -32767
-    sgm_lon[:] = gm_data["lon"]
-
-    output_atm.close()
-    return
-
 
 def sgm_output(filename_rad, filename_atm, rad_output, atm, albedo, gm_data):
     # write radiances
@@ -233,7 +55,6 @@ def sgm_output(filename_rad, filename_atm, rad_output, atm, albedo, gm_data):
     _dims = ('bins_along_track', 'bins_across_track', 'bins_spectral')
     _ = writevariablefromname(output_rad, 'radiance', _dims, rad_output['radiance'])
     output_rad.close()
-
     # write atmosphere
     nlay, nlev = atm[0][0].zlay.size, atm[0][0].zlev.size
     # file
@@ -347,7 +168,7 @@ def scene_generation_module(config):
             ind_end = config['scene_spec']['scene_trans_index'][iscen+1]
             albedo[0, ind_start:ind_end] = config['scene_spec']['albedo'][iscen]
 
-    if (config['profile'] == 'S2_microHH'):
+    if (config['profile'] == 'orbit'):
 
         # get collocated S2 data
 
@@ -355,6 +176,7 @@ def scene_generation_module(config):
         if (file_exists and (not config['s2_forced'])):
             albedo = np.load(config['S2_dump'])
         else:
+            print('S2 data')
             albedo = libSGM.get_sentinel2_albedo(gm_data, config)
             np.save(config['S2_dump'], albedo)    # .npy extension is added if not given
     # =============================================================================
@@ -375,7 +197,7 @@ def scene_generation_module(config):
             for iact in range(nact):
                 atm[ialt, iact] = deepcopy(atm_std)
 
-    if (config['profile'] == 'S2_microHH'):
+    if (config['profile'] == 'orbit'):
 
         nlay = config['atmosphere']['nlay']  # number of layers
         dzlay = config['atmosphere']['dzlay']
@@ -396,6 +218,7 @@ def scene_generation_module(config):
 
             else:
                 # Read microHH from pickle file
+                
                 microHH = Dict2Class(pickle.load(open(config['microHH_dump'], 'rb')))
 
             atm = libATM.combine_microHH_standard_atm(microHH, atm_std)
@@ -406,20 +229,20 @@ def scene_generation_module(config):
     print('radiative transfer simuation...')
     # define line-by-line wavelength grid
     rad_output = {}
-    rad_output['wavelength lbl'] = np.arange(config['spec_settings']['wave_start'], config['spec_settings']['wave_end'],
+    rad_output['wavelength_lbl'] = np.arange(config['spec_settings']['wave_start'], config['spec_settings']['wave_end'],
                                              config['spec_settings']['dwave'])  # nm
 
-    nwav = len(rad_output['wavelength lbl'])
+    nwav = len(rad_output['wavelength_lbl'])
     # generate optics object for one representative model atmosphere of the domain
 
     nalt_ref = np.int0(nalt/2 - 0.5)
     nact_ref = np.int0(nact/2 - 0.5)
 
-    optics = libRT.optic_abs_prop(rad_output['wavelength lbl'], atm[nalt_ref, nact_ref].zlay)
+    optics = libRT.optic_abs_prop(rad_output['wavelength_lbl'], atm[nalt_ref, nact_ref].zlay)
 
     # Download molecular absorption parameter
     iso_ids = [('CH4', 32), ('H2O', 1), ('CO2', 7)]  # see hapi manual  sec 6.6
-    molec = libRT.molecular_data(rad_output['wavelength lbl'])
+    molec = libRT.molecular_data(rad_output['wavelength_lbl'])
 
     # If pickle file exists read from file
     # os.path.exists(xsec_file) or conf['xsec_forced']
@@ -435,10 +258,10 @@ def scene_generation_module(config):
 
     # solar irradiance spectrum
     sun = libRT.read_sun_spectrum_TSIS1HSRS(config['sun_reference'])
-    rad_output['solar irradiance'] = np.interp(rad_output['wavelength lbl'], sun['wl'], sun['phsm2nm'])
+    rad_output['solar irradiance'] = np.interp(rad_output['wavelength_lbl'], sun['wl'], sun['phsm2nm'])
 
     # Calculate surface data
-    surface = libSURF.surface_prop(rad_output['wavelength lbl'])
+    surface = libSURF.surface_prop(rad_output['wavelength_lbl'])
 
     rad = np.empty([nalt, nact, nwav])
     for ialt in tqdm(range(nalt)):
@@ -453,8 +276,8 @@ def scene_generation_module(config):
                 surface,
                 np.cos(gm_data['sza'][ialt, iact]/180.*np.pi),  # mu0
                 np.cos(gm_data['vza'][ialt, iact]/180.*np.pi))  # muv
+    rad_output['radiance'] = rad 
 
-    rad_output['radiance'] = rad
 
     # =============================================================================
     # sgm output to radiometric and geophysical output file

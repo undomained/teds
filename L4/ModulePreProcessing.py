@@ -7,7 +7,7 @@ Created on Mon Aug 14 12:54:22 2023
 """
 
 from .ModuleReadMicroHH import read_simulated_variable, get_interpolate_uv
-from .ModuleLevel2 import readlevel2retrieval, generate_level2data
+from .ModuleLevel2 import readlevel2retrieval
 from netCDF4 import Dataset
 from .ModuleDataContainer import DataCont
 from pathlib import Path
@@ -31,7 +31,8 @@ def readsgmatmosphere(sgmatmosphere_file, gas):
     air = f["col_air"][:].data
     grid = DataCont()
     for ky in ["latitude", "longitude"]:
-        grid.__setattr__(ky, f[ky][:])
+        if ky in f.variables.keys():
+            grid.__setattr__(ky, f[ky][:])
     f.close()
     data = DataCont()
     data.__setattr__("actual_column", gascol)
@@ -51,21 +52,21 @@ def check_inputsimulationdata(param):
             exit()
 
     # check level 2 data
-    level2data = param["simulationdata"]["level2data"]
-    if (level2data["generate"]):
-        # if the data needs to be generated
-        if not ((type(level2data["precision"]) == int) or (type(level2data["precision"]) == float)):
-            print("Level 2 data cannot be generated as the 'precision' is not a number")
-            exit()
-        if not fl.is_file():
-            print("Level 2 data cannot be generated as actual data is not present, please input a valid sgm_atmosphere")
-            exit()
-    else:
-        # check if the files exist
-        lvl2 = Path(level2data["file"])
-        if not lvl2.is_file():
-            print("Level 2 input file doesn't exist")
-            exit()
+    lvl2file = param["simulationdata"]["level2file"]
+    # if (level2data["generate"]):
+    #     # if the data needs to be generated
+    #     if not ((type(level2data["precision"]) == int) or (type(level2data["precision"]) == float)):
+    #         print("Level 2 data cannot be generated as the 'precision' is not a number")
+    #         exit()
+    # if not fl.is_file():
+    #     print("Level 2 data cannot be generated as actual data is not present, please input a valid sgm_atmosphere")
+    #     exit()
+    # else:
+    # check if the files exist
+    lvl2 = Path(lvl2file)
+    if not lvl2.is_file():
+        print("Level 2 input file doesn't exist")
+        exit()
 
 
 def readyamlfile(filename):
@@ -79,18 +80,17 @@ def readyamlfile(filename):
 
 def getendtoendsimdata(params):
     simparam = params["simulationdata"]
-    level2data = params["simulationdata"]["level2data"]
     data = DataCont()
     # Read Actual data if exists
     if ~bool(simparam["sgm_atmosphere"]):
         data = readsgmatmosphere(simparam["sgm_atmosphere"], simparam["gas"])
 
     # level 2 data
-    if (level2data["generate"]):
-        generate_level2data(data, params["simulationdata"]["level2data"]["precision"])
-    else:
-        data = readlevel2retrieval(simparam["level2data"], simparam["gas"])
-        data.grid.__setattr__("source", simparam["lat_lon_src"])
+    # if (level2data["generate"]):
+    #     generate_level2data(data, params["simulationdata"]["level2data"]["precision"])
+    # else:
+    data = readlevel2retrieval(simparam["level2file"], simparam["gas"], data)
+    data.grid.__setattr__("source", simparam["lat_lon_src"])
 
     # compute ppm to kg
     if simparam["gas"] == "co2":

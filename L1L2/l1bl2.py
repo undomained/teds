@@ -66,6 +66,7 @@ def write_gasdata(gas, output_l2, _dims, _dims3d, nalt_l2, nact, l2product):
     l2_X_avgk = np.zeros((nalt_l2, nact))
     for ialt in range(nalt_l2):
         for iact in range(nact):
+            breakpoint()
             tmp = (l2product[ialt, iact][xgas]*scale[gas])
             l2_X[ialt, iact] = tmp
             l2_X_prec[ialt, iact] = l2product[ialt, iact][xgas_precision]*scale[gas]
@@ -77,6 +78,29 @@ def write_gasdata(gas, output_l2, _dims, _dims3d, nalt_l2, nact, l2product):
     _ = writevariablefromname(output_l2, prec_varname, _dims, l2_X_prec)
     _ = writevariablefromname(output_l2, avgker_varname, _dims3d, l2_X_avgk)
 
+
+def write_gasdata_new(gas, output_l2, _dims, _dims3d, nalt_l2, nact, l2product):
+    scale = {'CO2': 1.E6, 'CH4': 1.E9, 'H2O': 1.E6}
+    # names
+    xgas = "X" + gas
+    xgas_precision = xgas + " precision"
+    xgas_ker = xgas + ' col avg kernel'
+    l2_X = np.zeros((nalt_l2, nact))
+    l2_X_prec = np.zeros((nalt_l2, nact))
+    l2_X_avgk = np.zeros((nalt_l2, nact))
+    for ialt in range(nalt_l2):
+        for iact in range(nact):
+            breakpoint()
+            tmp = (l2product[ialt, iact][xgas]*scale[gas])
+            l2_X[ialt, iact] = tmp
+            l2_X_prec[ialt, iact] = l2product[ialt, iact][xgas_precision]*scale[gas]
+            l2_X_avgk[ialt, iact, :] = l2product[ialt, iact][xgas_ker][:]
+    # write data
+    prec_varname = 'precision'+xgas
+    avgker_varname = 'avgkernel'+xgas
+    _ = writevariablefromname(output_l2, xgas, _dims, l2_X)
+    _ = writevariablefromname(output_l2, prec_varname, _dims, l2_X_prec)
+    _ = writevariablefromname(output_l2, avgker_varname, _dims3d, l2_X_avgk)
 
 def write_proxygasdata(gas, output_l2, _dims, nalt_l2, nact, l2product):
     scale = {'CO2': 1.E6, 'CH4': 1.E9, 'H2O': 1.E6}
@@ -205,74 +229,6 @@ def level2_diags_output(filename, l2product, measurement):
     # gain H2O
     _ = writevariablefromname(output_l2diag, "l2gainH2O", _dims, l2diag_gainH2O)
     output_l2diag.close()
-
-
-# def level2_diags_output_old(filename, l2product, measurement):
-#     # this function writes some ectra diagnostics to a file that are not included in the level 2 data product.
-#     nalt = len(l2product)
-#     nact = len(l2product[0])
-#     nwave = len(measurement[0, 0]['wavelength'])
-#     # file name
-#     output_l2diag = nc.Dataset(filename, mode='w')
-#     output_l2diag.title = 'Tango Carbon E2ES L2 diagnostics'
-#     output_l2diag.createDimension('bins_spectral', nwave)     # spectral axis
-#     output_l2diag.createDimension('bins_along_track', nalt)     # across track axis
-#     output_l2diag.createDimension('bins_across_track', nact)     # across track axis
-
-#     l2diag_wave = output_l2diag.createVariable(
-#         'wavelength', np.float64, ('bins_along_track', 'bins_across_track', 'bins_spectral',))
-#     l2diag_wave.units = 'nm'
-#     l2diag_wave.long_name = 'wavelength of measurement'
-#     l2diag_wave.valid_min = 0.
-#     l2diag_wave.valid_max = 4000.
-#     l2diag_wave.FillValue = -32767
-#     # l2product[ialt_l2, iact]['number_iter']
-#     l2diag_measurement = output_l2diag.createVariable('measurement', np.float64, ('bins_along_track', 'bins_across_track', 'bins_spectral'))
-#     l2diag_measurement.units = 'photons/(nm m2 s sr)'
-#     l2diag_measurement.long_name = 'spetral radiance measurements'
-#     l2diag_measurement.valid_min = 0.
-#     l2diag_measurement.valid_max = 1.E26
-#     l2diag_measurement.FillValue = -32767
-
-#     l2diag_sun_irradiance = output_l2diag.createVariable('solar irradiance', np.float64, ('bins_along_track', 'bins_across_track', 'bins_spectral'))
-#     l2diag_sun_irradiance.units = 'photons/(nm m2 s)'
-#     l2diag_sun_irradiance.long_name = 'solar irradiance spectrum'
-#     l2diag_sun_irradiance.valid_min = 0.
-#     l2diag_sun_irradiance.valid_max = 1.E26
-#     l2diag_sun_irradiance.FillValue = -32767
-
-#     l2diag_gainCO2 = output_l2diag.createVariable('gain CO2', np.float64, ('bins_along_track', 'bins_across_track', 'bins_spectral'))
-#     l2diag_gainCO2.units = 'ppm/(photons/(nm m2 s sr))'
-#     l2diag_gainCO2.long_name = 'CO2 spectral gain vector'
-#     l2diag_gainCO2.valid_min = -1.E30
-#     l2diag_gainCO2.valid_max = 1.E30
-#     l2diag_gainCO2.FillValue = -32767
-    
-#     l2diag_gainCH4 = output_l2diag.createVariable('gain CH4', np.float64, ('bins_along_track', 'bins_across_track', 'bins_spectral'))
-#     l2diag_gainCH4.units = 'ppb/(photons/(nm m2 s sr))'
-#     l2diag_gainCH4.long_name = 'CH4 spectral gain vector'
-#     l2diag_gainCH4.valid_min = -1.E30
-#     l2diag_gainCH4.valid_max = +1.E30
-#     l2diag_gainCH4.FillValue = -32767
-
-#     l2diag_gainH2O = output_l2diag.createVariable('gain H2O', np.float64, ('bins_along_track', 'bins_across_track', 'bins_spectral'))
-#     l2diag_gainH2O.units = 'ppm/(photons/(nm m2 s sr))'
-#     l2diag_gainH2O.long_name = 'CO2 spectral gain vector'
-#     l2diag_gainH2O.valid_min = -1.E30
-#     l2diag_gainH2O.valid_max = +1.E30
-#     l2diag_gainH2O.FillValue = -32767
-
-#     for ialt in range(nalt):
-#         for iact in range(nact):
-#             l2diag_wave[ialt, iact, :] = measurement[ialt, iact]['wavelength'][:]
-#             l2diag_measurement[ialt, iact, :] = measurement[ialt, iact]['ymeas'][:]
-#             l2diag_sun_irradiance[ialt, iact, :] = measurement[ialt, iact]['sun'][:]
-#             l2diag_gainCO2[ialt, iact, :] = l2product[ialt, iact]['gain_XCO2'][:]
-#             l2diag_gainH2O[ialt, iact, :] = l2product[ialt, iact]['gain_XH2O'][:]
-#             l2diag_gainCH4[ialt, iact, :] = l2product[ialt, iact]['gain_XCH4'][:]
-#     output_l2diag.close()
-#     return
-
 
 def level1b_to_level2_processor(config):
     # get the l1b files

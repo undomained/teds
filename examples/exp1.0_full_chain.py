@@ -6,13 +6,14 @@
 """
 # define  path to search for module
 import sys
-path = "../"
-if(str(path) not in sys.path):
-    sys.path.append(path)
+sys.path.insert(1, "/home/jochen/TANGO_E2ES/EndtoEndProject/end_to_end/")
+# path = "../"
+# if(str(path) not in sys.path):
+#     sys.path.append(path)
 
-path = "../end_to_end/lib/"
-if(str(path) not in sys.path):
-    sys.path.append(path)
+# path = "../end_to_end/lib/"
+# if(str(path) not in sys.path):
+#     sys.path.append(path)
     
 # import E2ES modules 
 from end_to_end.lib import paths
@@ -24,6 +25,7 @@ from end_to_end.IM.create_im_configuration_file import im_configuration
 from end_to_end.L1AL1B.create_l1a1b_configuration_file import l1al1b_configuration
 from end_to_end.L1L2.l1bl2 import level1b_to_level2_processor
 from end_to_end.L1L2.create_l2_yaml_file import create_l1bl2_config_file
+from end_to_end.L1L2.SyntheticLevel2 import simplified_level2
 
 #import other modules
 import yaml
@@ -133,12 +135,12 @@ profile= 'orbit'   #needed to initialize gm and sgm consistently
 
 settings= {}
 settings['gm']        = False
-settings['sgm']       = True
+settings['sgm']       = False
 settings['im']        = False
 settings['l1al1b']    = False
 settings['l1bl2']     = False
-settings['save_yaml'] = True
-
+settings['save_yaml'] = False
+settings['sl2']       = True
 # ====================main part ================================================
 if __name__ == "__main__":
 
@@ -202,3 +204,17 @@ if __name__ == "__main__":
             l1bl2_yaml = paths.project+paths.L1L2_module+'l1bl2_config_'+run_id + '.yaml'
             create_l1bl2_config_file(l1bl2_yaml, l1bl2_config)
         level1b_to_level2_processor(l1bl2_config)
+
+    # ======= L1 to L2 processor ===================================
+    if(settings['sl2']):
+
+        sl2_config = {}
+        sl2_config['instrument'] = 'TANGO_Carbon'
+        sl2_config['sgm_file'] = paths.project + paths.data_interface + paths.interface_sgm + 'Tango_Carbon_sgm_atmosphere_' + run_id + '.nc'
+        sl2_config['l2_file'] = paths.project + paths.data_interface + paths.interface_l2 + 'Tango_Carbon_l2_' + run_id + '.nc'
+        sl2_config['l2_file'] = paths.project + paths.data_interface + paths.interface_l2 + 'Tango_Carbon_l2_test.nc'
+        sl2_config['precision relative'] = 0.005
+        sl2_config['precision constant'] = 0.00
+        sl2_config['seed'] = 10
+        
+        simplified_level2(sl2_config['sgm_file'], sl2_config['l2_file'], sl2_config['instrument'], sl2_config['precision relative'], sl2_config['precision constant'], sl2_config['seed'])

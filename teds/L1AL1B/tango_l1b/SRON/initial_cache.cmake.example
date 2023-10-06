@@ -1,0 +1,48 @@
+# Initial cache variables for the SPEXone processor
+
+# The syntax used here is
+#  set(<variable> <value> CACHE <type> <docstring>) .
+# You only need to edit the <value> parameter.
+
+# GNU compiler
+set(CMAKE_CXX_COMPILER g++-10 CACHE STRING "")
+set(CMAKE_C_COMPILER gcc-10 CACHE STRING "")
+
+# GNU flags
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -march=native -DNDEBUG" CACHE STRING "")
+set(CMAKE_CXX_FLAGS_DEBUG "-Og -g -Wall -Wextra -Wcast-align -Wformat -Winvalid-pch -Wmissing-declarations -Wmissing-include-dirs -Wconversion -Wredundant-decls -Wswitch-default -Wswitch-enum -pedantic" CACHE STRING "")
+
+# Intel compilers
+#set(CMAKE_CXX_COMPILER mpicxx CACHE STRING "")
+#set(CMAKE_C_COMPILER icc CACHE STRING "")
+
+# Intel flags
+#set(CMAKE_CXX_FLAGS_RELEASE "-Ofast -no-ipo -DNDEBUG" CACHE STRING "")
+#set(CMAKE_CXX_FLAGS_DEBUG "-O3 -g -debug all -traceback" CACHE STRING "")
+
+# Whether to build in Release or Debug configuration.
+set(CMAKE_BUILD_TYPE Release CACHE STRING "")
+
+# Additional directories containing header files
+set(INCLUDE_PATHS
+  /opt/local/EOS/nadc_extern/bullseye/include
+  /opt/local/intel/compilers_and_libraries_2020.2.254/linux/mkl/include
+  CACHE STRING "")
+
+# Linear algebra library directories
+set(LIBRARY_PATHS
+  /opt/local/EOS/nadc_extern/bullseye/lib
+  /opt/local/intel/compilers_and_libraries_2020.2.254/linux/mkl/lib/intel64_lin
+  CACHE STRING "")
+
+# Linear algebra libraries
+# With Lapack
+#set(LIBRARIES netcdf_c++4 netcdf hdf5_hl hdf5 z dl fftw3 lapack CACHE STRING "")
+# With MKL (for Intel use mkl_intel_lp64 instead of mkl_gf_lp64)
+set(LIBRARIES netcdf_c++4 netcdf hdf5_hl hdf5 z dl fftw3 mkl_gf_lp64 mkl_sequential mkl_core CACHE STRING "")
+
+# Whether to build with MPI support (usually automatically detected)
+#set(USE_MPI ON CACHE BOOL "")
+
+# Where to install the SPEXone processor
+set(CMAKE_INSTALL_PREFIX /usr/local/spexone CACHE STRING "")

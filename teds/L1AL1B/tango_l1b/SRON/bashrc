@@ -1,0 +1,80 @@
+#
+# .bashrc: executed per-interactive-shell startup, for Linux Earth-group
+#
+# Richard van Hees, November 4, 2019
+#
+# ************* SET VARIABLE BELOW ACCORDING TO YOUR PREFERENCE *************
+#
+# *** Set paths Earth nadc_extern S/W, options: "no" or "yes"
+USE_NADC_EXTERN="yes"
+
+# *** Set paths for GNU compilers, options: "no", "9", "10", "11"
+# Please consider to leave this at "no" and use: setup_gcc 11
+USE_GNU_COMPILERS="9"
+
+# *** Set paths for Intel compilers, options: "no", "v14", "v18", "v19", "v20"
+# Please consider to leave this at "no" and use: setup_intel v20
+USE_INTEL_COMPILERS="v20"
+
+# *** Set paths for IDL, options: "no", "v8.4", "v8.6", "v8.7"
+# Please consider to leave this at "no" and use: setup_idl v8.7
+USE_ITT_IDL="no"
+
+# *** Set paths for Matlab, options: "no" or "yes"
+# Please consider to leave this at "no" and use: setup_matlab yes
+USE_MATLAB="no"
+
+# ********************** DO NOT EDIT BELOW THIS LINE **********************
+# *** Where is the SRON optional S/W located?
+export SRON_LOCAL=/opt/local
+export EARTH_LOCAL=$SRON_LOCAL/EOS
+
+# set (default) PATH
+PATH="$EARTH_LOCAL/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+LD_LIBRARY_PATH=""
+LM_LICENSE_FILE=""
+
+if [ -d $EARTH_LOCAL/bash_earth.d ]; then
+    for i in $EARTH_LOCAL/bash_earth.d/*.sh; do
+        if [ -r $i ]; then
+            . $i
+        fi
+    done
+    unset i
+fi
+
+# extend PATH for user binaries
+[ -d $HOME/.local/bin ] && PATH=$HOME/.local/bin:$PATH
+[ -d $HOME/bin ] && PATH=$HOME/bin:$PATH
+if [ $HOSTTYPE == "x86_64" ]; then
+    PATH="$HOME/x86_64/bin:$PATH"
+    if [ -z $LD_LIBRARY_PATH ]; then
+        LD_LIBRARY_PATH="$HOME/x86_64/lib"
+    else
+        LD_LIBRARY_PATH="$HOME/x86_64/lib:$LD_LIBRARY_PATH"
+    fi
+fi
+export LD_LIBRARY_PATH
+export LM_LICENSE_FILE
+
+# Don't make useless coredump files.  If you want a coredump,
+# say "ulimit -c unlimited" and then cause a segmentation fault.
+ulimit -S -c 0
+
+# use ssh for rsync
+[ -x /usr/bin/rsync ] && export RSYNC_RSH=/usr/bin/ssh
+
+#++++++++++  read additional file with user settings
+[ -f $HOME/.bash_${USER} ] && . $HOME/.bash_${USER}
+
+#+++++++++++++++ IF NOT RUNNING INTERACTIVELY, THEN RETURN +++++++++++++++
+[ -v PS1 ] && return
+
+# check if this is a login shell
+if [ $SHLVL -gt 1 ]; then
+    for i in /etc/profile.d/*.sh; do
+        if [ -x $i ]; then
+            . $i
+        fi
+    done
+fi

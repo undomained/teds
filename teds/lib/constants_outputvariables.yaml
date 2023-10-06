@@ -1,0 +1,358 @@
+latitude:
+  name: lat
+  long_name: latitude
+  units: degree
+  valid_min: -90.0
+  valid_max: 90.0
+  FillValue: -32767
+
+longitude:
+  name: lon
+  long_name: longitude 
+  units: degree
+  valid_min: -180.0
+  valid_max: 180.0
+  FillValue: -32767
+
+# GM module
+solarzenithangle:
+  name: sza
+  long_name: solar zenith angle
+  units: degree
+  valid_min: 0.0
+  valid_max: 90.0
+  FillValue: -32767
+
+solarazimuthangle:
+  name: saa
+  long_name: solar azimuth angle
+  units: degree
+  valid_min: -180.0
+  valid_max: +360.0
+  FillValue: -32767
+
+viewingzenithangle:
+  name: vza
+  long_name: viewing zenith angle
+  units: degree
+  valid_min: 0.0
+  valid_max: 90.0
+  FillValue: -32767
+
+viewingazimuthangle:
+  name: vaa
+  long_name: viewing azimuth angle
+  units: degree
+  valid_min: -180.0
+  valid_max: 360.0
+  FillValue: -32767
+
+# SGM: Radiances
+
+wavelength:
+  name: wavelength
+  long_name: 'wavelength line-by-line'
+  units: 'nm'
+  valid_min: 0.
+  valid_max: 8000.
+  FillValue: -32767
+
+solarirradiance:
+  name: solar_irradiance
+  long_name: 'solar irradiance line-by-line'
+  units: 'photons / (nm m2 s)'
+  valid_min: 0.0
+  valid_max: 1.E+30
+  FillValue: -32767
+
+radiance:
+  name: radiance
+  long_name: 'radiance line-by-line'
+  units: 'photons / (sr nm m2 s)'
+  valid_min: 0.
+  valid_max: 1.E+28
+  FillValue: -32767
+
+# SGM: ATM
+albedo:
+  name: albedo
+  long_name: 'Lambertian surface albedo'
+  units: '-'
+  valid_min: 0.0
+  valid_max: 1.0
+  FillValue: -32767
+
+centrallayerheight:
+  name: zlay
+  long_name: 'central layer height'
+  units: 'm'
+  valid_min: 0.0
+  valid_max: 1.E+5
+  FillValue: -32767
+
+levelheight:
+  name: zlev
+  long_name: 'level height'
+  units: 'm'
+  valid_min: 0.
+  valid_max: 1.E+5
+  FillValue: -32767
+  
+columndensity_co2:
+  name: dcol_co2
+  long_name: CO2 layer column density
+  units: molec./cm2
+  valid_min: 0.
+  valid_max: 1.E+28
+  FillValue: -32767
+
+columndensity_ch4:
+  name: dcol_ch4
+  long_name: CH4 layer column density
+  units: molec./cm2
+  valid_min: 0.
+  valid_max: 1.E+28
+  FillValue: -32767
+
+columndensity_h2o:
+  name: dcol_h2o
+  long_name: H2O layer column density
+  units: molec./cm2
+  valid_min: 0.
+  valid_max: 1.E+28
+  FillValue: -32767
+
+column_co2:
+  name: col_co2
+  long_name: CO2 dry air mol column mixing ratio
+  units: ppmv
+  valid_min: 0.0
+  valid_max: 1.E+28
+  FillValue: -32767
+
+column_ch4:
+  name: col_ch4
+  long_name: CH4 dry air mol column mixing ratio
+  units: ppbv
+  valid_min: 0.
+  valid_max: 1.E+28
+  FillValue: -32767
+
+column_h2o:
+  name: col_h2o
+  long_name: H2O dry air mol column mixing ratio
+  units: ppmv
+  valid_min: 0.
+  valid_max: 1.E+28
+  FillValue: -32767
+
+column_air:
+  name: col_air
+  long_name: air total column density
+  units: molec./cm2
+  valid_min: 0.
+  valid_max: 1.E+32
+  FillValue: -32767
+
+# level 2 output
+convergence:
+  name: convergence
+  long_name: convergence
+  units: '1'
+  valid_min: 0
+  valid_max: 1
+  FillValue: -32767
+
+maxiterations:
+  name: max iter
+  long_name: number of iterations
+  units: '1'
+  valid_min: 0 
+  valid_max: 100
+  FillValue: -32767
+
+spectralchi2 :
+  name: chi2
+  long_name: 'spectral chi square of the fit'
+  units: '1'
+  valid_min: 0 
+  valid_max: 100.
+  FillValue: -32767
+
+XCO2:
+  name: 'XCO2'
+  long_name: 'CO2 dry air column mixing ratio XCO2'
+  units: ppmv
+  valid_min: 0.
+  valid_max: 2.E+20
+  FillValue: -32767
+
+precisionXCO2:
+  name: precision XCO2
+  long_name: 'CO2 precision of dry air column mixing ratio XCO2'  
+  units: ppmv
+  valid_min: 0.
+  valid_max: 2.E+19
+  FillValue: -32767
+
+avgkernelXCO2:
+  name: 'col avg kernel XCO2'
+  long_name: 'CO2 column averaging kernel of XCO2'
+  units: '1'
+  valid_min: 0.
+  valid_max: 10.
+  FillValue: -32767
+
+XCH4:
+  name: 'XCH4'
+  long_name: 'CH4 dry air column mixing ratio XCH4'
+  units: ppbv
+  valid_min: 0.
+  valid_max: 2.E+20
+  FillValue: -32767
+
+precisionXCH4:
+  name: precision XCH4
+  long_name: 'CH4 precision of dry air column mixing ratio XCH4'  
+  units: ppbv
+  valid_min: 0.
+  valid_max: 2.E+19
+  FillValue: -32767
+
+avgkernelXCH4:
+  name: 'col avg kernel XCH4'
+  long_name: 'CH4 column averaging kernel of XCH4'
+  units: '1'
+  valid_min: 0.
+  valid_max: 10.
+  FillValue: -32767
+
+XH2O:
+  name: 'XH2O'
+  long_name: 'H2O dry air column mixing ratio XH2O'
+  units: ppmv
+  valid_min: 0.
+  valid_max: 2.E+20
+  FillValue: -32767
+
+precisionXH2O:
+  name: precision XH2O
+  long_name: 'H2O precision of dry air column mixing ratio XH2O'  
+  units: ppmv
+  valid_min: 0.
+  valid_max: 2.E+19
+  FillValue: -32767
+
+avgkernelXH2O:
+  name: 'col avg kernel XH2O'
+  long_name: 'H2O column averaging kernel of XH2O'
+  units: '1'
+  valid_min: 0.
+  valid_max: 10.
+  FillValue: -32767
+
+proxyXCO2:
+  name: 'XCO2 proxy'
+  long_name: 'CO2 proxy dry air column mixing ratio XCO2'
+  units: ppmv
+  valid_min: 0.
+  valid_max: 2.E+20
+  FillValue: -32767
+
+precisionproxyXCO2:
+  name: 'precision XCO2 proxy'
+  long_name: 'CO2 precision of proxy dry air column mixing ratio XCO2'
+  units: ppmv
+  valid_min: 0.
+  valid_max: 2.E+19
+  FillValue: -32767
+
+proxyXCH4:
+  name: 'XCH4 proxy'
+  long_name: 'CH4 proxy dry air column mixing ratio XCH4'
+  units: ppbv
+  valid_min: 0.
+  valid_max: 2.E+20
+  FillValue: -32767
+
+precisionproxyXCH4:
+  name: 'precision XCH4 proxy'
+  long_name: 'CH4 precision of proxy dry air column mixing ratio XCH4'
+  units: ppbv
+  valid_min: 0.
+  valid_max: 2.E+19
+  FillValue: -32767
+
+# diagnostics to a file that are not included in the level 2 data product
+l2wavelength:
+  name: wavelength
+  long_name: 'wavelength of measurement'
+  units: 'nm'
+  valid_min: 0.
+  valid_max: 4000.
+  FillValue: -32767
+  
+l2measurement:
+  name: measurement
+  long_name: 'spectral radiance measurements'
+  units: 'photons/(nm m2 s sr)'
+  valid_min: 0.
+  valid_max: 1.E+26
+  FillValue: -32767
+
+l2solarirradiance:
+  name: solar irradiance
+  long_name: 'solar irradiance spectrum'
+  units: 'photons/(nm m2 s)'
+  valid_min: 0.
+  valid_max: 1.E+26
+  FillValue: -32767
+
+l2gainCO2:
+  name: 'gain CO2'
+  long_name: 'CO2 spectral gain vector'
+  units: 'ppm/(photons/(nm m2 s sr))'
+  valid_min: -1.E+30
+  valid_max: 1.E+30
+  FillValue: -32767
+
+l2gainCH4:
+  name: 'gain CH4'
+  long_name: 'CH4 spectral gain vector'
+  units: 'ppb/(photons/(nm m2 s sr))'
+  valid_min: -1.E+30
+  valid_max: 1.E+30
+  FillValue: -32767
+
+l2gainH2O:
+  name: 'gain H2O'
+  units: 'ppm/(photons/(nm m2 s sr))'
+  long_name: 'CO2 spectral gain vector'
+  valid_min: -1.E+30
+  valid_max: 1.E+30
+  FillValue: -32767
+
+# radiance offset
+radoff_wavelength:
+  name: wavelengths
+  units: 'nm'
+  long_name: 'wavelengths'
+  FillValue: -32767
+  valid_min: 0.
+  valid_max: 80000.
+
+radoff_radiance:
+  name: radiance
+  units: 'photons/(sr nm m2 s)'
+  long_name: 'observed Earth radiance'
+  FillValue: -32767
+  valid_min: 0.
+  valid_max: 1.E+25
+
+radoff_radiance_noise:
+  name: radiance_noise
+  units: 'photons/(sr nm m2 s)'
+  long_name: 'relative radiance noise (1-sigma)'
+  FillValue: -32767
+  valid_min: 0.
+  valid_max: 1.E+24

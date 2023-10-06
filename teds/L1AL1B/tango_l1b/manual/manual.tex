@@ -1,0 +1,408 @@
+% This source code is licensed under the 3-clause BSD license found in
+% the LICENSE file in the root directory of this project.
+
+\documentclass{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{datetime}
+\usepackage{amsmath}
+\usepackage{bm}
+\usepackage{listings}
+\usepackage{color}
+\lstset{frame=single,
+  language=,
+  showstringspaces=false,
+  columns=flexible,
+  basicstyle={\small\ttfamily},
+  numberstyle=\tiny\color{gray},
+  keywordstyle=\color{blue},
+  commentstyle=\color{green},
+  stringstyle=\color{red},
+}
+\usepackage{hyperref}
+\hypersetup{colorlinks,%
+  citecolor=blue,%
+  filecolor=blue,%
+  linkcolor=blue,%
+  urlcolor=blue,%
+  pdftex}
+\usepackage[most]{tcolorbox}
+\newtcolorbox{titlebox}[2][]{%
+  attach boxed title to top center
+  = {yshift=-8pt},
+  colback      = blue!5!white,
+  colframe     = blue!75!black,
+  fonttitle    = \bfseries,
+  colbacktitle = blue!85!black,
+  title        = #2,#1,
+  enhanced,
+}
+
+\title{SPEXone data processor}
+\date{\monthname {} \the\year}
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+
+\section{Introduction}
+
+This document provides technical details on how to build and run the SPEXone processor. Details about different processor steps and the theory behind them are provided elsewhere (``SPEXone L1A-L1C processor: Algorithm theoretical baseline document'', currently not publicly available).
+
+\subsection{Contributors}
+
+In order to see a list of contributors, clone the repository and issue
+\begin{lstlisting}
+  git shortlog -s -n --all --no-merges
+\end{lstlisting}
+This prints a list of contributors along with a number of commits.
+
+\subsection{Terms of use}
+
+This project is licensed under the 3-clause BSD license found in the LICENSE file in the root directory of this project.
+
+\section{Accessing the code and documentation}
+
+The SPEXone processor is currently hosted at Bitbucket and can be cloned by issuing
+\begin{lstlisting}
+  git clone git@bitbucket.org:sron_earth/spexone_cal.git
+\end{lstlisting}
+If you encounter an error with this command, make sure the SSH key of your computer has been uploaded to Bitbucket. For that, log in at \url{https://bitbucket.org}, go to \lstinline!Personal settings! $\rightarrow$ \lstinline!SSH keys! $\rightarrow$ \lstinline!Add key!, pick any label, and copy the the contents of your public key, typically found at \verb+~/.ssh/id_rsa.pub+. This needs to be done separately for every machine from which you want to access the repository.
+
+The LaTeX source of this  manual is in the \lstinline!manual! directory that comes with the source code. It can be compiled into a PDF with, e.g.,
+\begin{lstlisting}
+  pdflatex manual.tex && pdflatex manual.tex
+\end{lstlisting}
+In order to make sure you have the latest version, it is recommended to do a \lstinline!git pull! and recompile the manual once in a while. For this navigate into the \lstinline!manual! directory and run
+\begin{lstlisting}
+  git pull
+  pdflatex manual.tex && pdflatex manual.tex
+\end{lstlisting}
+
+Also, make sure to join the SPEXone Slack channel! This is the most efficient way to communicate with people involved with this project. Ask any of the developers to provide you access to the Slack channel.
+
+\section{The build process}
+
+SPEXone processor is dependent on the CMake build system generator. CMake is a set of tools for configuring, building, and testing software, and is released under the New BSD License. Overall, building the processor is a two-step process: we must first run CMake to generate the build files, e.g. GNU Makefiles, and then issue the build command, e.g. make.
+
+First step is to obtain CMake. On Ubuntu and similar distributions it can likely be installed by issuing
+\begin{lstlisting}
+  sudo apt-get install cmake
+\end{lstlisting}
+When running CMake (the configuration step) it creates a set of persistent variables which are contained in a file called \lstinline!CMakeCache.txt! in the build directory. These are referred to as cache variables and they are the user-configurable settings of the project. All the important decisions such as which compiler to use, which libraries to link against, etc., are stored as cache variables. There are several ways of setting the cache variables, one of which is to define them in a file that can be read by CMake. This is called the initial cache file, templates of which are provided with the source code so you don't have to compose it from scratch. Start by navigating into the SPEXone source directory \lstinline!<spexone_cal>!.
+\begin{lstlisting}
+  cd <spexone_cal>
+  cp initial_cache.cmake.example initial_cache.cmake
+\end{lstlisting}
+If you are using one of SRON's computers then copy the one from the \lstinline!SRON! directory instead
+\begin{lstlisting}
+  cd <spexone_cal>
+  cp SRON/initial_cache.cmake.example initial_cache.cmake
+  # Have a look at SRON/bashrc for hints of how to set up the correct
+  # environment, in particular for using the correct compilers.
+\end{lstlisting}
+Next, edit the initial cache file to reflect your environment, although the default values might already be fine. When done editing, create a build directory and run CMake from within that directory using the initial cache file:
+\begin{lstlisting}
+  mkdir build && cd build
+  cmake -C <spexone_cal>/initial_cache.cmake <spexone_cal>
+\end{lstlisting}
+One can also build directly in the source directory but it is generally a good habit to do out-of-source builds to keep the source directory clean.
+
+Note that editing the initial cache file has no effect after the first configuring! Instead, it is necessary to empty the build directory before running CMake again:
+\begin{lstlisting}
+  rm -rf * # From within the build directory
+  cmake -C <spexone_cal>/initial_cache.cmake <spexone_cal>
+\end{lstlisting}
+
+\begin{titlebox}{Optional}
+  Alternatively, if you want to keep the build directory intact while editing a CMake cache variable such as a compiler flag or a library to be linked against, you can use a graphical CMake front end or specify that variable from the command line (the latter will not be demonstrated here). The two commonly used graphical front ends are the command line based \lstinline!ccmake! and the Qt-based \lstinline!cmake-gui!, obtained by issuing
+  \begin{lstlisting}
+    sudo apt-get install cmake-curses-gui
+    # or
+    sudo apt-get install cmake-gui
+  \end{lstlisting}
+  When using \lstinline!ccmake!, issue
+  \begin{lstlisting}
+    ccmake .
+  \end{lstlisting}
+  from the build directory. Some CMake variables and options appear, most of which should be self-explanatory. A short help text to each variable is displayed at the bottom in a status bar. Pressing 't' reveals all options. When done editing, press 'c' to reconfigure and 'g' to generate the native build files. Pay attention when \lstinline!ccmake! warns you that the cache variables have been reset. This will happen, e.g., when changing the compiler, and will necessitate the reconfiguring of some variables.
+\end{titlebox}
+If CMake ran successfully the next step is to compile the executable. The default build system generated by CMake is GNU makefiles on Linux. Unless you are using a different build system, you can compile with
+\begin{lstlisting}
+  make -j # or make -j VERBOSE=1 for more verbose output
+\end{lstlisting}
+If you are not sure which build system you are using, run
+\begin{lstlisting}
+  cmake --build . # make is probably fine though
+\end{lstlisting}
+from within the build directory. If successful, an executable called \lstinline!spexone_cal! is produced in the build directory.
+
+\begin{titlebox}{Optional}
+  A different build system can be chosen by passing an argument to the CMake generator function. For instance, for using Ninja, use \lstinline!-G Ninja! during the initial configuring,
+  \begin{lstlisting}
+    cmake -G Ninja -C <spexone_cal>/initial_cache.cmake \
+      <spexone_cal>
+  \end{lstlisting}
+  The build command is then
+  \begin{lstlisting}
+    ninja
+    # or
+    cmake --build .
+  \end{lstlisting}
+\end{titlebox}
+
+\subsection{\label{sec:cmake_configuration}CMake configuration variables}
+
+See \lstinline!initial_cache.cmake.example! in the root directory for a list of configuration variables. You can copy and work with that file directly. There is thus no need to list them separately here.
+
+\section{Running the code}
+
+If the build process was successful, an executable called \lstinline!spexone! is produced in the build directory \lstinline!<build>!. When running the executable it takes a configuration file as an argument which specifies steps for either \textit{i)} generating a CKD file or \textit{ii)} applying the CKD to images in flight mode:
+\begin{lstlisting}
+  <build>/spexone run.cfg
+\end{lstlisting}
+where \lstinline!run.cfg! is a user defined configuration file. If the processor was compiled using a parallel C++ compiler, it can be run by issuing
+\begin{lstlisting}
+  mpirun -np <n> <build>/spexone run.cfg
+\end{lstlisting}
+where \lstinline!<n>! is the number of MPI tasks.
+
+\subsection{Example usage of the processor on SRON computers}
+
+Example configuration files for running different parts of the processor are located at
+\begin{lstlisting}
+  /deos/raull/spexone_tutorial
+\end{lstlisting}
+Create a new working directory and copy the configuration files into that directory:
+\begin{lstlisting}
+  cp /deos/raull/spexone_tutorial/*cfg .
+\end{lstlisting}
+First step is to generate the CKD. This can be done by running
+\begin{lstlisting}
+  <build>/spexone ckd_full.cfg
+\end{lstlisting}
+which will create a file called \lstinline!ckd.nc! in the current directory. Alternatively, the CKD can be generated in multiple steps which can be useful for experimental purposes. Running
+\begin{lstlisting}
+  <build>/spexone ckd_part_1.cfg
+  <build>/spexone ckd_part_2.cfg
+\end{lstlisting}
+will produce the same \lstinline!ckd.nc! as the single step calculation.
+
+Once the CKD has been generated, it can be used to calibrate images in a test orbit. In order to run the L1A-L1B processor on a test orbit, issue
+\begin{lstlisting}
+  <build>/spexone l1b.cfg
+\end{lstlisting}
+or
+\begin{lstlisting}
+  mpirun -np <n> <build>/spexone l1b.cfg
+\end{lstlisting}
+if \lstinline!spexone_cal! was compiled with MPI support. In order to save time only the first 50 images are calibrated, determined by the \lstinline!l1b.cfg! keywords
+\begin{lstlisting}
+  image_start = 0
+  image_end = 49
+\end{lstlisting}
+Use \lstinline!image_end = 8640! instead to process the full orbit.
+
+\section{Contributing}
+
+\subsection{Git}
+
+\paragraph{Creating a branch.} When contributing a fix or a new feature, it is best to start with a pull request. If you have limited or no experience with Git, read Appendix~\ref{app:git} first.
+
+Start by creating a new branch, e.g.
+\begin{lstlisting}
+  git checkout -b demod-fix
+\end{lstlisting}
+Once you have implemented and committed your changes, you can push to Bitbucket by issuing
+\begin{lstlisting}
+  git push --set-upstream origin demod-fix
+\end{lstlisting}
+Next, go to the repository's Bitbucket page (\url{https://bitbucket.org/sron_earth/spexone_cal}), go to ``Pull requests'' and ``Create pull request''. The default ``Title'' generated from the commit message and an empty ``Description'' field should be fine although both can be edited. Select a reviewer (or leave empty if there is no obvious choice) and tick the ``Delete branch'' field unless you want to keep the branch around and manually delete it later.
+
+\paragraph{Testing out a branch.} In order to test new code written by another developer, first run
+\begin{lstlisting}
+  git pull
+\end{lstlisting}
+To update (merge) all branches. Alternatively, run
+\begin{lstlisting}
+  git fetch
+\end{lstlisting}
+if you don't want to apply any changes to your local branches. Then issue
+\begin{lstlisting}
+  git checkout new-feature
+\end{lstlisting}
+where \lstinline!new-feature! is the name of the new branch. Next, recompile and rerun the calculation or whichever way you need to test the new feature. If everything works as expected, switch back to the master branch or any other branch you were working on:
+\begin{lstlisting}
+  git checkout master
+\end{lstlisting}
+You may now delete the local branch
+\begin{lstlisting}
+  git branch -d new-feature
+\end{lstlisting}
+in order to clean up but it's not strictly necessary.
+
+If a pull request was created for the \lstinline!new-feature! branch on Bitbucket and you were selected as a reviewer you can now approve the pull request (find the Approve button). The branch is then automatically merged to the master branch and deleted. If it was not set to be automatically deleted upon merge, it may be manually deleted later. Once the feature branch has been merged to the master branch, either automatically by the pull request or manually by the branch creator or anyone with write access, run
+\begin{lstlisting}
+  git pull
+\end{lstlisting}
+again to update the master branch so that it includes the new feature.
+
+\subsection{Performance profiling with Perf}
+
+The SPEXone processor is an application of high performance computing with a focus on translating scientific equations into code and optimizing it for speed and memory. While both are important, typically more time is spent on the speed (timing) analysis which means identifying hotspots in the code and attempting to improve the performance in those regions.
+
+The most basic form of timings analysis is looking at the total time it takes for a calculation to run or looking at the timings of individual components as seen in the output of the code. For a more in-depth understanding of where the bottlenecks occur, it is better to use a profiling tool. This section describes how to use the Perf tool.
+
+Perf is a performance analyzing tool that ships with the Linux kernel. It can measure different types of events, the most common ones being software events and hardware events. Examples of software events include the CPU clock and page faults while hardware events refer to the number of cycles, instructions retired, L1 cache misses, and many others. It is recommended to work through a Perf tutorial for a full understanding of its capabilities. To get a list of all supported events issue
+\begin{lstlisting}
+  perf list
+\end{lstlisting}
+In this section, we present a few example commands to get you started with using Perf on the SPEXone processor. First, recompile the code using normal release flags plus the \lstinline!-ggdb! flag. The \lstinline!perf stat! command keeps a running count of events during execution and presents a summary at the end of the calculation. For instance, running
+\begin{lstlisting}
+  perf stat -e cycles,instructions,cache-references,cache-misses,\
+branches,branch-misses,L1-dcache-loads,L1-dcache-load-misses spexone \
+  cfg.cfg
+\end{lstlisting}
+where the \lstinline!-e! flag specifies which events are measured, will output something like
+\small
+\begin{verbatim}
+30,284,358,788 cycles:u                (62.47%)
+69,653,498,559 instructions:u          (62.49%) # 2.30  insn per cycle
+ 2,389,054,378 cache-references:u      (62.58%)
+   259,681,295 cache-misses:u          (62.55%) # 10.870 % of all cache
+                                                # refs
+12,353,196,649 branches:u              (62.50%)
+    64,626,303 branch-misses:u         (62.49%) # 0.52% of all branches
+25,217,043,707 L1-dcache-loads:u       (62.49%)
+ 1,120,458,843 L1-dcache-load-misses:u (62.46%) # 4.44% of all L1-dcache
+                                                # accesses
+   9.604108489 seconds time elapsed
+   7.241902000 seconds user
+   2.172071000 seconds sys
+\end{verbatim}
+\normalsize
+The absolute number of events such as CPU cycles or instructions are usually not very meaningful. Ratios such as instructions per cycle (IPC) or the number of CPU cache misses vs all cache access attempts are a better measure of performance. A good value for IPC depends on the processor.
+
+In order to identify the hotspots, i.e. to measure events attributed to a specific function or line of code, Perf does event-based sampling which is a statistical process. This means that not every event is explicitly counted. Instead, a sample is registered after a certain number of CPU cycles have passsed. The number of events attributed to a section of the code is thus approximate and for a low number of events care must be taken in interpreting the results. Identification of hotspots is a 2-step process. First collect the samples with \lstinline!perf record!:
+\begin{lstlisting}
+  perf record -e cycles,instructions,cache-references,cache-misses,\
+branches,branch-misses,L1-dcache-loads,L1-dcache-load-misses spexone \
+  cfg.cfg
+\end{lstlisting}
+Then analyze the results using \lstinline!perf report!:
+\begin{lstlisting}
+  perf report --percent-limit 0.1 --dsos spexone --stdio \
+      --fields overhead,sample,symbol
+\end{lstlisting}
+This displays the number of various events at the function level. In order to analyze the events at the source line level, issue
+\begin{lstlisting}
+  perf report --percent-limit 0.1 --dsos spexone --stdio \
+      --fields overhead,sample,srcline
+\end{lstlisting}
+
+\section{Internals}
+
+\subsection{Notes on parallelization}
+
+The L1A-L1B step of the processor has been parallelized using MPI. Parallelization is performed over images.
+
+\subsection{Cubic splines}
+
+The implementation of \verb+cubic_splines.cpp+ is based on the following algorithm. Express the interpolation function between the points $(x_i,y_i)$ and $(x_{i+1},y_{i+1})$ as
+\begin{equation}
+  S_i(x) = y_i + a_i(x-x_i) + b_i(x-x_i)^2 + c_i(x-x_i)^3, \quad x \in [x_i, x_{i+1}]
+\end{equation}
+with the derivatives
+\begin{equation}
+  \begin{split}
+    S'_i(x) =& a_i + 2b_i(x-x_i) + 3c_i(x-x_i)^2 \\
+    S''_i(x) =& 2b_i + 6c_i(x-x_i).
+  \end{split}
+\end{equation}
+By requiring the function to be twice differentiable everywhere we get
+\begin{equation}
+  \begin{split}
+    S_i(x_{i+1}) =& S_{i+1}(x_{i+1}) = y_{i+1}, \\
+    S'_{i-1}(x_i) =& S'_i(x_i), \\
+    S''_{i-1}(x_i) =& S''_i(x_i),
+  \end{split}
+\end{equation}
+which yields
+\begin{equation}
+  \begin{split}
+    \label{eq:cubic_cond}
+    & a_i\Delta x_i + b_i\Delta x_i^2 + c_i\Delta x_i^3 = \Delta y_i, \\
+    & a_{i-1} + 2b_{i-1}\Delta x_{i-1} + 3c_{i-1}\Delta x_{i-1}^2 = a_i, \\
+    & 2b_{i-1} + 6c_{i-1}\Delta x_{i-1} = 2b_i,
+  \end{split}
+\end{equation}
+where $\Delta x_i = x_{i+1} - x_i$ and $\Delta y_i = y_{i+1} - y_i$. The last of Eqs.~\eqref{eq:cubic_cond} yields
+\begin{equation}
+  c_i = \frac{b_{i+1} - b_i}{3\Delta x_i}.
+\end{equation}
+Substituting that into the first of Eqs.~\eqref{eq:cubic_cond} yields
+\begin{equation}
+  a_i = \frac{\Delta y_i}{\Delta x_i} - \frac{2b_i + b_{i+1}}{3}\Delta x_i.
+\end{equation}
+Next, substituting for $\bm a$ and $\bm c$ we can express everything in terms of $\bm b$, $\Delta \bm x$, and $\Delta \bm y$:
+\begin{equation}
+  \frac{\Delta x_{i-1}}{3}b_{i-1} + \frac{2(\Delta x_{i-1} + \Delta x_i)}{3}b_i + \frac{\Delta x_i}{3}b_{i+1} = \frac{\Delta y_i}{\Delta x_i} - \frac{\Delta y_{i-1}}{\Delta x_{i-1}}.
+\end{equation}
+This can be written as a tridiagonal system for $\bm b$. If we impose the natural boundary conditions $b_0 = b_{N-1} = 0$ then we get
+\begin{equation}
+  \begin{pmatrix}
+    1 & 0 & 0 & 0 & \ldots \\
+    \frac{\Delta x_0}{3} & \frac{2(\Delta x_0 + \Delta x_1)}{3} & \frac{\Delta x_1}{3} & 0 & \ldots \\
+    \ldots \\
+    \ldots & 0 & \frac{\Delta x_{N-3}}{3} & \frac{2(\Delta x_{N-3} + \Delta x_{N-2})}{3} & \frac{\Delta x_{N-2}}{3} \\
+    \ldots & 0 & 0 & 0 & 1 \\
+  \end{pmatrix}
+  \begin{pmatrix}
+    b_0 \\
+    b_1 \\
+    \ldots \\
+    b_{N-2} \\
+    b_{N-1} \\
+  \end{pmatrix}
+  =
+  \begin{pmatrix}
+    0 \\
+    \frac{\Delta y_1}{\Delta x_1} - \frac{\Delta y_0}{\Delta x_0} \\
+    \ldots \\
+    \frac{\Delta y_{N-2}}{\Delta x_{N-2}} - \frac{\Delta y_{N-3}}{\Delta x_{N-3}} \\
+    0 \\
+  \end{pmatrix}.
+\end{equation}
+
+\appendix
+
+\section{\label{app:git}Basic usage of Git}
+
+Navigate into any source directory of the project and run
+\begin{lstlisting}
+  git status
+\end{lstlisting}
+to see which files have been modified. Run
+\begin{lstlisting}
+  git add
+\end{lstlisting}
+on each file you want to commit. Similarly, run
+\begin{lstlisting}
+  git rm
+\end{lstlisting}
+on each file you want to remove from version control (don’t remove them with \lstinline!rm!). In order to commit, issue
+\begin{lstlisting}
+  git commit
+\end{lstlisting}
+which prompts you with the commit message before the actual commit is performed. The basics of how to write a commit message are well explained in this blog post: \url{https://chris.beams.io/posts/git-commit}. In short, start with a summary line consisting of no more than 50 characters, not followed by a period. Leave a blank line followed by further description if necessary. For small commits, just the summary line may be sufficient. Write the whole commit message in the imperative tense (i.e. ``Fix typo'' not ``Fixed typo''). Attention: never run \lstinline!git commit -a! unless you are an experienced Git user! Finally, issue
+\begin{lstlisting}
+  git push
+\end{lstlisting}
+to push the committed files to Bitbucket.
+
+Git comes with tons of useful commands and being proficient at Git is generally a very useful skill to have. The basics of Git are nicely covered in the first three chapters of the Git book: \url{https://git-scm.com/book/en/v2}.
+
+\end{document}

@@ -1,0 +1,10 @@
+// This source code is licensed under the 3-clause BSD license found
+// in the LICENSE file in the root directory of this project.
+
+#ifndef GIT_H
+#define GIT_H
+#include <string>
+const std::string git_commit = "@GIT_COMMIT@";
+const std::string git_date = "@GIT_DATE@";
+const std::string git_tag = "@GIT_TAG@";
+#endif

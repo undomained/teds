@@ -11,7 +11,8 @@ __pycache__/
 .spyproject
 
 # Jupyter Notebook
-.ipynb_checkpoints
+.ipynb_checkpoints/
 
 
-GM/gm_config.yaml
+# all .files
+.*~

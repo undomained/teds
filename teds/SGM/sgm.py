@@ -26,6 +26,7 @@ class Dict2Class:
     def __init__(self, arg_dict):
         self.__dict__.update(arg_dict)
 
+
 def get_gm_data(filename):
     input = nc.Dataset(filename, mode='r')
     gm_data = {}
@@ -37,6 +38,7 @@ def get_gm_data(filename):
     gm_data['lon'] = deepcopy(input['lon'][:, :])
     input.close()
     return gm_data
+
 
 def sgm_output(filename_rad, filename_atm, rad_output, atm, albedo, gm_data):
     # write radiances
@@ -207,20 +209,18 @@ def scene_generation_module(config):
         if (config['only_afgl']):
             atm = atm_std
         else:
-            # get collocated mciroHH data
-
-            if ((not os.path.exists(config['microHH_dump'])) or config['microHH_forced']):
-                microHH = libATM.get_microHH_atm(gm_data['lat'], gm_data['lon'], config['microHH_data_path'],
-                                                 config['microHH'],
-                                                 config['kernel_parameter'])
-                # Dump microHH dictionary into temporary pkl file
-                pickle.dump(microHH.__dict__, open(config['microHH_dump'], 'wb'))
+            # get collocated meteo data
+            if ((not os.path.exists(config['meteo']['dump'])) or config['meteo']['forced']):
+                meteodata = libATM.get_atmosphericdata(gm_data['lat'], gm_data['lon'], config['meteo'],
+                                                       config['kernel_parameter'])
+                # Dump meteodata dictionary into temporary pkl file
+                pickle.dump(meteodata.__dict__, open(config['meteo']['dump'], 'wb'))
 
             else:
-                # Read microHH from pickle file
-                microHH = Dict2Class(pickle.load(open(config['microHH_dump'], 'rb')))
+                # Read meteodata from pickle file
+                meteodata = Dict2Class(pickle.load(open(config['meteo']['dump'], 'rb')))
 
-            atm = libATM.combine_microHH_standard_atm(microHH, atm_std)
+            atm = libATM.combine_meteo_standard_atm(meteodata, atm_std, config["meteo"]['gases'])
 
     # =============================================================================
     #  Radiative transfer simulations
@@ -275,13 +275,11 @@ def scene_generation_module(config):
                 surface,
                 np.cos(gm_data['sza'][ialt, iact]/180.*np.pi),  # mu0
                 np.cos(gm_data['vza'][ialt, iact]/180.*np.pi))  # muv
-    rad_output['radiance'] = rad 
-
+    rad_output['radiance'] = rad
 
     # =============================================================================
     # sgm output to radiometric and geophysical output file
     # =============================================================================
-
     sgm_output(config['rad_output'], config['geo_output'], rad_output, atm, albedo, gm_data)
 
     print('=>sgm calcultion finished successfully')

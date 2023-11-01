@@ -10,9 +10,14 @@ atmosphere:
         
 only_afgl: False
 
-microHH:
-    time_stamp: '0036000'
-    lat_lon_src: [51.83472, 14.46277]                   #latitude, longitude coordinates for source in microHH
+lat_lon_src: [51.83472, 14.46277]                   #latitude, longitude coordinates 
+
+meteo:
+  forced: False
+  dump: "filename"
+  path_data: /data/
+  filesuffix: "src1_20180606_0900"  # sourcename_yyyymmdd_hhmm
+  gases: ["co2", "no2", "no"]
         
 spec_settings:              #settings for line-by-line spectra
     wave_start: 1585        #nm
@@ -21,4 +26,4 @@ spec_settings:              #settings for line-by-line spectra
     
 xsec_forced: False          #flag to force new cross section calculation
 s2_forced:   False          #flag to force Sentinel 2 calculation
-microHH_forced: False       #flag to force microHH data processing
+meteo_forced: False       #flag to force microHH data processing

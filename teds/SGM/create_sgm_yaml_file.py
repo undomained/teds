@@ -5,11 +5,10 @@
 #==============================================================================
 import sys
 
-def create_sgm_config_file(filename, config):     
+def create_sgm_config_file(filename, config):
 
     lines = []
     #==========================main============================================
-    
     lines.append('# gm and sgm profile \n') 
     lines.append('profile:                 ' + config['profile'] + '  # must be the same for gm and sgm\n')
     lines.append('# file names and paths \n') 
@@ -28,7 +27,6 @@ def create_sgm_config_file(filename, config):
 
 
     if(config['profile']=='S2_microHH'):
-        
         lines.append('# define 2D kernel for spatial smoothing og the data  \n') 
         lines.append('kernel_parameter: ' + '\n')
         lines.append('  type:              ' + str(config['kernel_parameter']['type']) + '  # type pf kernel, current version has only one option  \n')

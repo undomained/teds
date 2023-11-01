@@ -14,5 +14,6 @@ emission: 852.9  # kg/s
 CFM:
   microhh:
     path: "/data/manugv/OwnCloud/ToJochen/data_onefield/"
-    time_stamp: 36000
+    filesuffix: 0036000
+    sourcename: src1
   plumeheight: 300

@@ -165,17 +165,13 @@ def Gaussian2D(size, fwhm_x, fwhm_y, center=None):
 
 
 def convolution_2d(data, settings):
-
     # convolve the data array with a kernel defined in settings
-
-    if(settings['type'] == '2D Gaussian'):
+    if (settings['type'] == '2D Gaussian'):
         kernel = Gaussian2D(settings['1D kernel extension'], settings['fwhm x'], settings['fwhm y'])
 
     kernel = kernel / kernel.sum()
-
     data_conv = scipy.signal.convolve(data, kernel, mode='same')
-
-    return(data_conv)
+    return data_conv
 
 
 def print_attributes(class_object):

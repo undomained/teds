@@ -11,7 +11,7 @@ from .ModuleLevel2 import readlevel2retrieval
 from netCDF4 import Dataset
 from .ModuleDataContainer import DataCont
 from pathlib import Path
-
+from ..lib.libMeteo import readmeteovelocitydata
 
 mm_air = 0.0289647  # kg/mole
 tot_air_moles = (101325.0 / 9.81) / mm_air  # moles

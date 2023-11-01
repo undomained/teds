@@ -7,142 +7,96 @@
 import os
 import sys
 import numpy as np
-import scipy.interpolate as interpolate
 import netCDF4 as nc
-from datetime import datetime, timedelta
 from scipy.interpolate import griddata
-from scipy.interpolate import RegularGridInterpolator
 from tqdm import tqdm
 from copy import deepcopy
-from netCDF4 import Dataset, num2date
-import configparser
-from pyproj import Geod
-import matplotlib.pyplot as plt
-
+from libMeteo import readmeteodata
 import constants
-from libNumTools import TransformCoords, convolution_2d
+from libNumTools import convolution_2d
 
 ###########################################################
 
 
-def get_microHH_atm(s2_lat, s2_lon, path_data, microHH_settings, kernel_settings):
+class Emptyclass:
+    pass
 
-    #   time stamp and latitiude, longotude of the source
 
-    time_stamp = microHH_settings['time_stamp']
-    lat_lon_src = microHH_settings['lat_lon_src']
+def getconvolutionparams(kernel_settings, dx, dy):
+    """Convolution parameters.
 
-    # Read the data at a specified time and and microHH simulation
-    print('Getting microHH data ...')
-    data = read_simulated_variable(path_data, ['co2_m', 'no', 'no2'], int(time_stamp))
-    print('                     ...done')
-
-    # g = Geod(ellps='clrk66') # Use Clarke 1866 ellipsoid.
-    g = Geod(ellps='WGS84')  # The World Geodetic System 1984 (WGS84) reference
-
-    # collect grid information to calculate lat lon grid
-    xgrid = data.grid.xc
-    ygrid = data.grid.yc
-    zgrid = data.grid.zc
-    xsrc = data.co2_m.source[0]
-    ysrc = data.co2_m.source[1]
-    zsrc = data.co2_m.source[2]
-    nx = xgrid.size
-    ny = ygrid.size
-    nz = zgrid.size
-
-    long_max = 14.75
-
-    # 2D distance in meters with longitude, latitude of the points
-    azimuth1, azimuth2, distance_2d = g.inv(lat_lon_src[1], lat_lon_src[0], long_max, lat_lon_src[0])
-    nx_plus = np.int32(distance_2d/data.grid.dx)+1
-
-    print('Expanding microHH domain...')
-    # Expand the microHH data granule
-
-    xadd = np.arange(1, nx_plus+1)*data.grid.dx + data.grid.xc[nx-1]
-    data.grid.xc = np.concatenate((data.grid.xc, xadd))
-    data.grid.nx = data.grid.xc.size
-    data.grid.x_nodes = np.concatenate((data.grid.x_nodes, xadd))
-    co2_add = np.empty((nz, ny, nx_plus))
-    no_add = np.empty((nz, ny, nx_plus))
-    no2_add = np.empty((nz, ny, nx_plus))
-    for iz in range(data.grid.nz):
-        for iy in range(data.grid.ny):
-            co2_add[iz, iy, :] = data.co2_m.conc[iz, iy, nx-1]
-            no_add[iz, iy, :] = data.no.conc[iz, iy, nx-1]
-            no2_add[iz, iy, :] = data.no2.conc[iz, iy, nx-1]
-    data.co2_m.conc = np.concatenate((data.co2_m.conc, co2_add), axis=2)
-    data.no.conc = np.concatenate((data.no.conc, no_add), axis=2)
-    data.no2.conc = np.concatenate((data.no2.conc, no2_add), axis=2)
-
-    print('Adding latitude/longitude coordinates...')
-    data.grid.__setattr__("latc", np.empty([data.grid.ny, data.grid.nx]))
-    data.grid.__setattr__("lonc", np.empty([data.grid.ny, data.grid.nx]))
-
-    #   spatial grid for target lat/lon grid.
-    transform = TransformCoords(lat_lon_src)
-    s2_xc, s2_yc = transform.latlon2xymts(s2_lat, s2_lon)
-
-    # add source offset
-    s2_xc = s2_xc + xsrc
-    s2_yc = s2_yc + ysrc
-
-    print('Data spatial convolution...')
-    # Define the settings for the convolution
+    Parameters
+    ----------
+    kernel_settings : Dict
+        Parameters needed for convolution.
+    dx : Float
+        Spacing in x.
+    dy : Float
+        Spacing in y.
+    """
     conv_settings = {}
-    if(kernel_settings['type'] == '2D Gaussian'):
+    if (kernel_settings['type'] == '2D Gaussian'):
         fwhm_x = kernel_settings['fwhm_x']
         fwhm_y = kernel_settings['fwhm_y']
         fsize = kernel_settings['size_factor']
-
         conv_settings['type'] = kernel_settings['type']
-        conv_settings['1D kernel extension'] = np.int0(
-            fsize*np.max([fwhm_x, fwhm_y])/np.min([data.grid.dx, data.grid.dy]))
+        conv_settings['1D kernel extension'] = np.int0(fsize*np.max([fwhm_x, fwhm_y])/np.min([dx, dy]))
         # convert all kernel parameter in units of sampling distance
-        conv_settings['fwhm x'] = np.int0(float(fwhm_x)/data.grid.dx)
-        conv_settings['fwhm y'] = np.int0(float(fwhm_y)/data.grid.dy)
+        conv_settings['fwhm x'] = np.int0(float(fwhm_x)/dx)
+        conv_settings['fwhm y'] = np.int0(float(fwhm_y)/dy)
+    return conv_settings
 
-    # convolution of co2 field
-    data.__setattr__("conv_co2_m", np.empty([data.grid.nz, data.grid.ny, data.grid.nx]))
-    data.__setattr__("conv_no", np.empty([data.grid.nz, data.grid.ny, data.grid.nx]))
-    data.__setattr__("conv_no2", np.empty([data.grid.nz, data.grid.ny, data.grid.nx]))
 
-    for iz in range(data.grid.nz):
-        data.conv_co2_m[iz, :, :] = convolution_2d(data.co2_m.conc[iz, :, :], conv_settings)
-        data.conv_no[iz, :, :] = convolution_2d(data.no.conc[iz, :, :], conv_settings)
-        data.conv_no2[iz, :, :] = convolution_2d(data.no2.conc[iz, :, :], conv_settings)
+def get_atmosphericdata(s2_lat, s2_lon,  meteo_settings, kernel_settings):
+    """Get meterological data.
 
+    Read meterological data, convolve and interpolate it givel lat-lon.
+
+    Parameters
+    ----------
+    s2_lat : Array (m,n)
+        Input Latitude
+    s2_lon : Array (m,n)
+        Input longitude
+    meteo_settings : Dict
+        Dict containing meteo data settings
+    kernel_settings : Dict
+        Kernel settings for convolution
+
+    """
+    # read data
+    # data is already in molceules/m^2
+    print('Getting meteo data ...')
+    data = readmeteodata(meteo_settings["path_data"], meteo_settings['gases'], meteo_settings["filesuffix"])
+    print('                     ...done')
+
+    # create a new class to have meteo data
+    dim_act, dim_alt = s2_lat.shape
+    meteo_data = Emptyclass()
+    meteo_data.__setattr__('lat', s2_lat)
+    meteo_data.__setattr__('lon', s2_lon)
+    meteo_data.__setattr__('zlay', data.z)
+    meteo_data.__setattr__('zlev', data.znodes)
+
+    # convolution of co2 field and interpolation to S2 grid
+    conv_settings = getconvolutionparams(kernel_settings, data.dx, data.dy)
+    for gas in meteo_settings['gases']:
+        concgas = data.__getattribute__(gas)
+        conv_gas = np.zeros_like(concgas)
+        for iz in range(data.z.size):
+            conv_gas[iz, :, :] = convolution_2d(concgas[iz, :, :], conv_settings)
+        data.__setattr__("conv_"+gas, conv_gas)
+
+    # Interpolate data to a given lat-lon grid
     print('Interpolating data to S2 mesh...')
-
-    # interpolate data to the S2 input grid
-    # up to here CO2 is giving as mixing ratio per layer. We vconvert it to subcolumns
-    dim_act = s2_lat[0, :].size
-    dim_alt = s2_lat[:, 0].size
-
-    microHH_data = Emptyclass()
-    microHH_data.__setattr__('lat', s2_lat)
-    microHH_data.__setattr__('lon', s2_lon)
-    microHH_data.__setattr__('zlay', np.empty([data.grid.nz]))
-    microHH_data.__setattr__('zlev', np.empty([data.grid.nz+1]))
-    microHH_data.__setattr__('co2', np.empty([dim_alt, dim_act, data.grid.nz]))
-    microHH_data.__setattr__('no', np.empty([dim_alt, dim_act, data.grid.nz]))
-    microHH_data.__setattr__('no2', np.empty([dim_alt, dim_act, data.grid.nz]))
-
-    # micro air density kg/m3 Thus, conversion required 1/mdryair * Avogadro
-    for iz in tqdm(range(data.grid.nz)):
-        conv_fact = data.grid.dz*data.density[iz]/constants.MDRYAIR*constants.NA
-        interp_CO2 = RegularGridInterpolator((data.grid.yc, data.grid.xc), data.conv_co2_m[iz, :, :])
-        interp_NO = RegularGridInterpolator((data.grid.yc, data.grid.xc), data.conv_no[iz, :, :])
-        interp_NO2 = RegularGridInterpolator((data.grid.yc, data.grid.xc), data.conv_no2[iz, :, :])
-        microHH_data.co2[:, :, iz] = conv_fact*interp_CO2((s2_yc, s2_xc))
-        microHH_data.no[:, :, iz] = conv_fact*interp_NO((s2_yc, s2_xc))
-        microHH_data.no2[:, :, iz] = conv_fact*interp_NO2((s2_yc, s2_xc))
-        microHH_data.zlay[iz] = data.grid.zc[iz]
-        microHH_data.zlev[iz] = data.grid.z_nodes[iz]
-    microHH_data.zlev[data.grid.nz] = data.grid.z_nodes[data.grid.nz]
-
-    return(microHH_data)
+    # interpolate for all given gases
+    for gas in meteo_settings['gases']:
+        interpdata = np.zeros([dim_alt, dim_act, data.z.size])
+        conv_data = data.__getattribute__("conv_"+gas)
+        for iz in range(data.z.size):
+            interpdata[:, :, iz] = griddata((data.lat, data.lon), conv_data[iz, :, :], (s2_lat, s2_lon), fill_value=0.0)
+        meteo_data.__setattr__(gas, interpdata)
+    return meteo_data
 
 
 def get_AFGL_atm_homogenous_distribtution(AFGL_path, nlay, dzlay, xco2_ref=405, xch4_ref=1800., xh2o_ref=1.E4):
@@ -437,7 +391,7 @@ class atmosphere_data:
         ch4_in = np.array([d/MCH4*MDRYAIR for d in ds['ch4'][itime, :, ilat, ilon]])
         ds.close
 
-        ########################################################################################################################################
+        ################################################################################################################
         # [#/m^2 * 1/hPa] air column above P is P*NA/constants.MDRYAIR/g from p = m*g/area
         sp = constants.NA/(constants.MDRYAIR*constants.g0)*1.E2
         # air_in=sp
@@ -629,398 +583,118 @@ class atmosphere_data:
             self.alb = np.interp(self.wave, wv_in, alb_in)
 
 
-class Emptyclass:
-    pass
-
-
-def read_microHH_data(filename, keys_to_read, time=2):
-    """
-    Read the data
-
-    Parameters
-    ----------
-    filename : TYPE
-        DESCRIPTION.
-    keys_to_read : TYPE
-        DESCRIPTION.
-    time : Integer, optional
-        This represents the time index corresponding to a time. The default is 2.
-
-    Returns
-    -------
-    data container at a time. CO2 is in moles/m^3
-
-    """
-
-    # longitude :   Zonal location
-    # latitude :   Meridional location
-    # ps :   Surface air pressure
-    # zsurf: Surface elevation
-    # p :    Air pressure
-    # ph :   air pressure at cell edge
-    # zh :   height above surface at cell edge [m]
-    # z :    layer height above surface [m]
-    # ta :   Absolute temperature
-    # hus :  Specific humidity
-    # ua :   Zonal wind
-    # va :   Meridional wind
-    # wa :   Vertical wind
-    # CO2_PP_L :     CO2 tracer mole fraction low release
-    # CO2_PP_M :     CO2 tracer mole fraction medium release
-    # CO2_PP_H :     CO2 tracer mole fraction high release
-    # CO2_PP_M_ECW : CO2 tracer mole fraction medium release, from individual tower groups
-
-    # time: size of 97, starts at 2018-05-23 00:00:00, time step is 15mins
-    #       So 0 is 2018-05-23 00:00:00
-    #          1 is 2018-05-23 00:00:15
-    #          97 is 2018-05-24 00:00:00
-
-    fl = nc.Dataset(filename, 'r')
-    # Outside these indices in lat-lon data is masked so no use reading it
-    i1 = 36
-    i2 = 264
-    j1 = 8
-    j2 = 252
-
-    # this is dict
-    data = Emptyclass()
-
-    # read all data
-    for ky in keys_to_read:
-        # if "CO2" in ky:
-        #     co2_tmp = (fl[ky][time, :, i1:i2, j1:j2]).filled(fill_value=0)
-        #     if 'p' not in data.__dict__.keys():
-        #         data.__setattr__('p', fl['p'][time, :, i1:i2, j1:j2])
-        #     if 'ta' not in data.__dict__.keys():
-        #         data.__setattr__("ta", fl['ta'][time, :, i1:i2, j1:j2])
-        #     # pV = nRT => n/V = p/RT [N/m2  mol K/J  1/K]  = [mol/ m3]
-        #     # air_density = data.p/(data.ta * constants.Rgas)
-
-        #     data.__setattr__(ky, (co2_tmp*data.p)/(data.ta*constants.Rgas).data)
-        if ky in ['longitude', 'latitude']:
-            data.__setattr__(ky, (fl[ky][i1:i2, j1:j2]).data)
-        elif ky in ['ps', 'zsurf']:
-            data.__setattr__(ky, (fl[ky][time, i1:i2, j1:j2]).data)
-        else:
-            data.__setattr__(ky, fl[ky][time, :, i1:i2, j1:j2])
-    fl.close()
-
-    return data
-
-
-def combine_microHH_standard_atm(microHH, atm_std):
-
-    nalt = microHH.lat[:, 0].size
-    nact = microHH.lat[0, :].size
-#   index of standard atmosphere that corresp
+def combine_meteo_standard_atm(meteodata, atm_std, gases):
+    nalt = meteodata.lat[:, 0].size
+    nact = meteodata.lat[0, :].size
+    # index of standard atmosphere that corresp
     print('Combining microHH and AFGL model aonds to TOA of microHH')
-    idx = (np.abs(atm_std.zlev - np.max(microHH.zlev))).argmin()
+    idx = (np.abs(atm_std.zlev - np.max(meteodata.zlev))).argmin()
 
-    if(atm_std.zlev[idx] != np.max(microHH.zlev)):
-       sys.exit('vertical grids are not alligned in libATM.combine_microHH_standard_atm')
+    if (atm_std.zlev[idx] != np.max(meteodata.zlev)):
+        sys.exit('vertical grids are not aligned in libATM.combine_microHH_standard_atm')
     #    zlev_tmp = np.concatenate()
-    zmicroHH = microHH.zlay
+    zmeteo = meteodata.zlay
     zatm = atm_std.zlay
     nlay = zatm.size
 
-    #   define a mask for vertical integration of microHH data
+    # define a mask for vertical integration of microHH data
     ztop = atm_std.zlev[idx: nlay]
     zbot = atm_std.zlev[idx+1: nlay+1]
 
     midx = {}
     for ilay in range(ztop.size):
-        midx[ilay] = np.where((zmicroHH < ztop[ilay]) & (zmicroHH >= zbot[ilay]))
+        midx[ilay] = np.where((zmeteo < ztop[ilay]) & (zmeteo >= zbot[ilay]))
 
-    #   integrate microHH and use it to replace the lowest four values of atm_std
-
+    # integrate microHH and use it to replace the lowest four values of atm_std
     atm = np.ndarray((nalt, nact), np.object_)
 
     # for NO we assume no contribution above upper model boundary of microHH
-
     for ialt in tqdm(range(nalt)):
         for iact in range(nact):
             atm[ialt, iact] = deepcopy(atm_std)
-            atm[ialt, iact].__setattr__('NO', np.zeros(nlay))
+            if "NO" in gases:
+                atm[ialt, iact].__setattr__('NO', np.zeros(nlay))
+            if "NO2" in gases:
+                atm[ialt, iact].__setattr__('NO2', np.zeros(nlay))
 
-            for ilay in range(ztop.size):
-                atm[ialt, iact].CO2[idx+ilay] = atm[ialt, iact].CO2[idx+ilay] + \
-                    np.sum(microHH.co2[ialt, iact, midx[ilay]])
-                atm[ialt, iact].NO[idx+ilay] = np.sum(microHH.no[ialt, iact, midx[ilay]])
-                atm[ialt, iact].NO2[idx+ilay] = atm[ialt, iact].NO2[idx+ilay] + \
-                    np.sum(microHH.no2[ialt, iact, midx[ilay]])
-    return(atm)
-
-
-class DataCont:
-    """Empty container for data"""
-
-    pass
+            for gas in gases:
+                tmp = atm[ialt, iact].__getattribute__(gas.upper())
+                meteo = meteodata.__getattribute__(gas)
+                for ilay in range(ztop.size):
+                    tmp[idx+ilay] += np.sum(meteo[ialt, iact, midx[ilay]])
+    return atm
 
 
-def _get_default_files(dir_data):
-    """Gets all the .nc files in the folder
+# def read_microHH_data(filename, keys_to_read, time=2):
+#     """
+#     Read the data
 
-    Parameters
-    ----------
-    dir_data : string
-        Directory of the data
+#     Parameters
+#     ----------
+#     filename : TYPE
+#         DESCRIPTION.
+#     keys_to_read : TYPE
+#         DESCRIPTION.
+#     time : Integer, optional
+#         This represents the time index corresponding to a time. The default is 2.
 
-    Returns
-    -------
-    List of strings
-        List of file names
-    """
-    default_files = []
-    for file in os.listdir(dir_data):
-        if "default" in file:
-            default_files.append(file)
-    default_files.sort()
-    return default_files
+#     Returns
+#     -------
+#     data container at a time. CO2 is in moles/m^3
 
+#     """
 
-def _read_density(dir_data, _files, time):
-    """Read density at a given time
+#     # longitude :   Zonal location
+#     # latitude :   Meridional location
+#     # ps :   Surface air pressure
+#     # zsurf: Surface elevation
+#     # p :    Air pressure
+#     # ph :   air pressure at cell edge
+#     # zh :   height above surface at cell edge [m]
+#     # z :    layer height above surface [m]
+#     # ta :   Absolute temperature
+#     # hus :  Specific humidity
+#     # ua :   Zonal wind
+#     # va :   Meridional wind
+#     # wa :   Vertical wind
+#     # CO2_PP_L :     CO2 tracer mole fraction low release
+#     # CO2_PP_M :     CO2 tracer mole fraction medium release
+#     # CO2_PP_H :     CO2 tracer mole fraction high release
+#     # CO2_PP_M_ECW : CO2 tracer mole fraction medium release, from individual tower groups
 
-    Parameters
-    ----------
-    dir_data : String
-        Directory of the data
-    _files : List of Strings
-        List of file names with extension .nc
-    time : Int64
-        Time of the simulation of MicroHH
+#     # time: size of 97, starts at 2018-05-23 00:00:00, time step is 15mins
+#     #       So 0 is 2018-05-23 00:00:00
+#     #          1 is 2018-05-23 00:00:15
+#     #          97 is 2018-05-24 00:00:00
 
-    Returns
-    -------
-    rho : Array
-        Density at the given time
-    """
-    for _fl in _files:
-        ff = Dataset(dir_data + _fl, "r")
-        # id of time
-        ix = np.where(np.isclose(ff["time"][:].data, time))[0]
-        if len(ix) > 0:
-            # rho for that time
-            rho = ff["thermo/rho"][ix[0], :].data
-            ff.close()
-            return rho
-        else:
-            ff.close()
-            continue
+#     fl = nc.Dataset(filename, 'r')
+#     # Outside these indices in lat-lon data is masked so no use reading it
+#     i1 = 36
+#     i2 = 264
+#     j1 = 8
+#     j2 = 252
 
+#     # this is dict
+#     data = Emptyclass()
 
-def _read_datatime(dir_data, _files, time):
-    """Read density at a given time
+#     # read all data
+#     for ky in keys_to_read:
+#         # if "CO2" in ky:
+#         #     co2_tmp = (fl[ky][time, :, i1:i2, j1:j2]).filled(fill_value=0)
+#         #     if 'p' not in data.__dict__.keys():
+#         #         data.__setattr__('p', fl['p'][time, :, i1:i2, j1:j2])
+#         #     if 'ta' not in data.__dict__.keys():
+#         #         data.__setattr__("ta", fl['ta'][time, :, i1:i2, j1:j2])
+#         #     # pV = nRT => n/V = p/RT [N/m2  mol K/J  1/K]  = [mol/ m3]
+#         #     # air_density = data.p/(data.ta * constants.Rgas)
 
-    Parameters
-    ----------
-    dir_data : String
-        Directory of the data
-    _files : List of Strings
-        List of file names with extension .nc
-    time : Int64
-        Time of the simulation of MicroHH
+#         #     data.__setattr__(ky, (co2_tmp*data.p)/(data.ta*constants.Rgas).data)
+#         if ky in ['longitude', 'latitude']:
+#             data.__setattr__(ky, (fl[ky][i1:i2, j1:j2]).data)
+#         elif ky in ['ps', 'zsurf']:
+#             data.__setattr__(ky, (fl[ky][time, i1:i2, j1:j2]).data)
+#         else:
+#             data.__setattr__(ky, fl[ky][time, :, i1:i2, j1:j2])
+#     fl.close()
 
-    Returns
-    -------
-    rho : Array
-        Density at the given time
-    """
-    for _fl in _files:
-        ff = Dataset(dir_data + _fl, "r")
-        # id of time
-        ix = np.where(np.isclose(ff["time"][:].data, time))[0]
-        if len(ix) > 0:
-            datetime = num2date(ff["time"][ix[0]], ff["time"].units)
-            # rho for that time
-            ff.close()
-            return datetime
-        else:
-            ff.close()
-            continue
-
-
-def _get_ini_file(dir_data):
-    """get ini file
-
-    Parameters
-    ----------
-    dir_data : String
-        Directory of the data
-
-    Returns
-    -------
-    String
-        File name of ini file
-    """
-    # find the file with ini extension in the folder
-    for file in os.listdir(dir_data):
-        if file.endswith(".ini"):
-            return dir_data + file
-
-
-def _get_domain(flname_ini):
-    """Gets the grid of the given domain
-
-    Parameters
-    ----------
-    flname_ini : string
-        File name of the ini file
-
-    Returns
-    -------
-    grid : data class
-        Data class containing the grid of the microHH
-
-    """
-
-    # Create a grid container
-    grid = DataCont()
-    config = configparser.ConfigParser()
-    config.read(flname_ini)
-    grid.__setattr__("nz", config.getint("grid", "ktot"))
-    grid.__setattr__("ny", config.getint("grid", "jtot"))
-    grid.__setattr__("nx", config.getint("grid", "itot"))
-    grid.__setattr__("zsize", config.getfloat("grid", "zsize"))
-    grid.__setattr__("ysize", config.getfloat("grid", "ysize"))
-    grid.__setattr__("xsize", config.getfloat("grid", "xsize"))
-    grid.__setattr__("dz", grid.zsize / grid.nz)
-    grid.__setattr__("dy", grid.ysize / grid.ny)
-    grid.__setattr__("dx", grid.xsize / grid.nx)
-    grid.__setattr__("x_nodes", np.linspace(0, grid.xsize, grid.nx + 1))
-    grid.__setattr__("y_nodes", np.linspace(0, grid.ysize, grid.ny + 1))
-    grid.__setattr__("z_nodes", np.linspace(0, grid.zsize, grid.nz + 1))
-    grid.__setattr__("xc", 0.5 * (grid.x_nodes[1:] + grid.x_nodes[:-1]))
-    grid.__setattr__("yc", 0.5 * (grid.y_nodes[1:] + grid.y_nodes[:-1]))
-    grid.__setattr__("zc", 0.5 * (grid.z_nodes[1:] + grid.z_nodes[:-1]))
-    return grid
-
-
-def _get_source_strength(flname_ini, prefix):
-    """get source and strength of the source
-
-    Parameters
-    ----------
-    flname_ini : string
-        Ini file
-    prefix : string
-        Type of gas
-
-    Returns
-    -------
-    source : Vector[3]
-        Source location [x,y,z]
-    strength : Float64
-        Strength of the emission in kilomoles/s
-    """
-    config = configparser.ConfigParser()
-    config.read(flname_ini)
-    # get source section and the index of the source
-    source_sec = config["source"]
-    srcs = source_sec.get("sourcelist")
-    idx = (srcs.split(",")).index(prefix)
-
-    # get source locations
-    xloc = float((source_sec["source_x0"]).split(",")[idx])
-    yloc = float((source_sec["source_y0"]).split(",")[idx])
-    zloc = float((source_sec["source_z0"]).split(",")[idx])
-    source = [xloc, yloc, zloc]
-    # get strength
-    strength = float((source_sec["strength"]).split(",")[idx])
-    return source, strength
-
-
-def _read_var(dir_data, prefix, time):
-    """Read the data based on prefix
-
-    Parameters
-    ----------
-    dir_data : String
-        directory of the data
-    prefix : String
-        Gas that needs to be read.
-    time : Int
-        Time of the simulation
-
-    Returns
-    -------
-    bdata : 1d-Array of Float64
-        Array containing the binary data
-    """
-    with open(dir_data + prefix + "." + str(time).zfill(7)) as f:
-        rectype = np.dtype(np.float64)
-        bdata = np.fromfile(f, dtype=rectype)
-        f.close()
-    return bdata
-
-
-def _get_variable(prefix, dir_data, ini_filename, time, dim):
-    """Get source, strength and data from prefix at a given time. 
-
-    Parameters
-    ----------
-    prefix : String
-        Gas that needs to be read.
-    dir_data : String
-        directory of the data
-    ini_filename : String
-        Ini file
-    time : Int64
-        Time of simulation in seconds
-    dim : Array [3] Int64
-        [nz, ny, nx] dimensions to reshape the binary data
-
-    Returns
-    -------
-    Data : DataCont Class
-        Data container with data
-    """
-    tmp = DataCont()
-    # Get source from the ini file
-    source, strength = _get_source_strength(ini_filename, prefix)
-    tmp.__setattr__("source", source)
-    tmp.__setattr__("strength", strength)
-    bdata = _read_var(dir_data, prefix, time)
-    tmp.__setattr__("conc", bdata.reshape(dim))
-    return tmp
-
-
-def read_simulated_variable(dir_data, prefix, time,):
-    """read a gas variable of microHH
-
-    Parameters
-    ----------
-    dir_data : String
-        directory of the data
-    prefix : List of Strings or a String
-        Gases/gas that need to be read.
-    time : Int64
-        Time of the simulation
-        Example: co2.0034000 has prefix as "co2" and time as 340000
-    Returns
-    -------
-    Data : class
-        Container containing different variables.
-    """
-    data = DataCont()
-    # Get the domain from the ini file
-    ini_filename = _get_ini_file(dir_data)
-    data.__setattr__("grid", _get_domain(ini_filename))
-
-    # Read data
-    dim = np.array([data.grid.nz, data.grid.ny, data.grid.nx])  # dimensions of binary data
-    # Check if prefix is a list or one variable
-    if isinstance(prefix, list):
-        # Get data for each prefix
-        for each_prefix in prefix:
-            data.__setattr__(each_prefix, _get_variable(each_prefix, dir_data, ini_filename, time, dim))
-    else:
-        data.__setattr__(prefix, _get_variable(prefix, dir_data, ini_filename, time, dim))
-
-    # get default files
-    default_files = _get_default_files(dir_data)
-    # Get time of the simulation
-    data.__setattr__("datetime", _read_datatime(dir_data, default_files, time))
-    # read density : rho
-    data.__setattr__("density", _read_density(dir_data, default_files, time))
-    return data
+#     return data

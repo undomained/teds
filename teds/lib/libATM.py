@@ -11,9 +11,9 @@ import netCDF4 as nc
 from scipy.interpolate import griddata
 from tqdm import tqdm
 from copy import deepcopy
-from libMeteo import readmeteodata
-import constants
-from libNumTools import convolution_2d
+from .libMeteo import readmeteodata
+from . import constants
+from .libNumTools import convolution_2d
 
 ###########################################################
 

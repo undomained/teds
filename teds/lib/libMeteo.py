@@ -2,7 +2,7 @@ from netCDF4 import Dataset, num2date
 import numpy as np
 from pathlib import Path
 import configparser
-from libNumTools import TransformCoords
+from .libNumTools import TransformCoords
 
 
 class DataCont:

@@ -16,7 +16,7 @@ from time import sleep
 from tqdm import tqdm
 import sys
 import time
-from hapi import db_begin, fetch_by_ids, absorptionCoefficient_Voigt
+from .hapi import db_begin, fetch_by_ids, absorptionCoefficient_Voigt
 # import hapi as hp
 
 trap = io.StringIO()

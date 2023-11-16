@@ -16,8 +16,8 @@ from time import sleep
 from tqdm import tqdm
 import sys
 import time
-
-import hapi as hp
+from hapi import db_begin, fetch_by_ids, absorptionCoefficient_Voigt
+# import hapi as hp
 
 trap = io.StringIO()
 debug = 0
@@ -245,7 +245,7 @@ class molecular_data:
                 raise StopExecution
 
         with redirect_stdout(trap) if debug < 2 else nullcontext():  # ignore output for debuglevel<2
-            hp.db_begin(xsdbpath)
+            db_begin(xsdbpath)
 
         wv_start = self.wave[0]
         wv_stop = self.wave[-1]
@@ -259,7 +259,7 @@ class molecular_data:
             # Check if data files are already inplace, if not: download
             if (not os.path.exists(os.path.join(xsdbpath, self.xsdb[key]['name']+'.data')) and not os.path.exists(os.path.join(xsdbpath, self.xsdb[key]['name']+'.header'))):
                 # wavelength input is [nm], hapi requires wavenumbers [1/cm]
-                hp.fetch_by_ids(self.xsdb[key]['name'], [id[1]], 1.E7/wv_stop, 1.E7/wv_start)
+                fetch_by_ids(self.xsdb[key]['name'], [id[1]], 1.E7/wv_stop, 1.E7/wv_start)
 
 ###########################################################
 
@@ -322,7 +322,7 @@ class optic_abs_prop:
                     pi = atm_data.play[ki]
                     Ti = atm_data.tlay[ki]
                     # Calculate absorption cross section for layer
-                    nu, xs = hp.absorptionCoefficient_Voigt(SourceTables=molec_data.xsdb[id]['name'], Environment={
+                    nu, xs = absorptionCoefficient_Voigt(SourceTables=molec_data.xsdb[id]['name'], Environment={
                                                             'p': pi/PSTD, 'T': Ti}, WavenumberStep=nu_samp)
                     dim_nu = nu.size
                     nu_ext = np.insert(nu, 0, nu[0]-nu_samp)

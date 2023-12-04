@@ -14,7 +14,7 @@ from copy import deepcopy
 from .libMeteo import readmeteodata
 from . import constants
 from .libNumTools import convolution_2d
-
+import matplotlib.pyplot as plt
 ###########################################################
 
 
@@ -71,7 +71,7 @@ def get_atmosphericdata(s2_lat, s2_lon,  meteo_settings, kernel_settings):
     print('                     ...done')
 
     # create a new class to have meteo data
-    dim_act, dim_alt = s2_lat.shape
+    dim_alt, dim_act = s2_lat.shape
     meteo_data = Emptyclass()
     meteo_data.__setattr__('lat', s2_lat)
     meteo_data.__setattr__('lon', s2_lon)
@@ -83,6 +83,7 @@ def get_atmosphericdata(s2_lat, s2_lon,  meteo_settings, kernel_settings):
     for gas in meteo_settings['gases']:
         concgas = data.__getattribute__(gas)
         conv_gas = np.zeros_like(concgas)
+                
         for iz in range(data.z.size):
             conv_gas[iz, :, :] = convolution_2d(concgas[iz, :, :], conv_settings)
         data.__setattr__("conv_"+gas, conv_gas)
@@ -93,9 +94,14 @@ def get_atmosphericdata(s2_lat, s2_lon,  meteo_settings, kernel_settings):
     for gas in meteo_settings['gases']:
         interpdata = np.zeros([dim_alt, dim_act, data.z.size])
         conv_data = data.__getattribute__("conv_"+gas)
-        for iz in range(data.z.size):
-            interpdata[:, :, iz] = griddata((data.lat, data.lon), conv_data[iz, :, :], (s2_lat, s2_lon), fill_value=0.0)
+
+        dxdy = np.column_stack((data.lat.ravel(), data.lon.ravel()))
+        for iz in tqdm(range(data.z.size)):
+            interpdata[:, :, iz] = griddata(dxdy, conv_data[iz, :,:].ravel(), (s2_lat, s2_lon), fill_value=0.0)                
+
         meteo_data.__setattr__(gas, interpdata)
+    print('                     ...done')
+
     return meteo_data
 
 

@@ -220,6 +220,7 @@ def geometry_module(config):
             + len(config['scene_spec']['saa']) + len(config['scene_spec']['vza'])
             + len(config['scene_spec']['vaa']) + len(config['scene_spec']['albedo'])) / 5
 
+        
         if nn != ns:
             sys.exit("input error in gm, code 1")
 
@@ -298,8 +299,6 @@ def geometry_module(config):
         lat_grid = sensors['gpxs'][0]['lat']
         lon_grid = sensors['gpxs'][0]['lon']
         
-        # print(np.min(saa), np.max(saa))
-        # sys.exit()
         ninit = ninit + 1
         
     if (config['profile'] == "S2_microHH"):

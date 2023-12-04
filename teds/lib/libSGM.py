@@ -15,8 +15,7 @@ from scipy.interpolate import RegularGridInterpolator
 import rioxarray
 import shapely
 import matplotlib.pyplot as plt
-from libNumTools import convolution_2d
-
+from .libNumTools import convolution_2d
 
 def get_raw_sentinel2_data(lat, lon, S2_reading_log):
 

@@ -31,7 +31,7 @@ def get_l1b(filename):
     l1b_data['vaa'] = deepcopy(input['GEOLOCATION_DATA']['vaa'][:])
     l1b_data['latitude'] = deepcopy(input['GEOLOCATION_DATA']['lat'][:])
     l1b_data['longitude'] = deepcopy(input['GEOLOCATION_DATA']['lon'][:])
-    l1b_data['wavelength'] = deepcopy(input['OBSERVATION_DATA']['wavelengths'][:])
+    l1b_data['wavelength'] = deepcopy(input['OBSERVATION_DATA']['wavelength'][:])
     l1b_data['radiance'] = deepcopy(input['OBSERVATION_DATA']['radiance'][:])
     l1b_data['noise'] = deepcopy(input['OBSERVATION_DATA']['radiance_noise'][:])
     input.close()
@@ -48,14 +48,14 @@ def get_sgm_atm(filen_sgm_atm):
     atm_sgm['dcol_co2'] = deepcopy(data['dcol_co2'][:])
     atm_sgm['dcol_ch4'] = deepcopy(data['dcol_ch4'][:])
     atm_sgm['dcol_h2o'] = deepcopy(data['dcol_h2o'][:])
-    atm_sgm['col_co2'] = deepcopy(data['col_co2'][:])
-    atm_sgm['col_ch4'] = deepcopy(data['col_ch4'][:])
-    atm_sgm['col_h2o'] = deepcopy(data['col_h2o'][:])
+    atm_sgm['col_co2'] = deepcopy(data['XCO2'][:])
+    atm_sgm['col_ch4'] = deepcopy(data['XCH4'][:])
+    atm_sgm['col_h2o'] = deepcopy(data['XH2O'][:])
     data.close()
     return (surf_sgm, atm_sgm)
 
 
-def write_gasdata(gas, output_l2, _dims, _dims3d, nalt_l2, nact, l2product):
+def write_gasdata(gas, output_l2, _dims, _dims3d, nalt_l2, nact, nlay, l2product):
     scale = {'CO2': 1.E6, 'CH4': 1.E9, 'H2O': 1.E6}
     # names
     xgas = "X" + gas
@@ -63,10 +63,9 @@ def write_gasdata(gas, output_l2, _dims, _dims3d, nalt_l2, nact, l2product):
     xgas_ker = xgas + ' col avg kernel'
     l2_X = np.zeros((nalt_l2, nact))
     l2_X_prec = np.zeros((nalt_l2, nact))
-    l2_X_avgk = np.zeros((nalt_l2, nact))
+    l2_X_avgk = np.zeros((nalt_l2, nact, nlay))
     for ialt in range(nalt_l2):
         for iact in range(nact):
-            breakpoint()
             tmp = (l2product[ialt, iact][xgas]*scale[gas])
             l2_X[ialt, iact] = tmp
             l2_X_prec[ialt, iact] = l2product[ialt, iact][xgas_precision]*scale[gas]
@@ -78,31 +77,7 @@ def write_gasdata(gas, output_l2, _dims, _dims3d, nalt_l2, nact, l2product):
     _ = writevariablefromname(output_l2, prec_varname, _dims, l2_X_prec)
     _ = writevariablefromname(output_l2, avgker_varname, _dims3d, l2_X_avgk)
 
-
-def write_gasdata_new(gas, output_l2, _dims, _dims3d, nalt_l2, nact, l2product):
-    scale = {'CO2': 1.E6, 'CH4': 1.E9, 'H2O': 1.E6}
-    # names
-    xgas = "X" + gas
-    xgas_precision = xgas + " precision"
-    xgas_ker = xgas + ' col avg kernel'
-    l2_X = np.zeros((nalt_l2, nact))
-    l2_X_prec = np.zeros((nalt_l2, nact))
-    l2_X_avgk = np.zeros((nalt_l2, nact))
-    for ialt in range(nalt_l2):
-        for iact in range(nact):
-            breakpoint()
-            tmp = (l2product[ialt, iact][xgas]*scale[gas])
-            l2_X[ialt, iact] = tmp
-            l2_X_prec[ialt, iact] = l2product[ialt, iact][xgas_precision]*scale[gas]
-            l2_X_avgk[ialt, iact, :] = l2product[ialt, iact][xgas_ker][:]
-    # write data
-    prec_varname = 'precision'+xgas
-    avgker_varname = 'avgkernel'+xgas
-    _ = writevariablefromname(output_l2, xgas, _dims, l2_X)
-    _ = writevariablefromname(output_l2, prec_varname, _dims, l2_X_prec)
-    _ = writevariablefromname(output_l2, avgker_varname, _dims3d, l2_X_avgk)
-
-def write_proxygasdata(gas, output_l2, _dims, nalt_l2, nact, l2product):
+def write_proxygasdata(gas, output_l2, _dims, nalt_l2, nact, nlay, l2product):
     scale = {'CO2': 1.E6, 'CH4': 1.E9, 'H2O': 1.E6}
     # names
     xgas = "X" + gas + " proxy"
@@ -145,14 +120,15 @@ def level2_output(filename, l2product, retrieval_init, l1bproduct, settings):
     output_l2.createDimension('bins_along_track', nalt_l2)     # along track axis
 
     # layer height
-    _ = writevariablefromname(output_l2, 'layerheight', ('number_layers'),  retrieval_init['zlay'])
+
+    _ = writevariablefromname(output_l2, 'central_layer_height', ('number_layers',),  retrieval_init['zlay'])
 
     # dimensions
     _dims = ('bins_along_track', 'bins_across_track')
     _dims3d = ('bins_along_track', 'bins_across_track', 'number_layers',)
     # variables
-    l2_conv = np.zeros(np.int32, (nalt_l2, nact))
-    l2_numb_iter = np.zeros(np.int32, (nalt_l2, nact))
+    l2_conv = np.zeros((nalt_l2, nact), dtype = np.int32)
+    l2_numb_iter = np.zeros((nalt_l2, nact), dtype = np.int32)
     l2_chi2 = np.zeros((nalt_l2, nact))
     l2_alb = np.zeros((nalt_l2, nact))
     for ialt in range(nalt_l2):
@@ -176,12 +152,12 @@ def level2_output(filename, l2product, retrieval_init, l1bproduct, settings):
     _ = writevariablefromname(output_l2, 'albedo', _dims, l2_alb)
 
     # XCO2, XCH4, XH20
-    write_gasdata("CO2", output_l2, _dims, _dims3d, nalt_l2, nact, l2product)
-    write_gasdata("CH4", output_l2, _dims, _dims3d, nalt_l2, nact, l2product)
-    write_gasdata("H2O", output_l2, _dims, _dims3d, nalt_l2, nact, l2product)
+    write_gasdata("CO2", output_l2, _dims, _dims3d, nalt_l2, nact, nlay, l2product)
+    write_gasdata("CH4", output_l2, _dims, _dims3d, nalt_l2, nact, nlay, l2product)
+    write_gasdata("H2O", output_l2, _dims, _dims3d, nalt_l2, nact, nlay, l2product)
     # write proxy CO2, CH4
-    write_proxygasdata("CO2", output_l2, _dims, nalt_l2, nact, l2product)
-    write_proxygasdata("CH4", output_l2, _dims, nalt_l2, nact, l2product)
+    write_proxygasdata("CO2", output_l2, _dims, nalt_l2, nact, nlay, l2product)
+    write_proxygasdata("CH4", output_l2, _dims, nalt_l2, nact, nlay, l2product)
     output_l2.close()
 
 
@@ -379,14 +355,7 @@ def level1b_to_level2_processor(config):
 
             atm_ret = deepcopy(atm)  # to initialize each retrieval with the same atmosphere
 
-#            sun = isrf.isrf_convolution(sun_lbl)
-
             sun = isrf_convolution(sun_lbl)
-
-#            plt.plot(wave_meas,sun)
-#            plt.plot(wave_meas,sun)
-#            plt.plot(wave_meas, sun-sun2)
-#            sys.exit()
 
             # Observation geometry
             nwave = wave_meas.size
@@ -429,19 +398,19 @@ def level1b_to_level2_processor(config):
             l2product[ialt_l2, iact]['XCO2 proxy precision'] = rel_error * l2product[ialt_l2, iact]['XCO2']
             l2product[ialt_l2, iact]['XCH4 proxy precision'] = rel_error * l2product[ialt_l2, iact]['XCH4']
 
-            XCO2[iact] = l2product[ialt_l2, iact]['XCO2 proxy']*1.E6
-            XCO2_prec[iact] = l2product[ialt_l2, iact]['XCO2 proxy precision']*1.E6
-    # output to netcdf file
-            XCO2_true_smoothed[iact] = np.dot(l2product[ialt_l2, iact]['XCO2 col avg kernel'],
-                                              atm_sgm['dcol_co2'][ialt, iact, :])/np.sum(atm.air)*1.E6
-            XCO2_true[iact] = np.sum(atm_sgm['dcol_co2'][ialt, iact, :])/np.sum(atm.air)*1.E6
+            # XCO2[iact] = l2product[ialt_l2, iact]['XCO2 proxy']*1.E6
+            # XCO2_prec[iact] = l2product[ialt_l2, iact]['XCO2 proxy precision']*1.E6
+            # XCO2_true_smoothed[iact] = np.dot(l2product[ialt_l2, iact]['XCO2 col avg kernel'],
+            #                                   atm_sgm['dcol_co2'][ialt, iact, :])/np.sum(atm.air)*1.E6
+            # XCO2_true[iact] = np.sum(atm_sgm['dcol_co2'][ialt, iact, :])/np.sum(atm.air)*1.E6
 
+    # output to netcdf file
     level2_output(config['l2_output'], l2product, retrieval_init, l1b, config['retrieval_init'])
     # have to be fixed because of variable spectral size of measurement vector using masked arrays
 #    level2_diags_output(config['l2_diags'], l2product, measurement)
     print('=> l1bl2 finished successfully')
 
-    print(runtime_cum)
+#    print(runtime_cum)
     return
 
 

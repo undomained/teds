@@ -1,29 +1,28 @@
 from netCDF4 import Dataset, num2date
 import numpy as np
+import sys
 from pathlib import Path
 import configparser
-from .libNumTools import TransformCoords
-
+#from .libNumTools import TransformCoords
 
 class DataCont:
     """Empty container for data.
     """
     pass
 
-
 def readgridtime(f, data, gas):
     # grid
     dz, dy, dx = f[gas].gridspacing_in_m
+        
     data.__setattr__("dx", dx)
     data.__setattr__("dy", dy)
-    data.__setattr__("lat", f["lat"][:])
-    data.__setattr__("lon", f["lon"][:])
+    data.__setattr__("lat", f["latitude"][:])
+    data.__setattr__("lon", f["longitude"][:])
     data.__setattr__("z", f["z"][:])
     data.__setattr__("znodes", f["znodes"][:])
     # time
     # _datetime = num2date(f["time"][0], f["time"].units)
     # data.__setattr__("time", _datetime)
-
 
 def readmeteodata(path_data, gasestoread, filesuffix):
     data = DataCont()
@@ -44,7 +43,7 @@ def readmeteodata(path_data, gasestoread, filesuffix):
             f.close()
         else:
             print(filename, " file doesn't exist")
-            exit()
+            sys.exit()
     return data
 
 
@@ -65,7 +64,7 @@ def readmeteovelocitydata(path_data, filesuffix):
         f.close()
     else:
         print(filename, " file doesn't exist")
-        exit()
+        sys.exit()
     return data
 
 

@@ -17,7 +17,6 @@ from tqdm import tqdm
 from copy import deepcopy
 from ..lib.libWrite import writevariablefromname
 
-
 class Dict2Class:
     """
     Convert a dictionaly to a class
@@ -84,38 +83,38 @@ def sgm_output(filename_rad, filename_atm, rad_output, atm, albedo, gm_data):
 
     _dims = ('bins_along_track', 'bins_across_track', 'number_layers')
     # central layer height
-    _ = writevariablefromname(output_atm, 'centrallayerheight', _dims, zlay)
+    _ = writevariablefromname(output_atm, 'central_layer_height', _dims, zlay)
     # columndensity_co2
-    _ = writevariablefromname(output_atm, 'columndensity_co2', _dims, dcolco2)
+    _ = writevariablefromname(output_atm, 'subcol_density_co2', _dims, dcolco2)
     # columndensity_ch4
-    _ = writevariablefromname(output_atm, 'columndensity_ch4', _dims, dcolch4)
+    _ = writevariablefromname(output_atm, 'subcol_density_ch4', _dims, dcolch4)
     # columndensity_h2o
-    _ = writevariablefromname(output_atm, 'columndensity_h2o', _dims, dcolh2o)
+    _ = writevariablefromname(output_atm, 'subcol_density_h2o', _dims, dcolh2o)
     # level height
     _dims = ('bins_along_track', 'bins_across_track', 'number_levels')
     _ = writevariablefromname(output_atm, 'levelheight', _dims, zlev)
 
     # Total column integrated values of CO2, CH4, H2O, and air
-    col_co2 = np.zeros((nalt, nact))
-    col_ch4 = np.zeros((nalt, nact))
-    col_h2o = np.zeros((nalt, nact))
+    xco2 = np.zeros((nalt, nact))
+    xch4 = np.zeros((nalt, nact))
+    xh2o = np.zeros((nalt, nact))
     col_air = np.zeros((nalt, nact))
     for ialt in range(nalt):
         for iact in range(nact):
             XAIR = np.sum(atm[ialt, iact].air[:])
-            col_co2[ialt, iact] = np.sum(atm[ialt, iact].CO2[:])/XAIR*1.e6  # [ppmv]
-            col_ch4[ialt, iact] = np.sum(atm[ialt, iact].CH4[:])/XAIR*1.e9  # [ppbv]
-            col_h2o[ialt, iact] = np.sum(atm[ialt, iact].H2O[:])/XAIR*1.e6  # [ppmv]
+            xco2[ialt, iact] = np.sum(atm[ialt, iact].CO2[:])/XAIR*1.e6  # [ppmv]
+            xch4[ialt, iact] = np.sum(atm[ialt, iact].CH4[:])/XAIR*1.e9  # [ppbv]
+            xh2o[ialt, iact] = np.sum(atm[ialt, iact].H2O[:])/XAIR*1.e6  # [ppmv]
             col_air[ialt, iact] = XAIR
     _dims = ('bins_along_track', 'bins_across_track')
     # albedo
     _ = writevariablefromname(output_atm, 'albedo', _dims, albedo)
     # column_co2
-    _ = writevariablefromname(output_atm, 'column_co2', _dims, col_co2)
+    _ = writevariablefromname(output_atm, 'XCO2', _dims, xco2)
     # column_ch4
-    _ = writevariablefromname(output_atm, 'column_ch4', _dims, col_ch4)
+    _ = writevariablefromname(output_atm, 'XCH4', _dims, xch4)
     # column_h2o
-    _ = writevariablefromname(output_atm, 'column_h2o', _dims, col_h2o)
+    _ = writevariablefromname(output_atm, 'XH2O', _dims, xh2o)
     # column_air
     _ = writevariablefromname(output_atm, 'column_air', _dims, col_air)
 
@@ -209,16 +208,17 @@ def scene_generation_module(config):
         if (config['only_afgl']):
             atm = atm_std
         else:
+            
             # get collocated meteo data
-            if ((not os.path.exists(config['meteo']['dump'])) or config['meteo']['forced']):
+            if ((not os.path.exists(config['meteo_dump'])) or config['meteo_forced']):
                 meteodata = libATM.get_atmosphericdata(gm_data['lat'], gm_data['lon'], config['meteo'],
                                                        config['kernel_parameter'])
                 # Dump meteodata dictionary into temporary pkl file
-                pickle.dump(meteodata.__dict__, open(config['meteo']['dump'], 'wb'))
+                pickle.dump(meteodata.__dict__, open(config['meteo_dump'], 'wb'))
 
             else:
                 # Read meteodata from pickle file
-                meteodata = Dict2Class(pickle.load(open(config['meteo']['dump'], 'rb')))
+                meteodata = Dict2Class(pickle.load(open(config['meteo_dump'], 'rb')))
 
             atm = libATM.combine_meteo_standard_atm(meteodata, atm_std, config["meteo"]['gases'])
 

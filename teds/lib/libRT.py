@@ -16,6 +16,7 @@ from time import sleep
 from tqdm import tqdm
 import sys
 import time
+
 from .hapi import db_begin, fetch_by_ids, absorptionCoefficient_Voigt
 # import hapi as hp
 
@@ -242,7 +243,7 @@ class molecular_data:
                 break
             else:
                 print("ERROR! molecular_data.get_data_HITRAN: provide at least one species.")
-                raise StopExecution
+                sys.exit()
 
         with redirect_stdout(trap) if debug < 2 else nullcontext():  # ignore output for debuglevel<2
             db_begin(xsdbpath)

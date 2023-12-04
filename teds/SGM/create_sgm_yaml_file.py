@@ -20,13 +20,12 @@ def create_sgm_config_file(filename, config):
     lines.append('sun_reference:           ' + config['sun_reference'] + '\n')
     lines.append('S2_dump:                 ' + config['S2_dump'] + '\n')
     lines.append('xsec_dump:               ' + config['xsec_dump'] + '\n')
-    lines.append('microHH_dump:            ' + config['microHH_dump'] + '\n')
     lines.append('microHH_data_path:       ' + config['microHH_data_path'] + '\n')
     lines.append('hapi_path:               ' + config['hapi_path'] + '\n')
     lines.append('\n')
 
 
-    if(config['profile']=='S2_microHH'):
+    if(config['profile']=='orbit'):
         lines.append('# define 2D kernel for spatial smoothing og the data  \n') 
         lines.append('kernel_parameter: ' + '\n')
         lines.append('  type:              ' + str(config['kernel_parameter']['type']) + '  # type pf kernel, current version has only one option  \n')

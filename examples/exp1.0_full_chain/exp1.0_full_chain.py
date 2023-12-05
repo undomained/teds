@@ -20,6 +20,7 @@ from teds.L1AL1B.create_l1a1b_configuration_file import l1al1b_configuration
 from teds.L1L2.l1bl2 import level1b_to_level2_processor
 from teds.L1L2.create_l2_yaml_file import create_l1bl2_config_file
 from teds.L1L2.sl2 import simplified_level2
+from teds.L2L4.l2l4 import level2_to_level4_processor
 
 #import other modules
 import yaml
@@ -90,6 +91,10 @@ locations.__setattr__('sl2', {})
 locations.sl2['sgm_input']   = path_interface + 'sgm/Tango_Carbon_sgm_atmosphere_exp1.0.nc'
 locations.sl2['l2_output']   = path_interface + 'level2/Tango_Carbon_l2_exp1.0_simpl.nc'
 
+locations.__setattr__('l2l4', {})
+locations.l2l4['sgm_input']  = path_interface + 'sgm/Tango_Carbon_sgm_atmosphere_exp1.0.nc'
+locations.l2l4['l2_input']   = path_interface + 'level2/Tango_Carbon_l2_exp1.0_simpl.nc'
+
 profile= 'orbit'   #needed to initialize gm and sgm consistently
 
 settings= {}
@@ -99,7 +104,8 @@ settings['im']        = False
 settings['l1al1b']    = False
 settings['l1bl2']     = False
 settings['save_yaml'] = False
-settings['sl2']       = True
+settings['sl2']       = False
+settings['l2l4']      = True
 
 # ====================main part ================================================
 if __name__ == "__main__":
@@ -175,3 +181,11 @@ if __name__ == "__main__":
         sl2_config = {**locations.sl2, **sl2_config}
 
         simplified_level2(sl2_config)
+
+    # ======= L2 to L4 processor ===================================
+    if(settings['l2l4']):
+        # choose baseline L1BL2 config
+
+        l2l4_config= yaml.safe_load(open('./settings/l2l4_config_baseline.yaml'))
+        l2l4_config = {**locations.l2l4, **l2l4_config}
+        level2_to_level4_processor(l2l4_config)

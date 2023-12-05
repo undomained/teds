@@ -91,6 +91,8 @@ def level4precision_lsq_threshold(conc, noise, threshold):
 
 
 def emissionprecision(actualconc, level2, level2_precision, cdfweight):
+
+
     """Computes level 4 precision based on % of top pixels.
 
     Args:
@@ -114,3 +116,4 @@ def emissionprecision(actualconc, level2, level2_precision, cdfweight):
     precision = lsq_precision(variance, actualconc[plume])
     emission = lsq_emission(variance, actualconc[plume], level2[plume])
     return emission, precision
+

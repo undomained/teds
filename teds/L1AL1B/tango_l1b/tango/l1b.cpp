@@ -248,7 +248,7 @@ int L1B::process_init( // {{{
 
         // Wavelengths intensity grid.
         var = grp_observation.addVar(
-          "wavelengths", ncDouble, { dimid_fov, dimid_int_wave });
+          "wavelength", ncDouble, { dimid_fov, dimid_int_wave });
         var.putAtt("long_name", "wavelength at intensity samples");
         var.putAtt("units", "nm");
         vector<double> wavelengths_reversed { ckd->wave_target };

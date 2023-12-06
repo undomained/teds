@@ -5,10 +5,12 @@ from pathlib import Path
 import configparser
 #from .libNumTools import TransformCoords
 
+
 class DataCont:
     """Empty container for data.
     """
     pass
+
 
 def readgridtime(f, data, gas):
     # grid
@@ -23,6 +25,7 @@ def readgridtime(f, data, gas):
     # time
     # _datetime = num2date(f["time"][0], f["time"].units)
     # data.__setattr__("time", _datetime)
+
 
 def readmeteodata(path_data, gasestoread, filesuffix):
     data = DataCont()
@@ -40,6 +43,10 @@ def readmeteodata(path_data, gasestoread, filesuffix):
                 readgrid = False
             # read concentrations
             data.__setattr__(gas, f[gas.upper()][0])  # '0' because it has time component
+            # read attributes of the data
+            for name in f[gas.upper()].ncattrs():
+                if name in ["emission_in_kgps", "source"]:
+                    data.__setattr__(gas+"_"+name, getattr(f[gas.upper()], name))
             f.close()
         else:
             print(filename, " file doesn't exist")

@@ -77,7 +77,10 @@ def get_atmosphericdata(s2_lat, s2_lon,  meteo_settings, kernel_settings):
     meteo_data.__setattr__('lon', s2_lon)
     meteo_data.__setattr__('zlay', data.z)
     meteo_data.__setattr__('zlev', data.znodes)
-
+    # Add emission and source to meteo data
+    for gas in meteo_settings['gases']:
+        meteo_data.__setattr__(gas+"_emission_in_kgps", data.__getattribute__(gas+"_emission_in_kgps"))
+        meteo_data.__setattr__(gas+"_source", data.__getattribute__(gas+"_source"))
     # convolution of co2 field and interpolation to S2 grid
     conv_settings = getconvolutionparams(kernel_settings, data.dx, data.dy)
     for gas in meteo_settings['gases']:
@@ -97,15 +100,14 @@ def get_atmosphericdata(s2_lat, s2_lon,  meteo_settings, kernel_settings):
 
         dxdy = np.column_stack((data.lat.ravel(), data.lon.ravel()))
         for iz in tqdm(range(data.z.size)):
-            interpdata[:, :, iz] = griddata(dxdy, conv_data[iz, :,:].ravel(), (s2_lat, s2_lon), fill_value=0.0)                
-
+            interpdata[:, :, iz] = griddata(dxdy, conv_data[iz, :,:].ravel(), (s2_lat, s2_lon), fill_value=0.0)
         meteo_data.__setattr__(gas, interpdata)
     print('                     ...done')
 
     return meteo_data
 
 
-def get_AFGL_atm_homogenous_distribtution(AFGL_path, nlay, dzlay, xco2_ref=405, xch4_ref=1800., xh2o_ref=1.E4):
+def get_AFGL_atm_homogenous_distribution(AFGL_path, nlay, dzlay, xco2_ref=405, xch4_ref=1800., xh2o_ref=1.E4):
 
     # Vertical layering assuming equidistance gridding in geometrical distance
     nlev = nlay + 1  # number of levels

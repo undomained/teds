@@ -39,7 +39,7 @@ def get_gm_data(filename):
     return gm_data
 
 
-def sgm_output(filename_rad, filename_atm, rad_output, atm, albedo, gm_data):
+def sgm_output_radio(filename_rad, rad_output):
     # write radiances
     nalt, nact, nlbl = rad_output['radiance'].shape
     # open file
@@ -56,6 +56,10 @@ def sgm_output(filename_rad, filename_atm, rad_output, atm, albedo, gm_data):
     _dims = ('bins_along_track', 'bins_across_track', 'bins_spectral')
     _ = writevariablefromname(output_rad, 'radiance', _dims, rad_output['radiance'])
     output_rad.close()
+
+
+def sgm_output_atm(filename_atm, atm, albedo, gm_data, meteodata=None, gases=None):
+    nalt, nact = gm_data["lat"].shape
     # write atmosphere
     nlay, nlev = atm[0][0].zlay.size, atm[0][0].zlev.size
     # file
@@ -110,9 +114,17 @@ def sgm_output(filename_rad, filename_atm, rad_output, atm, albedo, gm_data):
     # albedo
     _ = writevariablefromname(output_atm, 'albedo', _dims, albedo)
     # column_co2
-    _ = writevariablefromname(output_atm, 'XCO2', _dims, xco2)
+    var_co2 = writevariablefromname(output_atm, 'XCO2', _dims, xco2)
+    # write new attributes
+    if (gases is not None) & ("co2" in gases):
+        var_co2.setncattr("source", meteodata.__getattribute__("co2_source"))
+        var_co2.setncattr("emission_kgps", meteodata.__getattribute__("co2_emission_in_kgps"))
     # column_ch4
-    _ = writevariablefromname(output_atm, 'XCH4', _dims, xch4)
+    var_ch4 = writevariablefromname(output_atm, 'XCH4', _dims, xch4)
+    if (gases is not None) & ("ch4" in gases):
+        var_ch4.setncattr("source", meteodata.__getattribute__("ch4_source"))
+        var_ch4.setncattr("emission_kgps", meteodata.__getattribute__("ch4_emission_in_kgps"))
+
     # column_h2o
     _ = writevariablefromname(output_atm, 'XH2O', _dims, xh2o)
     # column_air
@@ -184,43 +196,39 @@ def scene_generation_module(config):
     # get a model atmosphere form AFGL files
     # =============================================================================
 
+    nlay = config['atmosphere']['nlay']  # number of layers
+    dzlay = config['atmosphere']['dzlay']
+    # we assume the same standard atmosphere for all pixels of the granule
+    atm_std = libATM.get_AFGL_atm_homogenous_distribution(config['afgl_input'], nlay, dzlay)
+
     if ((config['profile'] == 'individual_spectra') or (config['profile'] == 'single_swath')):
-
-        nlay = config['atmosphere']['nlay']  # number of layers
-        dzlay = config['atmosphere']['dzlay']
-
-        # we assume the same standard atmosphere for all pixels of the granule
-
-        atm_std = libATM.get_AFGL_atm_homogenous_distribtution(config['afgl_input'], nlay, dzlay)
-
         atm = np.ndarray((nalt, nact), np.object_)
         for ialt in range(nalt):
             for iact in range(nact):
                 atm[ialt, iact] = deepcopy(atm_std)
 
     if (config['profile'] == 'orbit'):
-
-        nlay = config['atmosphere']['nlay']  # number of layers
-        dzlay = config['atmosphere']['dzlay']
-
-        atm_std = libATM.get_AFGL_atm_homogenous_distribtution(config['afgl_input'], nlay, dzlay)
-
         if (config['only_afgl']):
             atm = atm_std
         else:
-            
             # get collocated meteo data
             if ((not os.path.exists(config['meteo_dump'])) or config['meteo_forced']):
                 meteodata = libATM.get_atmosphericdata(gm_data['lat'], gm_data['lon'], config['meteo'],
                                                        config['kernel_parameter'])
                 # Dump meteodata dictionary into temporary pkl file
                 pickle.dump(meteodata.__dict__, open(config['meteo_dump'], 'wb'))
-
             else:
                 # Read meteodata from pickle file
                 meteodata = Dict2Class(pickle.load(open(config['meteo_dump'], 'rb')))
-
+                # combine the meteo data
             atm = libATM.combine_meteo_standard_atm(meteodata, atm_std, config["meteo"]['gases'])
+
+    # =============================================================================
+    # Write atmosphere and albedo data
+    if (config['profile'] == 'orbit') & ~(config['only_afgl']):
+        sgm_output_atm(config['geo_output'], atm, albedo, gm_data, meteodata, config["meteo"]['gases'])
+    else:
+        sgm_output_atm(config['geo_output'], atm, albedo, gm_data)
 
     # =============================================================================
     #  Radiative transfer simulations
@@ -278,9 +286,9 @@ def scene_generation_module(config):
     rad_output['radiance'] = rad
 
     # =============================================================================
-    # sgm output to radiometric and geophysical output file
+    # sgm output to radiometric file
     # =============================================================================
-    sgm_output(config['rad_output'], config['geo_output'], rad_output, atm, albedo, gm_data)
+    sgm_output_radio(config['rad_output'], config['geo_output'], rad_output, atm, albedo, gm_data)
 
     print('=>sgm calcultion finished successfully')
     return

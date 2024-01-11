@@ -15,7 +15,7 @@ import netCDF4 as nc
 import yaml
 from tqdm import tqdm
 from copy import deepcopy
-from ..lib.libWrite import writevariablefromname
+from lib.libWrite import writevariablefromname
 
 class Dict2Class:
     """
@@ -148,10 +148,10 @@ def scene_generation_module(config):
     None.
 
     """
-    from ..lib import libSGM
-    from ..lib import libATM
-    from ..lib import libRT
-    from ..lib import libSURF
+    from lib import libSGM
+    from lib import libATM
+    from lib import libRT
+    from lib import libSURF
 
     # first get the geometry data
 
@@ -295,5 +295,9 @@ def scene_generation_module(config):
 
 
 if __name__ == '__main__':
+    
+    sys.path.append( os.path.dirname( os.path.dirname( os.path.abspath(__file__) ) ) )
+
+
     config = yaml.safe_load(open(sys.argv[1]))
     scene_generation_module(config)

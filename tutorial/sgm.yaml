@@ -20,24 +20,24 @@ microHH:
     time_stamp: '0036000'
     lat_lon_src: [51.83472, 14.46277]                   #latitude, longitude coordinates for source in microHH
 
-hapi_path: data/hapi/
+hapi_path: ../data/hapi/
 
-rad_output: data/sgm_radiance.nc
-geo_output: data/sgm_atmosphere.nc
+rad_output: ../data/sgm_radiance.nc
+geo_output: ../data/sgm_atmosphere.nc
 
 # GM output file
-gm_input: data/geometry.nc
+gm_input: ../data/geometry.nc
 
 # S2_dump: data/sgm_dumpfile.npy
 S2_dump: ''
 
-afgl_input: data/prof.AFGL.US.std
+afgl_input: ../data/prof.AFGL.US.std
 
-microHH_dump: data/microHH_dump.pkl
+microHH_dump: ../data/microHH_dump.pkl
 
-xsec_dump: data/xsec_dump.pkl
+xsec_dump: ../data/xsec_dump.pkl
 
-sun_reference: data/solar_spectrum.nc
+sun_reference: ../data/solar_spectrum.nc
 
 only_afgl: no
 

@@ -33,4 +33,4 @@ satellite:
     alpha_roll: 0.              #roll angle [degree]
     sat_height: 500000          #orbit height [m]
 
-output: 'data/geometry.nc'
+output: '../data/geometry.nc'

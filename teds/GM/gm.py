@@ -6,10 +6,11 @@
 # =============================================================================
 import numpy as np
 import sys
+import os
 import netCDF4 as nc
 import yaml
-from ..lib.libWrite import writevariablefromname
-from ..lib.libOrbSim import Sensor, Satellite
+from lib.libWrite import writevariablefromname
+from lib.libOrbSim import Sensor, Satellite
 import datetime
 
 
@@ -203,8 +204,8 @@ def geometry_module(config):
     """
 
     # sys.path.append(global_config['path']['e2es_path']+'lib')
-    from ..lib import libGM
-    from ..lib import constants
+    from lib import libGM
+    from lib import constants
 
     # the gm output is orginazed in dictionaries of the format dic[nalt, nact]
 
@@ -389,10 +390,13 @@ def geometry_module(config):
     gm_output(config['output'], vza, vaa, sza, saa, lat_grid, lon_grid)
 
     print(
-        "=>gm calcultion finished successfully. ")
+        "=>gm calculation finished successfully. ")
     return
 
 
-if __name__ == '__main__':
+if __name__ == '__main__' and __package__ is None:
+
+    sys.path.append( os.path.dirname( os.path.dirname( os.path.abspath(__file__) ) ) )
+
     config = yaml.safe_load(open(sys.argv[1]))
     geometry_module(config)

@@ -5,8 +5,8 @@
 # You only need to edit the <value> parameter.
 
 # GNU compilers
-#set(CMAKE_CXX_COMPILER g++-10 CACHE STRING "")
-#set(CMAKE_C_COMPILER gcc-10 CACHE STRING "")
+set(CMAKE_CXX_COMPILER /usr/lib64/ccache/g++ CACHE STRING "")
+set(CMAKE_C_COMPILER /usr/lib64/ccache/gcc CACHE STRING "")
 
 # Flags
 set(CMAKE_CXX_FLAGS -std=c++17 CACHE STRING "")
@@ -30,14 +30,12 @@ set(CMAKE_INSTALL_PREFIX /usr/local/ckdmodel CACHE STRING "")
 #set(LINALG_FLAVOR mkl CACHE STRING "")
 
 # Additional directories containing header files
-#set(INCLUDE_PATHS /opt/intel/mkl/include CACHE STRING "")
+set(INCLUDE_PATHS /usr/include  /net/pc230061/nobackup/users/leune/bin/netcdf-cxx4/include/ CACHE STRING "")
 
 # Library directories
-#set(LIBRARY_PATHS /opt/intel/mkl/lib/intel64 CACHE STRING "")
+set(LIBRARY_PATHS /usr/lib64 /net/pc230061/nobackup/users/leune/bin/netcdf-cxx4/lib64 CACHE STRING "")
 
-# Linear algebra libraries (instead of the MKL libraries you could
-# also try just lapack)
-set(LIBRARIES netcdf_c++4 netcdf
-  #hdf5_hl
-  #hdf5
-  z dl fftw3 lapack CACHE STRING "")
+# Set Libraries
+#set(LIBRARIES libnetcdf_c++.so.4.2.0 libnetcdf.so libz.so libdl.so.2 libfftw3.so liblapack.so.3.11.0 CACHE STRING "")
+set(LIBRARIES libnetcdf-cxx4.so libnetcdf.so libz.so libdl.so.2 libfftw3.so liblapack.so.3.11.0 CACHE STRING "")
+

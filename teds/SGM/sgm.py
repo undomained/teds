@@ -202,6 +202,9 @@ def scene_generation_module(config):
     atm_std = libATM.get_AFGL_atm_homogenous_distribution(config['afgl_input'], nlay, dzlay)
 
     if ((config['profile'] == 'individual_spectra') or (config['profile'] == 'single_swath')):
+
+#        xco2 = np.sum(atm_std.CO2) / np.sum(atm_std.air) * 1.E6
+
         atm = np.ndarray((nalt, nact), np.object_)
         for ialt in range(nalt):
             for iact in range(nact):

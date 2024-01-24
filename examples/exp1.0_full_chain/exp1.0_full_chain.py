@@ -98,14 +98,14 @@ locations.l2l4['l2_input']   = path_interface + 'level2/Tango_Carbon_l2_exp1.0_s
 profile= 'orbit'   #needed to initialize gm and sgm consistently
 
 settings= {}
-settings['gm']        = False
-settings['sgm']       = False
+settings['gm']        = True
+settings['sgm']       = True
 settings['im']        = False
 settings['l1al1b']    = False
 settings['l1bl2']     = False
 settings['save_yaml'] = False
 settings['sl2']       = False
-settings['l2l4']      = True
+settings['l2l4']      = False
 
 # ====================main part ================================================
 if __name__ == "__main__":
@@ -126,7 +126,7 @@ if __name__ == "__main__":
 
     if(settings['sgm']):
 
-        sgm_config= yaml.safe_load(open('.settings/sgm_config_baseline.yaml'))
+        sgm_config= yaml.safe_load(open('./settings/sgm_config_baseline.yaml'))
         sgm_config = {**locations.sgm, **sgm_config}
         sgm_config['profile'] = profile
         if(settings['save_yaml']):

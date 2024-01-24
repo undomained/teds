@@ -116,14 +116,17 @@ def sgm_output_atm(filename_atm, atm, albedo, gm_data, meteodata=None, gases=Non
     # column_co2
     var_co2 = writevariablefromname(output_atm, 'XCO2', _dims, xco2)
     # write new attributes
-    if (gases is not None) & ("co2" in gases):
-        var_co2.setncattr("source", meteodata.__getattribute__("co2_source"))
-        var_co2.setncattr("emission_kgps", meteodata.__getattribute__("co2_emission_in_kgps"))
+  
+    if gases is not None:
+        if ("co2" in gases):
+            var_co2.setncattr("source", meteodata.__getattribute__("co2_source"))
+            var_co2.setncattr("emission_kgps", meteodata.__getattribute__("co2_emission_in_kgps"))
     # column_ch4
     var_ch4 = writevariablefromname(output_atm, 'XCH4', _dims, xch4)
-    if (gases is not None) & ("ch4" in gases):
-        var_ch4.setncattr("source", meteodata.__getattribute__("ch4_source"))
-        var_ch4.setncattr("emission_kgps", meteodata.__getattribute__("ch4_emission_in_kgps"))
+    if (gases is not None):
+        if("ch4" in gases):
+            var_ch4.setncattr("source", meteodata.__getattribute__("ch4_source"))
+            var_ch4.setncattr("emission_kgps", meteodata.__getattribute__("ch4_emission_in_kgps"))
 
     # column_h2o
     _ = writevariablefromname(output_atm, 'XH2O', _dims, xh2o)

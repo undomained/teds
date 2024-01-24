@@ -291,7 +291,7 @@ def scene_generation_module(config):
     # =============================================================================
     # sgm output to radiometric file
     # =============================================================================
-    sgm_output_radio(config['rad_output'], config['geo_output'], rad_output, atm, albedo, gm_data)
+    sgm_output_radio(config['rad_output'], rad_output)
 
     print('=>sgm calcultion finished successfully')
     return

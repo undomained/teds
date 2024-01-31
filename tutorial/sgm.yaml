@@ -1,6 +1,6 @@
 # Configuration file for running the geometry module
 
-profile: S2_microHH
+profile: orbit
 
 kernel_parameter:               #parameter to configure the 2D blurring of the scene
     type:    2D Gaussian      #type pf kernel, current version has only one option
@@ -14,12 +14,6 @@ atmosphere:
 
 std_atm: prof.AFGL.US.std     #AFGL model atmosphere
 
-microHH_data_path: data/microHH/Jaenschwalde_simulation1/
-microHH:
-    sim: Jaenschwalde_simulation1/
-    time_stamp: '0036000'
-    lat_lon_src: [51.83472, 14.46277]                   #latitude, longitude coordinates for source in microHH
-
 hapi_path: ../data/hapi/
 
 rad_output: ../data/sgm_radiance.nc
@@ -29,13 +23,19 @@ geo_output: ../data/sgm_atmosphere.nc
 gm_input: ../data/geometry.nc
 
 # S2_dump: data/sgm_dumpfile.npy
-S2_dump: ''
+S2_dump: '../data/sgm_dumpfile.npy'
 
 afgl_input: ../data/prof.AFGL.US.std
 
-microHH_dump: ../data/microHH_dump.pkl
-
 xsec_dump: ../data/xsec_dump.pkl
+
+meteo_dump: ../data/microHH_meteo.pkl
+
+meteo:
+    dump: "/tmp/microHH.pkl"
+    path_data: "../data/microHH/Jaenschwalde/"
+    filesuffix: "src1_20180523_1100"  # sourcename_yyyymmdd_hhmm
+    gases: ["co2"]
 
 sun_reference: ../data/solar_spectrum.nc
 
@@ -51,10 +51,8 @@ scene_spec:
   scene_trans_index: [0, 100]
   albedo: [0.15]
 
-microHH_settings:
-    hour:       11          #00-23
-    minute:     15          #only in step of 15 min
+xsec_forced: yes          #flag to force new cross section calculation
+s2_forced:   yes          #flag to force Sentinel 2 calculation
+meteo_forced: yes
 
-xsec_forced: no          #flag to force new cross section calculation
-s2_forced:   no          #flag to force Sentinel 2 calculation
-microHH_forced: no       #flag to force microHH data processing
+lat_lon_src: [51.83472, 14.46277]                   #latitude, longitude coordinates 

@@ -18,7 +18,7 @@ lat_lon_src: [51.83472, 14.46277]
 std_atm: prof.AFGL.US.std     #AFGL model atmosphere
 
 meteo:
-  path_data: /home/raul/Projects/tango/end_to_end/data/microHH/Jaenschwalde_simulation1/
+  path_data: ../data/microHH/Jaenschwalde_simulation1/
   gases: [co2]
   filesuffix: src1_20180523_0930
 
@@ -33,15 +33,15 @@ xsec_forced: no          #flag to force new cross section calculation
 s2_forced:   no          #flag to force Sentinel 2 calculation
 microHH_forced: no       #flag to force microHH data processing
 
-gm_input: data/geometry.nc
-afgl_input: data/prof.AFGL.US.std
-sun_reference: data/solar_spectrum.nc
-hapi_path: data/hapi/
+gm_input: ../data/geometry.nc
+afgl_input: ../data/prof.AFGL.US.std
+sun_reference: ../data/solar_spectrum.nc
+hapi_path: ../data/hapi/
 
-microHH_dump: data/microHH_dump.pkl
-meteo_dump: data/meteo_dump.pkl
-xsec_dump: data/xsec_dump.pkl
-S2_dump: data/sgm_dumpfile.npy
+microHH_dump: ../data/microHH_dump.pkl
+meteo_dump: ../data/meteo_dump.pkl
+xsec_dump: ../data/xsec_dump.pkl
+S2_dump: ../data/sgm_dumpfile.npy
 
-rad_output: data/sgm_radiance.nc
-geo_output: data/sgm_atmosphere.nc
+rad_output: ../data/sgm_radiance.nc
+geo_output: ../data/sgm_atmosphere.nc

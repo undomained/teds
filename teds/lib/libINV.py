@@ -11,6 +11,38 @@ import sys
 from .libRT import nonscat_fwd_model
 from .libSURF import surface_prop
 
+def lsq_fit(ymeas, Kmat, Sy):
+    """
+    least squares fit for a linear problem y = Kx
+
+    Parameters
+    ----------
+    ymeas : float, dimension m
+        measurement vector
+    Kmat : float matrix, dimension (m,n)
+        forward model Jacobian
+    Sy : float, dimension (m,m)
+        measurement covariance, dimension (m,m)
+
+    Returns
+    -------
+    xval
+        state vector, dimension n
+    Sx
+        state vector covariance, dimension (n,n)
+
+    """
+    Syinv = np.linalg.inv(Sy)
+    Sxinv = np.dot(Kmat.T, np.dot(Syinv, Kmat)) 
+    if(Sxinv.size == 1):
+        Sx = 1./Sxinv
+    else:   
+        Sx = np.linalg.inv(Sxinv)
+    Gain  = np.dot(Sx, np.dot(Kmat.T, Syinv))                 #gain matrix
+    xval  =  np.dot(Gain, ymeas)                              #state vector
+    
+    return xval, Sx
+
 ###########################################################
 
 def Gauss_Newton_iteration(retrieval_init, atm, optics, measurement, max_iter, chi2_lim, isrf_convolution):

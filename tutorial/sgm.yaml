@@ -1,4 +1,4 @@
-# Configuration file for running the geometry module
+# Configuration file for running the scene generation module
 
 profile: orbit
 
@@ -12,47 +12,36 @@ atmosphere:
     nlay: 30                    #number of atmospheric layers
     dzlay: 1000                 #geometrical thickness of the layers [m]
 
+# latitude, longitude coordinates
+lat_lon_src: [51.83472, 14.46277]
+
 std_atm: prof.AFGL.US.std     #AFGL model atmosphere
 
-hapi_path: ../data/hapi/
-
-rad_output: ../data/sgm_radiance.nc
-geo_output: ../data/sgm_atmosphere.nc
-
-# GM output file
-gm_input: ../data/geometry.nc
-
-# S2_dump: data/sgm_dumpfile.npy
-S2_dump: '../data/sgm_dumpfile.npy'
-
-afgl_input: ../data/prof.AFGL.US.std
-
-xsec_dump: ../data/xsec_dump.pkl
-
-meteo_dump: ../data/microHH_meteo.pkl
-
 meteo:
-    dump: "/tmp/microHH.pkl"
-    path_data: "../data/microHH/Jaenschwalde/"
-    filesuffix: "src1_20180523_1100"  # sourcename_yyyymmdd_hhmm
-    gases: ["co2"]
-
-sun_reference: ../data/solar_spectrum.nc
-
-only_afgl: no
+  path_data: /home/raul/Projects/tango/end_to_end/data/microHH/Jaenschwalde_simulation1/
+  gases: [co2]
+  filesuffix: src1_20180523_0930
 
 spec_settings:              #settings for line-by-line spectra
     wave_start: 1585        #nm
-    wave_end:   1685        #nm
+    wave_end:   1688        #nm
     dwave:      0.002       #nm
 
-scene_spec:
-  numb_atm: 1
-  scene_trans_index: [0, 100]
-  albedo: [0.15]
+only_afgl: no
+meteo_forced: no
+xsec_forced: no          #flag to force new cross section calculation
+s2_forced:   no          #flag to force Sentinel 2 calculation
+microHH_forced: no       #flag to force microHH data processing
 
-xsec_forced: yes          #flag to force new cross section calculation
-s2_forced:   yes          #flag to force Sentinel 2 calculation
-meteo_forced: yes
+gm_input: data/geometry.nc
+afgl_input: data/prof.AFGL.US.std
+sun_reference: data/solar_spectrum.nc
+hapi_path: data/hapi/
 
-lat_lon_src: [51.83472, 14.46277]                   #latitude, longitude coordinates 
+microHH_dump: data/microHH_dump.pkl
+meteo_dump: data/meteo_dump.pkl
+xsec_dump: data/xsec_dump.pkl
+S2_dump: data/sgm_dumpfile.npy
+
+rad_output: data/sgm_radiance.nc
+geo_output: data/sgm_atmosphere.nc

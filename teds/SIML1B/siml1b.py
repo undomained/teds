@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from copy import deepcopy
 import netCDF4 as nc
 from tqdm import tqdm
-from ..lib.libNumTools import isrfct
+from ..lib import libNumTools
 from ..lib.libWrite import writevariablefromname
 
 
@@ -19,7 +19,6 @@ def sparse_isrf_convolution(isrf, mask, spectrum):
         idx = mask[iwav, :]
         spectrum_conv[iwav] = isrf[iwav, idx].dot(spectrum[idx])
     return(spectrum_conv)
-
 
 def get_sgm_rad_data(filename, ialt):
     input = nc.Dataset(filename, mode='r')
@@ -85,6 +84,9 @@ def sim_output(filename, gm_data, l1b_output):
     writevariablefromname(obs_data, "radiance", _dims, l1b_output['radiance'])
     # observed Earth radiance noise
     writevariablefromname(obs_data, "radiance_noise", _dims, l1b_output['radiance_noise'])
+    # radiance error mask
+    # writevariablefromname(obs_data, "radiance_mask", _dims, l1b_output['radiance_mask'])
+
     output.close()
 
 #   main program ##############################################################
@@ -117,9 +119,9 @@ def simplified_instrument_model_and_l1b_processor(config):
     wave_lbl = sgm_data['wavelength line-by-line']
     wave = l1b_output['wavelength']
 
-    # define isrf objecpaths.project + paths.data_interface + \
-    isrf = isrfct(wave, wave_lbl)
-    isrf.get_isrf(config['isrf_settings'])
+    # define isrf function
+    
+    isrf_convolution = libNumTools.get_isrf(wave, wave_lbl, config['isrf_settings'])
 
     for ialt in tqdm(range(nalt)):
 
@@ -127,9 +129,9 @@ def simplified_instrument_model_and_l1b_processor(config):
         sgm_data = get_sgm_rad_data(config['sgm_input'], ialt)
 
         for iact in range(nact):
-            spectrum_lbl = sgm_data['radiance line-by-line'][iact, :]
+            spectrum_lbl = np.array(sgm_data['radiance line-by-line'][iact, :])
             # isrf convolution
-            ymeas[ialt, iact, :] = isrf.isrf_convolution(spectrum_lbl)
+            ymeas[ialt, iact, :] = isrf_convolution(spectrum_lbl)
 
     # noise model based on SNR = a I / (sqrt (aI +b )) ; a[(e- m2 sr s nm) / phot], and [b] = e-
     snr = config['snr_model']['a_snr'] * ymeas / \
@@ -152,6 +154,7 @@ def simplified_instrument_model_and_l1b_processor(config):
     else:
         l1b_output['radiance'] = ymeas
 
+    l1b_output['radiance_mask'] = np.zeros(nwav, dtype=bool)
     # output to netcdf file
 
     sim_output(config['l1b_output'], gm_data, l1b_output)

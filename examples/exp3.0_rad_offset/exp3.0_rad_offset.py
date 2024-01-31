@@ -6,7 +6,7 @@
 """
 # define  path to search for module
 import sys
-sys.path.insert(1, "/home/jochen/TANGO_E2ES/EndtoEndProject/end_to_end/examples/exp2.0_RTM/")
+sys.path.insert(1, "/home/jochen/TANGO_E2ES/EndtoEndProject/end_to_end/examples/exp3.0_rad_offset/")
 sys.path.insert(1, "/home/jochen/TANGO_E2ES/EndtoEndProject/end_to_end/")
     
 # import E2ES modules 
@@ -87,8 +87,8 @@ profile= 'individual_spectra'   #needed to initialize gm and sgm consistently
 settings= {}
 settings['gm']        = True
 settings['sgm']       = True
-settings['siml1b']    = True
-settings['l1bl2']     = True
+settings['siml1b']    = False
+settings['l1bl2']     = False
 settings['save_yaml'] = False
 # ====================main part ===============================================
 if __name__ == "__main__":

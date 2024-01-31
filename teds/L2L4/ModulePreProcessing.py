@@ -7,11 +7,11 @@ Created on Mon Aug 14 12:54:22 2023
 """
 
 from .ModuleReadMicroHH import read_simulated_variable, get_interpolate_uv
-from .ModuleLevel2 import readlevel2retrieval
 from netCDF4 import Dataset
 from .ModuleDataContainer import DataCont
 from pathlib import Path
 from ..lib.libMeteo import readmeteovelocitydata
+import sys
 
 mm_air = 0.0289647  # kg/mole
 tot_air_moles = (101325.0 / 9.81) / mm_air  # moles
@@ -23,10 +23,10 @@ mm_no2 = 0.0460055  # kg/mole
 def readsgmatmosphere(sgmatmosphere_file, gas):
     f = Dataset(sgmatmosphere_file, "r")
     if gas == "co2":
-        gascol = f["col_co2"][:].data
+        gascol = f["XCO2"][:].data
         dgascol = f["dcol_co2"][:].data
     elif gas == "ch4":
-        gascol = f["col_ch4"][:].data
+        gascol = f["XCH4"][:].data
         dgascol = f["dcol_ch4"][:].data
     air = f["col_air"][:].data
     grid = DataCont()
@@ -35,9 +35,9 @@ def readsgmatmosphere(sgmatmosphere_file, gas):
             grid.__setattr__(ky, f[ky][:])
     f.close()
     data = DataCont()
-    data.__setattr__("actual_column", gascol)
-    data.__setattr__("actual_column_air", air)
-    data.__setattr__("dactual_column", dgascol)
+    data.__setattr__("Xgas", gascol)
+    data.__setattr__("column_air", air)
+    data.__setattr__("dcol_gas", dgascol)
     data.__setattr__("grid", grid)
     return data
 
@@ -78,26 +78,20 @@ def readyamlfile(filename):
     return param
 
 
-def getendtoendsimdata(params):
-    simparam = params["simulationdata"]
+def getendtoendsimdata(sgm_file, gas, lat_lon_src):
     data = DataCont()
     # Read Actual data if exists
-    if ~bool(simparam["sgm_atmosphere"]):
-        data = readsgmatmosphere(simparam["sgm_atmosphere"], simparam["gas"])
+    if ~bool(sgm_file):
+        data = readsgmatmosphere(sgm_file, gas)
 
-    # level 2 data
-    # if (level2data["generate"]):
-    #     generate_level2data(data, params["simulationdata"]["level2data"]["precision"])
-    # else:
-    data = readlevel2retrieval(simparam["level2file"], simparam["gas"], data)
-    data.grid.__setattr__("source", simparam["lat_lon_src"])
-
+    data.__setattr__("source_location", lat_lon_src)
+    
     # compute ppm to kg
-    if simparam["gas"] == "co2":
+    if gas == "co2":
         data.__setattr__("ppm_to_kg_gas", mm_co2*tot_air_moles/1e6)
-    elif simparam["gas"] == "ch4":
+    elif gas == "ch4":
         data.__setattr__("ppm_to_kg_gas", mm_ch4*tot_air_moles/1e6)
-    elif simparam["gas"] == "no2":
+    elif gas == "no2":
         data.__setattr__("ppm_to_kg_gas", mm_no2*tot_air_moles/1e6)
     return data
 

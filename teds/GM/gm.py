@@ -254,6 +254,7 @@ def geometry_module(config):
         ncheck = len(config['scene_spec']['sza']) + len(config['scene_spec']['saa']) + \
                  len(config['scene_spec']['vza']) + len(config['scene_spec']['vaa'])
 
+        print('ncheck:', ncheck)
         if (ncheck != 4*config['scene_spec']['numb_atm']):
             sys.exit("input error in gm, code 2")
 

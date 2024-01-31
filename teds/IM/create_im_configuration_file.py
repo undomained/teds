@@ -28,25 +28,8 @@ def im_configuration(locations, local_config):
     lines.append('binning_table_id = '+str(local_config['settings']['bin_id']) + '\n')
     # Exposure time in s
     lines.append('exposure_time = '+str(local_config['settings']['exp_time']) + '\n')
-    #========Determine optimal exposure time (sec) and co-adding factor from LUTs =========================
-
-    gm_data = nc.Dataset(locations['gm_input'], mode='r')
-    sza_avg = np.mean(gm_data['sza'][:, :])
-    #LUT for optimal exposure and coadding factors    
-    fmc_lut = np.arange(1,6)
-    data    = np.genfromtxt(locations['ckd_expo_time'])
-    sza_lut = data[:,0]
-    exposure_time_lut = data[:,1:]
-    data    = np.genfromtxt(locations['ckd_coadding'])
-    coad_fact_lut     = np.int16(data[:,1:])
-    #find right indices
-    ind_sza = np.argmin(np.abs(sza_lut-sza_avg))
-    ind_fmc = np.argmin(np.abs(fmc_lut-local_config['settings']['fmc']))
-    lines.append('exposure_time = '+str(exposure_time_lut[ind_sza,ind_fmc]) + '\n')
-    # Number of coadditions applied to detector images. A higher number
-    # effectively enhances the dynamical range of the count values stored
-    # in an integer format.
-    lines.append('nr_coadditions ='+str(coad_fact_lut[ind_sza,ind_fmc]) + '\n')
+    # co-adding 
+    lines.append('nr_coadditions ='+ str(local_config['settings']['co_adding']) + '\n')
     if(local_config['select_images']):
         # The first ALT location to be included in processing (default 0)
         lines.append('image_start = '+str(local_config['first_image'])+'\n')

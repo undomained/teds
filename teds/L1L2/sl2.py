@@ -100,7 +100,6 @@ def writedata_l2data(level2_outputfile, data, instrument):
         # dimensions of two types
         _dims2d = ('bins_along_track', 'bins_across_track')
         _dims3d = ('bins_along_track', 'bins_across_track', 'number_layers',)
-
         # convergence
         _ = writevariablefromname(output_l2, 'convergence', _dims2d,  data.conv)
         # latitude

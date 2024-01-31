@@ -242,8 +242,8 @@ def scene_generation_module(config):
     nwav = len(rad_output['wavelength_lbl'])
     # generate optics object for one representative model atmosphere of the domain
 
-    nalt_ref = np.int0(nalt/2 - 0.5)
-    nact_ref = np.int0(nact/2 - 0.5)
+    nalt_ref = np.intp(nalt/2 - 0.5)
+    nact_ref = np.intp(nact/2 - 0.5)
 
     optics = libRT.optic_abs_prop(rad_output['wavelength_lbl'], atm[nalt_ref, nact_ref].zlay)
 
@@ -288,7 +288,7 @@ def scene_generation_module(config):
     # =============================================================================
     # sgm output to radiometric file
     # =============================================================================
-    sgm_output_radio(config['rad_output'], config['geo_output'], rad_output, atm, albedo, gm_data)
+    sgm_output_radio(config['rad_output'], rad_output)
 
     print('=>sgm calcultion finished successfully')
     return

@@ -36,6 +36,11 @@ set(INCLUDE_PATHS /usr/include  /net/pc230061/nobackup/users/leune/bin/netcdf-cx
 set(LIBRARY_PATHS /usr/lib64 /net/pc230061/nobackup/users/leune/bin/netcdf-cxx4/lib64 CACHE STRING "")
 
 # Set Libraries
-#set(LIBRARIES libnetcdf_c++.so.4.2.0 libnetcdf.so libz.so libdl.so.2 libfftw3.so liblapack.so.3.11.0 CACHE STRING "")
+#set(LIBRARIES libnetcdf_c++.so.4 libnetcdf.so libz.so libdl.so.2 libfftw3.so liblapack.so.3.11.0 CACHE STRING "")
+
 set(LIBRARIES libnetcdf-cxx4.so libnetcdf.so libz.so libdl.so.2 libfftw3.so liblapack.so.3.11.0 CACHE STRING "")
 
+
+# using workstation libnetcdf-c++ library (/usr/lib64/libnetcdf_c++.so) does not work, because the /usr/include/ folder does not contain the files that are imported by the C++ code.
+# local install of libnetcdf-c++ library (https://github.com/Unidata/netcdf-cxx4, https://downloads.unidata.ucar.edu/netcdf/) does give the required files in the include folder
+# see /net/pc230061/nobackup/users/leune/bin/netcdf-cxx4/include/

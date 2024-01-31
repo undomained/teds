@@ -13,11 +13,11 @@ from copy import deepcopy
 import netCDF4 as nc
 import yaml
 
-from ..lib import libNumTools
-from ..lib import libRT
-from ..lib import libATM
-from ..lib import libINV
-from ..lib.libWrite import writevariablefromname
+from lib import libNumTools
+from lib import libRT
+from lib import libATM
+from lib import libINV
+from lib.libWrite import writevariablefromname
 import matplotlib.pyplot as plt
 
 
@@ -31,7 +31,7 @@ def get_l1b(filename):
     l1b_data['vaa'] = deepcopy(input['GEOLOCATION_DATA']['vaa'][:])
     l1b_data['latitude'] = deepcopy(input['GEOLOCATION_DATA']['lat'][:])
     l1b_data['longitude'] = deepcopy(input['GEOLOCATION_DATA']['lon'][:])
-    l1b_data['wavelength'] = deepcopy(input['OBSERVATION_DATA']['wavelengths'][:])
+    l1b_data['wavelength'] = deepcopy(input['OBSERVATION_DATA']['wavelength'][:])
     l1b_data['radiance'] = deepcopy(input['OBSERVATION_DATA']['radiance'][:])
     l1b_data['radmask'] = deepcopy(input['OBSERVATION_DATA']['radiance_mask'][:])
     l1b_data['noise'] = deepcopy(input['OBSERVATION_DATA']['radiance_noise'][:])

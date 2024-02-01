@@ -24,13 +24,13 @@ set(CMAKE_CXX_FLAGS_DEBUG "-Og -g -Wall -Wextra -Wcast-align -Wformat -Winvalid-
 set(CMAKE_BUILD_TYPE Release CACHE STRING "")
 
 # Additional directories containing header files
-set(INCLUDE_PATHS /usr/include /net/pc230061/nobackup/users/leune/bin/netcdf-cxx4/include/ CACHE STRING "")
+set(INCLUDE_PATHS /usr/include CACHE STRING "")
 
 # Linear algebra library directories
-set(LIBRARY_PATHS /usr/lib64 /net/pc230061/nobackup/users/leune/bin/netcdf-cxx4/lib64 CACHE STRING "")
+set(LIBRARY_PATHS /usr/lib64 CACHE STRING "")
 
 # Linear algebra libraries
-set(LIBRARIES libnetcdf-cxx4.so libnetcdf.so libz.so libdl.so.2 libfftw3.so liblapack.so.3.11.0 CACHE STRING "")
+set(LIBRARIES libnetcdf_c++4.so libnetcdf.so libz.so libdl.so.2 libfftw3.so liblapack.so.3.11.0 CACHE STRING "")
 
 # With MKL
 #set(LIBRARIES netcdf_c++4 netcdf z dl fftw3 mkl_gf_lp64 mkl_sequential mkl_core CACHE STRING "")

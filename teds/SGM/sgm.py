@@ -57,7 +57,6 @@ def sgm_output_radio(filename_rad, rad_output):
     _ = writevariablefromname(output_rad, 'radiance', _dims, rad_output['radiance'])
     output_rad.close()
 
-
 def sgm_output_atm(filename_atm, atm, albedo, gm_data, meteodata=None, gases=None):
     nalt, nact = gm_data["lat"].shape
     # write atmosphere
@@ -173,16 +172,12 @@ def scene_generation_module(config):
         albedo[0, :] = config['scene_spec']['albedo'][:]
 
     if (config['profile'] == 'single_swath'):
-        for iscen in range(config['scene_spec']['numb_atm']+1):
-            outofrange = (config['scene_spec']['scene_trans_index'][iscen] > 100) & \
-                (config['scene_spec']['scene_trans_index'][iscen] < 0) 
-            if (outofrange):
-                sys.exit('config parameter scene_trans_index out of range')
 
-        for iscen in range(config['scene_spec']['numb_atm']):
-            ind_start = config['scene_spec']['scene_trans_index'][iscen]
-            ind_end = config['scene_spec']['scene_trans_index'][iscen+1]
-            albedo[0, ind_start:ind_end] = config['scene_spec']['albedo'][iscen]
+        ncheck = len(config['scene_spec']['albedo'])
+        if (ncheck != nact):
+            sys.exit("input error in sgm, nact!=100")
+
+        albedo[0,:] = config['scene_spec']['albedo'][:]
 
     if (config['profile'] == 'orbit'):
 

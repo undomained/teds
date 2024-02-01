@@ -19,7 +19,7 @@ spec_settings:                                     #settings for spectral grid o
 isrf_settings:
     type:       'generalized_normal'               #type of ISRF, currently only Gaussian or generalized_normal
     fwhm:       0.45                               #fwhm  [nm]
-    bcoeff:     0.2                                #only for generalized_normal, bcoeff=1/2 means Gaussian
+    bcoeff:     0.45                                #only for generalized_normal, bcoeff=1/2 means Gaussian
 
 #isrf_settings:
 #    type:       'Gaussian'                         #type of ISRF, currently only Gaussian or generalized_normal

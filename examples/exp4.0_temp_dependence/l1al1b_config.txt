@@ -1,0 +1,5 @@
+[I] main: tango_cal  (16 Nov 2023)
+[D] main: Commit: a443ebe6b0eabdd81638f56a2b44a248bdfb66a0 with changes
+[E] main: Error acquiring file information from 'l1al1b_config.cfg'.
+[E] main: Error raised on line 46 in routine execute in file /home/jochen/TANGO_E2ES/EndtoEndProject/end_to_end/teds/L1AL1B/tango_l1b/tango/spexone_cal.cpp.
+[I] main: Program exited with error.

@@ -84,6 +84,43 @@ def get_raw_sentinel2_data(lat, lon, S2_reading_log):
     return(S2_albedo, S2_ssd)
 
 
+def get_sentinel2_albedo_new(lat, lon):
+    """Get sentinal 2 albedo.
+
+    Parameters
+    ----------
+    lat : Matrix
+        Latitude at microHH grids
+    lon : Matrix
+        Longitude at microHH grids
+    """    
+    S2_reading_log = False
+    S2_albedo_raw, S2_ssd = get_raw_sentinel2_data(lat, lon, S2_reading_log)
+
+    # Note that the S2 data are scaled by a factor 1.E4
+    # Note that the albedo values need to be divided by 10,000.
+    if S2_reading_log:
+        S2_albedo_raw.plot(robust=True)
+
+    # Change coordinate system to WGS84
+    S2_albedo_resampled = S2_albedo_raw.rio.reproject('EPSG:4326')
+    if S2_reading_log:
+        S2_albedo_resampled[:, :].plot(robust=True)
+
+    # Extract data on target grid
+    # Define an interpolating function interp such that interp(lat,lon) is an
+    # interpolated value. Note that data.y and data.x are lat, long coordinates.
+    interp = RegularGridInterpolator((S2_albedo_resampled.y, S2_albedo_resampled.x),
+                                     S2_albedo_resampled.values[0], method='cubic')
+
+    # The 2D interpolator only works with 1D lat/lon grids.
+    albedo = np.reshape(interp(np.column_stack((lat.flatten(), lon.flatten()))), lat.shape)
+
+    # Note that the albedo values need to be divided by 10,000.
+    albedo = albedo / 1e4
+    return albedo
+
+
 def get_sentinel2_albedo(gm_data, conf):
 
     lon = gm_data['lon']

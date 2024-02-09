@@ -13,8 +13,8 @@ from tqdm import tqdm
 from copy import deepcopy
 from .libMeteo import readmeteodata
 from . import constants
-from .libNumTools import convolution_2d
-import matplotlib.pyplot as plt
+from .libNumTools import convolution_2d, TransformCoords, getconvolutionparams
+# import matplotlib.pyplot as plt
 ###########################################################
 
 
@@ -22,29 +22,110 @@ class Emptyclass:
     pass
 
 
-def getconvolutionparams(kernel_settings, dx, dy):
-    """Convolution parameters.
+def shrink_extend_domain(inpbound_lat, inpbound_lon, _lat, _lon, src, gridtype=None):
+    """Extend or shrink domain.
+    
+    Shrink or extend domain to the inpbound_*.
 
     Parameters
     ----------
-    kernel_settings : Dict
-        Parameters needed for convolution.
-    dx : Float
-        Spacing in x.
-    dy : Float
-        Spacing in y.
+    inpbound_lat : Array [4]
+        Input bounds in latitude
+    inpbound_lon : Array [4]
+        Input bounds in longitude
+    _lat : Matrix
+        Existing meteo data latitudes
+    _lon : Matrix
+        Existing meteo data longitudes
+    src : Array
+        Source of the meteo data
+    
     """
-    conv_settings = {}
-    if (kernel_settings['type'] == '2D Gaussian'):
-        fwhm_x = kernel_settings['fwhm_x']
-        fwhm_y = kernel_settings['fwhm_y']
-        fsize = kernel_settings['size_factor']
-        conv_settings['type'] = kernel_settings['type']
-        conv_settings['1D kernel extension'] = np.int0(fsize*np.max([fwhm_x, fwhm_y])/np.min([dx, dy]))
-        # convert all kernel parameter in units of sampling distance
-        conv_settings['fwhm x'] = np.int0(float(fwhm_x)/dx)
-        conv_settings['fwhm y'] = np.int0(float(fwhm_y)/dy)
-    return conv_settings
+    trans = TransformCoords(src)
+    _x, _y = trans.latlon2xykm(inpbound_lat, inpbound_lon)
+    _x1, _y1 = trans.latlon2xykm(_lat, _lon)
+    x = _x1[0,:]
+    y = _y1[:,0]
+    dx = (x[1] - x[0])
+    dy = (y[1] - y[0])
+    
+    # find the padding bounds and min and max index
+    pad_x1, pad_x2, pad_y1, pad_y2 = 0, 0, 0, 0  # default padding is zero
+    _ix1, _ix2, _iy1, iy2 = 0, x.size, 0, y.size
+    
+    if _x.min() <= x[0]:
+        pad_x1 = np.int_((x[0] - _x.min())/dx + 1)
+    else:
+        ix1 = np.searchsorted(x, _x.min()) - 1
+
+    if _x.max() > x[-1]:
+        pad_x2 = np.int_((_x.max() - x[-1])/dx + 1)
+    else:
+        ix2 = np.searchsorted(x, _x.max())
+
+    if _y.min() <= y[0]:
+        pad_y1 = np.int_((y[0] - _y.min())/dy + 1)
+    else:
+        iy1 = np.searchsorted(y, _y.min()) - 1
+    if _y.max() >= y[-1]:
+        pad_y2 = np.int_((_y.max() - y[-1])/dy + 1)
+    else:
+        iy2 = np.searchsorted(y, _y.max())
+
+    # compute new x and y and then latitude and longitude
+    x_left = np.arange(-pad_x1, 0)*dx + x[0]
+    x_right = np.arange(pad_x2)*dx + dx + x[-1]
+    x_new = np.concatenate((x_left, x[ix1:ix2], x_right))
+
+    y_left = np.arange(-pad_y1, 0)*dy + y[0]
+    y_right = np.arange(pad_y2)*dy + dy + y[-1]
+    y_new = np.concatenate((y_left, y[ix1:ix2], y_right))
+
+    XX, YY = np.meshgrid(x_new, y_new)
+    lat_new, lon_new = trans.xykm2latlon(XX, YY)
+    return lat_new, lon_new, (ix1, ix2), (iy1, iy2), (pad_x1, pad_x2), (pad_y1, pad_y2)
+
+
+def get_atmosphericdata_new(gm_lat, gm_lon, meteo_settings):
+    """Get meterological data to same domain as input lat, lon.
+
+    Read meterological data and extend to given domain.
+
+    Parameters
+    ----------
+    gm_lat : Array (m,n)
+        Input GM Latitude
+    gm_lon : Array (m,n)
+        Input GM longitude
+    meteo_settings : Dict
+        Dict containing meteo data settings
+    """
+    # read data
+    # data is already in molceules/m^2
+    print('Getting meteo data ...')
+    data = readmeteodata(meteo_settings["path_data"], meteo_settings['gases'], meteo_settings["filesuffix"])
+
+    # shrink or extend domain according to the input
+    b_lon = np.array([gm_lon[0,0], gm_lon[0,-1], gm_lon[-1,0], gm_lon[-1,-1]])
+    b_lat = np.array([gm_lat[0,0], gm_lat[0,-1], gm_lat[-1,0], gm_lat[-1,-1]])
+    lat_new, lon_new, idx, idy, padx, pady = shrink_extend_domain(b_lat, b_lon, data.lat, data.lon, data.source[1:])
+
+    # create a new class to have meteo data
+    meteo_data = Emptyclass()
+    meteo_data.__setattr__('lat', lat_new)
+    meteo_data.__setattr__('lon', lon_new)
+    meteo_data.__setattr__('zlay', data.z)
+    meteo_data.__setattr__('zlev', data.znodes)
+    # Add emission and source to meteo data
+    for gas in meteo_settings['gases']:
+        meteo_data.__setattr__(gas+"_emission_in_kgps", data.__getattribute__(gas+"_emission_in_kgps"))
+        meteo_data.__setattr__(gas+"_source", data.__getattribute__(gas+"_source"))
+        conc = data.__getattribute__(gas)
+        conc_new = np.pad(conc[:, idx[0]:idx[1], idy[0]:idy[1]], pad_width=((0,0), padx, pady), constant_values=0)
+        meteo_data.__setattr__(gas+"_raw", conc_new)
+    print('                     ...done')
+    
+    return meteo_data
 
 
 def get_atmosphericdata(s2_lat, s2_lon,  meteo_settings, kernel_settings):
@@ -77,6 +158,8 @@ def get_atmosphericdata(s2_lat, s2_lon,  meteo_settings, kernel_settings):
     meteo_data.__setattr__('lon', s2_lon)
     meteo_data.__setattr__('zlay', data.z)
     meteo_data.__setattr__('zlev', data.znodes)
+    meteo_data.__setattr__("dx", data.dx)
+    meteo_data.__setattr__("dy", data.dy)    
     # Add emission and source to meteo data
     for gas in meteo_settings['gases']:
         meteo_data.__setattr__(gas+"_emission_in_kgps", data.__getattribute__(gas+"_emission_in_kgps"))

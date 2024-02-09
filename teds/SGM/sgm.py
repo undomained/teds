@@ -1,26 +1,25 @@
 # This source code is licensed under the 3-clause BSD license found in
 # the LICENSE file in the root directory of this project.
-
 # =============================================================================
 #     scene generation module for different E2E simulator profiles
 #     This source code is licensed under the 3-clause BSD license found in
 #     the LICENSE file in the root directory of this project.
 # =============================================================================
 
-import numpy as np
-import sys
 import os
 import pickle
+import sys
+from copy import deepcopy
 import netCDF4 as nc
+import numpy as np
 import yaml
 from tqdm import tqdm
-from copy import deepcopy
 from ..lib.libWrite import writevariablefromname
+from scipy.interpolate import griddata
+
 
 class Dict2Class:
-    """
-    Convert a dictionaly to a class
-    """
+    """Convert a dictionaly to a class."""
 
     def __init__(self, arg_dict):
         self.__dict__.update(arg_dict)
@@ -56,6 +55,7 @@ def sgm_output_radio(filename_rad, rad_output):
     _dims = ('bins_along_track', 'bins_across_track', 'bins_spectral')
     _ = writevariablefromname(output_rad, 'radiance', _dims, rad_output['radiance'])
     output_rad.close()
+
 
 def sgm_output_atm(filename_atm, atm, albedo, gm_data, meteodata=None, gases=None):
     nalt, nact = gm_data["lat"].shape
@@ -115,7 +115,6 @@ def sgm_output_atm(filename_atm, atm, albedo, gm_data, meteodata=None, gases=Non
     # column_co2
     var_co2 = writevariablefromname(output_atm, 'XCO2', _dims, xco2)
     # write new attributes
-  
     if gases is not None:
         if ("co2" in gases):
             var_co2.setncattr("source", meteodata.__getattribute__("co2_source"))
@@ -123,7 +122,7 @@ def sgm_output_atm(filename_atm, atm, albedo, gm_data, meteodata=None, gases=Non
     # column_ch4
     var_ch4 = writevariablefromname(output_atm, 'XCH4', _dims, xch4)
     if (gases is not None):
-        if("ch4" in gases):
+        if "ch4" in gases:
             var_ch4.setncattr("source", meteodata.__getattribute__("ch4_source"))
             var_ch4.setncattr("emission_kgps", meteodata.__getattribute__("ch4_emission_in_kgps"))
 
@@ -140,25 +139,12 @@ def sgm_output_atm(filename_atm, atm, albedo, gm_data, meteodata=None, gases=Non
 
 def scene_generation_module(config):
     """
-    Parameters
-    ----------
-    global_config : TYPE
-        DESCRIPTION.
-
-    Returns
-    -------
-    None.
-
+    Scent generation algorithm.
     """
-    from ..lib import libSGM
-    from ..lib import libATM
-    from ..lib import libRT
-    from ..lib import libSURF
+    from ..lib import libATM, libRT, libSGM, libSURF
 
     # first get the geometry data
-
     gm_data = get_gm_data(config['gm_input'])
-
     nact = gm_data['sza'][0].size
     nalt = len(gm_data['sza'])
 
@@ -172,12 +158,11 @@ def scene_generation_module(config):
         albedo[0, :] = config['scene_spec']['albedo'][:]
 
     if (config['profile'] == 'single_swath'):
-
         ncheck = len(config['scene_spec']['albedo'])
         if (ncheck != nact):
             sys.exit("input error in sgm, nact!=100")
 
-        albedo[0,:] = config['scene_spec']['albedo'][:]
+        albedo[0, :] = config['scene_spec']['albedo'][:]
 
     if (config['profile'] == 'orbit'):
 
@@ -200,9 +185,7 @@ def scene_generation_module(config):
     atm_std = libATM.get_AFGL_atm_homogenous_distribution(config['afgl_input'], nlay, dzlay)
 
     if ((config['profile'] == 'individual_spectra') or (config['profile'] == 'single_swath')):
-
-#        xco2 = np.sum(atm_std.CO2) / np.sum(atm_std.air) * 1.E6
-
+        # xco2 = np.sum(atm_std.CO2) / np.sum(atm_std.air) * 1.E6
         atm = np.ndarray((nalt, nact), np.object_)
         for ialt in range(nalt):
             for iact in range(nact):
@@ -293,8 +276,170 @@ def scene_generation_module(config):
 
     print('=>sgm calcultion finished successfully')
     return
+ 
+
+def create_default_atmosphere(nalt, nact, atm_std):
+    """Create default atmosphere.
+
+    Parameters
+    ----------
+    nalt : Int
+        Size across long track
+    nact : Int
+        Size across cross track
+    atm_std : class
+        Atandard atmosphere definition
+    """
+    atm = np.ndarray((nalt, nact), np.object_) 
+    for ialt in range(nalt):                   
+        for iact in range(nact):               
+            atm[ialt, iact] = deepcopy(atm_std)
+    return atm
+
+
+def convolutionandinterpolation(meteodata, albedo_raw, gm_data, config):
+    from ..lib import libNumTools
+    print('Convolution and Interpolating data to GM mesh...')
+    conv_settings = libNumTools.getconvolutionparams(config['kernel_parameter'], meteodata.dx, meteodata.dy)
+    dim_alt, dim_act = gm_data["lat"].shape   # dimensions
+    dxdy = np.column_stack((meteodata.lat.ravel(), meteodata.lon.ravel()))
+    
+    for gas in config['meteo']['gases']:
+        concgas = meteodata.__getattribute__(gas+"_raw")
+        conv_gas = np.zeros_like(concgas)
+        interpdata = np.zeros([dim_alt, dim_act, meteodata.zlay.size])
+        for iz in range(meteodata.zlay.size):
+            # convolution
+            conv_gas[iz, :, :] = libNumTools.convolution_2d(concgas[iz, :, :], conv_settings)
+            # Interpolate values to GM grid
+            interpdata[:, :, iz] = griddata(dxdy, conv_gas[iz, :,:].ravel(), (gm_data["lat"], gm_data["lon"]), fill_value=0.0)
+        meteodata.__setattr__(gas, interpdata)
+        # convolution and interpolation of albedo   
+        albedo_conv = libNumTools.convolution_2d(albedo_raw, conv_settings)
+        albedo = griddata(dxdy, albedo_conv.ravel(), (gm_data["lat"], gm_data["lon"]), fill_value=0.0)
+    return albedo, meteodata
+
+def scene_generation_module_new(config):
+    """Scene generation algorithm."""
+    from ..lib import libATM, libRT, libSGM, libSURF
+
+    # first get the geometry data
+    gm_data = get_gm_data(config['gm_input'])
+    nact = gm_data['sza'][0].size
+    nalt = len(gm_data['sza'])
+
+    # =============================================================================
+    # get a model atmosphere form AFGL files
+    # =============================================================================
+
+    albedo = np.zeros([nalt, nact])
+
+    nlay = config['atmosphere']['nlay']  # number of layers
+    dzlay = config['atmosphere']['dzlay']
+    # we assume the same standard atmosphere for all pixels of the granule
+    atm_std = libATM.get_AFGL_atm_homogenous_distribution(config['afgl_input'], nlay, dzlay)
+
+    # individual spectra and single swath
+    if (config['profile'] == 'individual_spectra') or (config['profile'] == 'single_swath'):
+        ncheck = len(config['scene_spec']['albedo'])
+        if (ncheck != nact):
+            sys.exit("input error in sgm, nact!=100")
+        albedo[0, :] = config['scene_spec']['albedo'][:]
+        atm = create_default_atmosphere(nalt, nact, atm_std)
+
+    # Orbit
+    if (config['profile'] == 'orbit'):
+        if config['only_afgl']:
+            atm = atm_std
+            albedo = libSGM.get_sentinel2_albedo(gm_data, config)
+            # functions to dump data
+        else:     
+           # meteorological data
+           meteodata = libATM.get_atmosphericdata_new(gm_data['lat'], gm_data['lon'], config['meteo'])
+           # get albedo on the microhh grid
+           albedo_raw = libSGM.get_sentinel2_albedo_new(meteodata.lat, meteodata.lon)
+           # functions to dump data
+           ##########################
+    
+           ###########################
+           # convolution and interpolation of meteo data and albedo data
+           albedo, meteodata = convolutionandinterpolation(meteodata, albedo_raw, gm_data, config)
+
+           # get collocated meteo data
+           atm = libATM.combine_meteo_standard_atm(meteodata, atm_std, config["meteo"]['gases'])
+
+    # =============================================================================
+    # Write atmosphere and albedo data
+    if (config['profile'] == 'orbit') & ~(config['only_afgl']):
+        sgm_output_atm(config['geo_output'], atm, albedo, gm_data, meteodata, config["meteo"]['gases'])
+    else:
+        sgm_output_atm(config['geo_output'], atm, albedo, gm_data)
+
+    # =============================================================================
+    #  Radiative transfer simulations
+    # =============================================================================
+    print('radiative transfer simuation...')
+    # define line-by-line wavelength grid
+    rad_output = {}
+    rad_output['wavelength_lbl'] = np.arange(config['spec_settings']['wave_start'], config['spec_settings']['wave_end'],
+                                             config['spec_settings']['dwave'])  # nm
+
+    nwav = len(rad_output['wavelength_lbl'])
+    # generate optics object for one representative model atmosphere of the domain
+
+    nalt_ref = np.int0(nalt/2 - 0.5)
+    nact_ref = np.int0(nact/2 - 0.5)
+
+    optics = libRT.optic_abs_prop(rad_output['wavelength_lbl'], atm[nalt_ref, nact_ref].zlay)
+
+    # Download molecular absorption parameter
+    iso_ids = [('CH4', 32), ('H2O', 1), ('CO2', 7)]  # see hapi manual  sec 6.6
+    molec = libRT.molecular_data(rad_output['wavelength_lbl'])
+
+    # If pickle file exists read from file
+    # os.path.exists(xsec_file) or conf['xsec_forced']
+    if ((not os.path.exists(config['xsec_dump'])) or config['xsec_forced']):
+        molec.get_data_HITRAN(config['hapi_path'], iso_ids)
+        # Molecular absorption optical properties
+        optics.cal_molec_xsec(molec, atm[nalt_ref][nact_ref])
+        # Dump optics.prop dictionary into temporary pkl file
+        pickle.dump(optics.prop, open(config['xsec_dump'], 'wb'))
+    else:
+        # Read optics.prop dictionary from pickle file
+        optics.prop = pickle.load(open(config['xsec_dump'], 'rb'))
+
+    # solar irradiance spectrum
+    sun = libRT.read_sun_spectrum_TSIS1HSRS(config['sun_reference'])
+    rad_output['solar irradiance'] = np.interp(rad_output['wavelength_lbl'], sun['wl'], sun['phsm2nm'])
+
+    # Calculate surface data
+    surface = libSURF.surface_prop(rad_output['wavelength_lbl'])
+
+    rad = np.empty([nalt, nact, nwav])
+    for ialt in tqdm(range(nalt)):
+        for iact in range(nact):
+            optics.set_opt_depth_species(atm[ialt, iact], ['molec_01', 'molec_32', 'molec_07'])
+            # Earth radiance spectra
+            alb = [albedo[ialt, iact]]
+            surface.get_albedo_poly(alb)
+            rad[ialt, iact, :] = libRT.transmission(
+                rad_output['solar irradiance'],
+                optics,
+                surface,
+                np.cos(gm_data['sza'][ialt, iact]/180.*np.pi),  # mu0
+                np.cos(gm_data['vza'][ialt, iact]/180.*np.pi))  # muv
+    rad_output['radiance'] = rad
+
+    # =============================================================================
+    # sgm output to radiometric file
+    # =============================================================================
+    sgm_output_radio(config['rad_output'], rad_output)
+
+    print('=>sgm calcultion finished successfully')
+    return
 
 
 if __name__ == '__main__':
     config = yaml.safe_load(open(sys.argv[1]))
     scene_generation_module(config)
+

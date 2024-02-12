@@ -4,7 +4,7 @@ retrieval_init:                 #initialization parameter for inversion
     max_iter: 35
     chi2_lim: 0.05
     sw_pixel_mask: False
-    sw_ALT_select: yes
+    sw_ALT_select: False
     first_ALT_index: 0
     last_ALT_index: 1
     sw_prof_init: 'sgm'         #switch between 'afgl' and 'sgm' initialization 
@@ -56,5 +56,5 @@ isrf_settings:
 surface:
     wave_alb: [1600, 1650]  #wavelengths at which the surface albedo is specified in the output
 
-xsec_forced: True          #flag to froce new cross section calculation
+xsec_forced: False          #flag to force new cross section calculation
 

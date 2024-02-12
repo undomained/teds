@@ -164,6 +164,31 @@ def Gaussian2D(size, fwhm_x, fwhm_y, center=None):
         * np.exp(-4*np.log(2) * ((y-y0)**2) / fwhm_y**2)
 
 
+def getconvolutionparams(kernel_settings, dx, dy):
+    """Convolution parameters.
+
+    Parameters
+    ----------
+    kernel_settings : Dict
+        Parameters needed for convolution.
+    dx : Float
+        Spacing in x.
+    dy : Float
+        Spacing in y.
+    """
+    conv_settings = {}
+    if (kernel_settings['type'] == '2D Gaussian'):
+        fwhm_x = kernel_settings['fwhm_x']
+        fwhm_y = kernel_settings['fwhm_y']
+        fsize = kernel_settings['size_factor']
+        conv_settings['type'] = kernel_settings['type']
+        conv_settings['1D kernel extension'] = np.int0(fsize*np.max([fwhm_x, fwhm_y])/np.min([dx, dy]))
+        # convert all kernel parameter in units of sampling distance
+        conv_settings['fwhm x'] = np.int0(float(fwhm_x)/dx)
+        conv_settings['fwhm y'] = np.int0(float(fwhm_y)/dy)
+    return conv_settings
+
+
 def convolution_2d(data, settings):
     # convolve the data array with a kernel defined in settings
     if (settings['type'] == '2D Gaussian'):

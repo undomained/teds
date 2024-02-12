@@ -7,15 +7,19 @@ import configparser
 
 
 class DataCont:
-    """Empty container for data.
-    """
+    """Empty container for data."""
+    
     pass
 
 
 def readgridtime(f, data, gas):
     # grid
     dz, dy, dx = f[gas].gridspacing_in_m
-        
+    # check if there is a grid type
+    if "grid_type" in f["gas"].ncattrs():
+        data .__setattr__("gridtype", getattr(f["gas"], "grid_type"))
+    else:
+        data.__setattr__("gridtype", "irrgular")
     data.__setattr__("dx", dx)
     data.__setattr__("dy", dy)
     data.__setattr__("lat", f["latitude"][:])

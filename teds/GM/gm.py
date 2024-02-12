@@ -247,25 +247,21 @@ def geometry_module(config):
         saa[0, :] = config['scene_spec']['saa'][:]
         vza[0, :] = config['scene_spec']['vza'][:]
         vaa[0, :] = config['scene_spec']['vaa'][:]
+        
         ninit = ninit + 1
 
     if (config['profile'] == "single_swath"):
 
-        ncheck = len(config['scene_spec']['sza']) + len(config['scene_spec']['saa']) + \
-                 len(config['scene_spec']['vza']) + len(config['scene_spec']['vaa'])
-
-        print('ncheck:', ncheck)
-        if (ncheck != 4*config['scene_spec']['numb_atm']):
-            sys.exit("input error in gm, code 2")
-
-        for iscen in range(config['scene_spec']['numb_atm']+1):
-            outofrange = (config['scene_spec']['scene_trans_index'][iscen] > 99) & \
-                (config['scene_spec']['scene_trans_index'][iscen] < 0) 
-            if (outofrange):
-                sys.exit('config parameter scene_trans_index out of range')
-
-        nact = config["field_of_regard"]["nact"]
+        nact = config['field_of_regard']['nact']       
         nalt = 1
+
+        ncheck = len(config['scene_spec']['sza']) + len(config['scene_spec']['saa']) + \
+                 len(config['scene_spec']['vza']) + len(config['scene_spec']['vaa']) + \
+                 len(config['scene_spec']['albedo'])
+
+        print('ncheck:', ncheck/5.)
+        if (ncheck != 5*nact):
+            sys.exit("input error in gm, nact!=100, code 2")
 
         lon_grid = np.empty([nalt, nact])
         lat_grid = np.empty([nalt, nact])
@@ -277,13 +273,10 @@ def geometry_module(config):
         lat_grid[0][:] = np.nan
         lon_grid[0][:] = np.nan
 
-        for iscen in range(config['scene_spec']['numb_atm']):
-            ind_start = config['scene_spec']['scene_trans_index'][iscen]
-            ind_end   = config['scene_spec']['scene_trans_index'][iscen+1]
-            sza[0, ind_start:ind_end] = config['scene_spec']['sza'][iscen]
-            saa[0, ind_start:ind_end] = config['scene_spec']['saa'][iscen]
-            vza[0, ind_start:ind_end] = config['scene_spec']['vza'][iscen]
-            vaa[0, ind_start:ind_end] = config['scene_spec']['vaa'][iscen]
+        sza[0, :] = config['scene_spec']['sza'][:]
+        saa[0, :] = config['scene_spec']['saa'][:]
+        vza[0, :] = config['scene_spec']['vza'][:]
+        vaa[0, :] = config['scene_spec']['vaa'][:]
 
         ninit = ninit + 1
     

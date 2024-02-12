@@ -10,7 +10,6 @@ sys.path.insert(1, "/home/jochen/TANGO_E2ES/EndtoEndProject/end_to_end/examples/
 sys.path.insert(1, "/home/jochen/TANGO_E2ES/EndtoEndProject/end_to_end/")
     
 # import E2ES modules 
-import paths
 from teds.GM.gm import geometry_module
 from teds.GM.create_gm_yaml_file import create_gm_config_file
 from teds.SGM.sgm import scene_generation_module
@@ -52,7 +51,7 @@ locations.sgm['xsec_dump']    = path_tmp + 'Tango_Carbon_xsec_exp3.0.pkl'
 locations.sgm['sun_reference']= path_sol_spec + 'hybrid_reference_spectrum_c2021-03-04_with_unc.nc'
 locations.sgm['rad_output']   = path_interface + 'sgm/Tango_Carbon_sgm_radiance_exp3.0.nc'
 locations.sgm['geo_output']   = path_interface + 'sgm/Tango_Carbon_sgm_atmosphere_exp3.0.nc'
-locations.sgm['hapi_path']    = paths.project  + paths.data_harpi
+locations.sgm['hapi_path']    = path_harpi
 
 locations.__setattr__('siml1b', {})
 locations.siml1b['sgm_input']  = path_interface + 'sgm/Tango_Carbon_sgm_radiance_exp3.0.nc'
@@ -87,8 +86,8 @@ profile= 'individual_spectra'   #needed to initialize gm and sgm consistently
 settings= {}
 settings['gm']        = True
 settings['sgm']       = True
-settings['siml1b']    = False
-settings['l1bl2']     = False
+settings['siml1b']    = True
+settings['l1bl2']     = True
 settings['save_yaml'] = False
 # ====================main part ===============================================
 if __name__ == "__main__":

@@ -24,13 +24,37 @@ with open(consts_file, "r") as file:
 #     gm_sza[:] = data
 
 
+# def writevariablefromname(grp, _name, dims, data):
+#     attr = variable_dict.get(_name)
+#     var = grp.createVariable(attr["name"], data.dtype, dims)
+#     var.long_name = attr["long_name"]
+#     var.units = attr["units"]
+#     var.valid_min = attr["valid_min"]
+#     var.valid_max = attr["valid_max"]
+#     var.FillValue = attr["FillValue"]
+#     var[:] = data
+#     return var
+
+
 def writevariablefromname(grp, _name, dims, data):
+    """Write variables to netcdf groups.
+
+    Parameters
+    ----------
+    grp : Netcdf group
+        Points to netcdf group 
+    _name : String
+        Name of the variable.
+    dims : String
+        Dimensions of the variable.
+    data : Any
+        Data of the variable.
+
+    """
     attr = variable_dict.get(_name)
     var = grp.createVariable(attr["name"], data.dtype, dims)
-    var.long_name = attr["long_name"]
-    var.units = attr["units"]
-    var.valid_min = attr["valid_min"]
-    var.valid_max = attr["valid_max"]
-    var.FillValue = attr["FillValue"]
+    for _ky, val in attr.items():
+        if _ky != "name":
+            var.setncattr(_ky, val)
     var[:] = data
     return var

@@ -101,7 +101,7 @@ levelheight:
 subcol_density_co2:
   name: dcol_co2
   long_name: CO2 layer column density
-  units: molec./cm2
+  units: molec./m2
   valid_min: 0.
   valid_max: 1.E+28
   FillValue: -32767
@@ -109,7 +109,7 @@ subcol_density_co2:
 subcol_density_ch4:
   name: dcol_ch4
   long_name: CH4 layer column density
-  units: molec./cm2
+  units: molec./m2
   valid_min: 0.
   valid_max: 1.E+28
   FillValue: -32767
@@ -117,6 +117,14 @@ subcol_density_ch4:
 subcol_density_h2o:
   name: dcol_h2o
   long_name: H2O layer column density
+  units: molec./m2
+  valid_min: 0.
+  valid_max: 1.E+28
+  FillValue: -32767
+
+subcol_density_no2:
+  name: dcol_no2
+  long_name: NO2 layer column density
   units: molec./cm2
   valid_min: 0.
   valid_max: 1.E+28
@@ -149,6 +157,14 @@ xh2o:
 column_air:
   name: col_air
   long_name: air total column density
+  units: molec./cm2
+  valid_min: 0.
+  valid_max: 1.E+32
+  FillValue: -32767
+
+column_no2:
+  name: col_no2
+  long_name: NO2 total column density
   units: molec./cm2
   valid_min: 0.
   valid_max: 1.E+32

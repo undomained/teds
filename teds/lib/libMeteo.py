@@ -16,8 +16,8 @@ def readgridtime(f, data, gas):
     # grid
     dz, dy, dx = f[gas].gridspacing_in_m
     # check if there is a grid type
-    if "grid_type" in f["gas"].ncattrs():
-        data .__setattr__("gridtype", getattr(f["gas"], "grid_type"))
+    if "grid_type" in f[gas].ncattrs():
+        data .__setattr__("gridtype", getattr(f[gas], "grid_type"))
     else:
         data.__setattr__("gridtype", "irrgular")
     data.__setattr__("dx", dx)

@@ -15,6 +15,7 @@ def convolution(spectrum, isrf, istart, iend):
         spectrum_conv[iwav] = np.dot(isrf[iwav, istart[iwav]:iend[iwav]], spectrum[istart[iwav]:iend[iwav]])
     return spectrum_conv
 
+
 def get_isrf_gaussian(parameter, wave_target, wave_input):
     #get a  Gaussian isrf specified by parameter dictionary
     fwhm = parameter['fwhm']

@@ -31,9 +31,9 @@ def get_l1b(filename):
     l1b_data['vaa'] = deepcopy(input['GEOLOCATION_DATA']['vaa'][:])
     l1b_data['latitude'] = deepcopy(input['GEOLOCATION_DATA']['lat'][:])
     l1b_data['longitude'] = deepcopy(input['GEOLOCATION_DATA']['lon'][:])
-    l1b_data['wavelength'] = deepcopy(input['OBSERVATION_DATA']['wavelengths'][:])
+    l1b_data['wavelength'] = deepcopy(input['OBSERVATION_DATA']['wavelength'][:])
     l1b_data['radiance'] = deepcopy(input['OBSERVATION_DATA']['radiance'][:])
-    l1b_data['radmask'] = deepcopy(input['OBSERVATION_DATA']['radiance_mask'][:])
+#    l1b_data['radmask'] = deepcopy(input['OBSERVATION_DATA']['radiance_mask'][:])
     l1b_data['noise'] = deepcopy(input['OBSERVATION_DATA']['radiance_noise'][:])
     
     input.close()
@@ -115,6 +115,7 @@ def level2_output(filename, l2product, retrieval_init, l1bproduct, settings):
         nalt_end = nalt
     nalt_l2 = nalt_end-nalt_start
     # filename
+    print(filename)
     output_l2 = nc.Dataset(filename, mode='w')
     output_l2.title = 'Tango Carbon E2ES L2 product'
     output_l2.createDimension('number_layers', nlay)     # spectral axis

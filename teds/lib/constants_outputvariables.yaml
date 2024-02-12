@@ -347,3 +347,11 @@ radiance_noise:
   FillValue: -32767
   valid_min: 0.
   valid_max: 1.E+24
+
+radiance_mask:
+  name: radiance_mask
+  units: 'good bad'
+  long_name: 'radiance error mask'
+  FillValue: -32767
+  valid_min: 0
+  valid_max: 1

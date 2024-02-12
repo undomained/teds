@@ -22,7 +22,7 @@ class Emptyclass:
     pass
 
 
-def shrink_extend_domain(inpbound_lat, inpbound_lon, _lat, _lon, src, gridtype=None):
+def shrink_extend_domain(gm_lat, gm_lon, _lat, _lon, src):
     """Extend or shrink domain.
     
     Shrink or extend domain to the inpbound_*.
@@ -41,8 +41,15 @@ def shrink_extend_domain(inpbound_lat, inpbound_lon, _lat, _lon, src, gridtype=N
         Source of the meteo data
     
     """
+    
     trans = TransformCoords(src)
-    _x, _y = trans.latlon2xykm(inpbound_lat, inpbound_lon)
+
+    # convert lat-lon of gm to x-y and get bounds
+    gm_x, gm_y = trans.latlon2xykm(gm_lat, gm_lon)
+    _x = np.array([gm_x[0,0], gm_x[0,-1], gm_x[-1,0], gm_x[-1,-1]])
+    _y = np.array([gm_y[0,0], gm_y[0,-1], gm_y[-1,0], gm_y[-1,-1]])
+
+    # this can be input
     _x1, _y1 = trans.latlon2xykm(_lat, _lon)
     x = _x1[0,:]
     y = _y1[:,0]
@@ -51,7 +58,7 @@ def shrink_extend_domain(inpbound_lat, inpbound_lon, _lat, _lon, src, gridtype=N
     
     # find the padding bounds and min and max index
     pad_x1, pad_x2, pad_y1, pad_y2 = 0, 0, 0, 0  # default padding is zero
-    _ix1, _ix2, _iy1, iy2 = 0, x.size, 0, y.size
+    ix1, ix2, iy1, iy2 = 0, x.size, 0, y.size
     
     if _x.min() <= x[0]:
         pad_x1 = np.int_((x[0] - _x.min())/dx + 1)
@@ -79,12 +86,19 @@ def shrink_extend_domain(inpbound_lat, inpbound_lon, _lat, _lon, src, gridtype=N
 
     y_left = np.arange(-pad_y1, 0)*dy + y[0]
     y_right = np.arange(pad_y2)*dy + dy + y[-1]
-    y_new = np.concatenate((y_left, y[ix1:ix2], y_right))
+    y_new = np.concatenate((y_left, y[iy1:iy2], y_right))
 
     XX, YY = np.meshgrid(x_new, y_new)
     lat_new, lon_new = trans.xykm2latlon(XX, YY)
-    return lat_new, lon_new, (ix1, ix2), (iy1, iy2), (pad_x1, pad_x2), (pad_y1, pad_y2)
+    return gm_x, gm_y, x_new, y_new, lat_new, lon_new, (ix1, ix2), (iy1, iy2), (pad_x1, pad_x2), (pad_y1, pad_y2)
 
+
+def flip_zyx2yxz(conc):
+    sh = conc.shape
+    conc1 = np.zeros((sh[1], sh[2], sh[0]))
+    for i in range(sh[0]):
+        conc1[:,:,i] = conc[i,:,:]
+    return conc1
 
 def get_atmosphericdata_new(gm_lat, gm_lon, meteo_settings):
     """Get meterological data to same domain as input lat, lon.
@@ -104,11 +118,10 @@ def get_atmosphericdata_new(gm_lat, gm_lon, meteo_settings):
     # data is already in molceules/m^2
     print('Getting meteo data ...')
     data = readmeteodata(meteo_settings["path_data"], meteo_settings['gases'], meteo_settings["filesuffix"])
-
     # shrink or extend domain according to the input
-    b_lon = np.array([gm_lon[0,0], gm_lon[0,-1], gm_lon[-1,0], gm_lon[-1,-1]])
-    b_lat = np.array([gm_lat[0,0], gm_lat[0,-1], gm_lat[-1,0], gm_lat[-1,-1]])
-    lat_new, lon_new, idx, idy, padx, pady = shrink_extend_domain(b_lat, b_lon, data.lat, data.lon, data.source[1:])
+
+    src = data.__getattribute__(meteo_settings['gases'][0]+"_source")
+    gm_x, gm_y, x_new, y_new, lat_new, lon_new, idx, idy, padx, pady = shrink_extend_domain(gm_lat, gm_lon, data.lat, data.lon, src[1:])
 
     # create a new class to have meteo data
     meteo_data = Emptyclass()
@@ -116,15 +129,21 @@ def get_atmosphericdata_new(gm_lat, gm_lon, meteo_settings):
     meteo_data.__setattr__('lon', lon_new)
     meteo_data.__setattr__('zlay', data.z)
     meteo_data.__setattr__('zlev', data.znodes)
+    meteo_data.__setattr__("dx", data.dx)
+    meteo_data.__setattr__("dy", data.dy)
+    meteo_data.__setattr__("dz", data.z[1] - data.z[0])
+    meteo_data.__setattr__("x_new", x_new)
+    meteo_data.__setattr__("y_new", y_new)
+    meteo_data.__setattr__("gm_x", gm_x)
+    meteo_data.__setattr__("gm_y", gm_y)
     # Add emission and source to meteo data
     for gas in meteo_settings['gases']:
         meteo_data.__setattr__(gas+"_emission_in_kgps", data.__getattribute__(gas+"_emission_in_kgps"))
         meteo_data.__setattr__(gas+"_source", data.__getattribute__(gas+"_source"))
         conc = data.__getattribute__(gas)
-        conc_new = np.pad(conc[:, idx[0]:idx[1], idy[0]:idy[1]], pad_width=((0,0), padx, pady), constant_values=0)
-        meteo_data.__setattr__(gas+"_raw", conc_new)
+        conc_new = np.pad(conc[:, idy[0]:idy[1], idx[0]:idx[1]], pad_width=((0,0), pady, padx), constant_values=0)
+        meteo_data.__setattr__(gas+"_raw", flip_zyx2yxz(conc_new))
     print('                     ...done')
-    
     return meteo_data
 
 
@@ -159,7 +178,7 @@ def get_atmosphericdata(s2_lat, s2_lon,  meteo_settings, kernel_settings):
     meteo_data.__setattr__('zlay', data.z)
     meteo_data.__setattr__('zlev', data.znodes)
     meteo_data.__setattr__("dx", data.dx)
-    meteo_data.__setattr__("dy", data.dy)    
+    meteo_data.__setattr__("dy", data.dy)
     # Add emission and source to meteo data
     for gas in meteo_settings['gases']:
         meteo_data.__setattr__(gas+"_emission_in_kgps", data.__getattribute__(gas+"_emission_in_kgps"))
@@ -674,9 +693,8 @@ class atmosphere_data:
             self.alb = np.interp(self.wave, wv_in, alb_in)
 
 
-def combine_meteo_standard_atm(meteodata, atm_std, gases):
-    nalt = meteodata.lat[:, 0].size
-    nact = meteodata.lat[0, :].size
+def combine_meteo_standard_atm(meteodata, atm_std, gases, suffix=""):
+    nalt, nact = meteodata.lat.shape
     # index of standard atmosphere that corresp
     print('Combining microHH and AFGL model aonds to TOA of microHH')
     idx = (np.abs(atm_std.zlev - np.max(meteodata.zlev))).argmin()
@@ -702,6 +720,7 @@ def combine_meteo_standard_atm(meteodata, atm_std, gases):
     # for NO we assume no contribution above upper model boundary of microHH
     for ialt in tqdm(range(nalt)):
         for iact in range(nact):
+
             atm[ialt, iact] = deepcopy(atm_std)
             if "NO" in gases:
                 atm[ialt, iact].__setattr__('NO', np.zeros(nlay))
@@ -710,9 +729,10 @@ def combine_meteo_standard_atm(meteodata, atm_std, gases):
 
             for gas in gases:
                 tmp = atm[ialt, iact].__getattribute__(gas.upper())
-                meteo = meteodata.__getattribute__(gas)
+                meteo = meteodata.__getattribute__(gas+suffix)
                 for ilay in range(ztop.size):
                     tmp[idx+ilay] += np.sum(meteo[ialt, iact, midx[ilay]])
+
     return atm
 
 

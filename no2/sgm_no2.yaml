@@ -1,0 +1,46 @@
+# Configuration file for running the scene generation module
+
+profile: orbit
+
+kernel_parameter:               #parameter to configure the 2D blurring of the scene
+    type:    2D Gaussian      #type pf kernel, current version has only one option
+    fwhm_x:  300                #FWHM in ACT direction
+    fwhm_y:  300                #FWHM in flight direction
+    size_factor: 2              #the size of the convolution kernel in units of fwhm
+
+atmosphere:
+    nlay: 30                    #number of atmospheric layers
+    dzlay: 1000                 #geometrical thickness of the layers [m]
+
+# latitude, longitude coordinates
+lat_lon_src: [52.0991719206219, 15.1113617100343]
+
+meteo:
+  path_data: ../data/microHH/Jaenschwalde_simulation1/
+  gases: [no2]
+  filesuffix: src3_20180523_0930
+
+spec_settings:              #settings for line-by-line spectra
+    wave_start: 405        #nm
+    wave_end:   465        #nm
+    dwave:      0.01       #nm
+
+# B01: 442.7 nm (S2A), 442.3 nm (S2B) 60m
+# B02: 492.4 nm (S2A), 492.1 nm (S2B)    10m
+
+S2_albedo:
+    band: B01
+
+only_afgl: no
+meteo_forced: yes
+s2_forced:   yes          #flag to force Sentinel 2 calculation
+
+gm_input: ../data/geometry_no2.nc
+afgl_input: ../data/prof.AFGL.US.std
+sun_reference: ../data/solar_spectrum.nc
+
+meteo_dump: ../data/meteo_dump_no2.pkl
+S2_dump: ../data/sgm_dumpfile_no2.npy
+
+rad_output: ../data/sgm_radiance_no2.nc
+geo_output: ../data/sgm_atmosphere_no2.nc

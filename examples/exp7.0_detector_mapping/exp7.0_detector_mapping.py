@@ -18,12 +18,12 @@ from teds.IM.create_im_configuration_file import im_configuration
 from teds.L1AL1B.create_l1a1b_configuration_file import l1al1b_configuration
 from teds.L1L2.l1bl2 import level1b_to_level2_processor
 from teds.L1L2.create_l2_yaml_file import create_l1bl2_config_file
-
+from get_s2_albedo import get_sentinel2_albedo
 #import other modules
 import yaml
 import subprocess
 import numpy as np
-
+import os
 # ====================configuration part ======================================
 
 class Emptyclass:
@@ -102,6 +102,7 @@ profile= 'single_swath'   #needed to initialize gm and sgm consistently
 
 settings= {}
 settings['gm']        = True
+settings['gm_orbit']  = True
 settings['sgm']       = True
 settings['im']        = True
 settings['l1al1b']    = True
@@ -123,6 +124,32 @@ if __name__ == "__main__":
             create_gm_config_file(gm_yaml, gm_config)
         geometry_module(gm_config)
 
+    # ======= getting S2 albedo ==========================================
+
+    if(settings['gm_orbit']):
+
+        filen_s2dump = path_tmp + 'Tango_Carbon_S2_exp7.0.npy'
+        file_exists = os.path.isfile(filen_s2dump)
+        if (file_exists):
+            s2_albedo = np.load(filen_s2dump)
+        else:
+            gm_config['output'] = path_interface + 'gm/Tango_Carbon_gm_exp7.0_orbit.nc'
+            gm_config['profile'] = 'orbit'
+            geometry_module(gm_config)
+    
+            config = {}
+            config['gm_input'] = path_interface + 'gm/Tango_Carbon_gm_exp7.0_orbit.nc'
+            config['kernel_parameter'] = {}
+            config['kernel_parameter']['type']        ='2D Gaussian' 
+            config['kernel_parameter']['fwhm_x']      = 300
+            config['kernel_parameter']['fwhm_y']      = 300
+            config['kernel_parameter']['size_factor'] = 2
+                
+            s2_albedo = get_sentinel2_albedo(config)
+            np.save(filen_s2dump, s2_albedo)    # .npy extension is added if not given
+
+        scene['scene_spec']['albedo'] = s2_albedo[50,:]
+
     # ======= scene generator module ==========================================
 
     if(settings['sgm']):
@@ -142,7 +169,7 @@ if __name__ == "__main__":
     # with constant stray light kernel
         im_config= yaml.safe_load(open('./settings/im_config.yaml'))
         im_config['noise']['switch']= 0
-        im_config['settings']['bin_id']= 5
+        im_config['settings']['bin_id']= 1
         im_config['settings']['sw_stray']= 0
         im_configuration(locations.im, im_config)
         cmd_str= '../../teds/IM/tango_ckd_model/build/ckdmodel im_config.cfg'

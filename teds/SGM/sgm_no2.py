@@ -18,7 +18,7 @@ from lib.libWrite import writevariablefromname
 from scipy.interpolate import griddata
 
 class Dict2Class:
-    """Convert a dictionaly to a class."""
+    """Convert a dictionary to a class."""
 
     def __init__(self, arg_dict):
         self.__dict__.update(arg_dict)
@@ -98,9 +98,9 @@ def sgm_output_atm(filename_atm, atm, albedo, gm_data, meteodata=None, gases=Non
     if ("ch4" in gases) or ("co2" in gases) :
         # columndensity_h2o
         _ = writevariablefromname(output_atm, 'subcol_density_h2o', _dims, dcolh2o)
-    if "no2" in gases:
+    if ("no2" in gases):
         # columndensity_no2
-        var_dcolno2 = writevariablefromname(output_atm, 'subcol_density_no2', _dims, dcolno2*1e-4) # [molec/cm2]
+        _ = writevariablefromname(output_atm, 'subcol_density_no2', _dims, dcolno2*1e-4) # [molec/cm2]
 
     # level height
     _dims = ('bins_along_track', 'bins_across_track', 'number_levels')
@@ -158,9 +158,9 @@ def sgm_output_atm(filename_atm, atm, albedo, gm_data, meteodata=None, gases=Non
     output_atm.close()
 
 
-def scene_generation_module(config):
+def scene_generation_module_nitro(config):
     """
-    Scene generation algorithm for Nitro
+    Scene generation algorithm for NO2
     """
     from lib import libATM, libSGM
 
@@ -169,10 +169,6 @@ def scene_generation_module(config):
     gm_data = get_gm_data(config['gm_input'])
     nact = gm_data['sza'][0].size
     nalt = len(gm_data['sza'])
-
-    # =============================================================================
-    # get a model atmosphere form AFGL files
-    # =============================================================================
 
     albedo = np.zeros([nalt, nact])
 
@@ -198,9 +194,7 @@ def scene_generation_module(config):
             albedo = libSGM.get_sentinel2_albedo(gm_data, config,band=config['S2_albedo']['band'])
             np.save(config['S2_dump'], albedo)    # .npy extension is added if not given
     
-    # =============================================================================
-    # get a model atmosphere form AFGL files
-    # =============================================================================
+    # get a model atmosphere from AFGL files
 
     nlay = config['atmosphere']['nlay']  # number of layers
     dzlay = config['atmosphere']['dzlay']
@@ -311,7 +305,7 @@ def create_default_atmosphere(nalt, nact, atm_std):
     nact : Int
         Size across cross track
     atm_std : class
-        Atandard atmosphere definition
+        A standard atmosphere definition
     """
     atm = np.ndarray((nalt, nact), np.object_) 
     for ialt in range(nalt):                   
@@ -320,34 +314,11 @@ def create_default_atmosphere(nalt, nact, atm_std):
     return atm
 
 
-def convolutionandinterpolation(meteodata, albedo_raw, gm_data, config):
-    from ..lib import libNumTools
-    print('Convolution and Interpolating data to GM mesh...')
-    conv_settings = libNumTools.getconvolutionparams(config['kernel_parameter'], meteodata.dx, meteodata.dy)
-    dim_alt, dim_act = gm_data["lat"].shape   # dimensions
-    dxdy = np.column_stack((meteodata.lat.ravel(), meteodata.lon.ravel()))
-    
-    for gas in config['meteo']['gases']:
-        concgas = meteodata.__getattribute__(gas+"_raw")
-        conv_gas = np.zeros_like(concgas)
-        interpdata = np.zeros([dim_alt, dim_act, meteodata.zlay.size])
-        for iz in range(meteodata.zlay.size):
-            # convolution
-            conv_gas[iz, :, :] = libNumTools.convolution_2d(concgas[iz, :, :], conv_settings)
-            # Interpolate values to GM grid
-            interpdata[:, :, iz] = griddata(dxdy, conv_gas[iz, :,:].ravel(), (gm_data["lat"], gm_data["lon"]), fill_value=0.0)
-        meteodata.__setattr__(gas, interpdata)
-        # convolution and interpolation of albedo   
-        albedo_conv = libNumTools.convolution_2d(albedo_raw, conv_settings)
-        albedo = griddata(dxdy, albedo_conv.ravel(), (gm_data["lat"], gm_data["lon"]), fill_value=0.0)
-    return albedo, meteodata
-
-
 if __name__ == '__main__':
     
     sys.path.append( os.path.dirname( os.path.dirname( os.path.abspath(__file__) ) ) )
 
 
     config = yaml.safe_load(open(sys.argv[1]))
-    scene_generation_module(config)
+    scene_generation_module_nitro(config)
 

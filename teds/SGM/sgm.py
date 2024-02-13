@@ -10,16 +10,20 @@ import os
 import pickle
 import sys
 from copy import deepcopy
+
 import netCDF4 as nc
 import numpy as np
 import yaml
+from scipy.interpolate import RegularGridInterpolator, griddata
 from tqdm import tqdm
+
+from ..lib import libATM, libNumTools, libRT, libSGM, libSURF
 from ..lib.libWrite import writevariablefromname
-from scipy.interpolate import griddata, RegularGridInterpolator
-from ..lib import libATM, libRT, libSGM, libSURF, libNumTools
 
 
 class Emptyclass:
+    """Empty class. Data container."""
+    
     pass
 
 
@@ -141,8 +145,8 @@ def sgm_output_atm(filename_atm, atm, albedo, gm_data, meteodata=None, gases=Non
     _ = writevariablefromname(output_atm, 'longitude', _dims, gm_data["lon"])
     output_atm.close()
 
-def sgm_output_atm_raw(filename_atm, meteo, atm_std, gases=None):
 
+def sgm_output_atm_raw(filename_atm, meteo, atm_std, gases=None):
     atm = libATM.combine_meteo_standard_atm(meteo, atm_std, gases, '_raw')
     nalt, nact = meteo.lat.shape
 
@@ -231,12 +235,11 @@ def sgm_output_atm_raw(filename_atm, meteo, atm_std, gases=None):
     output_atm.close()
     return
 
+
 def scene_generation_module(config):
     """
     Scent generation algorithm.
     """
-
-
     # first get the geometry data
     gm_data = get_gm_data(config['gm_input'])
     nact = gm_data['sza'][0].size
@@ -391,8 +394,26 @@ def create_default_atmosphere(nalt, nact, atm_std):
     return atm
 
 
-def interpolate_data_irregular(meteodata, sgmmeteo, config):
-    # from scipy.interpolate import RegularGridInterpolator
+
+def interpolate_data_irregular(meteodata, gm_data, gases):
+    """Interpolate irregular data in lat-lon coordinates.
+
+    Parameters
+    ----------
+    meteodata : Class 
+        Class containing meterological data
+    gm_data : Dict
+        Dictionary containing the parameters from geometry module.
+    config : List
+        Contains lits of gases to be processed
+    """
+    # create a new container for SGM meteo data
+    sgmmeteo = Emptyclass()
+    sgmmeteo.__setattr__("lat", gm_data["lat"])
+    sgmmeteo.__setattr__("lon", gm_data["lon"])
+    sgmmeteo.__setattr__("zlev", meteodata.zlev)
+    sgmmeteo.__setattr__("zlay", meteodata.zlay)
+
     print('Interpolating data to GM mesh...')
 
     dim_alt, dim_act = sgmmeteo.lat.shape   # dimensions
@@ -400,17 +421,39 @@ def interpolate_data_irregular(meteodata, sgmmeteo, config):
 
     # Interpolate values to GM grid
     albedo = griddata(dxdy, meteodata.albedo_conv.ravel(), (sgmmeteo.lat, sgmmeteo.lon), fill_value=0.0)
-    for gas in config['meteo']['gases']:
+    for gas in gases:
         conv_gas = meteodata.__getattribute__(gas+"_conv")
         interpdata = np.zeros([dim_alt, dim_act, meteodata.zlay.size])
         for iz in tqdm(range(meteodata.zlay.size)):
-            interpdata[:, :, iz] = griddata(dxdy, conv_gas[iz, :,:].ravel(), (sgmmeteo.lat, sgmmeteo.lon), fill_value=0.0)
+            interpdata[:, :, iz] = griddata(dxdy, conv_gas[:,:, iz].ravel(), (sgmmeteo.lat, sgmmeteo.lon), fill_value=0.0)
         sgmmeteo.__setattr__(gas, interpdata)
     print('                     ...done')
     return albedo, sgmmeteo
 
 
-def interpolate_data(meteodata, gm_data, config):
+def interpolate_data(meteodata, gm_data, gases):
+    """Interpolate data on regular cartesian grid.
+
+    Meteo data is in regular x-y grid and this is used to interpolate
+    the values to x-y of gm grid. This is implementation is faster
+    compare to interpolating data in lat-lon grid.
+
+    Parameters
+    ----------
+    meteodata : Class
+        Meteo data
+    gm_data : Dict
+        Parameters from geometry module
+    gases : List
+        List of gases to be processed
+
+    Returns
+    -------
+    albedo : Matrix
+        Albedo on gm grid
+    sgmmeteo: Class
+        Meteo data on gm grid
+    """
     print('Interpolating data to GM mesh...')
     sgmmeteo = Emptyclass()
     sgmmeteo.__setattr__("lat", gm_data["lat"])
@@ -422,7 +465,7 @@ def interpolate_data(meteodata, gm_data, config):
     fa = RegularGridInterpolator((meteodata.y_new, meteodata.x_new), meteodata.albedo_conv, 
                                  bounds_error=False, fill_value=0.0)
     albedo = fa((meteodata.gm_y, meteodata.gm_x))
-    for gas in config['meteo']['gases']:
+    for gas in gases:
         interpdata = np.zeros([dim_alt, dim_act, meteodata.zlay.size])
         conv_gas = meteodata.__getattribute__(gas+"_conv")
         for iz in tqdm(range(meteodata.zlay.size)):
@@ -433,7 +476,18 @@ def interpolate_data(meteodata, gm_data, config):
     print('                     ...done')
     return albedo, sgmmeteo
 
+
 def convolvedata(meteodata, config):
+    """Convolve meteo and albedo data.
+
+    Parameters
+    ----------
+    meteodata : Class
+        Meteo data
+    config : Dict
+        Dict containing configuration parameters.
+
+    """
     print('Convolution data...')
     conv_settings = libNumTools.getconvolutionparams(config['kernel_parameter'], meteodata.dx, meteodata.dy)
     
@@ -451,9 +505,15 @@ def convolvedata(meteodata, config):
     print('                     ...done')
     return meteodata
 
-def scene_generation_module_new(config):
-    """Scene generation algorithm."""
 
+def scene_generation_module_new(config):
+    """Scene generation module.
+
+    Parameters
+    ----------
+    config : Dict
+       Dict containing configuration parameters.
+    """
     # first get the geometry data
     gm_data = get_gm_data(config['gm_input'])
     nact = gm_data['sza'][0].size

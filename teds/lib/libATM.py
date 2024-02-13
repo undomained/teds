@@ -19,57 +19,47 @@ from .libNumTools import convolution_2d, TransformCoords, getconvolutionparams
 
 
 class Emptyclass:
+    """Data container."""
+
     pass
 
 
-def shrink_extend_domain(gm_lat, gm_lon, _lat, _lon, src):
+def shrink_extend_domain(gm_x, gm_y, x, y):
     """Extend or shrink domain.
     
-    Shrink or extend domain to the inpbound_*.
+    Shrink or extend domain of meteo data to GM domain.
 
     Parameters
     ----------
-    inpbound_lat : Array [4]
-        Input bounds in latitude
-    inpbound_lon : Array [4]
-        Input bounds in longitude
-    _lat : Matrix
+    gm_x : Matrix
+        latitude GM
+    gm_y : Matrix
+        longitude GM
+    x : Matrix
         Existing meteo data latitudes
-    _lon : Matrix
+    y : Matrix
         Existing meteo data longitudes
-    src : Array
-        Source of the meteo data
     
     """
-    
-    trans = TransformCoords(src)
-
-    # convert lat-lon of gm to x-y and get bounds
-    gm_x, gm_y = trans.latlon2xykm(gm_lat, gm_lon)
+    # get bounds of the GM domain
     _x = np.array([gm_x[0,0], gm_x[0,-1], gm_x[-1,0], gm_x[-1,-1]])
     _y = np.array([gm_y[0,0], gm_y[0,-1], gm_y[-1,0], gm_y[-1,-1]])
 
-    # this can be input
-    _x1, _y1 = trans.latlon2xykm(_lat, _lon)
-    x = _x1[0,:]
-    y = _y1[:,0]
+    # compute dx, dy
     dx = (x[1] - x[0])
     dy = (y[1] - y[0])
     
-    # find the padding bounds and min and max index
+    # find the padding bounds and min and max index for GM domain
     pad_x1, pad_x2, pad_y1, pad_y2 = 0, 0, 0, 0  # default padding is zero
     ix1, ix2, iy1, iy2 = 0, x.size, 0, y.size
-    
     if _x.min() <= x[0]:
         pad_x1 = np.int_((x[0] - _x.min())/dx + 1)
     else:
         ix1 = np.searchsorted(x, _x.min()) - 1
-
     if _x.max() > x[-1]:
         pad_x2 = np.int_((_x.max() - x[-1])/dx + 1)
     else:
         ix2 = np.searchsorted(x, _x.max())
-
     if _y.min() <= y[0]:
         pad_y1 = np.int_((y[0] - _y.min())/dy + 1)
     else:
@@ -88,17 +78,24 @@ def shrink_extend_domain(gm_lat, gm_lon, _lat, _lon, src):
     y_right = np.arange(pad_y2)*dy + dy + y[-1]
     y_new = np.concatenate((y_left, y[iy1:iy2], y_right))
 
-    XX, YY = np.meshgrid(x_new, y_new)
-    lat_new, lon_new = trans.xykm2latlon(XX, YY)
-    return gm_x, gm_y, x_new, y_new, lat_new, lon_new, (ix1, ix2), (iy1, iy2), (pad_x1, pad_x2), (pad_y1, pad_y2)
+    return x_new, y_new, (ix1, ix2), (iy1, iy2), (pad_x1, pad_x2), (pad_y1, pad_y2)
 
 
 def flip_zyx2yxz(conc):
+    """Flip indices from zyx to yxz.
+
+    Parameters
+    ----------
+    conc : 3D array
+        Three dimensional array
+
+    """
     sh = conc.shape
     conc1 = np.zeros((sh[1], sh[2], sh[0]))
     for i in range(sh[0]):
         conc1[:,:,i] = conc[i,:,:]
     return conc1
+
 
 def get_atmosphericdata_new(gm_lat, gm_lon, meteo_settings):
     """Get meterological data to same domain as input lat, lon.
@@ -121,7 +118,20 @@ def get_atmosphericdata_new(gm_lat, gm_lon, meteo_settings):
     # shrink or extend domain according to the input
 
     src = data.__getattribute__(meteo_settings['gases'][0]+"_source")
-    gm_x, gm_y, x_new, y_new, lat_new, lon_new, idx, idy, padx, pady = shrink_extend_domain(gm_lat, gm_lon, data.lat, data.lon, src[1:])
+
+    # # if the mesh is regular (see Topology section in https://www.xdmf.org/index.php/XDMF_Model_and_Format)
+    # if data.gridtype == "3DCoRectMesh":
+    # create a transform method 
+    trans = TransformCoords(src[1:])
+    # convert lat-lon of gm to x-y and get bounds
+    gm_x, gm_y = trans.latlon2xykm(gm_lat, gm_lon)
+    x_new, y_new, idx, idy, padx, pady = shrink_extend_domain(gm_x, gm_y, data.lat, data.lon)
+    XX, YY = np.meshgrid(x_new, y_new)
+    lat_new, lon_new = trans.xykm2latlon(XX, YY)
+
+    # else:
+    #     print("the grids are not regular")
+    #     exit()
 
     # create a new class to have meteo data
     meteo_data = Emptyclass()

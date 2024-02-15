@@ -19,8 +19,7 @@ import scipy.interpolate
 import multiprocessing
 import datetime
 
-from lib import libATM, libSGM, libRT_no2, libNumTools
-
+from lib import libATM, libSGM, libRT_no2, libNumTools, constants
 
 class Dict2Class:
     """Convert a dictionary to a class."""
@@ -84,7 +83,9 @@ def sgm_output_atm_afgl(filename_atm, atm, albedo, gm_data, meteodata=None, gase
     dcolch4 = np.zeros((nalt, nact, nlay))
     dcolh2o = np.zeros((nalt, nact, nlay))
     dcolno2 = np.zeros((nalt, nact, nlay))
+    dcolo3 = np.zeros((nalt, nact, nlay))
     ppmv_no2 = np.zeros((nalt, nact, nlay))
+    ppmv_o3 = np.zeros((nalt, nact, nlay))
 
     for ialt in range(nalt):
         for iact in range(nact):
@@ -94,8 +95,10 @@ def sgm_output_atm_afgl(filename_atm, atm, albedo, gm_data, meteodata=None, gase
             dcolch4[ialt, iact, :] = atm[ialt][iact].CH4[:]
             dcolh2o[ialt, iact, :] = atm[ialt][iact].H2O[:]
             dcolno2[ialt, iact, :] = atm[ialt][iact].NO2[:]
+            dcolo3[ialt, iact, :] = atm[ialt][iact].O3[:]
 
             ppmv_no2[ialt,iact,:] = atm[ialt][iact].NO2[:]/atm[ialt, iact].air[:]*1.e6
+            ppmv_o3[ialt,iact,:] = atm[ialt][iact].O3[:]/atm[ialt, iact].air[:]*1.e6
 
 
     _dims = ('bins_along_track', 'bins_across_track', 'number_layers')
@@ -113,7 +116,11 @@ def sgm_output_atm_afgl(filename_atm, atm, albedo, gm_data, meteodata=None, gase
     if ("no2" in gases):
         # columndensity_no2
         _ = writevariablefromname(output_atm, 'subcol_density_no2', _dims, dcolno2*1e-4) # [molec/cm2]
-        _ = writevariablefromname(output_atm, 'no2_profile', _dims, ppmv_no2) # [ppmv]
+        _ = writevariablefromname(output_atm, 'conc_no2', _dims, ppmv_no2) # [ppmv]
+    if ("o3" in gases):
+        # columndensity_o3
+        _ = writevariablefromname(output_atm, 'subcol_density_o3', _dims, dcolo3*1e-4) # [molec/cm2]
+        _ = writevariablefromname(output_atm, 'conc_o3', _dims, ppmv_o3) # [ppmv]
 
     # level height
     _dims = ('bins_along_track', 'bins_across_track', 'number_levels')
@@ -125,6 +132,7 @@ def sgm_output_atm_afgl(filename_atm, atm, albedo, gm_data, meteodata=None, gase
     xh2o = np.zeros((nalt, nact))
     col_air = np.zeros((nalt, nact))
     col_no2 = np.zeros((nalt, nact))
+    col_o3 = np.zeros((nalt, nact))
     for ialt in range(nalt):
         for iact in range(nact):
             XAIR = np.sum(atm[ialt, iact].air[:])
@@ -132,7 +140,9 @@ def sgm_output_atm_afgl(filename_atm, atm, albedo, gm_data, meteodata=None, gase
             xch4[ialt, iact] = np.sum(atm[ialt, iact].CH4[:])/XAIR*1.e9  # [ppbv]
             xh2o[ialt, iact] = np.sum(atm[ialt, iact].H2O[:])/XAIR*1.e6  # [ppmv]
             col_no2[ialt, iact] = np.sum(atm[ialt, iact].NO2[:])*1e-4    # [molec/cm2]
+            col_o3[ialt, iact] = np.sum(atm[ialt, iact].O3[:])*1e-4    # [molec/cm2]
             col_air[ialt, iact] = XAIR
+
     _dims = ('bins_along_track', 'bins_across_track')
     # albedo
     _ = writevariablefromname(output_atm, 'albedo', _dims, albedo)
@@ -144,19 +154,21 @@ def sgm_output_atm_afgl(filename_atm, atm, albedo, gm_data, meteodata=None, gase
             var_co2 = writevariablefromname(output_atm, 'XCO2', _dims, xco2)
             var_co2.setncattr("source", meteodata.__getattribute__("co2_source"))
             var_co2.setncattr("emission_kgps", meteodata.__getattribute__("co2_emission_in_kgps"))
-    # column_ch4
-    if (gases is not None):
+        # column_ch4
+
         if "ch4" in gases:
             var_ch4 = writevariablefromname(output_atm, 'XCH4', _dims, xch4)
             var_ch4.setncattr("source", meteodata.__getattribute__("ch4_source"))
             var_ch4.setncattr("emission_kgps", meteodata.__getattribute__("ch4_emission_in_kgps"))
 
-    # column_no2
-    if (gases is not None):
+        # column_no2
         if "no2" in gases:
             var_no2 = writevariablefromname(output_atm, 'column_no2', _dims, col_no2)
             var_no2.setncattr("source", meteodata.__getattribute__("no2_source"))
             var_no2.setncattr("emission_kgps", meteodata.__getattribute__("no2_emission_in_kgps"))
+
+        if "o3" in gases:
+            var_no2 = writevariablefromname(output_atm, 'column_o3', _dims, col_o3)
 
     if ("ch4" in gases) or ("co2" in gases) :
         # column_h2o
@@ -180,8 +192,8 @@ def sgm_output_atm_cams(config, atm, albedo, gm_data):
 
     # calculate pressure profiles
 
-    play = (1e-2 * atm['hyam'][np.newaxis,np.newaxis,::-1] + atm['psfc'][...,np.newaxis] * atm['hybm'][np.newaxis,np.newaxis,::-1]) # layers, hPa, surface --> TOA
-    plev = (1e-2 * atm['hyai'][np.newaxis,np.newaxis,::-1] + atm['psfc'][...,np.newaxis] * atm['hybi'][np.newaxis,np.newaxis,::-1]) # levels, hPa, surface --> TOA
+    play = (1e-2 * atm['hyam'][np.newaxis,np.newaxis,...] + atm['psfc'][...,np.newaxis] * atm['hybm'][np.newaxis,np.newaxis,...]) # layers, hPa, TOA --> surface
+    plev = (1e-2 * atm['hyai'][np.newaxis,np.newaxis,...] + atm['psfc'][...,np.newaxis] * atm['hybi'][np.newaxis,np.newaxis,...]) # levels, hPa, TOA --> surface
 
     # create file
     output_atm = nc.Dataset(config['output']['atm'], mode='w')
@@ -200,15 +212,33 @@ def sgm_output_atm_cams(config, atm, albedo, gm_data):
     _ = writevariablefromname(output_atm, 'longitude', _dims_surface, gm_data["lon"])
     _ = writevariablefromname(output_atm, 'pressure_levels', _dims_level, plev)
     _ = writevariablefromname(output_atm, 'pressure_layers', _dims_layer, play)
-    _ = writevariablefromname(output_atm, 'temperature', _dims_layer, np.transpose(atm['t'][::-1], axes=[1,2,0]))
+    _ = writevariablefromname(output_atm, 'temperature', _dims_layer, np.transpose(atm['t'], axes=[1,2,0]))
     _ = writevariablefromname(output_atm, 'albedo', _dims_surface, albedo)
 
+
+
+    # pressure drop per layer [Pa]
+    pdlev = (plev[:,:,1:] - plev[:,:,:-1])*1e2
+
     for gas in config['atm']['gases']:
-        _ = writevariablefromname(output_atm, gas+'_profile', _dims_layer, np.transpose(atm[gas][::-1], axes=[1,2,0])) # [ppmv]
 
-# >>>>>>>>>>> to do here:  calculate total column
+        # ppmv profile
+        gas_ppmv = np.transpose(atm[gas], axes=[1,2,0]) # [ppmv]
+        _ = writevariablefromname(output_atm, 'conc_'+ gas, _dims_layer, gas_ppmv) # [ppmv]
 
+        # Convert volume mixing ratio to NO2 partial column
 
+        # partial column in [mol/m2] at layers
+        gas_partialcolumn = pdlev * gas_ppmv*1e-6 / ( constants.g0 * constants.MDRYAIR ) 
+        # convert to [molec/cm^2]
+        gas_partialcolumn *=  constants.NA * 1e-4
+
+        # calculate total column
+        gas_totalcolumn = gas_partialcolumn.sum(axis=-1)
+
+        # write partial and total column
+        _ = writevariablefromname(output_atm, 'subcol_density_'+gas, _dims_layer, gas_partialcolumn) # [molec/cm2]
+        _ = writevariablefromname(output_atm, 'column_'+gas, _dims_surface, gas_totalcolumn) # [molec/cm2]
 
 
     output_atm.close()
@@ -338,16 +368,11 @@ def combine_mhh_cams( mhh_data, atm, species=['no2', 'co2', 'no']):
 
     # convert mhh partial column [molec./m2] to ppmv
 
-    # constants
-    M_air   = 28.9644e-3                    # molar mass air [kg/mol]
-    g       = 9.80665                       # gravitational constant Earth [kg/s^2]
-    N_A     = 6.02214076e23                 # Avogadros number [mol-1]
-
     # pressure drop per layer
     mhh_dplev = (mhh_plev[:,:,:-1] - mhh_plev[:,:,1:]) *1e2 # [Pa]
 
     for s in species:
-        setattr( mhh_data, s + '_ppmv', getattr(mhh_data, s) * g * M_air * 1e6 / (N_A * mhh_dplev.data ) ) #[ppmv]
+        setattr( mhh_data, s + '_ppmv', getattr(mhh_data, s) * constants.g0 * constants.MDRYAIR * 1e6 / (constants.NA * mhh_dplev.data ) ) #[ppmv]
 
     # setattr( mhh_data, 'plev', mhh_plev )
     # setattr( mhh_data, 'play', mhh_play )
@@ -530,7 +555,7 @@ def convert_atm_profiles(cfg, atm):
 
 
         for var in variables:
-            var_layer = np.transpose(atm[var][::-1], axes=[1,2,0]) # layers, ppmv, surface --> TOA
+            var_layer = np.transpose(atm[var][::-1,:,:], axes=[1,2,0]) # layers, ppmv, surface --> TOA
 
             # omit TOA layer CAMS
             var_layer = var_layer[:,:,:-1]
@@ -650,6 +675,8 @@ def scene_generation_module_nitro(config):
                 combine_mhh_cams( meteodata, atm, species=['no2'])
 
             sgm_output_atm_cams(config, atm, albedo, gm_data)
+
+    breakpoint()
 
     # =============================================================================================
     # 5) radiative transfer simulations with DISAMAR

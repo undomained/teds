@@ -26,4 +26,4 @@ sensors:
     yaw: 0.0
 
 
-output: '../data/geometry_no2.nc'
+output: '../data/no2/geometry.nc'

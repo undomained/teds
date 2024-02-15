@@ -17,23 +17,23 @@ atm:
     afgl:
         nlay: 30                            #number of atmospheric layers
         dzlay: 1000                         #geometrical thickness of the layers [m]
-        path: '../data/prof.AFGL.US.std'
+        path: '../data/no2/prof.AFGL.US.std'
 
     cams:
-        path: '../data/cams_global_20180701.nc'
+        path: '../data/no2/cams_global_20180701.nc'
         start: 2018-07-01T12:13:00 
 
     microHH:
         use: True                           # replace lower atm with microHH
-        path_data: '../data/microHH/Jaenschwalde_simulation1/'
+        path_data: '../data/no2/microHH/Jaenschwalde_simulation1/'
         gases: [no2]
         filesuffix: src3_20180523_0930
         forced: no
-        dump: '../data/microHH_dump_no2.pkl'
+        dump: '../data/no2/microHH_dump.pkl'
 
     dem:                                    # correct surface pressure for dem
         use: True
-        path: '../data/dem.nc'
+        path: '../data/no2/dem.nc'
 
 
 rtm:                        # disamar settings
@@ -49,15 +49,15 @@ rtm:                        # disamar settings
 S2_albedo:
     band: B01
     forced:   no     
-    dump: '../data/sgm_dumpfile_no2.npy'
+    dump: '../data/no2/sgm_dumpfile.npy'
 # B01: 442.7 nm (S2A), 442.3 nm (S2B) 60m
 # B02: 492.4 nm (S2A), 492.1 nm (S2B)    10m
 
 
 input:
-    gm: '../data/geometry_no2.nc'
-    sun_reference: '../data/solar_spectrum.nc'
+    gm: '../data/no2/geometry.nc'
+    sun_reference: '../data/no2/solar_spectrum.nc'
 
 output:
-    rad: '../data/sgm_radiance_no2.nc'
-    atm: '../data/sgm_atmosphere_no2.nc'
+    rad: '../data/no2/sgm_radiance.nc'
+    atm: '../data/no2/sgm_atmosphere.nc'

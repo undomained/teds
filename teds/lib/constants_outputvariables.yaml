@@ -170,6 +170,31 @@ column_no2:
   valid_max: 1.E+32
   FillValue: -32767
 
+pressure_levels:
+  name: pressure_levels
+  long_name: Pressure at layer interfaces
+  units: hPa
+
+pressure_layers:
+  name: pressure_layers
+  long_name: Pressure at layer midpoints
+  units: hPa
+
+temperature:
+  name: temperature
+  long_name: Temperature at layer midpoints
+  units: K
+
+no2_profile:
+  name: no2_profile
+  long_name: NO2 layer concentration
+  units: ppmv
+
+o3_profile:
+  name: o3_profile
+  long_name: O3 layer concentration
+  units: ppmv
+
 # level 2 output
 convergence:
   name: convergence

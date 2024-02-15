@@ -13,3 +13,4 @@ rioxarray
 astropy
 sgp4
 numba
+tables

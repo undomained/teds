@@ -18,6 +18,9 @@ from lib.libWrite import writevariablefromname
 import scipy.interpolate
 import multiprocessing
 import datetime
+import time
+import h5py
+import shutil
 
 from lib import libATM, libSGM, libRT_no2, libNumTools, constants
 
@@ -46,14 +49,14 @@ def sgm_output_radio(filename_rad, rad_output):
     nalt, nact, nlbl = rad_output['radiance'].shape
     # open file
     output_rad = nc.Dataset(filename_rad, mode='w')
-    output_rad.title = 'Tango Carbon E2ES SGM radiometric scene'
+    output_rad.title = 'Tango E2ES SGM radiometric scene'
     output_rad.createDimension('bins_spectral', nlbl)     # spectral axis
     output_rad.createDimension('bins_across_track', nact)     # across track axis
     output_rad.createDimension('bins_along_track', nalt)     # along track axis
     # wavelength
     _ = writevariablefromname(output_rad, 'wavelength', ('bins_spectral',), rad_output['wavelength_lbl'])
     # solar irradiance
-    _ = writevariablefromname(output_rad, 'solarirradiance', ('bins_spectral',), rad_output['solar irradiance'])
+    _ = writevariablefromname(output_rad, 'solarirradiance', ('bins_spectral',), rad_output['solar_irradiance'])
     # radiance
     _dims = ('bins_along_track', 'bins_across_track', 'bins_spectral')
     _ = writevariablefromname(output_rad, 'radiance', _dims, rad_output['radiance'])
@@ -436,9 +439,9 @@ def set_disamar_cfg_sim(cfg, dis_cfg, ground_points, profiles, albedo, i_t, i_x)
     # dis_cfg['GENERAL','external_data', 'second'].setvalue([dt.second])
 
     # INSTRUMENT
-    dis_cfg['INSTRUMENT','wavelength_range', 'wavelength_start'].setvalue(cfg['spec_settings']['wave_start'])
-    dis_cfg['INSTRUMENT','wavelength_range', 'wavelength_end'].setvalue(cfg['spec_settings']['wave_end'])
-    dis_cfg['INSTRUMENT','wavelength_range', 'wavelength_step'].setvalue(cfg['spec_settings']['dwave'])
+    dis_cfg['INSTRUMENT','wavelength_range', 'wavelength_start'].setvalue(cfg['rtm']['wave_start'])
+    dis_cfg['INSTRUMENT','wavelength_range', 'wavelength_end'].setvalue(cfg['rtm']['wave_end'])
+    dis_cfg['INSTRUMENT','wavelength_range', 'wavelength_step'].setvalue(cfg['rtm']['dwave'])
 
     # GEOMETRY   
     dis_cfg['GEOMETRY','geometry', 'solar_zenith_angle_sim'].setvalue( ground_points['sza'][i_t,i_x] )
@@ -489,30 +492,32 @@ def convert_atm_profiles(cfg, atm):
 
     if config['atm']['type'] == 'afgl':
          # afgl, input is in molec/m2, convert to ppmv
+        nact, nalt=  atm.shape
+        nlev =  atm[0, 0].plev.shape[0]
 
-        nact, nalt, nlev =  atm[0, 0].plev.shape
-
-        for var in cfg['atm']['gases'].copy().append('p','t'):
+        variables = cfg['atm']['gases'].copy()
+        variables.extend(['t','p'])
+        for var in variables:
             profiles[var] = np.zeros((nact, nalt, nlev))
 
         for idx in range(nact):
             for idy in range(nalt):
 
-                psfc = atm[i_t, i_x].psurf / 100.0 # Pa --> hPa
+                psfc = atm[idx, idy].psurf / 100.0 # Pa --> hPa
 
-                plev = atm[i_t, i_x].plev[::-1] / 100.0 # levels,  Pa --> hPa, surface --> TOA
-                play = atm[i_t, i_x].play[::-1] / 100.0 # layers, Pa --> hPa, surface --> TOA
+                plev = atm[idx, idy].plev[::-1] / 100.0 # levels,  Pa --> hPa, surface --> TOA
+                play = atm[idx, idy].play[::-1] / 100.0 # layers, Pa --> hPa, surface --> TOA
 
-                tlev = atm[i_t, i_x].tlev[::-1]         # levels,  K --> hPa, surface --> TOA
-                tlay = atm[i_t, i_x].tlay[::-1]         # layers, K --> hPa, surface --> TOA
+                tlev = atm[idx, idy].tlev[::-1]         # levels,  K --> hPa, surface --> TOA
+                tlay = atm[idx, idy].tlay[::-1]         # layers, K --> hPa, surface --> TOA
 
-                air = atm[i_t, i_x].air[::-1]           # layers, molec/m2, surface --> TOA
+                air = atm[idx, idy].air[::-1]           # layers, molec/m2, surface --> TOA
                 
-                profiles['p'][i_t, i_x, :] = plev
-                profiles['t'][i_t, i_x, :] = tlev
+                profiles['p'][idx, idy, :] = plev
+                profiles['t'][idx, idy, :] = tlev
 
                 for gas in cfg['atm']['gases']:
-                    gas_prof = atm[i_t, i_x].NO2[::-1]           # layers, molec/m2, surface --> TOA
+                    gas_prof = atm[idx, idy].NO2[::-1]           # layers, molec/m2, surface --> TOA
 
                     # convert molec/m2 to volume mixing ratio
                     gas_ppmv = gas_prof / air * 1e6 # molec/m2 --> ppmv
@@ -520,19 +525,21 @@ def convert_atm_profiles(cfg, atm):
                     # interpolate layers to levels using log(p)
 
                     # no extrapolation, edge value is repeated
-                    profiles[gas][i_t, i_x, :] = np.interp( np.log(plev[::-1]), np.log(play[::-1]), gas_ppmv[::-1] )[::-1] # strictly increasing
+                    profiles[gas][idx, idy, :] = np.interp( np.log(plev[::-1]), np.log(play[::-1]), gas_ppmv[::-1] )[::-1] # strictly increasing
 
                     # extrapolation
                     # interp_gas = scipy.interpolate.RegularGridInterpolator(np.reshape(np.log(play.T),(1,len(play))), gas_ppmv, method='linear',bounds_error=False, fill_value=None)
-                    # profiles[gas][i_t, i_x, :] = interp_gas(np.log(plev))
+                    # profiles[gas][idx, idy, :] = interp_gas(np.log(plev))
 
-        # # expand profiles to TOA, otherwise disamar does not like it
-        # profiles['p'] = np.append(profiles['p'],0.015)
-        # profiles['t'] = np.append(profiles['t'],173.526)
-        # if 'no2' in cfg['atm']['gases']:
-        #     profiles['no2'] = np.append(profiles['no2'],6.2958549E-09)
-        # if 'o3' in cfg['atm']['gases']:
-        #     profiles['o3'] = np.append(profiles['o3'],7.4831730E-01)
+        # set last layer of profiles to TOA, otherwise disamar does not like it
+        if (profiles['p'][:,:,-1] > 0.3 ).any():
+            profiles['p'][:,:,-1] = 0.3
+            profiles['t'][:,:,-1] = 250.0
+            if 'no2' in cfg['atm']['gases']:
+                profiles['no2'][:,:,-1] =6.2958549E-09
+            if 'o3' in cfg['atm']['gases']:
+                profiles['o3'][:,:,-1] = 7.4831730E-01
+
 
     elif config['atm']['type'] == 'cams':
         # cams, input is alread in molec/m2
@@ -583,16 +590,52 @@ def run_disamar(filename):
     cwd = os.getcwd()
 
     try:
-        print('starting: ' + filename)
+        starttime = time.time()
         RT()
+        print(f'finished: {filename} in {np.round(time.time()-starttime,1)} s')
+
         os.chdir(cwd)
         return 0
     except:
-        print('Failed: ' + filename)
+        print(f'failed: {filename}')
         os.chdir(cwd)
         return -1
 
     return
+
+
+def read_disamar_output(gm_data,tmp_dir):
+
+    nalt, nact = gm_data['lat'].shape
+
+    dis_output = {}
+
+
+    for iact in range(nact):
+        for ialt in range(nalt):
+            file = f'{tmp_dir}/{iact:03d}_{ialt}.h5'
+            
+            if os.path.isfile(file) == False:
+                print(f'error: {file} not found')
+                continue
+
+            with h5py.File(file, 'r') as f:
+
+                if 'wavelength_lbl' not in dis_output:
+                    dis_output['wavelength_lbl'] = f['specifications_sim/wavelength_radiance_band_1'][:]            # nm
+                    dis_output['solar_irradiance'] = f['radiance_and_irradiance/solar_irradiance_band_1'][:] *1.e4  # ph/s/nm/cm2 --> ph/s/nm/m2/sr
+                    
+                    nwvl = len(dis_output['wavelength_lbl'])
+                    dis_output['radiance'] = np.full((nalt,nact,nwvl), np.nan)
+
+                dis_output['radiance'][iact,ialt,:] = f['radiance_and_irradiance/earth_radiance_band_1'][:] *1.e4           # ph/s/nm/cm2/sr --> ph/s/nm/m2/sr
+
+# >>>>>>>>>>> tmp
+            break
+        break
+# >>>>>>>>>>> tmp
+
+    return dis_output
 
 
 # >>>>>>>>>>> to do here: move functions above to lib
@@ -676,8 +719,6 @@ def scene_generation_module_nitro(config):
 
             sgm_output_atm_cams(config, atm, albedo, gm_data)
 
-    breakpoint()
-
     # =============================================================================================
     # 5) radiative transfer simulations with DISAMAR
     # =============================================================================================
@@ -690,21 +731,31 @@ def scene_generation_module_nitro(config):
     # convert atm profiles to disamar format
     dis_profiles = convert_atm_profiles(config, atm)
 
-    dis_cfg = libRT_no2.RT_configuration(filename=config['rtm']['disamar_cfg_template'])
+    if os.path.isfile(config['rtm']['disamar_cfg_template']):
+        dis_cfg = libRT_no2.RT_configuration(filename=config['rtm']['disamar_cfg_template'])
+    else:
+        print(f'error: file {file} not found')
+
     dis_cfg_filenames=[]
+
     timestamp = datetime.datetime.now().strftime('%Y%m%dT%H%M%S')
+    tmp_dir = '{}/{}'.format( config['rtm']['tmp_dir'], timestamp)
+    if not os.path.isdir(tmp_dir):
+        os.makedirs(tmp_dir, exist_ok=True)
+
     for ialt in range(nalt):
         for iact in range(nact):
 
             dis_cfg = set_disamar_cfg_sim(config, dis_cfg, gm_data, dis_profiles, albedo, ialt, iact)
 
-            tmp_dir = '{}/{}/{:03d}'.format( config['rtm']['tmp_dir'], timestamp, iact)
+            act_dir = '{}/{:03d}'.format( tmp_dir, iact)
             if not os.path.isdir(tmp_dir):
                 os.makedirs(tmp_dir, exist_ok=True)
 
-            filename = '{}/{}_{:03d}.in'.format(tmp_dir, ialt, iact)
+            filename = '{}/{:03d}_{}.in'.format(tmp_dir, iact, ialt)
             dis_cfg.write(filename=filename)
             dis_cfg_filenames.append(filename)
+            
             print(filename)
 
     # >>>>>>>>>> tmp
@@ -718,16 +769,18 @@ def scene_generation_module_nitro(config):
     with multiprocessing.Pool(config['rtm']['n_threads']) as pool:
         stat = set(pool.map(run_disamar, dis_cfg_filenames))
 
+    # 5C) read disamar output
+
+    dis_output = read_disamar_output(gm_data, tmp_dir)
+
+    # cleanup
+    shutil.rmtree(tmp_dir)
+
     # =============================================================================================
     # 6) sgm output to radiometric file
     # =============================================================================================
 
-    # # define line-by-line wavelength grid
-    # rad_output = {}
-    # rad_output['wavelength_lbl'] = np.arange(config['spec_settings']['wave_start'], config['spec_settings']['wave_end'],
-    #                                          config['spec_settings']['dwave'])  # nm
-    # >>>>>>>>>> to do here: write output
-    # sgm_output_radio(config['rad_output'], rad_output)
+    sgm_output_radio(config['output']['rad'], dis_output)
 
     print('=>sgm calculation finished successfully')
     return

@@ -420,8 +420,13 @@ def set_disamar_cfg_sim(cfg, dis_cfg, ground_points, profiles, albedo, i_t, i_x)
 
     if cfg['rtm']['dismas_sim']:
         dis_cfg['GENERAL','method', 'simulationMethod'].setvalue(1)
+        dis_cfg['GENERAL','method', 'ignoreSlitSim'].setvalue(0)
+        dis_cfg['INSTRUMENT','slit_parameters', 'FWHM_irradiance_sim'].setvalue(cfg['rtm']['dismas_fwhm'])
+        dis_cfg['INSTRUMENT','slit_parameters', 'FWHM_radiance_sim'].setvalue(cfg['rtm']['dismas_fwhm'])
+
     else:
         dis_cfg['GENERAL','method', 'simulationMethod'].setvalue(0)
+        dis_cfg['GENERAL','method', 'ignoreSlitSim'].setvalue(1)
 
 
     # get datetime
@@ -630,10 +635,15 @@ def read_disamar_output(gm_data,tmp_dir):
 
                 dis_output['radiance'][iact,ialt,:] = f['radiance_and_irradiance/earth_radiance_band_1'][:] *1.e4           # ph/s/nm/cm2/sr --> ph/s/nm/m2/sr
 
-# >>>>>>>>>>> tmp
-            break
-        break
-# >>>>>>>>>>> tmp
+# # >>>>>>>>>>> tmp
+#             break
+#         break
+# # >>>>>>>>>>> tmp
+
+
+    if 'wavelength_lbl' not in dis_output:
+        print('Error: no DISAMAR output found')
+        sys.exit()
 
     return dis_output
 
@@ -758,10 +768,10 @@ def scene_generation_module_nitro(config):
             
             print(filename)
 
-    # >>>>>>>>>> tmp
-            break
-        break
-    # >>>>>>>>>> tmp
+    # # >>>>>>>>>> tmp
+    #         break
+    #     break
+    # # >>>>>>>>>> tmp
 
     # 5B) run disamar in parallel
     print('running disamar')
@@ -774,7 +784,8 @@ def scene_generation_module_nitro(config):
     dis_output = read_disamar_output(gm_data, tmp_dir)
 
     # cleanup
-    shutil.rmtree(tmp_dir)
+    if config['rtm']['cleanup']:
+        shutil.rmtree(tmp_dir)
 
     # =============================================================================================
     # 6) sgm output to radiometric file

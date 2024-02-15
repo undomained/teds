@@ -10,7 +10,7 @@ kernel_parameter:               #parameter to configure the 2D blurring of the s
 lat_lon_src: [51.8, 14.19]
 
 atm:
-    type: cams                               # cams or afgl
+    type: afgl                               # cams or afgl
 
     gases: [no2]                             # for now only no2 and o3
 
@@ -38,13 +38,22 @@ atm:
 
 rtm:                        # disamar settings
     tmp_dir:    '/tmp/tango_e2e'
-    disamar_cfg_template: '../no2/disamar_config_sim_no2only.in_template'
-    disamar_exe: '/usr/people/leune/programs/disamar/Disamar.exe'
-    dismas_sim: False
+
+    disamar_cfg_template: '../cfg/nitro/disamar_config_sim_no2only.in_template'
+
+    # disamar_exe: '/usr/people/leune/programs/disamar/Disamar.exe'
+    disamar_exe: '/usr/people/leune/programs/disamar/Disamar_old.exe' # much faster
+
+    dismas_sim: True
+    dismas_fwhm: 0.05       #nm
+
     n_threads: 5
+
     wave_start: 405         #nm
     wave_end:   465         #nm
-    dwave:      0.01        #nm
+    dwave:      0.05        #nm
+
+    cleanup: no
 
 S2_albedo:
     band: B01

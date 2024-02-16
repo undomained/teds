@@ -30,10 +30,10 @@ polCorrectionFileName          polCorrFile-42.5478.in                    (polari
 additionalOutputFileName       additionalOutput.out                      (file name for additional output)
 
 subsection method
-simulationMethod          0  (0 = Optimal Estimation - lbl, 1 = DISMAS)
-retrievalMethod           0  (0 = OE - lbl, 1 = DISMAS, 2 = DOAS_vert_column, 3 =  DOAS_slant_column, 4 = DOMINO - NO2)
-ignoreSlitSim             1  (0 = convolute rad/irrad with slit function; 1 = ignore slifunction (FWHM = 0) )
-ignoreSlitRetr            1  (0 = convolute rad/irrad with slit function; 1 = ignore slifunction (FWHM = 0) )
+simulationMethod          1  (0 = Optimal Estimation - lbl, 1 = DISMAS)
+retrievalMethod           1  (0 = OE - lbl, 1 = DISMAS, 2 = DOAS_vert_column, 3 =  DOAS_slant_column, 4 = DOMINO - NO2)
+ignoreSlitSim             0  (0 = convolute rad/irrad with slit function; 1 = ignore slifunction (FWHM = 0) )
+ignoreSlitRetr            0  (0 = convolute rad/irrad with slit function; 1 = ignore slifunction (FWHM = 0) )
 useEffXsec_OE_sim         0  (0 = use monochromatic cross section; 1 = convolute absorption cross section with slit and I0)
 useEffXsec_OE_retr        0  (0 = use monochromatic cross section; 1 = convolute absorption cross section with slit and I0)
 # if the expansion is used createXsecPolyLUT must be 1 (see optional subsection createXsecLUT)

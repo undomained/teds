@@ -10,7 +10,7 @@ kernel_parameter:               #parameter to configure the 2D blurring of the s
 lat_lon_src: [51.8, 14.19]
 
 atm:
-    type: cams                               # cams or afgl
+    type: afgl                               # cams or afgl
 
     gases: [no2, o3]                         # for now only no2 and o3
 
@@ -34,7 +34,7 @@ atm:
         forced: no
         dump: '../data/no2/microHH_dump.pkl'
 
-    dem:                                    # correct surface pressure using tropomi dem (3k radius)
+    dem:                                    # correct surface pressure using tropomi dem (3k radius), only for CAMS
         use: True
         path: '../data/no2/dem.nc'
 
@@ -42,7 +42,8 @@ atm:
 rtm:                        # disamar settings
     tmp_dir:    '/tmp/tango_e2e'
 
-    disamar_cfg_template: '../cfg/nitro/disamar_config_sim_no2only.in_template'
+    # disamar_cfg_template: '../cfg/nitro/disamar_config_sim_no2only.in_template'
+    disamar_cfg_template: '../cfg/nitro/disamar_config_sim.in_template'
 
     # disamar_exe: '/usr/people/leune/programs/disamar/Disamar.exe'
     disamar_exe: '/usr/people/leune/programs/disamar/Disamar_old.exe' # much faster

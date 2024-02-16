@@ -27,3 +27,4 @@ sensors:
 
 
 output: '../data/geometry_no2.nc'
+output_title: 'Tango Nitro E2ES GM output'

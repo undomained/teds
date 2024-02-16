@@ -6,13 +6,10 @@ kernel_parameter:               #parameter to configure the 2D blurring of the s
     fwhm_y:  300                #FWHM in flight direction
     size_factor: 2              #the size of the convolution kernel in units of fwhm
 
-# latitude, longitude coordinates
-lat_lon_src: [51.8, 14.19]
-
 atm:
-    type: afgl                               # cams or afgl
+    type: cams                              # cams or afgl
 
-    gases: [no2, o3]                         # for now only no2 and o3
+    gases: [no2, o3]                        # for now only no2 and o3
 
     afgl:
         nlay: 30                            #number of atmospheric layers
@@ -20,11 +17,11 @@ atm:
         path: '../data/no2/prof.AFGL.US.std'
 
     cams:
-        # path: '../data/cams/cams_global_forecast_20230523.nc' # only contains 00:00 and 12:00 timeslices, 137 layers
-        # start: 2023-05-23T09:30:00 
+        path: '../data/cams/cams_global_forecast_20230523.nc' # only contains 00:00 and 12:00 timeslices, 137 layers
+        start: 2023-05-23T09:30:00 
 
-        path: '../data/cams/cams_global_reanalysis_20220523.nc' # only contains 09:00 timeslice, 60 layers
-        start: 2022-05-23T09:30:00 
+        # path: '../data/cams/cams_global_reanalysis_20220523.nc' # only contains 09:00 timeslice, 60 layers
+        # start: 2022-05-23T09:30:00 
 
     microHH:
         use: True                           # replace lower atm with microHH
@@ -39,7 +36,7 @@ atm:
         path: '../data/no2/dem.nc'
 
 
-rtm:                        # disamar settings
+rtm:                                        # disamar settings
     tmp_dir:    '/tmp/tango_e2e'
 
     # disamar_cfg_template: '../cfg/nitro/disamar_config_sim_no2only.in_template'
@@ -69,7 +66,6 @@ S2_albedo:
 
 input:
     gm: '../data/no2/geometry.nc'
-    sun_reference: '../data/no2/solar_spectrum.nc'
 
 output:
     rad: '../data/no2/sgm_radiance.nc'

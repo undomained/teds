@@ -85,3 +85,4 @@ sensors:
 #     sat_height: 500000          #orbit height [m]
 
 output: '../data/geometry.nc'
+output_title: 'Tango Carbon E2ES GM output'

@@ -130,6 +130,14 @@ subcol_density_no2:
   valid_max: 1.E+28
   FillValue: -32767
 
+subcol_density_o3:
+  name: dcol_o3
+  long_name: O3 layer column density
+  units: molec./cm2
+  valid_min: 0.
+  valid_max: 1.E+28
+  FillValue: -32767
+
 xco2:
   name: xco2
   long_name: CO2 dry air mol column mixing ratio
@@ -170,6 +178,14 @@ column_no2:
   valid_max: 1.E+32
   FillValue: -32767
 
+column_o3:
+  name: col_o3
+  long_name: O3 total column density
+  units: molec./cm2
+  valid_min: 0.
+  valid_max: 1.E+32
+  FillValue: -32767
+
 pressure_levels:
   name: pressure_levels
   long_name: Pressure at layer interfaces
@@ -185,13 +201,13 @@ temperature:
   long_name: Temperature at layer midpoints
   units: K
 
-no2_profile:
-  name: no2_profile
+conc_no2:
+  name: conc_no2
   long_name: NO2 layer concentration
   units: ppmv
 
-o3_profile:
-  name: o3_profile
+conc_o3:
+  name: conc_o3
   long_name: O3 layer concentration
   units: ppmv
 

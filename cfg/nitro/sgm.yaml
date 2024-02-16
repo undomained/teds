@@ -10,9 +10,9 @@ kernel_parameter:               #parameter to configure the 2D blurring of the s
 lat_lon_src: [51.8, 14.19]
 
 atm:
-    type: afgl                               # cams or afgl
+    type: cams                               # cams or afgl
 
-    gases: [no2]                             # for now only no2 and o3
+    gases: [no2, o3]                         # for now only no2 and o3
 
     afgl:
         nlay: 30                            #number of atmospheric layers
@@ -20,8 +20,11 @@ atm:
         path: '../data/no2/prof.AFGL.US.std'
 
     cams:
-        path: '../data/no2/cams_global_20180701.nc'
-        start: 2018-07-01T12:13:00 
+        # path: '../data/cams/cams_global_forecast_20230523.nc' # only contains 00:00 and 12:00 timeslices, 137 layers
+        # start: 2023-05-23T09:30:00 
+
+        path: '../data/cams/cams_global_reanalysis_20220523.nc' # only contains 09:00 timeslice, 60 layers
+        start: 2022-05-23T09:30:00 
 
     microHH:
         use: True                           # replace lower atm with microHH
@@ -31,7 +34,7 @@ atm:
         forced: no
         dump: '../data/no2/microHH_dump.pkl'
 
-    dem:                                    # correct surface pressure for dem
+    dem:                                    # correct surface pressure using tropomi dem (3k radius)
         use: True
         path: '../data/no2/dem.nc'
 
@@ -47,7 +50,7 @@ rtm:                        # disamar settings
     dismas_sim: True
     dismas_fwhm: 0.05       #nm
 
-    n_threads: 5
+    n_threads: 16
 
     wave_start: 405         #nm
     wave_end:   465         #nm

@@ -324,34 +324,45 @@ def get_cams_profiles( cfg, time, gm_data):
     profile_data['hybm'] = cams['hybm']
 
     # copy some parameters
+   
+    # if time only has one value, dont interpolate over time
+    if len(cams['time']) == 1:
+        time_slice = 0
+        idx, w, shape = libNumTools.ndim_lin_interpol_get_indices_weights( [cams['lat'], cams['lon']], [lats, lons] )
+
+    else:
+        time_slice = slice(None)
+        idx, w, shape = libNumTools.ndim_lin_interpol_get_indices_weights( [cams['time'], cams['lat'], cams['lon']], [d_time_hours, lats, lons] )
 
     # interpolate fields to time lat lon
-    idx, w, shape = libNumTools.ndim_lin_interpol_get_indices_weights( [cams['time'], cams['lat'], cams['lon']], [d_time_hours, lats, lons] )
-    profile_data['psfc'] = libNumTools.ndim_lin_interpol_get_values( cams['SP'][:,:,:], idx, w, shape) * 1e-2 # convert to hPa
-    profile_data['psl'] = libNumTools.ndim_lin_interpol_get_values( cams['MSL'][:,:,:], idx, w, shape) * 1e-2 # convert to hPa
-    profile_data['zgeop'] = libNumTools.ndim_lin_interpol_get_values( cams['Z'][:,:,:], idx, w, shape)  # convert to hPa
+    profile_data['psfc'] = libNumTools.ndim_lin_interpol_get_values( cams['SP'][time_slice,:,:], idx, w, shape) * 1e-2 # convert to hPa
+    profile_data['psl'] = libNumTools.ndim_lin_interpol_get_values( cams['MSL'][time_slice,:,:], idx, w, shape) * 1e-2 # convert to hPa
+    profile_data['zgeop'] = libNumTools.ndim_lin_interpol_get_values( cams['Z'][time_slice,:,:], idx, w, shape)  # hPa
 
-    # interpolate fields to lat lon
-    idx, w, shape = libNumTools.ndim_lin_interpol_get_indices_weights( [cams['lat'], cams['lon']], [lats, lons] )
 
     variables = cfg['atm']['gases'].copy()
     variables.append('t')
 
     for var in variables:
-        if var not in cams:
+        if var == 'o3':
+            varcams = 'go3'
+        else:
+            varcams = var
+
+        if varcams not in cams:
             print(f'Error, requested gas {var} not in CAMS file.')
             continue
         
         varlist = []
-        for i in range( cams['t'].shape[0]):
-            varlist.append( libNumTools.ndim_lin_interpol_get_values( cams[var][i,:,:], idx, w, shape) )
+        for i in range( cams['t'].shape[1]):
+            varlist.append( libNumTools.ndim_lin_interpol_get_values( cams[varcams][time_slice,i,:,:], idx, w, shape) )
         
         profile_data[var] = np.array( varlist )
 
         # convert mmr to ppmv
         if var in mmr_to_ppmv:
             profile_data[var] *= mmr_to_ppmv[var]
-    
+
     return profile_data
 
 
@@ -615,10 +626,9 @@ def read_disamar_output(gm_data,tmp_dir):
 
     dis_output = {}
 
-
     for iact in range(nact):
         for ialt in range(nalt):
-            file = f'{tmp_dir}/{iact:03d}_{ialt}.h5'
+            file = f'{tmp_dir}/act{iact}_alt{ialt}.h5'
             
             if os.path.isfile(file) == False:
                 print(f'error: {file} not found')
@@ -634,11 +644,6 @@ def read_disamar_output(gm_data,tmp_dir):
                     dis_output['radiance'] = np.full((nalt,nact,nwvl), np.nan)
 
                 dis_output['radiance'][iact,ialt,:] = f['radiance_and_irradiance/earth_radiance_band_1'][:] *1.e4           # ph/s/nm/cm2/sr --> ph/s/nm/m2/sr
-
-# # >>>>>>>>>>> tmp
-#             break
-#         break
-# # >>>>>>>>>>> tmp
 
 
     if 'wavelength_lbl' not in dis_output:
@@ -729,6 +734,7 @@ def scene_generation_module_nitro(config):
 
             sgm_output_atm_cams(config, atm, albedo, gm_data)
 
+
     # =============================================================================================
     # 5) radiative transfer simulations with DISAMAR
     # =============================================================================================
@@ -758,23 +764,15 @@ def scene_generation_module_nitro(config):
 
             dis_cfg = set_disamar_cfg_sim(config, dis_cfg, gm_data, dis_profiles, albedo, ialt, iact)
 
-            act_dir = '{}/{:03d}'.format( tmp_dir, iact)
-            if not os.path.isdir(tmp_dir):
-                os.makedirs(tmp_dir, exist_ok=True)
-
-            filename = '{}/{:03d}_{}.in'.format(tmp_dir, iact, ialt)
+            filename = '{}/act{}_alt{}.in'.format(tmp_dir, iact, ialt)
             dis_cfg.write(filename=filename)
             dis_cfg_filenames.append(filename)
-            
-            print(filename)
-
-    # # >>>>>>>>>> tmp
-    #         break
-    #     break
-    # # >>>>>>>>>> tmp
+    
 
     # 5B) run disamar in parallel
     print('running disamar')
+
+    # run_disamar(dis_cfg_filenames[0])
 
     with multiprocessing.Pool(config['rtm']['n_threads']) as pool:
         stat = set(pool.map(run_disamar, dis_cfg_filenames))

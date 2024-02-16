@@ -13,12 +13,232 @@ from lib.libWrite import writevariablefromname
 from lib.libOrbSim import Sensor, Satellite
 import datetime
 
+def check_input(nact, check_list, place):
+    """
+        Check the input for simple profiles (single swath and individual spectra).
+        Length should be equal to nact.
+    """
 
-def gm_output(filename, vza, vaa, sza, saa, lat_grid, lon_grid):
+    for view in check_list:
+
+        if nact != len(config['scene_spec'][view]):
+            sys.exit(f"input error in gm for {view} nact ({nact}) not equal to {view} length ({len(config['scene_spec'][view])}), {place}")
+
+def get_individual_spectra(config):
+    """
+        Generate the gm output for individual spectra
+        first check consistencies of 'indivual_spectra' input.
+        Here we use the 2-dimensional (nalt, nact) data structure in an artificial way
+    
+        return vza : viewing zentih angle; numpy array
+               vaa : viewing azimuth angle; numpy array
+               sza : solar zenith angle; numpy array
+               saa : solar azimuth angle; numpy array
+               lat_grid : pixel latitude grid; numpy array
+               lon_grid: pixel_longitude grid, numpy array
+    """
+
+    nn = len(config['scene_spec']['sza'])
+
+    check_input(nn, ['sza','saa','vza','vaa','albedo'], "code 1")
+
+    # here we use the 2-dimensional data structure in an artificial way
+    nact = nn
+    nalt = 1
+
+    lon_grid = np.empty([nalt, nact])
+    lat_grid = np.empty([nalt, nact])
+    sza = np.empty([nalt, nact])
+    saa = np.empty([nalt, nact])
+    vza = np.empty([nalt, nact])
+    vaa = np.empty([nalt, nact])
+
+    lat_grid[0, :] = np.nan
+    lon_grid[0, :] = np.nan
+
+    nact = len(lat_grid[0])
+    nalt = len(lat_grid)
+
+    sza[0, :] = config['scene_spec']['sza'][:]
+    saa[0, :] = config['scene_spec']['saa'][:]
+    vza[0, :] = config['scene_spec']['vza'][:]
+    vaa[0, :] = config['scene_spec']['vaa'][:]
+
+    return vza, vaa, sza, saa, lat_grid, lon_grid
+
+# TODO get_single_swath and get_indivudual_spectra very much the same, Can code be merged?
+def get_single_swath(config):
+    """
+        Generate the gm output for single swath
+
+        return vza : viewing zentih angle; numpy array
+               vaa : viewing azimuth angle; numpy array
+               sza : solar zenith angle; numpy array
+               saa : solar azimuth angle; numpy array
+               lat_grid : pixel latitude grid; numpy array
+               lon_grid: pixel_longitude grid, numpy array
+    """
+
+    nact = config['field_of_regard']['nact']       
+    nalt = 1
+
+    check_input(nact, ['sza','saa','vza','vaa','albedo'], "code 2")
+
+    lon_grid = np.empty([nalt, nact])
+    lat_grid = np.empty([nalt, nact])
+    sza = np.empty([nalt, nact])
+    saa = np.empty([nalt, nact])
+    vza = np.empty([nalt, nact])
+    vaa = np.empty([nalt, nact])
+
+    lat_grid[0][:] = np.nan
+    lon_grid[0][:] = np.nan
+
+    sza[0, :] = config['scene_spec']['sza'][:]
+    saa[0, :] = config['scene_spec']['saa'][:]
+    vza[0, :] = config['scene_spec']['vza'][:]
+    vaa[0, :] = config['scene_spec']['vaa'][:]
+
+    return vza, vaa, sza, saa, lat_grid, lon_grid
+
+def get_orbit(config):
+    """
+        Generate the gm output for an orbit
+        configure satellite and propagate orbit
+
+        return vza : viewing zentih angle; numpy array
+               vaa : viewing azimuth angle; numpy array
+               sza : solar zenith angle; numpy array
+               saa : solar azimuth angle; numpy array
+               lat_grid : pixel latitude grid; numpy array
+               lon_grid: pixel_longitude grid, numpy array
+    """
+
+    sat = orbit_simulation(config)
+
+    # configure sensors and compute ground pixel information
+    sensors = sensor_simulation(config, sat)
+
+    vza = sensors['gpxs'][0]['vza']
+    vaa = sensors['gpxs'][0]['vaa']
+    sza = sensors['gpxs'][0]['sza']
+    saa = sensors['gpxs'][0]['saa']
+    lat_grid = sensors['gpxs'][0]['lat']
+    lon_grid = sensors['gpxs'][0]['lon']
+
+    return vza, vaa, sza, saa, lat_grid, lon_grid
+
+def get_S2_microHH(config):
+    """
+        Generate the gm output for S2 microHH
+
+        return vza : viewing zentih angle; numpy array
+               vaa : viewing azimuth angle; numpy array
+               sza : solar zenith angle; numpy array
+               saa : solar azimuth angle; numpy array
+               lat_grid : pixel latitude grid; numpy array
+               lon_grid: pixel_longitude grid, numpy array
+    """
+    from lib import libGM
+    from lib import constants
+    nact = config["field_of_regard"]["nact"]
+    nalt = config["field_of_regard"]["nalt"]
+
+    vza = np.empty([nalt, nact])
+    vaa = np.empty([nalt, nact])
+
+    # across track angles, assume equi-distant sampling
+    alpha_act_min = config["field_of_regard"]["alpha_act_min"]
+    alpha_act_max = config["field_of_regard"]["alpha_act_max"]
+    delta_alpha = (alpha_act_max - alpha_act_min) / (nact - 1)
+
+    alpha_act = (delta_alpha * np.arange(nact) + alpha_act_min) / 180.0 * np.pi
+
+    # extract time and location data from YAML settings
+    when = [
+        config["time"]["year"],
+        config["time"]["month"],
+        config["time"]["day"],
+        config["time"]["hour"],
+        config["time"]["minute"],
+        config["time"]["timezone"],
+    ]
+    lat_ref = config["geometry"]["lat_initial"]
+    lon_ref = config["geometry"]["lon_initial"]
+
+    # geocentric radius as a function of latitude for WGS84, see https://en.wikipedia.org/wiki/Earth_radius
+    coslat = np.cos(lat_ref / 180.0 * np.pi)
+    sinlat = np.sin(lat_ref / 180.0 * np.pi)
+
+    Rearth = np.sqrt(
+        ((constants.a_axis_earth**2 * coslat) ** 2 + (constants.b_axis_earth**2 * sinlat) ** 2)
+        / ((constants.a_axis_earth * coslat) ** 2 + (constants.b_axis_earth * sinlat) ** 2)
+    )
+
+    # spatial sampling in ACT direction, see atbd for defintion of phi
+    bcoeff = (
+        -2
+        * (Rearth + config["satellite"]["sat_height"])
+        * np.cos(alpha_act + config["satellite"]["alpha_roll"] / 180.0 * np.pi)
+    )
+    ccoeff = (Rearth + config["satellite"]["sat_height"]) ** 2 - Rearth**2
+    Lalpha = -0.5 * (bcoeff + np.sqrt(bcoeff**2 - 4 * ccoeff))
+    cosphi = (Rearth**2 + (Rearth + config["satellite"]["sat_height"]) ** 2 - Lalpha**2) / (
+        2.0 * Rearth * (Rearth + config["satellite"]["sat_height"])
+    )
+    phi = np.arccos(cosphi)
+    sact = phi * Rearth
+    # convention: negative distances to the west of the subsatellite point, positive distances to the east
+    idx = (alpha_act + config["satellite"]["alpha_roll"] / 180.0 * np.pi) < 0.0
+    sact[idx] = -sact[idx]
+
+    # calculate viewing zenith and viewing azimuth angle. Here we assume, that these angles are the same for each scanline
+    vza_tmp = (alpha_act) / np.pi * 180.0 + config["satellite"]["alpha_roll"]
+    idx = vza_tmp < 0.0
+    vza_tmp[idx] = -vza_tmp[idx]
+    for ialt in range(nalt):
+        vza[ialt, :] = vza_tmp
+    # the longitude coordinate line and a swath perpendicular to this. So all points to the west of
+    # the subsatellite have an azimuth angle of -90 degree, for points all to Earst it is 90 degree.
+    vaa_tmp = np.zeros(alpha_act.size) + 90.0  # true for all LOS with sact > 0
+    vaa_tmp[idx] = 270.0
+    for ialt in range(nalt):
+        vaa[ialt, :] = vaa_tmp
+
+    # Spatial sampling in ALT direction
+    # angular velocity
+    radicand = constants.grav * constants.mearth / (Rearth + config["satellite"]["sat_height"]) ** 3
+    omega_sat = np.sqrt(radicand)
+    # satellite ground speed, term cos(phi) need as ground speed varies with swath position
+    v_ground = omega_sat * Rearth * cosphi
+
+    # relative spatial sampling distance
+    salt = v_ground * config["time"]["time_incremental"]
+    # spatial grid
+    spat_grid = [salt, sact]
+    # transformation to a (lat,lon) grid
+    sza, saa, lat_grid, lon_grid = libGM.trans_lat_lon(lat_ref, lon_ref, when, spat_grid, nalt, nact)
+
+    return vza, vaa, sza, saa, lat_grid, lon_grid
+
+def gm_output(config, vza, vaa, sza, saa, lat_grid, lon_grid):
+    """
+       Write gm oputput to filename (set in config file) as nc file.
+    """
+
+    filename = config['output']
+    # Check if directory exists, otherwise create:
+    out_dir = os.path.split(filename)[0]
+    if not os.path.exists(out_dir):
+        os.makedirs(out_dir)
+
+    title = config['output_title']
+
     nact = len(lat_grid[0,:])
     nalt = len(lat_grid[:,0])
     output = nc.Dataset(filename, mode='w')
-    output.title = 'Tango Carbon E2ES GM output'
+#    output.title = 'Tango Carbon E2ES GM output'
+    output.title = title
     output.createDimension('bins_across_track', nact)    # across track axis
     output.createDimension('bins_along_track', nalt)     # along track axis
     # dimensions
@@ -33,7 +253,9 @@ def gm_output(filename, vza, vaa, sza, saa, lat_grid, lon_grid):
 
 
 def orbit_simulation(config):
-    # define the orbit
+    """
+        define the orbit
+    """
     sat = Satellite(config['orbit'])
 
     # propagate the orbit
@@ -47,8 +269,9 @@ def orbit_simulation(config):
 
 
 def sensor_simulation(config, sat):
-
-    # propogate sensors
+    """
+        propogate sensors
+    """
     gpxs = []
     sensor_config = []
     pitch = []
@@ -99,7 +322,9 @@ def sensor_simulation(config, sat):
 
 
 def interpolate_pitch(sensors, pitch, i_time):
-
+    """
+        What does this do exactly?
+    """
     # assumes that ordering of sensors['pitch'] is either monotonically increasing or monotonically decreasing
     sign = np.sign(sensors['pitch'][1] - sensors['pitch'][0])
     # note that it will extrapolate by using the edge values
@@ -132,14 +357,26 @@ def interpolate_pitch(sensors, pitch, i_time):
 
     return gpx
 
-def gm_output_old(filename, vza, vaa, sza, saa, lat_grid, lon_grid,):
+def gm_output_old(config, vza, vaa, sza, saa, lat_grid, lon_grid,):
+    """
+       Write  gm oputput to filename (set in config file) as nc file.
+       why is this labeled old?
+    """
+
+    filename = config['output']
+    # Check if directory exists, otherwise create:
+    out_dir = os.path.split(filename)[0]
+    if not os.path.exists(out_dir):
+        os.makedirs(out_dir)
+    title = config['output_title']
 
     nact = len(lat_grid[0])
     nalt = len(lat_grid)
 
     output = nc.Dataset(filename, mode='w')
 
-    output.title = 'Tango Carbon E2ES GM output'
+#    output.title = 'Tango Carbon E2ES GM output'
+    output.title = title
 
     output.createDimension('bins_across_track', nact)    # across track axis
     output.createDimension('bins_along_track', nalt)     # along track axis
@@ -203,185 +440,28 @@ def geometry_module(config):
 
     """
 
-    # sys.path.append(global_config['path']['e2es_path']+'lib')
-    from lib import libGM
-    from lib import constants
-
+    # TODO: dict? they are numpy arays. Toch?
     # the gm output is orginazed in dictionaries of the format dic[nalt, nact]
 
-    ninit = 0
     if config['profile'] == "individual_spectra":
-        # Generate the gm output for individual spectra
-        # first check consistencies of 'indivual_spectra' nput.
+        vza, vaa, sza, saa, lat_grid, lon_grid = get_individual_spectra(config)
 
-        nn = len(config['scene_spec']['sza'])
+    elif (config['profile'] == "single_swath"):
 
-        ns = (
-            nn
-            + len(config['scene_spec']['saa']) + len(config['scene_spec']['vza'])
-            + len(config['scene_spec']['vaa']) + len(config['scene_spec']['albedo'])) / 5
-
-        
-        if nn != ns:
-            sys.exit("input error in gm, code 1")
-
-        # here we use the 2-dimensional data structure in an artificial way
-
-        nact = nn
-        nalt = 1
-
-        lon_grid = np.empty([nalt, nact])
-        lat_grid = np.empty([nalt, nact])
-        sza = np.empty([nalt, nact])
-        saa = np.empty([nalt, nact])
-        vza = np.empty([nalt, nact])
-        vaa = np.empty([nalt, nact])
-
-        lat_grid[0, :] = np.nan
-        lon_grid[0, :] = np.nan
-
-        nact = len(lat_grid[0])
-        nalt = len(lat_grid)
-
-        sza[0, :] = config['scene_spec']['sza'][:]
-        saa[0, :] = config['scene_spec']['saa'][:]
-        vza[0, :] = config['scene_spec']['vza'][:]
-        vaa[0, :] = config['scene_spec']['vaa'][:]
-        
-        ninit = ninit + 1
-
-    if (config['profile'] == "single_swath"):
-
-        nact = config['field_of_regard']['nact']       
-        nalt = 1
-
-        ncheck = len(config['scene_spec']['sza']) + len(config['scene_spec']['saa']) + \
-                 len(config['scene_spec']['vza']) + len(config['scene_spec']['vaa']) + \
-                 len(config['scene_spec']['albedo'])
-
-        print('ncheck:', ncheck/5.)
-        if (ncheck != 5*nact):
-            sys.exit("input error in gm, nact!=100, code 2")
-
-        lon_grid = np.empty([nalt, nact])
-        lat_grid = np.empty([nalt, nact])
-        sza = np.empty([nalt, nact])
-        saa = np.empty([nalt, nact])
-        vza = np.empty([nalt, nact])
-        vaa = np.empty([nalt, nact])
-
-        lat_grid[0][:] = np.nan
-        lon_grid[0][:] = np.nan
-
-        sza[0, :] = config['scene_spec']['sza'][:]
-        saa[0, :] = config['scene_spec']['saa'][:]
-        vza[0, :] = config['scene_spec']['vza'][:]
-        vaa[0, :] = config['scene_spec']['vaa'][:]
-
-        ninit = ninit + 1
+        vza, vaa, sza, saa, lat_grid, lon_grid = get_single_swath(config)
     
-    if (config['profile'] == "orbit"):
+    elif (config['profile'] == "orbit"):
         # configure satellite and propagate orbit
-        sat = orbit_simulation(config)
+        vza, vaa, sza, saa, lat_grid, lon_grid = get_orbit(config)
 
-        # configure sensors and compute ground pixel information
-        sensors = sensor_simulation(config, sat)
+    elif (config['profile'] == "S2_microHH"):
+        vza, vaa, sza, saa, lat_grid, lon_grid = get_S2_microHH(config)
 
-        vza = sensors['gpxs'][0]['vza']
-        vaa = sensors['gpxs'][0]['vaa']
-        sza = sensors['gpxs'][0]['sza']
-        saa = sensors['gpxs'][0]['saa']
-        lat_grid = sensors['gpxs'][0]['lat']
-        lon_grid = sensors['gpxs'][0]['lon']
-        
-        ninit = ninit + 1
-        
-    if (config['profile'] == "S2_microHH"):
-        nact = config["field_of_regard"]["nact"]
-        nalt = config["field_of_regard"]["nalt"]
-
-        vza = np.empty([nalt, nact])
-        vaa = np.empty([nalt, nact])
-
-        # across track angles, assume equi-distant sampling
-        alpha_act_min = config["field_of_regard"]["alpha_act_min"]
-        alpha_act_max = config["field_of_regard"]["alpha_act_max"]
-        delta_alpha = (alpha_act_max - alpha_act_min) / (nact - 1)
-
-        alpha_act = (delta_alpha * np.arange(nact) + alpha_act_min) / 180.0 * np.pi
-
-        # extract time and location data from YAML settings
-        when = [
-            config["time"]["year"],
-            config["time"]["month"],
-            config["time"]["day"],
-            config["time"]["hour"],
-            config["time"]["minute"],
-            config["time"]["timezone"],
-        ]
-        lat_ref = config["geometry"]["lat_initial"]
-        lon_ref = config["geometry"]["lon_initial"]
-
-        # geocentric radius as a function of latitude for WGS84, see https://en.wikipedia.org/wiki/Earth_radius
-        coslat = np.cos(lat_ref / 180.0 * np.pi)
-        sinlat = np.sin(lat_ref / 180.0 * np.pi)
-
-        Rearth = np.sqrt(
-            ((constants.a_axis_earth**2 * coslat) ** 2 + (constants.b_axis_earth**2 * sinlat) ** 2)
-            / ((constants.a_axis_earth * coslat) ** 2 + (constants.b_axis_earth * sinlat) ** 2)
-        )
-
-        # spatial sampling in ACT direction, see atbd for defintion of phi
-        bcoeff = (
-            -2
-            * (Rearth + config["satellite"]["sat_height"])
-            * np.cos(alpha_act + config["satellite"]["alpha_roll"] / 180.0 * np.pi)
-        )
-        ccoeff = (Rearth + config["satellite"]["sat_height"]) ** 2 - Rearth**2
-        Lalpha = -0.5 * (bcoeff + np.sqrt(bcoeff**2 - 4 * ccoeff))
-        cosphi = (Rearth**2 + (Rearth + config["satellite"]["sat_height"]) ** 2 - Lalpha**2) / (
-            2.0 * Rearth * (Rearth + config["satellite"]["sat_height"])
-        )
-        phi = np.arccos(cosphi)
-        sact = phi * Rearth
-        # convention: negative distances to the west of the subsatellite point, positive distances to the east
-        idx = (alpha_act + config["satellite"]["alpha_roll"] / 180.0 * np.pi) < 0.0
-        sact[idx] = -sact[idx]
-
-        # calculate viewing zenith and viewing azimuth angle. Here we assume, that these angles are the same for each scanline
-        vza_tmp = (alpha_act) / np.pi * 180.0 + config["satellite"]["alpha_roll"]
-        idx = vza_tmp < 0.0
-        vza_tmp[idx] = -vza_tmp[idx]
-        for ialt in range(nalt):
-            vza[ialt, :] = vza_tmp
-        # the longitude coordinate line and a swath perpendicular to this. So all points to the west of
-        # the subsatellite have an azimuth angle of -90 degree, for points all to Earst it is 90 degree.
-        vaa_tmp = np.zeros(alpha_act.size) + 90.0  # true for all LOS with sact > 0
-        vaa_tmp[idx] = 270.0
-        for ialt in range(nalt):
-            vaa[ialt, :] = vaa_tmp
-
-        # Spatial sampling in ALT direction
-        # angular velocity
-        radicand = constants.grav * constants.mearth / (Rearth + config["satellite"]["sat_height"]) ** 3
-        omega_sat = np.sqrt(radicand)
-        # satellite ground speed, term cos(phi) need as ground speed varies with swath position
-        v_ground = omega_sat * Rearth * cosphi
-
-        # relative spatial sampling distance
-        salt = v_ground * config["time"]["time_incremental"]
-        # spatial grid
-        spat_grid = [salt, sact]
-        # transformation to a (lat,lon) grid
-        sza, saa, lat_grid, lon_grid = libGM.trans_lat_lon(lat_ref, lon_ref, when, spat_grid, nalt, nact)
-
-        ninit = ninit + 1
-
-    if ninit != 1:
-        sys.exit("something went wrong in gm, code=3, ninit = " +  str(ninit))
+    else:
+        sys.exit(f"something went wrong in gm, code=3, unrecognized profile choise: {config['profile']}")
 
     # write data to output file
-    gm_output(config['output'], vza, vaa, sza, saa, lat_grid, lon_grid)
+    gm_output(config, vza, vaa, sza, saa, lat_grid, lon_grid)
 
     print(
         "=>gm calculation finished successfully. ")

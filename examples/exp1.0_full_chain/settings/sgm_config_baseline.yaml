@@ -25,4 +25,5 @@ spec_settings:              #settings for line-by-line spectra
     
 xsec_forced: False          #flag to force new cross section calculation
 s2_forced:   False          #flag to force Sentinel 2 calculation
-meteo_forced: True         #flag to force microHH data processing
+meteo_forced: True          #flag to force microHH data processing
+sw_geo_output_raw: True     #flag to get unconvolved raw atmospheric data

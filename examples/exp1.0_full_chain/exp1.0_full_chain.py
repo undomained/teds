@@ -13,7 +13,7 @@ sys.path.insert(1, "/home/jochen/TANGO_E2ES/EndtoEndProject/end_to_end/")
 
 from teds.GM.gm import geometry_module
 from teds.GM.create_gm_yaml_file import create_gm_config_file
-from teds.SGM.sgm import scene_generation_module
+from teds.SGM.sgm import scene_generation_module_new
 from teds.SGM.create_sgm_yaml_file import create_sgm_config_file
 from teds.IM.create_im_configuration_file import im_configuration
 from teds.L1AL1B.create_l1a1b_configuration_file import l1al1b_configuration
@@ -56,6 +56,7 @@ locations.sgm['xsec_dump']    = path_tmp + 'Tango_Carbon_xsec_exp1.0.pkl'
 locations.sgm['sun_reference']= path_sol_spec + 'hybrid_reference_spectrum_c2021-03-04_with_unc.nc'
 locations.sgm['rad_output']   = path_interface + 'sgm/Tango_Carbon_sgm_radiance_exp1.0.nc'
 locations.sgm['geo_output']   = path_interface + 'sgm/Tango_Carbon_sgm_atmosphere_exp1.0.nc'
+locations.sgm['geo_output_raw']= path_interface + 'sgm/Tango_Carbon_sgm_atmosphere_raw_exp1.0.nc'
 locations.sgm['hapi_path']    = path_harpi
 
 locations.__setattr__('im', {})
@@ -98,7 +99,7 @@ locations.l2l4['l2_input']   = path_interface + 'level2/Tango_Carbon_l2_exp1.0_s
 profile= 'orbit'   #needed to initialize gm and sgm consistently
 
 settings= {}
-settings['gm']        = True
+settings['gm']        = False
 settings['sgm']       = True
 settings['im']        = False
 settings['l1al1b']    = False
@@ -132,7 +133,7 @@ if __name__ == "__main__":
         if(settings['save_yaml']):
             sgm_yaml = './save_yaml/sgm_config_exp1.0.yaml'
             create_sgm_config_file(sgm_yaml, sgm_config)
-        scene_generation_module(sgm_config)
+        scene_generation_module_new(sgm_config)
 
     # ======= The instrument model =================================
 

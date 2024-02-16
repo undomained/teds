@@ -94,6 +94,7 @@ def get_sentinel2_albedo_new(lat, lon):
     lon : Matrix
         Longitude at microHH grids
     """    
+    print("Getting S2 albedo data ...")
     S2_reading_log = False
     S2_albedo_raw, S2_ssd = get_raw_sentinel2_data(lat, lon, S2_reading_log)
 
@@ -118,6 +119,7 @@ def get_sentinel2_albedo_new(lat, lon):
 
     # Note that the albedo values need to be divided by 10,000.
     albedo = albedo / 1e4
+    print("                      ...done")
     return albedo
 
 
@@ -154,7 +156,7 @@ def get_sentinel2_albedo(gm_data, conf, band='B11'):
 
     if(S2_reading_log):
         S2_albedo_conv.plot(robust=True)
-
+    
 #   Change coordinate system to WGS84
     S2_albedo_resampled = S2_albedo_conv.rio.reproject('EPSG:4326')
     if(S2_reading_log):

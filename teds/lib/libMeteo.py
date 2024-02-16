@@ -22,6 +22,8 @@ def readgridtime(f, data, gas):
         data.__setattr__("gridtype", "irrgular")
     data.__setattr__("dx", dx)
     data.__setattr__("dy", dy)
+    data.__setattr__("x", f["x"][:])
+    data.__setattr__("y", f["y"][:])
     data.__setattr__("lat", f["latitude"][:])
     data.__setattr__("lon", f["longitude"][:])
     data.__setattr__("z", f["z"][:])

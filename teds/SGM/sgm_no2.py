@@ -363,7 +363,7 @@ def set_disamar_cfg_sim(cfg, dis_cfg, ground_points, profiles, albedo, i_t, i_x)
     pt_sim = dis_cfg['PRESSURE_TEMPERATURE', 'PT_sim', 'PT']
     pt_sim.set_rawvalue(np.asarray([profiles['p'][i_t,i_x,:], profiles['t'][i_t,i_x,:]]).T)
     pt_retr = dis_cfg['PRESSURE_TEMPERATURE', 'PT_retr', 'PT']
-    pt_retr.set_rawvalue(np.asarray([np.round(profiles['p'][i_t,i_x,:],3), np.round(profiles['t'][i_t,i_x,:],3), np.ones(profiles['p'][i_t,i_x,:].shape, dtype=float)]).T)
+    pt_retr.set_rawvalue(np.asarray([profiles['p'][i_t,i_x,:], profiles['t'][i_t,i_x,:], np.ones(profiles['p'][i_t,i_x,:].shape, dtype=float)]).T)
 
     # gas profiles
     for gas in cfg['atm']['gases']:

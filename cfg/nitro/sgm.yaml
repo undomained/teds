@@ -37,7 +37,7 @@ atm:
 
 
 rtm:                                        # disamar settings
-    tmp_dir:    '/tmp/tango_e2e'
+    tmp_dir:    '/data/ssd/leune/tango_tmp'
 
     # disamar_cfg_template: '../cfg/nitro/disamar_config_sim_no2only.in_template'
     disamar_cfg_template: '../cfg/nitro/disamar_config_sim.in_template'

@@ -42,7 +42,6 @@ def shrink_extend_domain(gm_x, gm_y, x, y):
     
     """
     # get bounds of the GM domain
-    breakpoint()
     _x = np.array([gm_x[0,0], gm_x[0,-1], gm_x[-1,0], gm_x[-1,-1]])
     _y = np.array([gm_y[0,0], gm_y[0,-1], gm_y[-1,0], gm_y[-1,-1]])
 

@@ -1,10 +1,10 @@
-ckd_input: '../data/ckd.nc'
-rad_input: '../data/sgm_radiance.nc'
-binning_table: '../data/binning_table.nc'
-lla_output: '../data/l1a.nc'
+ckd_input: '../data/no2/ckd.nc'
+rad_input: '../data/no2/sgm_radiance.nc'
+binning_table: '../data/no2/binning_table.nc'
+l1a_file: '../data/no2/l1a.nc'
 IM_path:  './'
 ############################
-settings:
+settings_IM:
 # Not used in create_im_config script:
 #    fmc:             5                                   #forward motion compensation
     bin_id:          1                                   #across track binning

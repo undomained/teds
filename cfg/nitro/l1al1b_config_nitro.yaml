@@ -1,6 +1,6 @@
 ckd_input: '../data/no2/ckd.nc'
 binning_table: '../data/no2/binning_table.nc'
-gm_input: '../data/no2/geometry.nc'
+gm_file: '../data/no2/geometry.nc'
 l1a_file: '../data/no2/l1a.nc'
 l1b_file: '../data/no2/l1b.nc'
 L1AL1B_path:  './'

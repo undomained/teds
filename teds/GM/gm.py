@@ -226,13 +226,13 @@ def gm_output(config, vza, vaa, sza, saa, lat_grid, lon_grid):
        Write gm oputput to filename (set in config file) as nc file.
     """
 
-    filename = config['output']
+    filename = config['gm_file']
     # Check if directory exists, otherwise create:
     out_dir = os.path.split(filename)[0]
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    title = config['output_title']
+    title = config['gm_title']
 
     nact = len(lat_grid[0,:])
     nalt = len(lat_grid[:,0])

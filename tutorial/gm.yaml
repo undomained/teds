@@ -84,5 +84,5 @@ sensors:
 #     alpha_roll: 0.              #roll angle [degree]
 #     sat_height: 500000          #orbit height [m]
 
-output: '../data/geometry.nc'
-output_title: 'Tango Carbon E2ES GM output'
+gm_file: '../data/geometry.nc'
+gm_title: 'Tango Carbon E2ES GM output'

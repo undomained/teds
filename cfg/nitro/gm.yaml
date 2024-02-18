@@ -26,5 +26,5 @@ sensors:
     yaw: 0.0
 
 
-output: '../data/no2/geometry.nc'
-output_title: 'Tango Nitro E2ES GM output'
+gm_file: '../data/no2/geometry.nc'
+gm_title: 'Tango Nitro E2ES GM output'

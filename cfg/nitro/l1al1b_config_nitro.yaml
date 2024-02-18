@@ -1,0 +1,15 @@
+ckd_input: '../data/no2/ckd.nc'
+binning_table: '../data/no2/binning_table.nc'
+gm_input: '../data/no2/geometry.nc'
+l1a_file: '../data/no2/l1a.nc'
+l1b_file: '../data/no2/l1b.nc'
+L1AL1B_path:  './'
+############################
+settings_L1AL1B:
+    geolocation:  0       #calculate geolocation (0 no, 1 yes), currently only 0 possible
+    van_cittert_steps: 4  #van Citter iteration for stray light correction (0=no correction)
+    sw_dark:         1                                   #switch dark current (1 on, 0 off)
+    sw_nonlin:       1                                   #switch non-linearity (1 on, 0 off)
+    sw_prnu:         1                                   #switch pixel response non-uniformity (1 on, 0 off)
+#    sw_stray:        1                                   #switch dark spectrometer stray light (1 on, 0 off)
+    sw_rad:          1                                   #switch radiometric calibration (1 on, 0 off)

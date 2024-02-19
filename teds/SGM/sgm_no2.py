@@ -423,7 +423,7 @@ def read_disamar_output(gm_data,tmp_dir):
 
     for iact in range(nact):
         for ialt in range(nalt):
-            file = f'{tmp_dir}/act{iact:03d}_alt{ialt:04d}.h5'
+            file = f'{tmp_dir}/alt{ialt:04d}_act{iact:03d}.h5'
             
             if os.path.isfile(file) is False:
                 print(f'error: {file} not found')
@@ -776,11 +776,11 @@ def scene_generation_module_nitro(config):
 
             dis_cfg = set_disamar_cfg_sim(config, dis_cfg, gm_data, dis_profiles, albedo, ialt, iact)
 
-            filename = f'{tmp_dir}/act{iact:03d}_alt{ialt:04d}.in'
+            filename = f'{tmp_dir}/alt{ialt:04d}_act{iact:03d}.in'
             dis_cfg.write(filename=filename)
             dis_cfg_filenames.append(filename)
     
-
+    
     # 5B) run disamar in parallel
     print('running disamar')
 
@@ -788,7 +788,7 @@ def scene_generation_module_nitro(config):
     # run_disamar(dis_cfg_filenames[0])
 
     with multiprocessing.Pool(config['rtm']['n_threads']) as pool:
-        stat = set(pool.map(run_disamar, dis_cfg_filenames))
+        stat = pool.map(run_disamar, dis_cfg_filenames,chunksize=1)
 
     # 5C) read disamar output
 

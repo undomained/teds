@@ -80,7 +80,7 @@ def getConfig(logger, cfgFile):
     return config
 
 
-def build(logger, config, step):
+def build(logger, config, step, cfg_path):
     """
         Run E2E processor.
         - logger: Reference to the program logger
@@ -103,13 +103,15 @@ def build(logger, config, step):
         E2EModule.im_configuration(config)
         # Need to call C++
 #        output = subprocess.run(["IM/tango_ckd_model/build/ckdmodel", "../cfg/nitro/im_config.cfg"], stdout = subprocess.PIPE, universal_newlines = True).stdout
-        subprocess.run(["IM/tango_ckd_model/build/ckdmodel", "../cfg/nitro/im_config.cfg"])
+#        subprocess.run(["IM/tango_ckd_model/build/ckdmodel", "../cfg/nitro/im_config.cfg"])
+        subprocess.run(["IM/tango_ckd_model/build/ckdmodel", f"{cfg_path}/im_config.cfg"])
     if step == 'l1al1b' or step == 'all':
         # Create cfg file to be used for L1AL1B executable
         E2EModule = importlib.import_module("L1AL1B.create_l1a1b_configuration_file_nitro")
         E2EModule.l1al1b_configuration(config)
         # Need to call C++
-        subprocess.run(["L1AL1B/tango_l1b/build/tango_l1b", "../cfg/nitro/l1al1b_config.cfg"])
+#        subprocess.run(["L1AL1B/tango_l1b/build/tango_l1b", "../cfg/nitro/l1al1b_config.cfg"])
+        subprocess.run(["L1AL1B/tango_l1b/build/tango_l1b", f"{cfg_path}/l1al1b_config.cfg"])
     if step == 'l1l2' or step == 'all':
         E2EModule = importlib.import_module("L1L2.l1l2")
         E2EModule.level1b_to_level2_processor(config)
@@ -119,12 +121,12 @@ def build(logger, config, step):
 if __name__ == "__main__":
     
     cfgFile, step =  cmdline(sys.argv[1:])
-    # TODO get path
-    
+    cfg_path, filename = os.path.split(cfgFile)
+
     build_logger = get_logger()
 
     config = getConfig(build_logger, cfgFile)
 
 
-    build(build_logger, config, step) 
+    build(build_logger, config, step, cfg_path)
 

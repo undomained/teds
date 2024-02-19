@@ -30,7 +30,7 @@ def l1al1b_configuration(local_config):
     #Location of the level1b data
     lines.append('outputfile = ' + local_config['l1b_file']+'\n')
     #location of gm input
-    lines.append('geometry_file = ' + local_config['gm_input']+'\n')
+    lines.append('geometry_file = ' + local_config['gm_file']+'\n')
     # enable sub-module of level 0 to 1b processor (1 = switch on, 0 = switch off)
     # dark current
     lines.append('dark_apply = '+str(local_config['settings_L1AL1B']['sw_dark'])+'\n')

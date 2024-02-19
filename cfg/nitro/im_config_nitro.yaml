@@ -1,8 +1,9 @@
-ckd_input: '../data/no2/ckd.nc'
+ckd_input: '../data/no2/ckd/ckd.nc'
 rad_input: '../data/no2/sgm_radiance.nc'
-binning_table: '../data/no2/binning_table.nc'
+binning_table: '../data/no2/ckd/binning_table.nc'
 l1a_file: '../data/no2/l1a.nc'
-IM_path:  './'
+#IM_path:  './'
+IM_path:  '../cfg/nitro/'
 ############################
 settings_IM:
 # Not used in create_im_config script:

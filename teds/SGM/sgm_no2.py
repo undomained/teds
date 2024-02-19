@@ -13,8 +13,6 @@ from copy import deepcopy
 import netCDF4 as nc
 import numpy as np
 import yaml
-from tqdm import tqdm
-import scipy.interpolate
 import multiprocessing
 import datetime
 import time
@@ -33,15 +31,14 @@ class Dict2Class:
 
 
 def get_gm_data(filename):
-    input = nc.Dataset(filename, mode='r')
-    gm_data = {}
-    gm_data['sza'] = deepcopy(input['sza'][:, :])
-    gm_data['saa'] = deepcopy(input['saa'][:, :])
-    gm_data['vza'] = deepcopy(input['vza'][:, :])
-    gm_data['vaa'] = deepcopy(input['vaa'][:, :])
-    gm_data['lat'] = deepcopy(input['lat'][:, :])
-    gm_data['lon'] = deepcopy(input['lon'][:, :])
-    input.close()
+    with nc.Dataset(filename, mode='r') as data:
+        gm_data = {}
+        gm_data['sza'] = deepcopy(data['sza'][:, :])
+        gm_data['saa'] = deepcopy(data['saa'][:, :])
+        gm_data['vza'] = deepcopy(data['vza'][:, :])
+        gm_data['vaa'] = deepcopy(data['vaa'][:, :])
+        gm_data['lat'] = deepcopy(data['lat'][:, :])
+        gm_data['lon'] = deepcopy(data['lon'][:, :])
     return gm_data
 
 
@@ -191,7 +188,6 @@ def combine_mhh_cams( mhh_data, atm, species=['no2', 'co2', 'no']):
 
     nz = atm['hyai'].shape[0] # output number of layers
 
-    d_species = {}
     for s in species:
         setattr( mhh_data, s + '_regridded', np.zeros((nz-1, nalt, nact)) )
 
@@ -220,7 +216,7 @@ def convert_atm_profiles(cfg, atm):
 
     profiles = {}
 
-    if config['atm']['type'] == 'afgl':
+    if cfg['atm']['type'] == 'afgl':
          # afgl, input is in molec/m2, convert to ppmv
         nact, nalt=  atm.shape
         nlev =  atm[0, 0].plev.shape[0]
@@ -233,13 +229,13 @@ def convert_atm_profiles(cfg, atm):
         for idx in range(nact):
             for idy in range(nalt):
 
-                psfc = atm[idx, idy].psurf / 100.0 # Pa --> hPa
+                # psfc = atm[idx, idy].psurf / 100.0 # Pa --> hPa
 
                 plev = atm[idx, idy].plev[::-1] / 100.0 # levels,  Pa --> hPa, surface --> TOA
                 play = atm[idx, idy].play[::-1] / 100.0 # layers, Pa --> hPa, surface --> TOA
 
                 tlev = atm[idx, idy].tlev[::-1]         # levels,  K --> hPa, surface --> TOA
-                tlay = atm[idx, idy].tlay[::-1]         # layers, K --> hPa, surface --> TOA
+                # tlay = atm[idx, idy].tlay[::-1]         # layers, K --> hPa, surface --> TOA
 
                 air = atm[idx, idy].air[::-1]           # layers, molec/m2, surface --> TOA
                 
@@ -271,7 +267,7 @@ def convert_atm_profiles(cfg, atm):
                 profiles['o3'][:,:,-1] = 7.4831730E-01
 
 
-    elif config['atm']['type'] == 'cams':
+    elif cfg['atm']['type'] == 'cams':
         # cams, input is alread in molec/m2
         # create pressure profile and rearange arrays
 
@@ -429,7 +425,7 @@ def read_disamar_output(gm_data,tmp_dir):
         for ialt in range(nalt):
             file = f'{tmp_dir}/act{iact}_alt{ialt}.h5'
             
-            if os.path.isfile(file) == False:
+            if os.path.isfile(file) is False:
                 print(f'error: {file} not found')
                 continue
 
@@ -766,7 +762,7 @@ def scene_generation_module_nitro(config):
     if os.path.isfile(config['rtm']['disamar_cfg_template']):
         dis_cfg = libRT_no2.RT_configuration(filename=config['rtm']['disamar_cfg_template'])
     else:
-        print(f'error: file {file} not found')
+        print(f"error: file {config['rtm']['disamar_cfg_template']} not found")
 
     dis_cfg_filenames=[]
 

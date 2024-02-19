@@ -423,7 +423,7 @@ def read_disamar_output(gm_data,tmp_dir):
 
     for iact in range(nact):
         for ialt in range(nalt):
-            file = f'{tmp_dir}/act{iact}_alt{ialt}.h5'
+            file = f'{tmp_dir}/act{iact:03d}_alt{ialt:04d}.h5'
             
             if os.path.isfile(file) is False:
                 print(f'error: {file} not found')
@@ -438,7 +438,7 @@ def read_disamar_output(gm_data,tmp_dir):
                     nwvl = len(dis_output['wavelength_lbl'])
                     dis_output['radiance'] = np.full((nalt,nact,nwvl), np.nan)
 
-                dis_output['radiance'][iact,ialt,:] = f['radiance_and_irradiance/earth_radiance_band_1'][:] *1.e4           # ph/s/nm/cm2/sr --> ph/s/nm/m2/sr
+                dis_output['radiance'][ialt,iact,:] = f['radiance_and_irradiance/earth_radiance_band_1'][:] *1.e4   # ph/s/nm/cm2/sr --> ph/s/nm/m2/sr
 
 
     if 'wavelength_lbl' not in dis_output:
@@ -776,7 +776,7 @@ def scene_generation_module_nitro(config):
 
             dis_cfg = set_disamar_cfg_sim(config, dis_cfg, gm_data, dis_profiles, albedo, ialt, iact)
 
-            filename = '{}/act{}_alt{}.in'.format(tmp_dir, iact, ialt)
+            filename = f'{tmp_dir}/act{iact:03d}_alt{ialt:04d}.in'
             dis_cfg.write(filename=filename)
             dis_cfg_filenames.append(filename)
     

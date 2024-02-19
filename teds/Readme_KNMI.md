@@ -14,19 +14,20 @@ Checkout the code:
 Create a virtual environment:
 `python -m venv venv_E2E`  (the last venv is name of directory)
 
-Starting virtual environment:
+### Starting virtual environment:
 `source venv_E2E/bin/activate`
 
-Deactivate virtual environment:
+### Deactivate virtual environment:
 `deactivate`
 
+### PIP
 While in virtual environment:
 Install/update pip:
 `python3 -m pip install --upgrade pip`
 Check it:
 `python3 -m pip --version`
 
-Install pakages in virtual env:
+### Install pakages in virtual env:
     - after activation just use pip install to install whatever package you want
       OR use requirement.txt:
         - Create a requirements.txt file:
@@ -36,6 +37,9 @@ Install pakages in virtual env:
           after activation of virtual environment:
           `pip install -r requirements.txt`
 
+### Set python path:
+From the teds directory:
+`export PYTHONPATH=$PWD/..:$PYTHONPATH`
 
 ## How to run a nominal case for Tango Nitro
 
@@ -44,7 +48,9 @@ Configuration files can be found in cfg/nitro.
 The configuration file for the nominal run is in this directory.  
 The different cases are in subdirectories.  
 All settings for the different steps are combined in 1 yaml file.  
-This ensures that the settings between te steps will be consitent.
+This ensures that the settings between te steps will be consitent.  
+Note: the .cfg files needed to run the C++ code in the IM and L1AL1B part are generated from the yaml input when step is `im`, `l1al1b` or `all`.  
+Where the .cfg file is written is determined in the yaml file settings, but python scripts expects this at the moment to be in the same location as the yaml file.
 
 ### Building the executables.
 See `build_instructions.md` in the teds directory

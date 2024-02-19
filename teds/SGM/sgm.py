@@ -369,7 +369,7 @@ def scene_generation_module(config):
     # =============================================================================
     # sgm output to radiometric file
     # =============================================================================
-    sgm_output_radio(config['rad_output'], rad_output)
+    sgm_output_rad(config['rad_output'], rad_output)
 
     print('=>sgm calcultion finished successfully')
     return
@@ -544,6 +544,12 @@ def scene_generation_module_new(config):
             # functions to dump data
         else:     
             # meteorological data
+            
+            pickle.dump(gm_data, open('./test.pkl', 'wb'))
+            print(config['meteo'])
+            breakpoint()
+            
+            sys.exit()
             meteodata = libATM.get_atmosphericdata_new(gm_data['lat'], gm_data['lon'], config['meteo'])
             # get albedo on the microhh grid
 

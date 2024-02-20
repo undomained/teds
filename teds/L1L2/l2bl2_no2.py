@@ -4,8 +4,11 @@ import sys
 import inspect
 import logging
 import yaml
-
 import netCDF4 as nc
+import matplotlib.pyplot as plt
+from threadpoolctl import threadpool_limits
+import multiprocessing.pool
+import time
 
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
@@ -14,21 +17,28 @@ sys.path.insert(0, parentdir)
 from lib import libDOAS
 
 
+
 def ifdoe_run(cfg):
     '''
      Routine which contains the IFDOE processing chain, i.e
      the main sections.
     '''
 
-    verboseLevel = 4
+    if cfg['debug']['plot']:
+        verboseLevel = 3
+    elif cfg['debug']['log']:
+        verboseLevel = 2
+    else:
+        verboseLevel = 0
 
-    # only one set of ref spec for one pixel
+    # only one set of ref spec for one pixel TODO: change
     groundPixel = 0
 
+    startTime = time.time()
 
     logger = logging.getLogger()
     
-    logger.info('Start IFDOE processing')
+    logger.info('=== Start IFDOE processing')
     
     cfg = libDOAS.AddConfig(cfg)
 
@@ -39,7 +49,7 @@ def ifdoe_run(cfg):
 
     # A.3  Read ref.spec. files & rescale wavelengths to [-1:+1] 
 
-    logging.info('Reading ref.spec.')
+    logging.info('=== Reading ref.spec.')
 
     # read in ascii ref.spec. for given ground pixel
 
@@ -63,7 +73,7 @@ def ifdoe_run(cfg):
 
     if 'act' in cfg:
         pxlBeg = cfg['act']['start']
-        pxlEnd = pxlRange['stop']
+        pxlEnd = cfg['act']['stop']
     else:
         pxlBeg = 0
         pxlEnd = pxlN - 1
@@ -74,12 +84,17 @@ def ifdoe_run(cfg):
     results = {}
     results['errorFlag'] = np.full((scanN,pxlN),np.nan)
 
+
+    # read geometry
+
+    geo = libDOAS.readGeometry(cfg)
+
     # B)  Solar spectrum
     # ------------------
 
 
     # B.1  Read spectrum & error
-
+    # TODO: tmp irr from SGM
     irrWvl, irr, irrError, irrFlag = libDOAS.ReadIrrSGM(cfg['input']['irr'], pxlN)
 
     # B.2  Filter for irradiance flags
@@ -102,28 +117,26 @@ def ifdoe_run(cfg):
         irrCalConverged = np.full((pxlN),np.nan)
 
         for ipxl in range(pxlBeg,pxlEnd+1,1):
-            irrWvlCal[ipxl,:], irrCalWs[ipxl], irrCalWsSigma[ipxl], irrCalWq[ipxl], irrCalWqSigma[ipxl], irrCalChiSquare[ipxl], irrCalConverged[ipxl]= libDOAS.irrCal(irr[ipxl,:],irrError[ipxl,:],irrWvl[ipxl,:],cfg,IFDOERefSpec,groundPixel,verboseLevel)
-            breakpoint()
             try:
-                irrWvlCal[ipxl,:], irrCalWs[ipxl], irrCalWsSigma[ipxl], irrCalWq[ipxl], irrCalWqSigma[ipxl], irrCalChiSquare[ipxl], irrCalConverged[ipxl]= libDOAS.irrCal(irr[ipxl,:],irrError[ipxl,:],irrWvl[ipxl,:],cfg,IFDOERefSpec,groundPixel,verboseLevel)
+                irrWvlCal[ipxl,:], irrCalWs[ipxl], irrCalWsSigma[ipxl], irrCalWq[ipxl], irrCalWqSigma[ipxl], irrCalChiSquare[ipxl], irrCalConverged[ipxl] = libDOAS.irrCal(irr[ipxl,:],irrError[ipxl,:],irrWvl[ipxl,:],cfg,IFDOERefSpec,groundPixel,verboseLevel)
             except:
                 logging.error(f'Pixel {ipxl} not converged')
                 irrCalConverged[ipxl] = 0
 
         # flag non-converged spectra
         if (irrCalConverged==0).any():
-            logging.info('Irr wvl cal: groundpixel(s) {} not converged'.format(np.where(irrCalConverged==0)))
+            logging.error('Irr wvl cal: groundpixel(s) {} not converged'.format(np.where(irrCalConverged==0)))
             results['errorFlag'][:,irrCalConverged==0] = 1
 
-        else:
-            irrWvlCal       = np.full((pxlN,irrWvl.shape[-1]),np.nan)
-            irrCalWs = irrCalWsSigma = irrCalWq = irrCalWqSigma = irrCalChiSquare = irrCalConverged = np.full((pxlN),np.nan)
+    else:
+        irrWvlCal       = np.full((pxlN,irrWvl.shape[-1]),np.nan)
+        irrCalWs = irrCalWsSigma = irrCalWq = irrCalWqSigma = irrCalChiSquare = irrCalConverged = np.full((pxlN),np.nan)
 
-        # B.4  Write calibration results to output_file
+    # B.4  Write calibration results to output_file
 
-        irrCalResults = ['irrWvlCal','irrCalWs','irrCalWsSigma','irrCalWq','irrCalWqSigma','irrCalChiSquare']
-        for parameter in irrCalResults:
-            results[parameter] = eval(parameter)
+    irrCalResults = ['irrWvlCal','irrCalWs','irrCalWsSigma','irrCalWq','irrCalWqSigma','irrCalChiSquare']
+    for parameter in irrCalResults:
+        results[parameter] = eval(parameter)
 
     # B.5  Rescale wavelengths to [-1:+1]
 
@@ -132,7 +145,6 @@ def ifdoe_run(cfg):
     else:
         irrWvlScaled = libDOAS.ScaleWvl(irrWvl,cfg['fit_window'])
 
-    breakpoint()
     
   # C)  Loop over scanlines
   # -----------------------
@@ -142,265 +154,155 @@ def ifdoe_run(cfg):
     resultScalarList = ['RMS','DOF','chiSquare','nIter','nOutliers','converged','nValid',
                         'radCalWs','radCalWsSigma','radCalWq','radCalWqSigma', 'radCalChiSquare']
 
-
     for name in resultScalarList:
         results[name]           = np.full((scanN,pxlN),np.nan)
-
-    # resultVectorList = ['RModel','RMeas','RRes','RTOA','wvl']
-
-    # for name in resultVectorList:
-    #     results[name]           = np.zeros((scanN,pxlN,wvlN))
 
     for name in parameterNames:
         results[name]           = np.full((scanN,pxlN),np.nan)
         results[name+'Sigma']   = np.full((scanN,pxlN),np.nan)
 
-    if (ProgKind == 'trop') or (ProgKind == 'co2m'):
-        results['amfGeo'] = np.full((scanN,pxlN),np.nan)
-        results['NO2Geo'] = np.full((scanN,pxlN),np.nan)
-        results['NO2GeoSigma'] = np.full((scanN,pxlN),np.nan)
-        results['R_NO2'] = np.full((scanN,pxlN),np.nan)
-        results['R_NO2_precision'] = np.full((scanN,pxlN),np.nan)
-        results['R_O2O2'] = np.full((scanN,pxlN),np.nan)
-        results['R_O2O2_precision'] = np.full((scanN,pxlN),np.nan)
+    results['amfGeo'] = np.full((scanN,pxlN),np.nan)
+    results['NO2Geo'] = np.full((scanN,pxlN),np.nan)
+    results['NO2GeoSigma'] = np.full((scanN,pxlN),np.nan)
+    results['R_NO2'] = np.full((scanN,pxlN),np.nan)
+    results['R_NO2_precision'] = np.full((scanN,pxlN),np.nan)
+    results['R_O2O2'] = np.full((scanN,pxlN),np.nan)
+    results['R_O2O2_precision'] = np.full((scanN,pxlN),np.nan)
 
-    if exportSpectra:  
+    if cfg['output']['export_spectra']:  
         results['wvl'] = np.full((scanN,pxlN,spectralN),np.nan)
         results['R_meas'] = np.full((scanN,pxlN,spectralN),np.nan)
         results['R_model'] = np.full((scanN,pxlN,spectralN),np.nan)
         results['R_res'] = np.full((scanN,pxlN,spectralN),np.nan)
 
+    # open file before threading, to ensure thread safety
+    ncRad = nc.Dataset(cfg['input']['rad'])
 
-    for iscan in range(scanBeg,scanEnd+1,1):
-        startTime = datetime.now()
+    logging.info('=== Starting radiance calibration and DOAS')
+
+    # scanline loop, inside internal function, so only the scanline index and mutable results dict have to be passed
+    def process_scanline(iscan,results):
+
+        startTimeScanline = time.time()
 
         # C.2  Read earth spectra & error
 
-        if ProgKind == 'trop':
-            radWvlScan, radScan, radErrorScan, radFlagScan, szaScan, vzaScan = IFDOE_func.ReadRadTrop(radFile,iscan)
+        # TODO: tmp solution for rad from SGM
+        radWvlScan, radScan, radErrorScan, radFlagScan = libDOAS.ReadRadSGM(ncRad, iscan)
 
-        elif ProgKind == 'co2m':
-            radWvlScan, radScan, radErrorScan, radFlagScan, szaScan, vzaScan = IFDOE_func.ReadRadCO2M(radFile,iscan,rng)
-
-        elif ProgKind == 'asc' and irrFile != None:
-            radWvl, rad, radError = IFDOE_func.ReadSpecAscii(radFile)
-
-
-        if (ProgKind == 'trop') or (ProgKind == 'co2m'):
-
-            # Filter for radiance flags
-            if (radFlagScan>2).any():
-
-                # allow eclipse and sun glint flag
-                IFDOE_func.printMessage(verboseLevel,'Rad spectrum: scanline {}, groundpixel(s) {} flagged'.format(iscan,np.where(radFlagScan>2)[0][:]))
-                results['errorFlag'][iscan,radFlagScan>2] = 1
-
-
-        
         # C.3  Loop over ground pixels along a scanline
-        
+
         for ipxl in range(pxlBeg,pxlEnd+1,1):
 
-            if irrFile != None:
+            # D)  Earth spectra
+            # -----------------
+            # D.1  Get spectrum & error
 
-                # start = time.time()
-
-              # D)  Earth spectra
-              # -----------------
-
-                # D.1  Get spectrum & error
-
-                if (ProgKind == 'trop') or (ProgKind == 'co2m'):
-
-                    rad = radScan[ipxl,:]
-                    radError = radErrorScan[ipxl,:]
-                    radWvl = radWvlScan[ipxl]
-                    sza = szaScan[ipxl]
-                    vza = vzaScan[ipxl]
-
-
-                    # skip pixel if sza > sza_limit
-                    if sza > cfg['sza_limit']:
-                        results['errorFlag'][iscan,ipxl] = 1
-                        IFDOE_func.printMessage(verboseLevel,'Scanline {}, ground pixel {}: SZA:{} > SZA_limit {}'.format(iscan,ipxl,sza,cfg['sza_limit']))
-                        continue
-
-                    #  skip if error flag is already raised
-                    if results['errorFlag'][iscan,ipxl] == 1 :
-                        IFDOE_func.printMessage(verboseLevel,'Skipping scanline {}, pixel {}: error flag'.format(iscan,ipxl))
-                        continue
-
-
-                # D.2  Calibrate spectrum
-                if cfg['wlcal_earth']:
-                    IFDOE_func.printMessage(verboseLevel,'=== Calibrating Earth spectrum')
-
-                    try:
-                        if cfg['ref_spectra_source'] == 'gaussian':
-                            radWvlCal, radCalWs, radCalWsSigma, radCalWq, radCalWqSigma, radCalChiSquare, radCalConverged = IFDOE_cal.radCal(rad,radError,radWvl,cfg,IFDOERefSpec,0,verboseLevel)
-
-                        else:
-                            radWvlCal, radCalWs, radCalWsSigma, radCalWq, radCalWqSigma, radCalChiSquare, radCalConverged = IFDOE_cal.radCal(rad,radError,radWvl,cfg,IFDOERefSpec,ipxl,verboseLevel)
-                    except:
-                        radCalConverged = 0
-
-                    # flag non-converged spectra
-                    if radCalConverged!=1:
-                        IFDOE_func.printMessage(verboseLevel,'Rad wvl cal: scanline {}, groundpixel {} not converged'.format(iscan,ipxl))
-                        results['errorFlag'][iscan,ipxl] = 1
-                        continue
-
-                else:
-                    radWvlCal       = np.full((irrWvl.shape[-1]),np.nan)
-                    radCalWs = radCalWsSigma = radCalWq = radCalWqSigma = radCalChiSquare = radCalConverged = np.nan
-
-
-                # D.3  Rescale wavelengths to [-1:+1]
-
-                if cfg['wlcal_earth']:
-                    radWvlScaled = IFDOE_func.ScaleWvl(radWvlCal,cfg['fit_window'])
-                else:
-                    radWvlScaled = IFDOE_func.ScaleWvl(radWvl,cfg['fit_window'])
-
-
-
-              # E)  Reflectance
-              # ---------------
+            rad = radScan[ipxl,:]
+            radError = radErrorScan[ipxl,:]
+            radWvl = radWvlScan[ipxl,:]
             
-                # # E.1  Interpolate earth grid to solar grid
-
-                # # Interpolate Earth to solar using spline
-                # radSolarGrid = SplineInterp1D(radWvlScaled,rad,commonWvl)
-                # radErrorSolarGrid = SplineInterp1D(radWvlScaled,radError,commonWvl)
-
-                # splineplotx = np.linspace(-1.2,2.1,10000)
-                # splineploty = SplineInterp1D(radWvlScaled,rad,splineplotx)
+            #  skip if error flag is already raised
+            if results['errorFlag'][iscan,ipxl] == 1 :
+                logging.error('Skipping scanline {}, pixel {}: error flag'.format(iscan,ipxl))
+                continue
 
 
-                # import matplotlib.pyplot as plt
-                # plt.figure()
-                # plt.plot(radWvlScaled, rad, 'x', label='original')
-                # plt.plot(irrWvlScaled, radSolarGrid, 'x', label='regridded')
-                # plt.plot(splineplotx, splineploty, '-', label='spline')
-                # plt.legend()
-                # plt.show()
+            # D.2  Calibrate spectrum
+            if cfg['wlcal_earth']:
+                logging.debug('=== Calibrating Earth spectrum')
+                
+                try:
+                    radWvlCal, radCalWs, radCalWsSigma, radCalWq, radCalWqSigma, radCalChiSquare, radCalConverged = libDOAS.radCal(rad,radError,radWvl,cfg,IFDOERefSpec,0,verboseLevel)
+                except:
+                    radCalConverged = 0
+
+                # flag non-converged spectra
+                if radCalConverged!=1:
+                    logging.error('Rad wvl cal: scanline {}, groundpixel {} not converged'.format(iscan,ipxl))
+                    results['errorFlag'][iscan,ipxl] = 1
+                    continue
+
+            else:
+                radWvlCal       = np.full((irr.shape[-1]),np.nan)
+                radCalWs = radCalWsSigma = radCalWq = radCalWqSigma = radCalChiSquare = radCalConverged = np.nan
 
 
-                # # E.1  Interpolate solar grid to earth grid using ref_solar
+            # D.3  Rescale wavelengths to [-1:+1]
 
-                irrRegridded, irrErrorRegridded = IFDOE_func.SolarToEarthWvl(IFDOERefSpec,radWvlScaled,irrWvlScaled,irr,irrError,ipxl,ProgKind)
+            if cfg['wlcal_earth']:
+                radWvlScaled = libDOAS.ScaleWvl(radWvlCal,cfg['fit_window'])
+            else:
+                radWvlScaled = libDOAS.ScaleWvl(radWvl,cfg['fit_window'])
 
-                commonWvl = radWvlScaled
+            # E)  Reflectance
+            # ---------------
+            # # E.1  Interpolate solar grid to earth grid using ref_solar
+            irrRegridded, irrErrorRegridded = libDOAS.SolarToEarthWvl(IFDOERefSpec,radWvlScaled,irrWvlScaled,irr,irrError,ipxl)
 
+            commonWvl = radWvlScaled
 
-                # import matplotlib.pyplot as plt
-                # plt.figure()
-                # plt.plot(irrWvlScaled[ipxl,:], irr[ipxl,:], 'x', label='original')
-                # plt.plot(radWvlScaled, irrRegridded, 'x', label='regridded')
-                # plt.plot(IFDOERefSpec['solarWvlScaled'],IFDOERefSpec['solar'][0,:], label='ref_solar')
-                # plt.legend()
-                # plt.title('irradiance')
-                # plt.show()
-
-
-                # E.2  Compute reflectance & error (do NOT add pi/mu0 term)
-
-                refl = rad/irrRegridded
-                reflError = 1/irrRegridded * np.sqrt( radError**2 + (irrErrorRegridded**2 * refl**2) )
-
-
-                # test with pi/mu0
-                # refl = radSolarGrid/irr * np.pi/np.cos(25.17924*np.pi/180.0)
-
-
-                # OR: Read reflectance & error (may have pi/mu0 term)
-            # When no irriadiance file is present, assume rad file is refl file
-            if ProgKind == 'asc'  and irrFile == None:
-
-                reflWvl, refl, reflError = IFDOE_func.ReadSpecAscii(radFile)
-
-                # rescale wavelengths to [-1:+1]
-                # set refl grid as common grid
-                commonWvl = IFDOE_func.ScaleWvl(reflWvl,cfg['fit_window'])
+            # E.2  Compute reflectance & error (do NOT add pi/mu0 term)
+            refl = rad/irrRegridded
+            reflError = 1/irrRegridded * np.sqrt( radError**2 + (irrErrorRegridded**2 * refl**2) )
 
 
             # E.3  Put ref.spec. at common grid using spline; cf. B.6
+            IFDOERefSpecRegrid = libDOAS.InterpRefSpecGrid(IFDOERefSpec,commonWvl,cfg,groundPixel)
 
-            if cfg['ref_spectra_source'] == 'gaussian':
-                IFDOERefSpecRegrid = IFDOE_func.InterpRefSpecGrid(IFDOERefSpec,commonWvl,ProgKind,cfg,0)
-            else:
-                IFDOERefSpecRegrid = IFDOE_func.InterpRefSpecGrid(IFDOERefSpec,commonWvl,ProgKind,cfg,ipxl)
-
-    
-          # F)  DOAS fit
-          # ------------
-
-            IFDOE_func.printMessage(verboseLevel,'=== DOAS fit')
+            # F)  DOAS fit
+            # ------------
+            logging.debug('=== DOAS fit')
 
             # F.1  Setup the model details
 
             # clip spectra to fit window 
-
             commonWvlFit = commonWvl[(commonWvl>=-1.0 ) & (commonWvl<=1.0)]
             reflFit = refl[(commonWvl>=-1.0 ) & (commonWvl<=1.0)]
             reflErrorFit = reflError[(commonWvl>=-1.0 ) & (commonWvl<=1.0)]
-
-
-            # plt.figure()
-            # plt.plot(commonWvlFit, reflFit)
-            # plt.title('reflectance')
-            # plt.show()
-
-
 
             IFDOERefSpecFit = {}
             for RefSpec in IFDOERefSpecRegrid:
                 IFDOERefSpecFit[RefSpec] = IFDOERefSpecRegrid[RefSpec][(commonWvl>=-1.0 ) & (commonWvl<=1.0)]
 
             # setup model
+            prior = np.asarray([cfg['prior']['doas'][key][0] for key in parameterNames])
+            priorCov = np.diag(np.asarray([cfg['prior']['doas'][key][1] for key in parameterNames])**2)
 
-            prior = np.asarray([cfg['prior'][key] for key in parameterNames])
-            priorCov = np.diag(np.asarray([cfg['prior_error'][key] for key in parameterNames])**2)
+            model = libDOAS.IFDOEmodel(prior=prior, priorCov=priorCov, 
+                otherModelParam=None, 
+                parameterNames=parameterNames,
+                verbose=verboseLevel-1,
+                observation=reflFit, 
+                observationError=reflErrorFit,
+                independentVariable=commonWvlFit,
+                IFDOEconfig=cfg,
+                IFDOErefspec=IFDOERefSpecFit)
 
+            
+            # F.2  Perform fit
             try:
-                model = IFDOE_model.IFDOEmodel(prior=prior, priorCov=priorCov, 
-                  otherModelParam=None, 
-                  parameterNames=parameterNames,
-                  verbose=verboseLevel-1,
-                  observation=reflFit, 
-                  observationError=reflErrorFit,
-                  independentVariable=commonWvlFit,
-                  cfg=cfg,
-                  IFDOErefspec=IFDOERefSpecFit)
-
+                oe = libDOAS.OE(model=model, maxiter=cfg['max_iterations'], stateVectorConvThreshold=cfg['convergence_threshold'])
                 
-                # F.2  Perform fit
-
-                oe = IFDOE_OE.OE(model=model, maxiter=cfg['max_iterations'], stateVectorConvThreshold=cfg['convergence_threshold'])
-                
-                # pdb.set_trace()
                 oe()
+                logging.debug(f"converged > {oe.answer['converged']}")
+
+                # flag non-converged fit
+                if oe.answer['converged']==False:
+                    results['errorFlag'][iscan,ipxl] = 1
+                    logging.error('DOAS: scanline {}, groundpixel {} not converged'.format(iscan,ipxl))
+                    continue
 
             except:
                 results['errorFlag'][iscan,ipxl] = 1
-                IFDOE_func.printMessage(verboseLevel,'DOAS : scanline {}, groundpixel {} unexpected error'.format(iscan,ipxl))
-
-            IFDOE_func.printMessage(verboseLevel,( 'converged >',oe.answer['converged'] ))
-
-            # flag non-converged fit
-            if oe.answer['converged']==False:
-                results['errorFlag'][iscan,ipxl] = 1
-                IFDOE_func.printMessage(verboseLevel,'DOAS: scanline {}, groundpixel {} not converged'.format(iscan,ipxl))
+                logging.error('DOAS : scanline {}, groundpixel {} unexpected error'.format(iscan,ipxl))
                 continue
 
-
-
+            
             if cfg['spike_removal']:
             # F.3  Spike removal -> re-do E.2, but only once
-
-                # detect outliers
-                
-                wvl = IFDOE_func.ScaleWvl(commonWvlFit,cfg['fit_window'])
+                # detect outliers   
+                wvl = libDOAS.ScaleWvl(commonWvlFit,cfg['fit_window'])
                 RRes = model.observation - model.modelCalculation
                 Q1 = np.quantile(RRes, 0.25)
                 Q3 = np.quantile(RRes, 0.75)
@@ -417,15 +319,14 @@ def ifdoe_run(cfg):
                 if nOutliers > 0 :
                     outliers = True
                 if outliers:
-                    IFDOE_func.printMessage(verboseLevel,('{} outliers detected at wvl: '.format(outlierIndex.sum()),outlierWvl))
+                    logging.debug('{} outliers detected at wvl: {}'.format(outlierIndex.sum(),outlierWvl))
                 else:
-                    IFDOE_func.printMessage(verboseLevel,('No outliers detected.'))
+                    logging.debug('No outliers detected.')
 
                 if nOutliers > cfg['max_outliers']:
-                    IFDOE_func.printMessage(verboseLevel,('Scanline {}, ground pixel {} : too many outliers ({}), raising error flag'.format(iscan,ipxl,nOutliers)))
+                    logging.error('Scanline {}, ground pixel {} : too many outliers ({}), raising error flag'.format(iscan,ipxl,nOutliers))
                     results['errorFlag'][iscan,ipxl] = 1
                     continue
-
 
                 if outliers:
                     # remove outliers
@@ -439,31 +340,30 @@ def ifdoe_run(cfg):
                     # Perform DOAS fit once again
                     try:
 
-                        model = IFDOE_model.IFDOEmodel(prior=prior, priorCov=priorCov, 
-                          otherModelParam=None, 
-                          parameterNames=parameterNames,
-                          verbose=verboseLevel-1,
-                          observation=reflFit, 
-                          observationError=reflErrorFit,
-                          independentVariable=commonWvlFit,
-                          cfg=cfg,
-                          IFDOErefspec=IFDOERefSpecFit)
+                        model = libDOAS.IFDOEmodel(prior=prior, priorCov=priorCov, 
+                            otherModelParam=None, 
+                            parameterNames=parameterNames,
+                            verbose=verboseLevel-1,
+                            observation=reflFit, 
+                            observationError=reflErrorFit,
+                            independentVariable=commonWvlFit,
+                            IFDOEconfig=cfg,
+                            IFDOErefspec=IFDOERefSpecFit)
 
-                        oe = IFDOE_OE.OE(model=model, maxiter=cfg['max_iterations'], stateVectorConvThreshold=cfg['convergence_threshold'])
+                        oe = libDOAS.OE(model=model, maxiter=cfg['max_iterations'], stateVectorConvThreshold=cfg['convergence_threshold'])
                         oe()
 
+                        # flag non-converged fit
+                        if oe.answer['converged']==False:
+                            results['errorFlag'][iscan,ipxl] = 1
+                            logging.error('DOAS after outlier removal: scanline {}, groundpixel {} not converged'.format(iscan,ipxl))
+                        
                     except:
                         results['errorFlag'][iscan,ipxl] = 1
-                        IFDOE_func.printMessage(verboseLevel,'DOAS after outlier removal: scanline {}, groundpixel {} unexpected error'.format(iscan,ipxl))
-
-                    # flag non-converged fit
-                    if oe.answer['converged']==False:
-                        results['errorFlag'][iscan,ipxl] = 1
-                        IFDOE_func.printMessage(verboseLevel,'DOAS after outlier removal: scanline {}, groundpixel {} not converged'.format(iscan,ipxl))
-                        continue
+                        logging.error('DOAS after outlier removal: scanline {}, groundpixel {} unexpected error'.format(iscan,ipxl))
+            
             else:
                 nOutliers = np.nan
-
 
         # F.4  Determine diagnostics: RMS error, degrees of freedom, etc.
 
@@ -474,97 +374,46 @@ def ifdoe_run(cfg):
             converged = oe.answer['converged']
             nValid = commonWvlFit.shape[0]
 
-            wvl = IFDOE_func.DeScaleWvl(commonWvlFit,cfg['fit_window'])
+            wvl = libDOAS.DeScaleWvl(commonWvlFit,cfg['fit_window'])
             RModel = model.modelCalculation
             RMeas = model.observation
             RRes = RMeas - RModel
 
-
             # scale precision with chisquare reduced
             chiSquare_reduced = chiSquare/(nValid - DOF)
             precision = np.diag(np.sqrt(model.covariance * chiSquare_reduced))
-
-            if ProgKind=='asc':
-
-                polyCoeff = np.zeros((cfg['polynomial_coefs']))
-                polyCoeffSigma = np.zeros((cfg['polynomial_coefs']))
-
-                for i in range(len(polyCoeff)):
-                    polyCoeff[i] = model.stateVector[i]
-                    polyCoeffSigma[i] = precision[i]
-
-                intensityCoeff = np.zeros((cfg['intensity_coefs']))
-                intensityCoeffSigma = np.zeros((cfg['intensity_coefs']))
-
-                for i in range(len(intensityCoeff)):
-                    j= i+cfg['polynomial_coefs']
-                    intensityCoeff[i] = model.stateVector[j]
-                    intensityCoeffSigma[i] = precision[j]
-
-                gasColumns = {}
-                gasColumnsSigma = {}
-
-                for i,gas in enumerate(cfg['trace_gas_list']):
-                    i+= cfg['polynomial_coefs']+cfg['intensity_coefs']
-                    gasColumns[gas] = model.stateVector[i] 
-                    gasColumnsSigma[gas] = precision[i]
-
-                if cfg['ring_fit_term'] == 'Iring':
-                    i = cfg['polynomial_coefs']+cfg['intensity_coefs']+cfg['nr_trace_gases']
-                    Cring = model.stateVector[i] 
-                    CringSigma = precision[i]
-
-                elif cfg['ring_fit_term'] == 'Dring':
-                    i = cfg['polynomial_coefs']+cfg['intensity_coefs']+cfg['nr_trace_gases']
-                    Dring = model.stateVector[i] 
-                    DringSigma = precision[i]
-
-            # F.5  Determine as for TROPOMI: R_toa = P * (1+C_ring)
-                # Without pi/mu0
-
-                RTOA = np.zeros((len(wvl)))
-                for i in range(len(polyCoeff)):
-                    RTOA += polyCoeff[i] * commonWvlFit**i
-
-                if cfg['ring_fit_term'] == 'Iring':
-                    RTOA *= (1 + Cring)
-
-                # print(RTOA[np.abs(wvl-440).argmin()]*(np.pi/np.cos(np.pi*25.179/180)))
 
         # F.6  Show/plot results
 
             # Print the results
             # -----------------
 
-            if detailLevel == 2:
+            # The "standard" overview or results (and model)   
+            logging.debug(oe)
+            logging.debug(model)
 
-                # The "standard" overview or results (and model)   
-                print(oe)
-                print(model)
+            # # All input/output connected to 'oe'
 
-                # # All input/output connected to 'oe'
+            logging.debug( '' )
+            logging.debug( '*************' )
+            logging.debug( '' )
 
-                print( '' )
-                print( '*************' )
-                print( '' )
+            al = oe.answer.keys()
+            for a in (al) :
+                logging.debug(f'{a} > {oe.answer[a]}')
 
-                al = oe.answer.keys()
-                for a in (al) :
-                    print( a,' > ',oe.answer[a] )
 
-            if verboseLevel > 1 :
-                print('\n========================================================')
-                print('Summary fitted parameters')
-                print('========================================================')
-                print('{:<10}{:>15}{:>15}'.format('(parameter)','(value)','(std)'))
-                for i in range(len(model.stateVector)):
-                    print('{:<10s}{:>15.6E}{:>15.6E}'.format(model.parameterNames[i], model.stateVector[i], precision[i]))
+            logging.debug('========================================================')
+            logging.debug('Summary fitted parameters')
+            logging.debug('========================================================')
+            logging.debug('{:<10}{:>15}{:>15}'.format('(parameter)','(value)','(std)'))
+            for i in range(len(model.stateVector)):
+                logging.debug('{:<10s}{:>15.6E}{:>15.6E}'.format(model.parameterNames[i], model.stateVector[i], precision[i]))
 
-            if verboseLevel == 3 :
+            if cfg['debug']['plot']:
 
                 # Plot Rmod, Rmeas and residual
                 # -------------------
-
                 plt.figure()
                 plt.plot(wvl, RModel, '-', label='Model')
                 plt.plot(wvl, RMeas, '--', label='Measurement')
@@ -591,72 +440,56 @@ def ifdoe_run(cfg):
             for parameter in resultScalarList:
                 results[parameter][iscan,ipxl] = eval(parameter)
 
-            # # vector
-            # for parameter in resultVectorList:
-            #     results[parameter][iscan,ipxl,:] = eval(parameter)
-
-            # if geometry info available, scale poly coeff
-            if (ProgKind == 'trop') or (ProgKind == 'co2m'):
-                szaFactor = np.pi / np.cos(sza*np.pi/180.0)
-            else:
-                szaFactor = 1.0
+            # scale poly coeff
+            szaFactor = np.pi / np.cos(geo['sza'][iscan,ipxl]*np.pi/180.0)
 
             # fit parameters
             for i,parameter in enumerate(parameterNames):
 
                 # scale poly coeff with pi/mu0
-                if 'P' in parameter and (ProgKind=='trop' or ProgKind=='co2m'):
-                    results[parameter][iscan,ipxl] = model.stateVector[i] * szaFactor
-                    results[parameter+'Sigma'][iscan,ipxl] = precision[i] * szaFactor
-                else:
-                    results[parameter][iscan,ipxl] = model.stateVector[i] 
-                    results[parameter+'Sigma'][iscan,ipxl] = precision[i]
+                results[parameter][iscan,ipxl] = model.stateVector[i] * szaFactor
+                results[parameter+'Sigma'][iscan,ipxl] = precision[i] * szaFactor
 
             # if geometry info available calculate amf geo and geo column
-            if (ProgKind == 'trop') or (ProgKind == 'co2m'):
-                amfGeo = 1/np.cos(sza*np.pi/180.0) + 1/np.cos(vza*np.pi/180.0) 
-                results['amfGeo'][iscan,ipxl] = amfGeo
-                results['NO2Geo'][iscan,ipxl] = results['NO2'][iscan,ipxl] / amfGeo
-                results['NO2GeoSigma'][iscan,ipxl] = results['NO2Sigma'][iscan,ipxl] / amfGeo
+            amfGeo = 1/np.cos(geo['sza'][iscan,ipxl]*np.pi/180.0) + 1/np.cos(geo['vza'][iscan,ipxl]*np.pi/180.0) 
+            results['amfGeo'][iscan,ipxl] = amfGeo
+            results['NO2Geo'][iscan,ipxl] = results['NO2'][iscan,ipxl] / amfGeo
+            results['NO2GeoSigma'][iscan,ipxl] = results['NO2Sigma'][iscan,ipxl] / amfGeo
 
-            
+        
+            # continuum reflectance at 440 nm for NO2:
 
-            if (ProgKind == 'trop') or (ProgKind == 'co2m'):
+            if cfg['fit_window'][1] < 477.0:
 
-                # continuum reflectance at 440 nm for NO2:
+                iwvl = np.abs(wvl-440.0).argmin()
+                results['R_NO2'][iscan,ipxl] = 0.0
+                results['R_NO2_precision'][iscan,ipxl] = 0.0
+                
+                for i in range(cfg['polynomial_coefs']):
 
-                if cfg['fit_window'][1] < 477.0:
+                    results['R_NO2'][iscan,ipxl] += model.stateVector[i] *commonWvlFit[iwvl] **i
+                    results['R_NO2_precision'][iscan,ipxl] += precision[i] *commonWvlFit[iwvl] **i
 
-                    iwvl = np.abs(wvl-440.0).argmin()
-                    results['R_NO2'][iscan,ipxl] = 0.0
-                    results['R_NO2_precision'][iscan,ipxl] = 0.0
-                    
-                    for i in range(cfg['polynomial_coefs']):
+                if cfg['ring_fit_term'] == 'Iring':
+                    i = cfg['polynomial_coefs']+cfg['intensity_coefs']+cfg['nr_trace_gases']
+                    Cring = model.stateVector[i] 
+                    results['R_NO2'][iscan,ipxl] *= (1 + Cring)
 
-                        results['R_NO2'][iscan,ipxl] += model.stateVector[i] *commonWvlFit[iwvl] **i
-                        results['R_NO2_precision'][iscan,ipxl] += precision[i] *commonWvlFit[iwvl] **i
+                results['R_NO2'][iscan,ipxl] *= szaFactor
+                results['R_NO2_precision'][iscan,ipxl] *= szaFactor
 
-                    if cfg['ring_fit_term'] == 'Iring':
-                        i = cfg['polynomial_coefs']+cfg['intensity_coefs']+cfg['nr_trace_gases']
-                        Cring = model.stateVector[i] 
-                        results['R_NO2'][iscan,ipxl] *= (1 + Cring)
+            # continuum reflectance at 477 nm of O2O2:
 
-                    results['R_NO2'][iscan,ipxl] *= szaFactor
-                    results['R_NO2_precision'][iscan,ipxl] *= szaFactor
+            elif cfg['fit_window'][1] > 477.0:
 
-                # continuum reflectance at 477 nm of O2O2:
+                iwvl = np.abs(wvl-477.0).argmin()
+                results['R_O2O2'][iscan,ipxl] = 0.0
+                results['R_O2O2_precision'][iscan,ipxl] = 0.0
+                
+                for i in range(cfg['polynomial_coefs']):
 
-                elif cfg['fit_window'][1] > 477.0:
-
-                    iwvl = np.abs(wvl-477.0).argmin()
-                    results['R_O2O2'][iscan,ipxl] = 0.0
-                    results['R_O2O2_precision'][iscan,ipxl] = 0.0
-                    
-                    for i in range(cfg['polynomial_coefs']):
-
-                        results['R_O2O2'][iscan,ipxl] += model.stateVector[i] *commonWvlFit[iwvl] **i
-                        results['R_O2O2_precision'][iscan,ipxl] += precision[i] *commonWvlFit[iwvl] **i
-
+                    results['R_O2O2'][iscan,ipxl] += model.stateVector[i] *commonWvlFit[iwvl] **i
+                    results['R_O2O2_precision'][iscan,ipxl] += precision[i] *commonWvlFit[iwvl] **i
 
                     # do not add Cring for O2O2
 
@@ -669,7 +502,7 @@ def ifdoe_run(cfg):
                     results['R_O2O2_precision'][iscan,ipxl] *= szaFactor
 
 
-            if exportSpectra:
+            if cfg['output']['export_spectra']:
 
                 results['wvl'][iscan,ipxl,:len(wvl)] = wvl
                 results['R_meas'][iscan,ipxl,:len(wvl)] = RMeas*szaFactor
@@ -680,42 +513,46 @@ def ifdoe_run(cfg):
             # print(time.time()-start)
             results['errorFlag'][iscan,ipxl] = 0
 
+        logging.info('Processed scanline {}/{} in {}s'.format(iscan-scanBeg+1,scanEnd-scanBeg+1,np.round((time.time() - startTimeScanline),2) ))
 
-        if ((ProgKind == 'trop') or (ProgKind == 'co2m')) and verboseLevel > 0:
-            print('Processed scanline {}/{} in {}s'.format(iscan-scanBeg+1,scanEnd-scanBeg+1,np.round((datetime.now() - startTime).total_seconds(),2) ))
+        return
+    # end of scanline loop
+
+    # multi-threading using ThreadPool
+    if cfg['threads'] > 1:
+
+        pool = multiprocessing.pool.ThreadPool(cfg['threads'])
+        logging.info(f"Processing with {cfg['threads']} threads")
+
+        # handle errors inside pool
+        def handle_error(error):
+	        logging.error(error)
+
+        # loop over scanlines in function for parallelization    
+        for iscan in range(scanBeg,scanEnd+1,1):
+            pool.apply_async(process_scanline,
+                    args=(iscan,results),
+                    error_callback=handle_error)
+
+        pool.close()
+        pool.join()
+    
+    # single-threaded
+    else:
+        for iscan in range(scanBeg,scanEnd+1,1):
+            process_scanline(iscan,results)
 
 
     # H)  Finishing up
 
-    if ProgKind == 'trop':
+    # write results to output file
+    libDOAS.writeOutput(cfg,parameterNames,results,geo)
 
-        # check if output file exists:
-        if os.path.exists(outFile) == False:
-            # write results to netcdf file (copy from Tropomi NO2 L2 format)
-            IFDOE_func.initOutput(outFileFormat, outFile)
 
-            # copy fields from L1B file to output file
-            IFDOE_func.copyOutputTrop(radFile,outFile)    
+    logging.info(f"Output witten to {cfg['output']['doas']}")
 
-        # write results to output file
-        IFDOE_func.writeOutputTrop(cfg,parameterNames,results,outFile,exportSpectra)
 
-    elif ProgKind == 'co2m':
-
-        # check if output file exists:
-        if os.path.exists(outFile) == False:
-
-            # write results to netcdf file (copy from CO2M NO2 L2 format)
-            IFDOE_func.initOutputXml(outFileFormat, outFile)
-
-            # copy fields from L1B file to output file
-            IFDOE_func.copyOutputCO2M(radFile,outFile)    
-
-        # write results to output file
-        IFDOE_func.writeOutputCO2M(cfg,parameterNames,results,outFile,exportSpectra)
-
-    if ProgKind != 'asc' and verboseLevel > 0:
-            print(f'Output witten to {outFile}')
+    logging.info(f'IFDOE calculation finished in {np.round(time.time()-startTime,1)} s')
     
 
     return
@@ -730,6 +567,14 @@ if __name__ == '__main__':
     # or with logging to file:
     # python l1bl2_no2.py l1bl2_no2.yaml l1bl2_no2.log
 
+    # reading yaml config
+    cfg = yaml.safe_load(open(sys.argv[1]))
+
+    if cfg['doas']['debug']['log']:
+        loglevel = logging.DEBUG
+    else:
+        loglevel = logging.INFO
+
     # setup the logging to screen and to file
     formatter = logging.Formatter('%(asctime)s %(levelname)s: %(message)s')
 
@@ -739,24 +584,27 @@ if __name__ == '__main__':
         fh.setFormatter(formatter)
 
         ch = logging.StreamHandler()
-        ch.setLevel(logging.INFO)
+        ch.setLevel(loglevel)
         ch.setFormatter(formatter) 
 
-        logging.basicConfig(level=logging.INFO, handlers = [ch,fh])
+        logging.basicConfig(level=loglevel, handlers = [ch,fh])
 
         logging.info(f'Logging to file: {sys.argv[2]}')
 
     else:
         ch = logging.StreamHandler()
-        ch.setLevel(logging.INFO)
+        ch.setLevel(loglevel)
         ch.setFormatter(formatter) 
-        logging.basicConfig(level=logging.INFO,handlers = [ch])
+        logging.basicConfig(level=loglevel,handlers = [ch])
+        
 
-    logging.info(f'Reading config file: {sys.argv[1]}')
+    # Python parallises internally with numpy, for single thread optimal is 4 numpy threads
+    # for multi-threading use only 1 numpy thread, otherwise it becomes slow
 
+    if cfg['doas']['threads'] == 1:
+        numpy_cpu = 4
+    else:
+        numpy_cpu = 1
 
-
-    cfg = yaml.safe_load(open(sys.argv[1]))
-
-
-    ifdoe_run(cfg['doas'])
+    with threadpool_limits(limits=numpy_cpu, user_api='blas'):
+        ifdoe_run(cfg['doas'])

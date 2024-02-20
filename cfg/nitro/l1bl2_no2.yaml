@@ -2,14 +2,29 @@
 
 doas:
 
+  threads: 6 # on KNMI workstation optimum around 6 threads
+
   input:
     # for testing
     rad: ../data/no2/sgm_radiance_cams_fc.nc
     irr: ../data/no2/sgm_radiance_cams_fc.nc
+    geo: ../data/no2/geometry.nc
 
-  alt:
-    start: 5
-    stop: 20
+  output:
+    doas: ../data/no2/doas_test_tmp.nc
+    export_spectra: no
+
+  debug:
+    plot: no
+    log: no
+
+  # alt:
+  #   start: 0
+  #   stop: 5
+  
+  # act:
+  #   start: 0
+  #   stop: 5
   
   # The window for the DOAS fit.
   fit_window: [405.0, 465.0] 
@@ -62,8 +77,8 @@ doas:
   # ---- Wavelength calibration ----
 
   # Wavelength calibation for solar and earth spectra (off/on)
-  wlcal_solar: on
-  wlcal_earth: on
+  wlcal_solar: off
+  wlcal_earth: off
 
   # Include wavelength stretch in wavelength calibration(off/on)
   wlcal_solar_stretch: off
@@ -76,7 +91,7 @@ doas:
   # prior values for OE: [value, error]
   prior:
 
-    DOAS: # P is polynomial, C is intensity offset
+    doas: # P is polynomial, C is intensity offset
       P0: [1.0, 1.0]
       P1: [0.015625, 0.015625]
       P2: [0.015625, 0.015625]

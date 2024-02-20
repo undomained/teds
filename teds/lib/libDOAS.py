@@ -495,7 +495,7 @@ class IFDOEmodel(Model):
          to "super()".
         """
 
-        self.cfg  = kwargs['cfg']
+        self.IFDOEconfig  = kwargs['IFDOEconfig']
         self.IFDOErefspec = kwargs['IFDOErefspec']
                                                            
         super(IFDOEmodel, self).__init__(prior=prior, priorCov=priorCov,
@@ -527,19 +527,13 @@ class IFDOEmodel(Model):
         
       # a) polynomial term
         
-        npoly = self.cfg['polynomial_coefs']
+        npoly = self.IFDOEconfig['polynomial_coefs']
 
-        # POLYterm = np.zeros(len(self.observation))
+        POLYterm = np.zeros(len(self.observation))
 
-        # for ipoly in range (0,npoly,1):
-        #     POLYterm = POLYterm + sv[ipoly]*(self.independentVariable**ipoly)
-
-        # Create Chebyshev polynomial function from coeffients in statevector
-        cheby_func = cheb.Chebyshev(sv[0:npoly])
-
-        # Evaluate Chebyshev polynomial
-        POLYterm = cheby_func(self.independentVariable)
-
+        for ipoly in range (0,npoly,1):
+            POLYterm = POLYterm + sv[ipoly]*(self.independentVariable**ipoly)
+        
         m = POLYterm
         nterms = npoly
         
@@ -547,18 +541,18 @@ class IFDOEmodel(Model):
         
         termAdded = 0       # introduced for local book keeping
         
-        ngases = self.cfg['nr_trace_gases']
+        ngases = self.IFDOEconfig['nr_trace_gases']
 
         SUMterm = np.zeros(len(self.observation))
 
         if ( ngases > 0 ):
             termAdded = 1
             for igas in range(0,ngases,1):
-                gas = self.cfg['trace_gas_list'][igas]
+                gas = self.IFDOEconfig['trace_gas_list'][igas]
                 SUMterm = SUMterm + sv[nterms+igas]*self.IFDOErefspec[gas]
             nterms = nterms+ngases
 
-        if ( self.cfg['ring_fit_term'] == 'sigma'):
+        if ( self.IFDOEconfig['ring_fit_term'] == 'sigma'):
             termAdded = 1
             SUMterm = SUMterm + sv[nterms]*self.IFDOErefspec['Dring']
             nterms = nterms+1
@@ -573,7 +567,7 @@ class IFDOEmodel(Model):
         
       # c) non-linear Ring term
         
-        if ( self.cfg['ring_fit_term'] == 'Iring'):
+        if ( self.IFDOEconfig['ring_fit_term'] == 'Iring'):
             nlRingTerm = 1.0 + sv[nterms]*self.IFDOErefspec['Cring']/self.IFDOErefspec['solar']
             m = m * nlRingTerm
             nterms = nterms + 1
@@ -582,16 +576,16 @@ class IFDOEmodel(Model):
        
       # d) intensity offset term
         
-        if ( self.cfg['intensity_coefs'] > 0 ):
+        if ( self.IFDOEconfig['intensity_coefs'] > 0 ):
             # C0 term
             OFFSETterm = np.zeros(len(self.observation))
-            Soff = self.cfg['intensity_scaling_factor']*np.ones(len(self.independentVariable))
+            Soff = self.IFDOEconfig['intensity_scaling_factor']*np.ones(len(self.independentVariable))
             OFFSETterm = sv[nterms] * Soff/self.IFDOErefspec['solar']
-            if ( self.cfg['intensity_coefs'] == 2 ):
+            if ( self.IFDOEconfig['intensity_coefs'] == 2 ):
                 # C1 term
-                OFFSETterm = OFFSETterm + sv[nterms+1]*self.independentVariable * self.cfg['intensity_scaling_factor']/self.IFDOErefspec['solar']
+                OFFSETterm = OFFSETterm + sv[nterms+1]*self.independentVariable * self.IFDOEconfig['intensity_scaling_factor']/self.IFDOErefspec['solar']
             m = m + OFFSETterm
-            nterms = nterms + self.cfg['intensity_coefs']
+            nterms = nterms + self.IFDOEconfig['intensity_coefs']
         
         # print('>>> At end of model setup: nterms = ',nterms)
         
@@ -601,16 +595,8 @@ class IFDOEmodel(Model):
         
       # a) polynomial term    
                    
-        for ipoly in range(0,npoly,1):
-
-            # derivative of Chebyshev polynomial to coefficient a_i is T_i
-            # set coefficent a_i to 1 and all coefficients to 0
-            cheby_coeffs_deriv = np.zeros(npoly)
-            cheby_coeffs_deriv[ipoly] = 1
-
-            # Create Cheby function and eval
-            cheby_func_deriv = cheb.Chebyshev(cheby_coeffs_deriv)
-            k[:,ipoly] = cheby_func_deriv(self.independentVariable) * EXPterm * nlRingTerm
+        for ipoly in range (0,npoly,1):
+            k[:,ipoly] = (self.independentVariable**ipoly) * EXPterm * nlRingTerm
                    
         nterms = npoly
 
@@ -618,28 +604,28 @@ class IFDOEmodel(Model):
 
         if ( ngases > 0 ):
             for igas in range(0,ngases,1):
-                gas = self.cfg['trace_gas_list'][igas]
+                gas = self.IFDOEconfig['trace_gas_list'][igas]
                 k[:,nterms+igas] = POLYterm * -self.IFDOErefspec[gas] * EXPterm * nlRingTerm 
                 # None
             nterms = nterms+ngases
         
-        if ( self.cfg['ring_fit_term'] == 'sigma'):
+        if ( self.IFDOEconfig['ring_fit_term'] == 'sigma'):
             k[:,nterms] = POLYterm * -self.IFDOErefspec['Dring'] * EXPterm 
             nterms = nterms+1
 
       # c) non-linear Ring term
         
-        if ( self.cfg['ring_fit_term'] == 'Iring'):
+        if ( self.IFDOEconfig['ring_fit_term'] == 'Iring'):
             k[:,nterms] = POLYterm * EXPterm * self.IFDOErefspec['Cring']/self.IFDOErefspec['solar']
             nterms = nterms+1
                 
       # d) intensity offset term
         
-        if ( self.cfg['intensity_coefs'] > 0 ):
+        if ( self.IFDOEconfig['intensity_coefs'] > 0 ):
             # C0 derivate
             k[:,nterms] = Soff/self.IFDOErefspec['solar']
             nterms = nterms+1
-            if ( self.cfg['intensity_coefs'] == 2 ):
+            if ( self.IFDOEconfig['intensity_coefs'] == 2 ):
                 # C1 derivative
                 k[:,nterms] = self.independentVariable * Soff/self.IFDOErefspec['solar']
                 nterms = nterms+1
@@ -653,6 +639,8 @@ class IFDOEmodel(Model):
         self.modelCalculation, self.Jacobian = m, k
 
         return m, k
+
+
 class OE(object):
     """The optimal estimation engine.
 
@@ -1344,8 +1332,6 @@ def irrCal(irr,irrError,irrWvl,cfg,IFDOERefSpec,groundPixel,verboseLevel):
     Solar spectrum (irradiance) wavelength calibration using OE. Some settings are hard-coded for now.
     '''
 
-    logger = logging.getLogger()
-
     irrCalConfig = {}
    
     irrCalConfig['polynomial_coefs'] = 3
@@ -1418,13 +1404,13 @@ def irrCal(irr,irrError,irrWvl,cfg,IFDOERefSpec,groundPixel,verboseLevel):
         lambdaCentre = irrCalConfig['fit_window'][0] + (irrCalConfig['fit_window'][1]-irrCalConfig['fit_window'][0])/2
         lambdaStar = 2*(irrWvl - (lambdaCentre) ) / (irrCalConfig['fit_window'][1] - irrCalConfig['fit_window'][0])
         irrWvlCal = irrWvl + irrCalWs + irrCalWq*lambdaStar
-        logging.info(('irr cal. (ws, ws_sigma, wq, wq_sigma): ',irrCalWs,irrCalWsSigma,irrCalWq,irrCalWqSigma))
+        logging.debug(('irr cal. (ws, ws_sigma, wq, wq_sigma): ',irrCalWs,irrCalWsSigma,irrCalWq,irrCalWqSigma))
         return irrWvlCal, irrCalWs, irrCalWsSigma, irrCalWq, irrCalWqSigma, irrCalChiSquare, irrCalConverged
 
 
     else:
         irrWvlCal = irrWvl + irrCalWs
-        logging.info(('irr cal. (ws, ws_sigma): ',irrCalWs,irrCalWsSigma))
+        logging.debug(('irr cal. (ws, ws_sigma): ',irrCalWs,irrCalWsSigma))
         return irrWvlCal, irrCalWs, irrCalWsSigma, np.nan, np.nan, irrCalChiSquare, irrCalConverged
 
 
@@ -1473,18 +1459,18 @@ def radCal(rad,radError,radWvl,cfg,IFDOERefSpec,groundPixel,verboseLevel):
 
     # Assemble the list of parameters
     if cfg['wlcal_earth_stretch']:
-        radCalParameterNames = ['P0_cal','P1_cal','P2_cal','ws','wq']
+        radCalParameterNames = ['P0','P1','P2','ws','wq']
     else:
-        radCalParameterNames = ['P0_cal','P1_cal','P2_cal','ws']
+        radCalParameterNames = ['P0','P1','P2','ws']
 
     if radCalConfig['ring_fit_term'] == 'Iring':
-        radCalParameterNames.append('Cring_cal')
+        radCalParameterNames.append('Cring')
     elif radCalConfig['ring_fit_term'] == 'sigma':
-        radCalParameterNames.append('Dring_cal')
+        radCalParameterNames.append('Dring')
 
 
-    radCalPrior = np.asarray([cfg['prior'][key] for key in radCalParameterNames])
-    radCalPriorCov = np.diag(np.asarray([cfg['prior_error'][key] for key in radCalParameterNames])**2)
+    radCalPrior = np.asarray([cfg['prior']['wvl_cal'][key][0] for key in radCalParameterNames])
+    radCalPriorCov = np.diag(np.asarray([cfg['prior']['wvl_cal'][key][1] for key in radCalParameterNames])**2)
 
 
     # Assemble the model details
@@ -1524,13 +1510,13 @@ def radCal(rad,radError,radWvl,cfg,IFDOERefSpec,groundPixel,verboseLevel):
         lambdaCentre = radCalConfig['fit_window'][0] + (radCalConfig['fit_window'][1]-radCalConfig['fit_window'][0])/2
         lambdaStar = 2*(radWvl - (lambdaCentre) ) / (radCalConfig['fit_window'][1] - radCalConfig['fit_window'][0])
         radWvlCal = radWvl + radCalWs + radCalWq*lambdaStar
-        printMessage(verboseLevel,('rad cal. (ws, ws_sigma, wq, wq_sigma): ',radCalWs,radCalWsSigma,radCalWq,radCalWqSigma))
+        logging.debug(('rad cal. (ws, ws_sigma, wq, wq_sigma): ',radCalWs,radCalWsSigma,radCalWq,radCalWqSigma))
         return radWvlCal, radCalWs, radCalWsSigma, radCalWq, radCalWqSigma, radCalChiSquare, radCalConverged
 
 
     else:
         radWvlCal = radWvl + radCalWs
-        printMessage(verboseLevel,('rad cal. (ws, ws_sigma): ',radCalWs,radCalWsSigma))
+        logging.debug(('rad cal. (ws, ws_sigma): ',radCalWs,radCalWsSigma))
         return radWvlCal, radCalWs, radCalWsSigma, np.nan, np.nan, radCalChiSquare, radCalConverged
 
 
@@ -1538,8 +1524,7 @@ def IFDOEparameters(cfg):
     '''
      Assemble the list of parameters
     '''
-    logger = logging.getLogger()
-        
+
     parameterNames = []
 
     for ipoly in range(0,cfg['polynomial_coefs'],1):
@@ -1561,7 +1546,7 @@ def IFDOEparameters(cfg):
     for ipoly in range(0,cfg['intensity_coefs'],1):
         parameterNames.append('C'+str(ipoly))
 
-    logger.info('--- Parameter names: %s' % parameterNames )
+    logging.info('Parameter names: %s' % parameterNames )
     
     return parameterNames
 
@@ -1647,6 +1632,16 @@ def ScaleWvl(Wvl,FitWindow):
 
     return ScaledWvl
 
+def DeScaleWvl(ScaledWvl,FitWindow):
+    '''
+     Return Scaled Wvl to normal. Inverse of ScaleWvl() function.
+    '''
+
+    Wvl = (ScaledWvl + 1) / 2 * (FitWindow[1] - FitWindow[0]) + FitWindow[0]
+
+    return Wvl
+
+
 def AddConfig(cfg):
 
     cfg['nr_trace_gases'] = len(cfg['trace_gas_list'])
@@ -1685,47 +1680,312 @@ def ReadIrrSGM(file, pxlN):
     irrWvl  = np.repeat(irrWvl[np.newaxis,:], pxlN, axis=0)
 
 
-    irrError = irr.copy() * 1e-6
+    irrError = irr.copy() * 1e-6 # fixed noise value, otherwise OE does not work
     irrFlag = np.zeros_like(irr)
 
     return irrWvl, irr, irrError, irrFlag
 
 
 
-def ReadRadSGM(file):
+def ReadRadSGM(f, iscan):
     '''
-    Read radiance from SGM file
+    Read radiance from SGM file. file is already open for thread safety
     '''
-    with nc.Dataset(file) as f:
+    # with nc.Dataset(file) as f:
 
-        rad = f['radiance'][:] # [alt, act, spectral_bins] - "photons/(sr nm m2 s)
+    rad = f['radiance'][iscan,:,:] # [alt, act, spectral_bins] - "photons/(sr nm m2 s)
 
-        # photons to mol
-        rad /= constants.NA
+    # photons to mol
+    rad /= constants.NA
 
-        radWvl = f['wavelength'][:] # [spectral_bins] - nm
+    radWvl = f['wavelength'][:] # [spectral_bins] - nm
 
+    radWvl  = np.repeat(radWvl[np.newaxis,:], rad.shape[0], axis=0)
 
-    radError = np.zeros_like(rad)
+    radError = rad.copy() * 1e-6 # fixed noise value, otherwise OE does not work
     radFlag = np.zeros_like(rad)
 
     return radWvl, rad, radError, radFlag
 
 
-def ReadRad(file):
+def ReadRad(file, iscan):
     '''
     Read radiance from L1B file
     '''
     with nc.Dataset(file) as f:
 
-        rad = f['OBSERVATION_DATA/radiance'][:] # [alt, act, spectral_bins] - "photons/(sr nm m2 s)
-        radFlag = f['OBSERVATION_DATA/radiance_mask'][:] # [alt, act, spectral_bins] -  0 = good, 1 = bad
-        radError = f['OBSERVATION_DATA/radiance_noise'][:] # [alt, act, spectral_bins] - 
+        rad = f['OBSERVATION_DATA/radiance'][iscan,:,:] # [alt, act, spectral_bins] - "photons/(sr nm m2 s)
+        radFlag = f['OBSERVATION_DATA/radiance_mask'][iscan,:,:] # [alt, act, spectral_bins] -  0 = good, 1 = bad
+        radError = f['OBSERVATION_DATA/radiance_noise'][iscan,:,:] # [alt, act, spectral_bins] - 
 
-        radWvl = f['OBSERVATION_DATA/wavelength'][:] # [act, spectral_bins] - nm
+        radWvl = f['OBSERVATION_DATA/wavelength'][iscan,:,:] # [act, spectral_bins] - nm
 
         # photons to mol
         rad /= constants.NA
         radError /= constants.NA
 
     return radWvl, rad, radError, radFlag
+
+
+def SolarToEarthWvl(IFDOERefSpec,radWvlScaled,irrWvlScaled,irr,irrError,ipxl):
+    # Interpolate solar grid to earth grid using ref_solar
+
+
+    splineTmp = interpolate.InterpolatedUnivariateSpline(IFDOERefSpec['solarWvlScaled'],IFDOERefSpec['solar'][0,:], ext=1, k=4)
+    RefSolarRad = splineTmp(radWvlScaled)
+    RefSolarIrr = splineTmp(irrWvlScaled[ipxl,:])
+
+    irrRegridded = RefSolarRad/RefSolarIrr * irr[ipxl,:]
+    irrErrorRegridded = RefSolarRad/RefSolarIrr * irrError[ipxl,:]
+
+
+    return irrRegridded, irrErrorRegridded
+
+# ======================
+
+def InterpRefSpecGrid(IFDOERefSpec,commonWvl,IFDOEconfig,ipxl):
+    # Interpolate ref.spec grids to common wvl grid
+
+    IFDOERefSpecRegrid = {}
+
+    for RefSpec in IFDOERefSpec:
+        if 'wvl' in RefSpec.lower() or 'spline' in RefSpec.lower():
+            continue
+
+        if RefSpec in IFDOEconfig['trace_gas_list']:
+            IFDOERefSpecRegrid[RefSpec] = SplineInterp1D(IFDOERefSpec['xsWvlScaled'],IFDOERefSpec[RefSpec][ipxl,:],commonWvl)
+        else:
+            IFDOERefSpecRegrid[RefSpec] = SplineInterp1D(IFDOERefSpec['solarWvlScaled'],IFDOERefSpec[RefSpec][ipxl,:],commonWvl)
+
+
+    return IFDOERefSpecRegrid
+
+def SplineInterp1D(x,y,xnew):
+    '''
+    1D spline interpolation for y on grid x to new grid xnew resulting in ynew.
+    Extrapolation disabled, returns zero for out of bounds.
+    '''
+
+    splineTmp = interpolate.InterpolatedUnivariateSpline(x, y, ext=1, k=4)
+
+    # splineTmp = interpolate.CubicSpline(x,y, extrapolate=False)
+
+    ynew = splineTmp(xnew)
+
+    return ynew
+
+
+def writeOutput(IFDOEconfig,parameterNames,results,geo):
+    # write results to output file
+
+    dst = nc.Dataset(IFDOEconfig['output']['doas'], 'w', format='NETCDF4')
+
+
+    # create dims
+    alt_dim = dst.createDimension('scanline', geo['lat'].shape[0])
+    act_dim = dst.createDimension('ground_pixel', geo['lat'].shape[1])
+
+    coord_string = "latitude longitude"
+
+    general_vars = ['lat','lon','sza','vza','saa','vaa']
+    for var in general_vars:
+        var_nc = dst.createVariable(var, float, ('scanline','ground_pixel'), fill_value=9.96921E36)
+        var_nc.coordinates = coord_string
+        var_nc[:,:] = geo[var]
+
+
+    group = ''
+    newgroup = dst.createGroup('doas')
+    group += 'doas/' 
+
+    if IFDOEconfig['fit_window'][1] < 477.0:
+        newgroup3 = dst[group].createGroup('no2')
+        group += 'no2/' 
+    elif IFDOEconfig['fit_window'][1] > 477.0:
+        newgroup3 = dst[group].createGroup('o2o2')
+        group += 'o2o2/' 
+
+
+
+
+    # convert np.nan to netcdf fill value
+
+    intList = ['nIter','errorFlag']
+
+    for key in results:
+        if key in intList:
+            results[key][np.isnan(results[key])] = -2147483647
+            results[key] = results[key].astype(int)
+
+        elif results[key].dtype == float:
+            results[key][np.isnan(results[key])] = 9.96921E36
+
+    # replace quality flag
+    ifdoeError = dst[group].createVariable('ifdoe_error', int, ('scanline','ground_pixel'), fill_value=-2147483647)
+    ifdoeError[:,:]   =   results['errorFlag']
+    ifdoeError.comment = 'Simplified error flag from ifdoe program: 0 is no error, 1 is error'
+    ifdoeError.coordinates = coord_string
+
+    ##### add spectra to netCDF output
+
+    if IFDOEconfig['output']['export_spectra']:
+        # add wvl dim
+
+        wvl_dim = dst[group].createDimension('spectral_channel', results['wvl'].shape[-1])
+
+        # write wvl var
+        wvl_nc = dst[group].createVariable('wavelength', float,  ('scanline','ground_pixel','spectral_channel'), fill_value=9.96921E36, zlib=True)
+        wvl_nc.units = 'nm'
+        wvl_nc[:,:,:] = results['wvl']
+
+        # write spectra
+
+        RModel_nc = dst[group].createVariable('R_modeled', float, ('scanline','ground_pixel','spectral_channel'), fill_value=9.96921E36, zlib=True)
+        RModel_nc.units = 'mol.m-2.nm-1.sr-1.s-1'
+        RModel_nc[:,:,:] = results['R_model']
+
+        RMeas_nc = dst[group].createVariable('R_measured', float, ('scanline','ground_pixel','spectral_channel'), fill_value=9.96921E36, zlib=True)
+        RMeas_nc.units = 'mol.m-2.nm-1.sr-1.s-1'
+        RMeas_nc[:,:,:] = results['R_meas']
+
+        RRes_nc = dst[group].createVariable('R_residual', float, ('scanline','ground_pixel','spectral_channel'), fill_value=9.96921E36, zlib=True)
+        RRes_nc.units = 'mol.m-2.nm-1.sr-1.s-1'
+        RRes_nc[:,:,:] = results['R_res']
+
+
+    def write_field(dictname,fieldname,units=None,i=None):
+
+
+        if results[dictname].ndim == 1:
+            dimlist =  ('ground_pixel')
+            var = dst[group].createVariable(fieldname, float, ('ground_pixel'), fill_value=9.96921E36)
+            var[:] =   results[dictname]
+
+        elif results[dictname].ndim == 2 and i==None:
+            var = dst[group].createVariable(fieldname, float, ('scanline','ground_pixel'), fill_value=9.96921E36)
+            var.coordinates = coord_string
+            var[:,:] =   results[dictname]
+
+        elif results[dictname].ndim == 2 and i!=None:
+            if i==0:
+                if  'polynomial_coefficients' in fieldname:
+                    poly_dim = 'polynomial_exponents'
+
+                elif 'intensity_offset_coefficients' in fieldname:
+                    poly_dim = 'intensity_offset_polynomial_exponents'
+                
+                var = dst[group].createVariable(fieldname, float, ('scanline','ground_pixel',poly_dim), fill_value=9.96921E36)
+                var.coordinates = coord_string
+
+            else:
+                var = dst[group+fieldname]
+            var[:,:,i] =   results[dictname]
+
+        if units:
+            var.units = units
+        else:
+            var.units = '-'
+
+
+        return
+
+    # very sophisticated way of writing output:
+
+    if 'NO2' in parameterNames:
+        write_field('NO2','nitrogendioxide_slant_column_density',units="mol m-2")
+        write_field('NO2Sigma','nitrogendioxide_slant_column_density_precision',units="mol m-2")
+
+        if IFDOEconfig['fit_window'][1] < 475.0:
+            write_field('NO2Geo','nitrogendioxide_geometric_column_density',units="mol m-2")
+            write_field('NO2GeoSigma','nitrogendioxide_geometric_column_density_precision',units="mol m-2")
+        
+            write_field('amfGeo','air_mass_factor_geometric')
+
+    if 'O2O2' in parameterNames:
+        write_field('O2O2','oxygen_oxygen_dimer_slant_column_density',units="mol2 m-5")
+        write_field('O2O2Sigma','oxygen_oxygen_dimer_slant_column_density_precision',units="mol2 m-5")
+    
+    if 'O3' in parameterNames:
+        write_field('O3','ozone_slant_column_density',units="mol m-2")
+        write_field('O3Sigma','ozone_slant_column_density_precision',units="mol m-2")
+
+    if 'H2Oliq' in parameterNames:
+        write_field('H2Oliq','water_liquid_slant_column_density',units="m")
+        write_field('H2OliqSigma','water_liquid_slant_column_density_precision',units="m")
+
+    if 'H2Ovap' in parameterNames:
+        write_field('H2Ovap','water_slant_column_density',units="mol m-2")
+        write_field('H2OvapSigma','water_slant_column_density_precision',units="mol m-2")
+
+    if 'Cring' in parameterNames:
+        write_field('Cring','ring_coefficient')
+        write_field('CringSigma','ring_coefficient_precision')
+
+    if 'P0' in parameterNames:
+        try:
+            poly_dim = dst[group].createDimension('polynomial_exponents',IFDOEconfig['polynomial_coefs'] )
+        except:
+            pass
+        for i in range(IFDOEconfig['polynomial_coefs']):
+            write_field('P'+str(i),'polynomial_coefficients',i=i)
+            write_field('P'+str(i)+'Sigma','polynomial_coefficients_precision',i=i)
+
+    if 'C0' in parameterNames:
+        try:
+            intensity_dim = dst[group].createDimension('intensity_offset_polynomial_exponents',IFDOEconfig['intensity_coefs'] )
+        except:
+            pass
+        for i in range(IFDOEconfig['intensity_coefs']):
+            write_field('C'+str(i),'intensity_offset_coefficients',i=i)
+            write_field('C'+str(i)+'Sigma','intensity_offset_coefficients_precision',i=i)
+
+    write_field('RMS','root_mean_square_error_of_fit')
+    write_field('DOF','degrees_of_freedom')
+    write_field('nIter','number_of_iterations')
+    write_field('chiSquare','chi_square')
+
+    write_field('irrCalWs','wavelength_calibration_irradiance_offset',units="nm")
+    write_field('irrCalWsSigma','wavelength_calibration_irradiance_offset_precision',units="nm")
+    write_field('irrCalChiSquare','wavelength_calibration_irradiance_chi_square')
+
+    write_field('radCalWs','wavelength_calibration_offset',units="nm")
+    write_field('radCalWsSigma','wavelength_calibration_offset_precision',units="nm")
+    write_field('radCalWq','wavelength_calibration_stretch')
+    write_field('radCalWqSigma','wavelength_calibration_stretch_precision')
+    write_field('radCalChiSquare','wavelength_calibration_chi_square')
+
+    if IFDOEconfig['fit_window'][1] < 477.0:
+        R_no2 = dst[group].createVariable('NO2_continuum_reflectance_at_reference_wavelength', float, ('scanline','ground_pixel'), fill_value=9.96921E36)
+        R_no2.reference_wavelength = 440.0
+        R_no2.coordinates = coord_string
+        R_no2[:,:] = results['R_NO2']
+
+        R_no2_precision = dst[group].createVariable('NO2_continuum_reflectance_at_reference_wavelength_precision', float, ('scanline','ground_pixel'), fill_value=9.96921E36)
+        R_no2_precision.reference_wavelength = 440.0
+        R_no2_precision.coordinates = coord_string
+        R_no2_precision[:,:] = results['R_NO2_precision']
+
+
+    elif IFDOEconfig['fit_window'][1] > 477.0:
+        R_o2o2 = dst[group].createVariable('O2O2_continuum_reflectance_at_reference_wavelength', float, ('scanline','ground_pixel'), fill_value=9.96921E36)
+        R_o2o2.reference_wavelength = 477.0
+        R_o2o2.coordinates = coord_string
+        R_o2o2[:,:] = results['R_O2O2']
+
+        R_o2o2_precision = dst[group].createVariable('O2O2_continuum_reflectance_at_reference_wavelength_precision', float, ('scanline','ground_pixel'), fill_value=9.96921E36)
+        R_o2o2_precision.reference_wavelength = 477.0
+        R_o2o2_precision.coordinates = coord_string
+        R_o2o2_precision[:,:] = results['R_O2O2_precision']
+        
+    dst.close()
+    
+    return
+
+def readGeometry(cfg):
+    geo = {}
+
+    with nc.Dataset(cfg['input']['geo']) as f:
+        for key in f.variables.keys():
+            geo[key] = f[key][:]
+
+    return geo

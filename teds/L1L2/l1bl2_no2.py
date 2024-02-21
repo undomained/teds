@@ -14,7 +14,7 @@ currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentfram
 parentdir = os.path.dirname(currentdir)
 sys.path.insert(0, parentdir) 
 
-from lib import libDOAS
+from lib import libDOAS, libAMF
 
 
 
@@ -555,7 +555,29 @@ def ifdoe_run(cfg):
     logging.info(f'IFDOE calculation finished in {np.round(time.time()-startTime,1)} s')
     
 
-    return
+    return results
+
+
+def amf_run(cfg):
+
+    startTime = time.time()
+
+    logging.info(f"Reading doas file: {cfg['input']['doas']}")
+    doas = libAMF.read_doas(cfg['input']['doas'])
+
+    logging.info(f"Reading atm file: {cfg['input']['atm']}")
+    atm = libAMF.read_atm(cfg['input']['atm'])
+
+    logging.info('Calculating AMF')
+    amf_results = libAMF.get_amf(cfg, doas, atm)
+
+
+    logging.info(f"Writing AMF results to: {cfg['input']['doas']}")
+    libAMF.write_amf(cfg['input']['doas'],amf_results)
+
+    logging.info(f'AMF calculation finished in {np.round(time.time()-startTime,1)} s')
+
+    return amf_results
 
 
 if __name__ == '__main__':
@@ -598,8 +620,8 @@ if __name__ == '__main__':
         logging.basicConfig(level=loglevel,handlers = [ch])
         
 
-    # Python parallises internally with numpy, for single thread optimal is 4 numpy threads
-    # for multi-threading use only 1 numpy thread, otherwise it becomes slow
+    # Python parallises internally with numpy, for single thread optimum is 4 numpy threads
+    # for multi-threading use only 1 numpy thread, otherwise slow-down
 
     if cfg['doas']['threads'] == 1:
         numpy_cpu = 4
@@ -607,4 +629,12 @@ if __name__ == '__main__':
         numpy_cpu = 1
 
     with threadpool_limits(limits=numpy_cpu, user_api='blas'):
-        ifdoe_run(cfg['doas'])
+
+        if cfg['doas']['run']:
+            doas_results = ifdoe_run(cfg['doas'])
+            
+            cfg['amf']['input']['doas'] = cfg['doas']['output']['doas'] # set doas output to input amf
+            
+        if cfg['amf']['run']:
+            amf_results = amf_run(cfg['amf'])
+

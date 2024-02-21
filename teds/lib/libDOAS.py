@@ -1785,7 +1785,7 @@ def writeOutput(IFDOEconfig,parameterNames,results,geo):
     alt_dim = dst.createDimension('scanline', geo['lat'].shape[0])
     act_dim = dst.createDimension('ground_pixel', geo['lat'].shape[1])
 
-    coord_string = "latitude longitude"
+    coord_string = "lat lon"
 
     general_vars = ['lat','lon','sza','vza','saa','vaa']
     for var in general_vars:

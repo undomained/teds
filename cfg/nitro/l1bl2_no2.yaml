@@ -2,6 +2,9 @@
 
 doas:
 
+  run: yes
+
+
   threads: 6 # on KNMI workstation optimum around 6 threads
 
   input:
@@ -11,7 +14,7 @@ doas:
     geo: ../data/no2/geometry.nc
 
   output:
-    doas: ../data/no2/doas_test_tmp.nc
+    doas: ../data/no2/no2_l2_cams_fc.nc
     export_spectra: no
 
   debug:
@@ -118,3 +121,12 @@ doas:
       P2: [0.01, 0.01]
       Cring: [0.06, 0.06]
       Dring: [0.06, 0.06]
+
+  
+amf:
+
+  run: yes
+
+  input:
+    atm: ../data/no2/sgm_atmosphere_cams_fc.nc
+    LUT_NN_file: ../data/no2/LUT_NN_combined_20231113.nc

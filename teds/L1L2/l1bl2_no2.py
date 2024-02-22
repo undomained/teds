@@ -445,10 +445,13 @@ def ifdoe_run(cfg):
 
             # fit parameters
             for i,parameter in enumerate(parameterNames):
-
-                # scale poly coeff with pi/mu0
-                results[parameter][iscan,ipxl] = model.stateVector[i] * szaFactor
-                results[parameter+'Sigma'][iscan,ipxl] = precision[i] * szaFactor
+                if 'P' in parameter:
+                    # scale poly coeff with pi/mu0
+                    results[parameter][iscan,ipxl] = model.stateVector[i] * szaFactor
+                    results[parameter+'Sigma'][iscan,ipxl] = precision[i] * szaFactor
+                else:
+                    results[parameter][iscan,ipxl] = model.stateVector[i] 
+                    results[parameter+'Sigma'][iscan,ipxl] = precision[i]
 
             # if geometry info available calculate amf geo and geo column
             amfGeo = 1/np.cos(geo['sza'][iscan,ipxl]*np.pi/180.0) + 1/np.cos(geo['vza'][iscan,ipxl]*np.pi/180.0) 

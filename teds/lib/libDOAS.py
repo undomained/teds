@@ -7,6 +7,7 @@ from matplotlib import pyplot
 import warnings
 from collections import OrderedDict
 import math
+import datetime
 
 from lib import constants
 
@@ -1780,6 +1781,9 @@ def writeOutput(IFDOEconfig,parameterNames,results,geo):
 
     dst = nc.Dataset(IFDOEconfig['output']['doas'], 'w', format='NETCDF4')
 
+
+    dst.DOAS_config = str(IFDOEconfig)
+    dst.processing_date = datetime.datetime.now().strftime('%Y%m%dT%H%M%S')
 
     # create dims
     alt_dim = dst.createDimension('scanline', geo['lat'].shape[0])

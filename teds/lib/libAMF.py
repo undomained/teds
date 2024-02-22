@@ -256,10 +256,11 @@ def predict_NN(input_vector, NN):
     return output[0]
 
 
-def write_amf(file_output,amf):
+def write_amf(cfg,amf):
 
-    with nc.Dataset(file_output, 'a') as dst:
+    with nc.Dataset(cfg['input']['doas'], 'a') as dst:
 
+        dst.amf_config = str(cfg)
 
         group = 'amf'
         newgroup = dst.createGroup(group)

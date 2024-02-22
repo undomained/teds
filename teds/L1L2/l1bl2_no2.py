@@ -573,7 +573,7 @@ def amf_run(cfg):
 
 
     logging.info(f"Writing AMF results to: {cfg['input']['doas']}")
-    libAMF.write_amf(cfg['input']['doas'],amf_results)
+    libAMF.write_amf(cfg,amf_results)
 
     logging.info(f'AMF calculation finished in {np.round(time.time()-startTime,1)} s')
 

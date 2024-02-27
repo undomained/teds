@@ -200,9 +200,8 @@ def Gauss_Newton_iteration(retrieval_init, atm, optics, measurement, max_iter, c
         scaling = retrieval_init['trace gases'][key]['scaling']
         output['X'+key] = sum(atm.__getattribute__(key))/sum(atm.air)
         output['X'+key+' precision'] = output['X'+key] * x_lst_precision[l]           # ppm
-        ref_mixing_ratio = np.sum(retrieval_init['trace gases'][key]['ref_profile'])/sum(atm.air)/scaling
+        ref_mixing_ratio = x_dic[key]*np.sum(retrieval_init['trace gases'][key]['ref_profile'])/sum(atm.air)/scaling
         output['gain_X'+key] = g_dic[key] * ref_mixing_ratio
-
     m = 0
     while 'alb%d' % (m) in retrieval_init['surface'].keys():
         output['alb%d' % (m)] = x_dic["alb%d" % (m)]
@@ -235,7 +234,7 @@ def Gauss_Newton_iteration(retrieval_init, atm, optics, measurement, max_iter, c
                 delta_prof = col/retrieval_init['trace gases']['H2O']['ref_profile'][klay]
                 output['XH2O col avg kernel'][klay] = np.sum(Gain[ispec, :]*fwd['layer_'+value][:, klay])*delta_prof
 
-    # print(np.sum(output['XCO2 col avg kernel']*retrieval_init['trace gases']['CO2']['ref_profile']))
+    #    print(np.sum(output['XCO2 col avg kernel']*retrieval_init['trace gases']['CO2']['ref_profile']))
     # print(np.sum(retrieval_init['trace gases']['CO2']['ref_profile']))
     
     # plt.plot(output['XCO2 col avg kernel'], atm.zlay*1.E-3, label = 'CO2', color = 'blue')

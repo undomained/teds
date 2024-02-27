@@ -170,6 +170,7 @@ def level2_diags_output(filename, l2product, measurement):
     nact = len(l2product[0])
     nwave = len(measurement[0, 0]['wavelength'])
     # file name
+    print('diag_output')
     output_l2diag = nc.Dataset(filename, mode='w')
     output_l2diag.title = 'Tango Carbon E2ES L2 diagnostics'
     output_l2diag.createDimension('bins_spectral', nwave)     # spectral axis
@@ -201,15 +202,13 @@ def level2_diags_output(filename, l2product, measurement):
     _ = writevariablefromname(output_l2diag, "l2solarirradiance", _dims, l2diag_sun_irradiance)
     # gain CO2
     _ = writevariablefromname(output_l2diag, "l2gainCO2", _dims, l2diag_gainCO2)
-    # gain CO2
-    _ = writevariablefromname(output_l2diag, "l2gainCO2", _dims, l2diag_gainCO2)
     # gain CH4
     _ = writevariablefromname(output_l2diag, "l2gainCH4", _dims, l2diag_gainCH4)
     # gain H2O
     _ = writevariablefromname(output_l2diag, "l2gainH2O", _dims, l2diag_gainH2O)
     output_l2diag.close()
 
-def level1b_to_level2_processor(config):
+def level1b_to_level2_processor(config, sw_diag_output = False):
     # get the l1b files
     l1b = get_l1b(config['l1b_input'])
 
@@ -413,10 +412,6 @@ def level1b_to_level2_processor(config):
                 l2product[ialt_l2, iact]['XCO2 proxy precision'] = float("nan")
                 l2product[ialt_l2, iact]['XCH4 proxy precision'] = float("nan")
 
-            if(iact == 10):
-                print(l2product[0, 10]['XCO2 proxy']*1.E6)
-                print(l2product[0, 10]['XCO2 proxy precision']*1.E6)
-
             # XCO2[iact] = l2product[ialt_l2, iact]['XCO2 proxy']*1.E6
             # XCO2_prec[iact] = l2product[ialt_l2, iact]['XCO2 proxy precision']*1.E6
             # XCO2_true_smoothed[iact] = np.dot(l2product[ialt_l2, iact]['XCO2 col avg kernel'],
@@ -425,12 +420,14 @@ def level1b_to_level2_processor(config):
 
     # output to netcdf file
     level2_output(config['l2_output'], l2product, retrieval_init, l1b, config['retrieval_init'])
-    # have to be fixed because of variable spectral size of measurement vector using masked arrays
-#    level2_diags_output(config['l2_diags'], l2product, measurement)
+    
+    if(sw_diag_output):
+        level2_diags_output(config['l2_diag'], l2product, measurement)
 
     print('=> l1bl2 finished successfully')
 
-#    print(runtime_cum)
+#    print('cumulative run time: ',runtime_cum)
+
     return
 
 def level2_nan(retrieval_init, nlay):

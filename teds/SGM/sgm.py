@@ -207,6 +207,12 @@ def sgm_output_atm_raw(filename_atm, meteo, atm_std, gases=None):
     
     # albedo
     _ = writevariablefromname(output_atm, 'albedo', _dims, albedo)
+
+    xdistance = meteo.x_new
+    ydistance = meteo.y_new
+    _ = writevariablefromname(output_atm, 'xdistance', 'bins_across_track', xdistance)
+    _ = writevariablefromname(output_atm, 'ydistance', 'bins_along_track', ydistance)
+
     # column_co2
     var_co2 = writevariablefromname(output_atm, 'XCO2', _dims, xco2)
     # write new attributes
@@ -282,7 +288,7 @@ def scene_generation_module(config):
     atm_std = libATM.get_AFGL_atm_homogenous_distribution(config['afgl_input'], nlay, dzlay)
 
     if ((config['profile'] == 'individual_spectra') or (config['profile'] == 'single_swath')):
-        # xco2 = np.sum(atm_std.CO2) / np.sum(atm_std.air) * 1.E6
+        xco2 = np.sum(atm_std.CO2) / np.sum(atm_std.air) * 1.E6
         atm = np.ndarray((nalt, nact), np.object_)
         for ialt in range(nalt):
             for iact in range(nact):
@@ -506,7 +512,7 @@ def convolvedata(meteodata, config):
     return meteodata
 
 
-def scene_generation_module_new(config):
+def scene_generation_module_new(config, sw_raw_geo_data_only=False):
     """Scene generation module.
 
     Parameters
@@ -545,11 +551,6 @@ def scene_generation_module_new(config):
         else:     
             # meteorological data
             
-            pickle.dump(gm_data, open('./test.pkl', 'wb'))
-            print(config['meteo'])
-            breakpoint()
-            
-            sys.exit()
             meteodata = libATM.get_atmosphericdata_new(gm_data['lat'], gm_data['lon'], config['meteo'])
             # get albedo on the microhh grid
 
@@ -565,13 +566,23 @@ def scene_generation_module_new(config):
             if(config['sw_geo_output_raw']):
                 sgm_output_atm_raw(config['geo_output_raw'], meteodata, atm_std, config["meteo"]['gases'])
 
+            #this is a temporary solution and requires later a full seperation
+            #of geo-calculation and RTM
+            
+            if(sw_raw_geo_data_only):
+                if __name__ == '__main__':
+                    sys.exit()
+                else:
+                    return
+
             # convolution meteo data
             meteodata = convolvedata(meteodata, config)
             # interpolation meteo data to gm grid
-            albedo, sgmmeteo = interpolate_data(meteodata, gm_data, config)
+            albedo, sgmmeteo = interpolate_data(meteodata, gm_data, config["meteo"]["gases"])
             # get collocated meteo data
             atm = libATM.combine_meteo_standard_atm(sgmmeteo, atm_std, config["meteo"]['gases'])
 
+    sys.exit('jojo')
     # =============================================================================
     # Write atmosphere and albedo data
     if (config['profile'] == 'orbit') & ~(config['only_afgl']):

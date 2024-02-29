@@ -58,11 +58,11 @@ locations.siml1b['l1b_output'] = path_interface + 'level1b/Tango_Carbon_l1b_exp2
 #scene specification for profile single_pixel and swath
 scene = {}
 scene['scene_spec'] = {}
-scene['scene_spec']['sza']    = [70.] 
-scene['scene_spec']['saa']    = [0.] 
-scene['scene_spec']['vza']    = [0.] 
-scene['scene_spec']['vaa']    = [0.] 
-scene['scene_spec']['albedo'] = [0.15] 
+scene['scene_spec']['sza']    = [70., 70., 0., 50.]        
+scene['scene_spec']['saa']    = [0., 0., 0., 0. ] 
+scene['scene_spec']['vza']    = [0., 0., 0., 0. ] 
+scene['scene_spec']['vaa']    = [0., 0., 0., 0. ] 
+scene['scene_spec']['albedo'] = [0.15, 0.10, 0.80, 0.25] 
 
 # =============================================================================
 

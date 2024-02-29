@@ -57,6 +57,7 @@ def readmeteodata(path_data, gasestoread, filesuffix):
         else:
             print(filename, " file doesn't exist")
             sys.exit()
+            
     return data
 
 

@@ -123,7 +123,9 @@ def get_atmosphericdata_new(gm_lat, gm_lon, meteo_settings):
     # create a transform method 
     trans = TransformCoords(src[1:])
     # convert lat-lon of gm to x-y and get bounds
+
     gm_x, gm_y = trans.latlon2xymts(gm_lat, gm_lon)
+
     x_new, y_new, idx, idy, padx, pady = shrink_extend_domain(gm_x, gm_y, data.x, data.y)
     XX, YY = np.meshgrid(x_new, y_new)
     lat_new, lon_new = trans.xymts2latlon(XX, YY)
@@ -237,6 +239,13 @@ def get_AFGL_atm_homogenous_distribution(AFGL_path, nlay, dzlay, xco2_ref=405, x
     atm.CH4 = xch4_ref/xch4 * atm.CH4
     atm.H2O = xh2o_ref/xh2o * atm.H2O
 
+    # xco2 = np.sum(atm.CO2) / np.sum(atm.air) * 1.E6
+    # xch4 = np.sum(atm.CH4) / np.sum(atm.air) * 1.E9
+    # xh2o = np.sum(atm.H2O) / np.sum(atm.air) * 1.E6
+    # print('XCO2 ', xco2)
+    # print('XCH4 ', xch4)
+    # print('XH2O ', xh2o)
+    # print('H2O col',np.sum(atm.H2O))
     return(atm)
 
 

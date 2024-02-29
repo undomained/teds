@@ -98,6 +98,23 @@ levelheight:
   valid_max: 1.E+5
   FillValue: -32767
   
+xdistance:
+  name: xdistance
+  long_name: 'horizontal x distance'
+  units: 'm'  
+  valid_min: -30000.
+  valid_max: +30000.
+  FillValue: -32767
+
+ydistance:
+  name: ydistance
+  long_name: 'horizontal y distance'
+  units: 'm'  
+  valid_min: -30000.
+  valid_max: +30000.
+  FillValue: -32767
+
+
 subcol_density_co2:
   name: dcol_co2
   long_name: CO2 layer column density

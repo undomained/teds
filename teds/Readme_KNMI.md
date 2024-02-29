@@ -43,7 +43,7 @@ From the teds directory:
 
 ## How to run a nominal case for Tango Nitro
 
-### Configuratyion files
+### Configuration files
 Configuration files can be found in cfg/nitro.  
 The configuration file for the nominal run is in this directory.  
 The different cases are in subdirectories.  
@@ -77,3 +77,7 @@ They can be found in `data/no2/ckd` directory (or some other directory. you can 
 
 ### Creation of input files that come from outside the E2E processor (like ckd and binning table)
 TBW
+
+
+### DISAMAR radiative transfer
+The Nitro SGM makes use of the KNMI DISAMAR software suite. This code is open source and available on https://gitlab.com/KNMI-OSS/disamar. See the DISAMAR readme for compiling instructions. The DISAMAR executable path then has to be given in the Nitro SGM yaml file.

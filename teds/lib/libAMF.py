@@ -127,21 +127,6 @@ def get_amf(cfg, doas, atm):
     return results
 
 
-def get_boxamf_NN(NN_amf, input_vector, pressure_layers, amf_geo):
-
-    # loop over pressure layers
-
-    boxamf = np.zeros_like(pressure_layers)
-
-    for i in range(len(pressure_layers)):
-            input_vector[-1] = pressure_layers[i]/100.
-            boxamf[i] = predict_NN(input_vector, NN_amf)*amf_geo
-
-    boxamf[boxamf<0.0] = 0.0
-    return boxamf
-
-
-
 def get_cl(t):
     # --------------------------
     # Calculate temperature correction factor (see tropomi atbd)
@@ -153,7 +138,6 @@ def get_cl(t):
     cl = 1 - 0.00316* (t - t_sigma) + 3.39E-6*(t - t_sigma)**2
 
     return cl
-
 
 
 def get_tropopause(temperature, geometric_layer_height):

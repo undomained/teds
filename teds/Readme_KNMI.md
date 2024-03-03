@@ -48,7 +48,7 @@ Configuration files can be found in cfg/nitro.
 The configuration file for the nominal run is in this directory.  
 The different cases are in subdirectories.  
 All settings for the different steps are combined in 1 yaml file.  
-This ensures that the settings between te steps will be consitent.  
+This ensures that the settings between te steps will be consistent.  
 Note: the .cfg files needed to run the C++ code in the IM and L1AL1B part are generated from the yaml input when step is `im`, `l1al1b` or `all`.  
 Where the .cfg file is written is determined in the yaml file settings, but python scripts expects this at the moment to be in the same location as the yaml file.
 
@@ -76,6 +76,10 @@ There are also input files that are not produced by the different steps of the E
 They can be found in `data/no2/ckd` directory (or some other directory. you can change the location by updating the yaml file).
 
 ### Creation of input files that come from outside the E2E processor (like ckd and binning table)
+#### Creating binning table
+`python CKD/create_binning_table.py`
+
+#### Creating CKD file
 TBW
 
 

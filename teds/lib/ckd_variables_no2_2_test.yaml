@@ -1,0 +1,128 @@
+mask:
+    name           : 'mask'
+    long_name      : 'detector pixel mask'
+    flag_values    : '[0 1]'
+    flag_meanings  : 'good bad'
+vp_mask:
+    name           : 'vp_mask'
+    comment        : 'unused'
+####################
+# DARK
+####################
+dark_skip:
+    name           : 'dark_skip'
+dark_offset:
+    name           : 'dark_offset'
+    units          : 'counts'
+    long_name      : 'detector offset'
+dark_current:
+    name           : 'dark_current'
+    long_name      : 'detector dark current'
+    units          : 'counts / s'
+dark_nominal_temperature:
+    name           : 'dark_nominal_temperature'
+    long_name      : 'temperature'
+    units          : 'degC'
+    comment        : 'unused'
+####################
+# NOISE
+####################
+noise_skip:
+    name           : 'noise_skip'
+noise_n:
+    name           : 'noise_n'
+    long_name      : 'scaled read noise'
+    comment        : 'noise model: sigma = sqrt(g*signal + n)'
+    units          : 'counts^2/e'
+noise_g:
+    name           : 'noise_g'
+    long_name      : 'noise conversion gain'
+    comment        : 'noise model: sigma = sqrt(g*signal + n)'
+    units          : 'counts/e'
+####################
+# NON_LINEARITY
+####################
+nonlin_skip:
+    name           : 'nonlin_skip'
+####################
+# PRNU
+####################
+prnu_skip:
+    name           : 'prnu_skip'
+prnu_prnu:
+    name           : 'prnu_prnu'
+    long_name      : 'pixel response non-uniformity'
+    units          : '1'
+####################
+# FIELD_OF_VIEW
+####################
+fov_act_angles:
+    name           : 'fov_act_angles'
+    long_name      : 'across track rotation stage position per spatial sample'
+    units          : 'radians'
+fov_ispat:
+    name           : 'fov_ispat'
+    long_name      : 'floating point spatial detector pixel indices of the spectra'
+    units          : '1'
+####################
+# SWATH
+####################
+swath_skip:
+    name           : 'swath_skip'
+swath_swathvectors:
+    name           : 'swath_swathvectors'
+    comment        : 'unused'
+swath_vectorplane_normals:
+    name           : 'swath_vectorplane_normals'
+    comment        : 'unused'
+####################
+# RADIOMETRIC
+####################
+rad_skip:
+    name           : 'rad_skip'
+rad_spectra:
+    name           : 'rad_spectra'
+    long_name      : 'radiometric calibration constants'
+    units          : '1'
+####################
+# WAVELENGTH
+####################
+wave_spectra:
+    name           : 'wave_spectra'
+    comment        : 'unused'
+wave_target:
+    name           : 'wave_target'
+    long_name      : 'wavelengths of L1B spectra'
+    units          : 'nm'
+####################
+# STRAYLIGHT
+####################
+stray_skip:
+    name           : 'stray_skip'
+kernel_rows:
+    name           : 'kernel_rows'
+    long_name      : 'number of rows in each kernel'
+    units          : '1'
+kernel_cols:
+    name           : 'kernel_cols'
+    long_name      : 'number of columns in each kernel'
+    units          : '1'
+kernel_fft_sizes:
+    name           : 'kernel_fft_sizes'
+    long_name      : 'sizes of kernel FFTs'
+    units          : 'size of complex double'
+kernels_fft:
+    name           : 'kernels_fft'
+    long_name      : 'Fourier transforms of the kernels'
+    units          : '1'
+eta:
+    name           : 'eta'
+    long_name      : 'internal scattering factor'
+    units          : '1'
+weights:
+    name           : 'weights'
+    long_name      : 'kernel weights'
+    units          : '1'
+edges:
+    name           : 'edges'
+    units          : '1'

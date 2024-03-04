@@ -11,6 +11,7 @@ import netCDF4 as nc
 import yaml
 from lib.libWrite import writevariablefromname
 from lib.libOrbSim import Sensor, Satellite
+import lib.data_netcdf.data_netcdf as dn
 import datetime
 
 def check_input(nact, check_list, place):
@@ -250,6 +251,37 @@ def gm_output(config, vza, vaa, sza, saa, lat_grid, lon_grid):
     _ = writevariablefromname(output, "latitude", dims, lat_grid)
     _ = writevariablefromname(output, "longitude", dims, lon_grid)
     output.close()
+
+def gm_output_via_object(config, vza, vaa, sza, saa, lat_grid, lon_grid):
+    """
+       Write gm oputput to filename (set in config file) as nc file.
+       Using the data_netCDF class
+    """
+
+    filename = config['gm_file']
+    # Check if directory exists, otherwise create:
+    out_dir = os.path.split(filename)[0]
+    if not os.path.exists(out_dir):
+        os.makedirs(out_dir)
+
+    title = config['gm_title']
+
+    nact = len(lat_grid[0,:])
+    nalt = len(lat_grid[:,0])
+
+    gm_data = dn.DataNetCDF(filename, title=title)
+    gm_data.add('E2E_configuration', value=str(config), kind='attribute')
+
+    dims = ('bins_along_track', 'bins_across_track')
+    gm_data.add(name=dims[0], value=nalt, kind='dimension')    # along track axis
+    gm_data.add(name=dims[1], value=nact, kind='dimension')     # across track axis
+    gm_data.add(name="solarzenithangle", dimensions=dims, value=sza)
+    gm_data.add(name="solarazimuthangle", dimensions=dims, value=saa)
+    gm_data.add(name="viewingzenithangle", dimensions=dims, value=vza)
+    gm_data.add(name="viewingazimuthangle", dimensions=dims, value=vaa)
+    gm_data.add(name="latitude", dimensions=dims, value=lat_grid)
+    gm_data.add(name="longitude", dimensions=dims, value=lon_grid)
+    gm_data.write()
 
 
 def orbit_simulation(config):

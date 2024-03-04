@@ -70,8 +70,10 @@ settings_IM:
 # Not used in create_im_config script:
 #    fmc:             5                                  #forward motion compensation
     bin_id:          1                                   #across track binning
-    co_adding:       4                                   #along track co-addng
-    exp_time:        0.066                               #exposure time [sec]
+    co_adding:       2                                   #along track co-addng
+    exp_time:        0.021                               #exposure time [sec]
+#    co_adding:       4                                   #along track co-addng
+#    exp_time:        0.066                               #exposure time [sec]
 # Not used in create_im_config script:
 #    stray_interpolating: yes                             #Whether to use interpolating stray light kernels
     sw_dark:         1                                   #switch dark current (1 on, 0 off)

@@ -128,8 +128,9 @@ def build(logger, config, step, cfg_path, attribute_dict):
 
     if step == 'sgm' or step == 'all':
         #TODO need to be filled in
+        # For nitro we need to run SGM.sgm_no2 module and fct scene_generation_module_no2
         E2EModule = importlib.import_module("SGM.sgm")
-        E2EModule.scene_generator_module(config)
+        E2EModule.scene_generation_module(config)
         add_attributes_to_output(logger, config['sgm_file'], attribute_dict) #?
 
     if step == 'im' or step == 'all':

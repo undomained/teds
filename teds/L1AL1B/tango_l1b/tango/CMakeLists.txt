@@ -42,6 +42,7 @@ target_sources(tango_l1b PRIVATE
   straycal.cpp
   swathcal.cpp
   wavecal.cpp
+  tango_cal.cpp
   spexone_cal.cpp
   l1a_frames.cpp
   cubic_spline.cpp

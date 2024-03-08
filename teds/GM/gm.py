@@ -12,9 +12,10 @@ import yaml
 from lib.libWrite import writevariablefromname
 from lib.libOrbSim import Sensor, Satellite
 import lib.data_netcdf.data_netcdf as dn
+import lib.lib_utils as Utils
 import datetime
 
-def check_input(nact, check_list, place):
+def check_input(logger, nact, check_list, place):
     """
         Check the input for simple profiles (single swath and individual spectra).
         Length should be equal to nact.
@@ -23,9 +24,12 @@ def check_input(nact, check_list, place):
     for view in check_list:
 
         if nact != len(config['scene_spec'][view]):
-            sys.exit(f"input error in gm for {view} nact ({nact}) not equal to {view} length ({len(config['scene_spec'][view])}), {place}")
+#            sys.exit(f"input error in gm for {view} nact ({nact}) not equal to {view} length ({len(config['scene_spec'][view])}), {place}")
+            error_string = f"input error in gm for {view} nact ({nact}) not equal to {view} length ({len(config['scene_spec'][view])}), {place}.\nCan not continue."
+            logger.error(error_string)
+            sys.exit(255)
 
-def get_individual_spectra(config):
+def get_individual_spectra(logger, config):
     """
         Generate the gm output for individual spectra
         first check consistencies of 'indivual_spectra' input.
@@ -41,7 +45,7 @@ def get_individual_spectra(config):
 
     nn = len(config['scene_spec']['sza'])
 
-    check_input(nn, ['sza','saa','vza','vaa','albedo'], "code 1")
+    check_input(logger, nn, ['sza','saa','vza','vaa','albedo'], "code 1")
 
     # here we use the 2-dimensional data structure in an artificial way
     nact = nn
@@ -68,7 +72,7 @@ def get_individual_spectra(config):
     return vza, vaa, sza, saa, lat_grid, lon_grid
 
 # TODO get_single_swath and get_indivudual_spectra very much the same, Can code be merged?
-def get_single_swath(config):
+def get_single_swath(logger, config):
     """
         Generate the gm output for single swath
 
@@ -83,7 +87,7 @@ def get_single_swath(config):
     nact = config['field_of_regard']['nact']       
     nalt = 1
 
-    check_input(nact, ['sza','saa','vza','vaa','albedo'], "code 2")
+    check_input(logger, nact, ['sza','saa','vza','vaa','albedo'], "code 2")
 
     lon_grid = np.empty([nalt, nact])
     lat_grid = np.empty([nalt, nact])
@@ -102,7 +106,7 @@ def get_single_swath(config):
 
     return vza, vaa, sza, saa, lat_grid, lon_grid
 
-def get_orbit(config):
+def get_orbit(logger, config):
     """
         Generate the gm output for an orbit
         configure satellite and propagate orbit
@@ -115,10 +119,10 @@ def get_orbit(config):
                lon_grid: pixel_longitude grid, numpy array
     """
 
-    sat = orbit_simulation(config)
+    sat = orbit_simulation(logger, config)
 
     # configure sensors and compute ground pixel information
-    sensors = sensor_simulation(config, sat)
+    sensors = sensor_simulation(logger, config, sat)
 
     vza = sensors['gpxs'][0]['vza']
     vaa = sensors['gpxs'][0]['vaa']
@@ -129,7 +133,7 @@ def get_orbit(config):
 
     return vza, vaa, sza, saa, lat_grid, lon_grid
 
-def get_S2_microHH(config):
+def get_S2_microHH(logger, config):
     """
         Generate the gm output for S2 microHH
 
@@ -222,7 +226,7 @@ def get_S2_microHH(config):
 
     return vza, vaa, sza, saa, lat_grid, lon_grid
 
-def gm_output(config, vza, vaa, sza, saa, lat_grid, lon_grid):
+def gm_output(logger, config, vza, vaa, sza, saa, lat_grid, lon_grid):
     """
        Write gm oputput to filename (set in config file) as nc file.
     """
@@ -252,7 +256,7 @@ def gm_output(config, vza, vaa, sza, saa, lat_grid, lon_grid):
     _ = writevariablefromname(output, "longitude", dims, lon_grid)
     output.close()
 
-def gm_output_via_object(config, vza, vaa, sza, saa, lat_grid, lon_grid):
+def gm_output_via_object(logger, config, vza, vaa, sza, saa, lat_grid, lon_grid):
     """
        Write gm oputput to filename (set in config file) as nc file.
        Using the data_netCDF class
@@ -284,14 +288,14 @@ def gm_output_via_object(config, vza, vaa, sza, saa, lat_grid, lon_grid):
     gm_data.write()
 
 
-def orbit_simulation(config):
+def orbit_simulation(logger, config):
     """
         define the orbit
     """
-    sat = Satellite(config['orbit'])
+    sat = Satellite(logger, config['orbit'])
 
     # propagate the orbit
-    print('\npropagate orbit')
+    logger.info('propagate orbit...')
     dt_start = config['orbit']['epoch']
     dt_end = dt_start + datetime.timedelta(hours=config['orbit']['propagation_duration'])
     # compute the satellite position for every 10 seconds
@@ -300,7 +304,7 @@ def orbit_simulation(config):
     return {'sat': sat, 'sat_pos': satpos, 'dt_start': dt_start, 'dt_end': dt_end}
 
 
-def sensor_simulation(config, sat):
+def sensor_simulation(logger, config, sat):
     """
         propogate sensors
     """
@@ -312,7 +316,7 @@ def sensor_simulation(config, sat):
 
     for key in config['sensors'].keys():
 
-        print('\ndefining sensor ' + key)
+        logger.info('defining sensor ' + key)
 
         # sensor config wrt satellite reference frame
         sensor_half_swath_deg = np.rad2deg(
@@ -333,11 +337,11 @@ def sensor_simulation(config, sat):
                     config['sensors'][key]['integration_time']]
 
         # make and propage the sensor
-        sensor = Sensor(act_angle_range[0], act_angle_range[1], act_angle_range[2])
+        sensor = Sensor(logger, act_angle_range[0], act_angle_range[1], act_angle_range[2])
         sensor.compute_groundpoints(sat['sat_pos'], pitch=config['sensors'][key]['pitch'],
                                     yaw=config['sensors'][key]['yaw'], roll=config['sensors'][key]['roll'])
 
-        print('compute the ground pixels (gpx)')
+        logger.info('compute the ground pixels (gpx)')
         gpx = sensor.get_groundpoints(dt_range[0], dt_range[1], dt_range[2], thetas)
 
         # collect the output data
@@ -353,7 +357,7 @@ def sensor_simulation(config, sat):
     return {'gpxs': gpxs, 'pitch': np.array(pitch), 'roll': np.array(roll), 'yaw': np.array(yaw)}
 
 
-def interpolate_pitch(sensors, pitch, i_time):
+def interpolate_pitch(logger, sensors, pitch, i_time):
     """
         What does this do exactly?
     """
@@ -389,7 +393,7 @@ def interpolate_pitch(sensors, pitch, i_time):
 
     return gpx
 
-def gm_output_old(config, vza, vaa, sza, saa, lat_grid, lon_grid,):
+def gm_output_old(logger, config, vza, vaa, sza, saa, lat_grid, lon_grid,):
     """
        Write  gm oputput to filename (set in config file) as nc file.
        why is this labeled old?
@@ -466,7 +470,7 @@ def gm_output_old(config, vza, vaa, sza, saa, lat_grid, lon_grid,):
     return
 
 
-def geometry_module(config):
+def geometry_module(logger, config):
     """
     Geometry module to specify geometry.
 
@@ -476,27 +480,28 @@ def geometry_module(config):
     # the gm output is orginazed in dictionaries of the format dic[nalt, nact]
 
     if config['profile'] == "individual_spectra":
-        vza, vaa, sza, saa, lat_grid, lon_grid = get_individual_spectra(config)
+        vza, vaa, sza, saa, lat_grid, lon_grid = get_individual_spectra(logger, config)
 
     elif (config['profile'] == "single_swath"):
 
-        vza, vaa, sza, saa, lat_grid, lon_grid = get_single_swath(config)
+        vza, vaa, sza, saa, lat_grid, lon_grid = get_single_swath(logger, config)
     
     elif (config['profile'] == "orbit"):
         # configure satellite and propagate orbit
-        vza, vaa, sza, saa, lat_grid, lon_grid = get_orbit(config)
+        vza, vaa, sza, saa, lat_grid, lon_grid = get_orbit(logger, config)
 
     elif (config['profile'] == "S2_microHH"):
-        vza, vaa, sza, saa, lat_grid, lon_grid = get_S2_microHH(config)
+        vza, vaa, sza, saa, lat_grid, lon_grid = get_S2_microHH(logger, config)
 
     else:
-        sys.exit(f"something went wrong in gm, code=3, unrecognized profile choise: {config['profile']}")
+        error_string = f"something went wrong in gm, code=3, unrecognized profile choise: {config['profile']}\nCan not continue. Stopping now!"
+        logger.error(error_string)
+        sys.exit(255)
 
     # write data to output file
-    gm_output(config, vza, vaa, sza, saa, lat_grid, lon_grid)
+    gm_output(logger, config, vza, vaa, sza, saa, lat_grid, lon_grid)
 
-    print(
-        "=>gm calculation finished successfully. ")
+    logger.info("=>gm calculation finished successfully. ")
     return
 
 
@@ -504,5 +509,14 @@ if __name__ == '__main__' and __package__ is None:
 
     sys.path.append( os.path.dirname( os.path.dirname( os.path.abspath(__file__) ) ) )
 
-    config = yaml.safe_load(open(sys.argv[1]))
-    geometry_module(config)
+#    config = yaml.safe_load(open(sys.argv[1]))
+    gm_logger = Utils.get_logger()
+    cfgFile = sys.argv[1]
+    config = Utils.getConfig(gm_logger, cfgFile)
+    main_attribute_dict = Utils.get_main_attributes(config, config_attributes_name='GM_configuration')
+
+    geometry_module(gm_logger, config)
+
+    # add attributes to the output file
+    Utils.add_attributes_to_output(gm_logger, config['gm_file'], main_attribute_dict)
+

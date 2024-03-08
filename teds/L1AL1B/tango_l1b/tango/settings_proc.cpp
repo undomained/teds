@@ -34,6 +34,7 @@ int Settings_proc::init_common( // {{{
     recognize_setting_vector(image_end); // Ends of image streaks to be processed.
     // Settings of which the default from the main settings can be overwritten.
     recognize_setting(binningtable_filename); // File with all the used binning tables.
+    recognize_setting(log_file_path); // log file path .
     recognize_setting_vector(l1a_discard_frames_start); // Number of frames to discard at the beginning to mitigate memory effects.
     recognize_setting_vector(l1a_discard_frames_end); // Number of frames to discard at the beginning to mitigate memory effects.
     recognize_setting_vector(l1x_outputfiles_raw); // Name of L1X output files after just co-adding and converting to floats.

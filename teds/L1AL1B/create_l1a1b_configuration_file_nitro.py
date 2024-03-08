@@ -17,6 +17,8 @@ def l1al1b_configuration(local_config):
     lines.append('ckd_file_in = ' + local_config['ckd_input']+'\n')
     #location of ckd binning table
     lines.append('binningtable_filename =' + local_config['binning_table']+'\n')
+    # log file path
+    lines.append('log_file_path = '+str(local_config['L1AL1B_log_path']) + '\n')
     #========================l1b group=========================================
     lines.append('[l1b]\n') 
     # Iteration limit for the stray light deconvolution procedure. Set to
@@ -42,7 +44,7 @@ def l1al1b_configuration(local_config):
     lines.append('rad_apply = '+str(local_config['settings_L1AL1B']['sw_rad'])+'\n')
 
     # write IM config file 
-    new_config = open(local_config['L1AL1B_path']+'l1al1b_config.cfg','w')
+    new_config = open(local_config['L1AL1B_cfg_path']+'l1al1b_config.cfg','w')
     new_config.writelines(lines)
     new_config.close()
 

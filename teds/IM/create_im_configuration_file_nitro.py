@@ -30,6 +30,8 @@ def im_configuration(local_config):
     # Which NetCDF group to use from the binning table file.
     # Here it is the same as the binning factor in ACT dimension.
     lines.append('binning_table_id = '+str(local_config['settings_IM']['bin_id']) + '\n')
+    # log file path
+    lines.append('log_file_path = '+str(local_config['IM_log_path']) + '\n')
     # Exposure time in s
     lines.append('exposure_time = '+str(local_config['settings_IM']['exp_time']) + '\n')
     # co-adding 
@@ -68,7 +70,7 @@ def im_configuration(local_config):
     lines.append('seed = '+str(local_config['noise']['seed']) + '\n')
     
     # write IM config file 
-    new_config = open(local_config['IM_path']+'im_config.cfg','w')
+    new_config = open(local_config['IM_cfg_path']+'im_config.cfg','w')
     new_config.writelines(lines)
     new_config.close()
     print("DONE running im_configuration to create config file for IM executable")

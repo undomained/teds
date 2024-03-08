@@ -23,6 +23,7 @@ int Settings_main::init_common( // {{{
     // Put recognize_setting here.
     recognize_setting(input_enhance); // Factor to enhance the input spectral sampling to reduce numeric errors in ISRF convolution.
     recognize_setting(photons); // Flag for input in photon units.
+    recognize_setting(log_file_path); // log file path .
     recognize_setting(ckd_file_in); // CKD input file (not for first step).
     recognize_setting(binningtable_filename); // File with all the used binning tables.
     recognize_setting(binning_table_id); // Binning table to use for the L1A.

@@ -4,7 +4,7 @@
 #include "header.h"
 #include "functions.h"
 #include "logger.h"
-#include "spexone_cal.h"
+#include "tango_cal.h"
 
 // Argument switches. {{{
 const size_t nswitch = 3;
@@ -42,6 +42,81 @@ void printusage( // {{{
         printf("  [%s]   %s\n",switches[iswitch].c_str(),switch_meanings[iswitch].c_str());
     }
 } // }}}
+
+string read_key_from_config(// {{{
+    string settings_file,
+    string key
+)
+{
+    ifstream fileStream(settings_file.c_str());
+    std::string line;
+    while (getline(fileStream, line))
+        {
+            istringstream is_line(line);
+            string found_key;
+            if (std::getline(is_line, found_key, '='))
+            {
+                // Remove trailing spaces from key.
+                while (found_key[found_key.size()-1] == ' ') found_key.erase(found_key.size()-1,1);
+                // Remove leading spaces from key.
+                while (found_key[0] == ' ') found_key.erase(0,1);
+                std::string value;
+                if (found_key[0] == '#')
+                    // Comment line. Skip it
+                    continue;
+                if (strcmp(found_key.c_str(), key.c_str()) == 0){
+                    // Found the key we are looking for
+                    if (std::getline(is_line, value))
+                    {
+                        // Remove leading spaces from value.
+                        while (value[0] == ' ') value.erase(0,1);
+                        // Remove trailing spaces from value.
+                        while (value[value.size()-1] == ' ') value.erase(value.size()-1,1);
+                        return value;
+                    }
+                }
+            }
+        }
+    return "";
+} // }}}
+
+string get_log_file_name(// {{{
+    string settings_file, 
+    string log_file_path,
+    string timestamp
+)
+{
+
+    // Derive log file name.
+    // Name of logfile is derived from name the settings file but with extension .log instead of .cfg
+    // log file path is taken from configuration. If it is not set there the log file will be written to
+    // the directory from which job is run (should be teds directory)
+
+    // Get position of the last / in the name of the settings file
+    size_t slashpos = settings_file.rfind("/");
+    // Get position of the start of the file name (i.e. without the path)
+    size_t file_name_start = 0;
+    if (slashpos != string::npos) {
+        file_name_start = slashpos+1;
+    }
+    // Get the file name
+    string file_name = settings_file.substr(file_name_start);
+
+    // Look for the extension dot.
+    size_t dotpos = file_name.find(".");
+    // Give warning and exit if settings file is without extension (then you are not running the code as described in Readme).
+    if (dotpos == string::npos) {
+        printf("Warning: Settings file has no extension. Please provide a settings file WITH extension .cfg!\n");
+        return "";
+    }
+
+    string log_file = log_file_path + file_name.substr(0,dotpos) + timestamp + ".log";
+    printf("logfile name: {%s}\n", log_file.c_str());
+    return log_file;
+
+} // }}}
+
+
 
 int main( // {{{
     int argc,
@@ -95,28 +170,35 @@ int main( // {{{
         timestamp = string(buffer);
     }
 
-    // Derive log file.
-    // The logfile is equal to the settings file, except that the extension
-    // is substituted to 'txt'. In principle, the settings file should be
-    // <filename>.cfg, but it may be possible that it has a different
-    // extension or no extension at all. In the latter case, we just
-    // add `.txt' to the extensionless filename for the logfile.
-    size_t dotpos = settings_file.rfind(".");
-    // It is possible that the settings file has no extension and that
-    // a relative path with .. is included. Than, there is a rightmost dot
-    // that should not be interpreted as the start of an extension. To
-    // prevent that, we ignore the found position if it is left of the
-    // rightmost slash.
-    size_t slashpos = settings_file.rfind("/");
-    if (slashpos != string::npos && dotpos < slashpos) dotpos = string::npos;
-    string log_file = settings_file.substr(0,dotpos) + timestamp + ".txt";
-    if (settings_file.compare(log_file) == 0) {
-        printf("Error: Settings file should never have '.txt' extension, because that interferes with the log file, unless you switch on time stamps.\n");
-        return 1;
-    }
+    // At this moment no logger defined so not possible to use settings objects
+    // Use fct to find log_file_path in config file
+    string log_file_path = read_key_from_config(settings_file, "log_file_path");
+
+    string log_file = get_log_file_name(settings_file, log_file_path, timestamp);
+    if (log_file.empty()) return 1;
+
+//    // Derive log file.
+//    // The logfile is equal to the settings file, except that the extension
+//    // is substituted to 'txt'. In principle, the settings file should be
+//    // <filename>.cfg, but it may be possible that it has a different
+//    // extension or no extension at all. In the latter case, we just
+//    // add `.txt' to the extensionless filename for the logfile.
+//    size_t dotpos = settings_file.rfind(".");
+//    // It is possible that the settings file has no extension and that
+//    // a relative path with .. is included. Than, there is a rightmost dot
+//    // that should not be interpreted as the start of an extension. To
+//    // prevent that, we ignore the found position if it is left of the
+//    // rightmost slash.
+//    size_t slashpos = settings_file.rfind("/");
+//    if (slashpos != string::npos && dotpos < slashpos) dotpos = string::npos;
+//    string log_file = settings_file.substr(0,dotpos) + timestamp + ".txt";
+//    if (settings_file.compare(log_file) == 0) {
+//        printf("Error: Settings file should never have '.txt' extension, because that interferes with the log file, unless you switch on time stamps.\n");
+//        return 1;
+//    }
 
     Logger trunk(log_file,flags[iswitch_verbose],timestamp);
-    Spexone_cal prog(&trunk);
+    Tango_cal prog(&trunk);
 
     // Execute the program.
     int stat = prog.execute(settings_file,flags[iswitch_foldsettings]);

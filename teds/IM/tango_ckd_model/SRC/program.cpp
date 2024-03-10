@@ -59,21 +59,45 @@ int Program::execute( // {{{
     // Construct and read the CKD.
     unique_ptr<CKD> ckd = make_unique<CKD>(this);
     handle(ckd->read(set_main,LEVEL_L1B,false));
+// NOTE: the decision to apply or not to apply a step has been moved from frame to program.
+// So in principle there is no need anymore for the ckd skip vars
+// Nor is there a need to overwrite the ckd skip vars by the config apply vars.
+// So the overwriting code below is not needed anymore and will be removed soon
+    // It seems that at the moment skip vars have been added to CKD to determine the flow of the IM
+    // i.e. wether or not to run a certain step. In principle the flow of the IM should not
+    // be determined by CKD, but by config. But in frames the settings info is not accessable at the
+    // moment. But CKD skip vars ARE accessable. That probably needs to change at some point.
+    // Having two places where the flow of the IM is determined/set is at the least somewhat confusing.
+    // For now consider the CKD skip vars as kind of place holders. The original code kinda
+    // assumed that CKD skip vars have been set to value 0. And only when the apply var in config was set to zero
+    // did the corresponding skip var in CKD get set to true.
+    // Code has been updates to ALWAYS overwrite the skip var value with the config apply values
     if (!set_main.dark_apply) {
         ckd->dark_skip = true;
+    } else {
+        ckd->dark_skip = false;
     }
     if (!set_main.nonlin_apply) {
         ckd->nonlin_skip = true;
+    } else {
+        ckd->nonlin_skip = false;
     }
     if (!set_main.prnu_apply) {
         ckd->prnu_skip = true;
+    } else {
+        ckd->prnu_skip = false;
     }
     if (!set_main.stray_apply) {
         ckd->stray_skip = true;
+    } else {
+        ckd->stray_skip = false;
     }
     if (!set_main.rad_apply) {
         ckd->rad_skip = true;
+    } else {
+        ckd->rad_skip = false;
     }
+// NOTE the above code to overwrite the ckd skip pars will be removed soon!
 
     size_t il1x_start;
     L1X_inputfile l1x_inputfile(this);
@@ -153,7 +177,7 @@ int Program::execute( // {{{
     }
 
     for (size_t iframe=0 ; iframe<nframe ; iframe++) {
-        std::cout << "PROCESSING FRAME " << iframe << std::endl;
+        writelog(log_info,"PROCESSING FRAME %d...", iframe);
 
         unique_ptr<Frame> frm = make_unique<Frame>(this);
 
@@ -231,9 +255,14 @@ int Program::execute( // {{{
         if (il1x_start > L1X_FOV) {
 
             // Step: Uncalibate spectra. L1X_RAD to L1X_FOV.
-            handle(frm->uncalibrate_spectra(
-                ckd.get()
-            ));
+            if (set_main.rad_apply) {
+                writelog(log_debug,"    Going to apply radiometric calibration constants");
+                handle(frm->uncalibrate_spectra(
+                    ckd.get()
+                ));
+            } else{
+                writelog(log_warning,"    Not applying radiometric calibration constants");
+            }
             // L1X output FOV.
             handle(l1x[L1X_FOV]->write(
                 frm.get(), // Frame to write L1X from.
@@ -277,7 +306,12 @@ int Program::execute( // {{{
         if (il1x_start > L1X_UNBIN) {
 
             // Step: Straylight.
-            handle(frm->apply_straylight(set_main, ckd.get()));
+            if (set_main.stray_apply) {
+                writelog(log_debug,"    Going to apply stray light");
+                handle(frm->apply_straylight(set_main, ckd.get()));
+            } else{
+                writelog(log_warning,"    Not applying stray light");
+            }
 
             // L1X output UNBIN.
             handle(l1x[L1X_UNBIN]->write(
@@ -303,7 +337,12 @@ int Program::execute( // {{{
         if (il1x_start > L1X_NONLIN) {
 
             // step: prnu.
-            handle(frm->apply_prnu(ckd.get()));
+            if (set_main.prnu_apply) {
+                handle(frm->apply_prnu(ckd.get()));
+                writelog(log_debug,"    Going to apply PRNU");
+            } else{
+                writelog(log_warning,"    Not applying PRNU");
+            }
 
             // L1X output NONLIN.
             handle(l1x[L1X_NONLIN]->write(
@@ -318,7 +357,12 @@ int Program::execute( // {{{
         if (il1x_start > L1X_NOISE) {
 
             // Step: Non-linearity.
-            handle(frm->apply_nonlinearity(ckd.get()));
+            if (set_main.nonlin_apply) {
+                writelog(log_debug,"    Going to apply non linearity");
+                handle(frm->apply_nonlinearity(ckd.get()));
+            } else{
+                writelog(log_warning,"    Not applying non linearity");
+            }
 
             // L1X output NOISE.
             handle(l1x[L1X_NOISE]->write(
@@ -333,7 +377,12 @@ int Program::execute( // {{{
         if (il1x_start > L1X_DARK) {
 
             // Step: Dark current.
-            handle(frm->apply_dark_current(ckd.get()));
+            if (set_main.dark_apply) {
+                writelog(log_debug,"    Going to apply dark current");
+                handle(frm->apply_dark_current(ckd.get()));
+            } else {
+                writelog(log_warning,"    Not applying dark current");
+            }
 
             // L1X output DARK.
             handle(l1x[L1X_DARK]->write(
@@ -371,7 +420,12 @@ int Program::execute( // {{{
         if (il1x_start > L1X_RAW) {
 
             // Step: Dark offset.
-            handle(frm->apply_dark_offset(ckd.get()));
+            if (set_main.dark_apply) {
+                writelog(log_debug,"    Going to apply dark offset");
+                handle(frm->apply_dark_offset(ckd.get()));
+            } else{
+                writelog(log_warning,"    Not applying dark offset");
+            }
 
             // L1X output RAW.
             handle(l1x[L1X_RAW]->write(

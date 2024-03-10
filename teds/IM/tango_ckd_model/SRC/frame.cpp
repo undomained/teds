@@ -336,11 +336,11 @@ int Frame::uncalibrate_spectra( // {{{
     CKD *ckd
 )
 {
-    if (ckd->rad_skip) {
-        std::cout << "Not applying radiometric calibration constants"
-                  << std::endl;
-        return 0;
-    }
+//    if (ckd->rad_skip) {
+//        std::cout << "Not applying radiometric calibration constants"
+//                  << std::endl;
+//        return 0;
+//    }
     // Unapply radiometric correction
     double *rad_spectra_cur = ckd->rad_spectra.data();
     double *intens_cur = intens.data();
@@ -407,10 +407,10 @@ int Frame::draw_on_detector( // {{{
 
 int Frame::apply_straylight(const Settings_main& set, CKD *ckd)
 {
-    if (ckd->stray_skip) {
-        std::cout << "Not applying stray light" << std::endl;
-        return 0;
-    }
+//    if (ckd->stray_skip) {
+//        std::cout << "Not applying stray light" << std::endl;
+//        return 0;
+//    }
     for (int i {}; i < static_cast<int>(image.size()); ++i) {
         if (std::isnan(image[i])) {
             image[i] = image[i - 1];
@@ -472,10 +472,10 @@ int Frame::apply_straylight(const Settings_main& set, CKD *ckd)
 int Frame::apply_prnu(CKD *ckd)
 {
     // Pixel-response non-uniformity
-    if (ckd->prnu_skip) {
-        std::cout << "Not applying PRNU" << std::endl;
-        return 0;
-    }
+//    if (ckd->prnu_skip) {
+//        std::cout << "Not applying PRNU" << std::endl;
+//        return 0;
+//    }
     for (size_t ipix=0 ; ipix<ckd->npix ; ipix++) {
         if (!ckd->mask[ipix]) {
             image[ipix] *= ckd->prnu_prnu[ipix];
@@ -486,9 +486,9 @@ int Frame::apply_prnu(CKD *ckd)
 
 int Frame::apply_nonlinearity(CKD *ckd)
 {
-    if (ckd->nonlin_skip) {
-        return 0;
-    }
+//    if (ckd->nonlin_skip) {
+//        return 0;
+//    }
     // Choose the relevant exposure time.
     double mindiff = abs(ckd->nonlin_exptimes[0]-exposure_time);
     size_t iexptime_best = 0;
@@ -520,10 +520,10 @@ int Frame::apply_dark_current(CKD *ckd)
     // This one only writes the image with dark current.
     image_with_current = image; // Copy contents.
 
-    if (ckd->dark_skip) {
-        std::cout << "Not applying dark current" << std::endl;
-        return 0;
-    }
+//    if (ckd->dark_skip) {
+//        std::cout << "Not applying dark current" << std::endl;
+//        return 0;
+//    }
     // Evaluate the fit. The B-splines are fixed to a polynomial where the first term
     // is the value at nominal temperature.
     vector<double> knots = {ckd->dark_nominal_temperature,ckd->dark_nominal_temperature+1.0};
@@ -543,10 +543,10 @@ int Frame::apply_dark_current(CKD *ckd)
 
 int Frame::apply_dark_offset(CKD *ckd)
 {
-    if (ckd->dark_skip) {
-        std::cout << "Not applying dark offset" << std::endl;
-        return 0;
-    }
+//    if (ckd->dark_skip) {
+//        std::cout << "Not applying dark offset" << std::endl;
+//        return 0;
+//    }
     // Evaluate the fit. The B-splines are fixed to a polynomial where the first term
     // is the value at nominal temperature.
     vector<double> knots = {ckd->dark_nominal_temperature,ckd->dark_nominal_temperature+1.0};

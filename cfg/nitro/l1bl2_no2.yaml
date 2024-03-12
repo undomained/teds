@@ -8,7 +8,8 @@ doas:
   threads: 6 # on KNMI workstation optimum around 6 threads
 
   input:
-    # for testing
+    rad_from_sgm: yes
+    irr_from_sgm: yes
     rad: ../data/no2/sgm_radiance_cams_fc.nc
     irr: ../data/no2/sgm_radiance_cams_fc.nc
     geo: ../data/no2/geometry.nc

@@ -94,8 +94,12 @@ def ifdoe_run(cfg):
 
 
     # B.1  Read spectrum & error
-    # TODO: tmp irr from SGM
-    irrWvl, irr, irrError, irrFlag = libDOAS.ReadIrrSGM(cfg['input']['irr'], pxlN)
+    if cfg['irr_from_sgm']:
+        irrWvl, irr, irrError, irrFlag = libDOAS.ReadIrrSGM(cfg['input']['irr'], pxlN)
+    else:
+        # TODO: not implemented yet
+        sys.exit()
+        # irrWvl, irr, irrError, irrFlag = libDOAS.ReadIrr(cfg['input']['irr'], pxlN)
 
     # B.2  Filter for irradiance flags
     if (irrFlag!=0).any():
@@ -187,8 +191,10 @@ def ifdoe_run(cfg):
 
         # C.2  Read earth spectra & error
 
-        # TODO: tmp solution for rad from SGM
-        radWvlScan, radScan, radErrorScan, radFlagScan = libDOAS.ReadRadSGM(ncRad, iscan)
+        if cfg['rad_from_sgm']:
+            radWvlScan, radScan, radErrorScan, radFlagScan = libDOAS.ReadRadSGM(ncRad, iscan)
+        else:
+            radWvlScan, radScan, radErrorScan, radFlagScan = libDOAS.ReadRad(ncRad, iscan)
 
         # C.3  Loop over ground pixels along a scanline
 
@@ -529,7 +535,7 @@ def ifdoe_run(cfg):
 
         # handle errors inside pool
         def handle_error(error):
-	        logging.error(error)
+            logging.error(error)
 
         # loop over scanlines in function for parallelization    
         for iscan in range(scanBeg,scanEnd+1,1):

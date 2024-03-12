@@ -1709,21 +1709,20 @@ def ReadRadSGM(f, iscan):
     return radWvl, rad, radError, radFlag
 
 
-def ReadRad(file, iscan):
+def ReadRad(f, iscan):
     '''
-    Read radiance from L1B file
+    Read radiance from L1B file. file is already open for thread safety
     '''
-    with nc.Dataset(file) as f:
 
-        rad = f['OBSERVATION_DATA/radiance'][iscan,:,:] # [alt, act, spectral_bins] - "photons/(sr nm m2 s)
-        radFlag = f['OBSERVATION_DATA/radiance_mask'][iscan,:,:] # [alt, act, spectral_bins] -  0 = good, 1 = bad
-        radError = f['OBSERVATION_DATA/radiance_noise'][iscan,:,:] # [alt, act, spectral_bins] - 
+    rad = f['OBSERVATION_DATA/radiance'][iscan,:,:] # [alt, act, spectral_bins] - "photons/(sr nm m2 s)
+    radFlag = f['OBSERVATION_DATA/radiance_mask'][iscan,:,:] # [alt, act, spectral_bins] -  0 = good, 1 = bad
+    radError = f['OBSERVATION_DATA/radiance_noise'][iscan,:,:] # [alt, act, spectral_bins] - 
 
-        radWvl = f['OBSERVATION_DATA/wavelength'][iscan,:,:] # [act, spectral_bins] - nm
+    radWvl = f['OBSERVATION_DATA/wavelength'][iscan,:,:] # [act, spectral_bins] - nm
 
-        # photons to mol
-        rad /= constants.NA
-        radError /= constants.NA
+    # photons to mol
+    rad /= constants.NA
+    radError /= constants.NA
 
     return radWvl, rad, radError, radFlag
 

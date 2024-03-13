@@ -3,7 +3,7 @@ import argparse
 import logging
 import importlib
 import subprocess
-import lib.lib_utils as Utils
+import teds.lib.lib_utils as Utils
 
 def cmdline(arguments):
     """             
@@ -38,7 +38,7 @@ def build(logger, config, step, cfg_path, attribute_dict):
         - config: configuration file containing the settings for the different steps in the E2E processor
         - step: indicating which step in the E2E processor to run. 
         - cfg_path: configuration path
-        - attribute_dict: Dictionary with attributes to be added to main of output netCDF file
+        - attribute_dict: Dictionary with attributes to be added to main of output netCDF files
     """
 
     if step == 'gm' or step == 'all':
@@ -60,8 +60,6 @@ def build(logger, config, step, cfg_path, attribute_dict):
         E2EModule = importlib.import_module("IM.create_im_configuration_file_nitro")
         E2EModule.im_configuration(config)
         # Need to call C++
-#        output = subprocess.run(["IM/tango_ckd_model/build/ckdmodel", "../cfg/nitro/im_config.cfg"], stdout = subprocess.PIPE, universal_newlines = True).stdout
-#        subprocess.run(["IM/tango_ckd_model/build/ckdmodel", "../cfg/nitro/im_config.cfg"])
         subprocess.run(["IM/tango_ckd_model/build/ckdmodel", f"{cfg_path}/im_config.cfg"])
         Utils.add_attributes_to_output(logger, config['l1a_file'], attribute_dict)
 
@@ -70,7 +68,6 @@ def build(logger, config, step, cfg_path, attribute_dict):
         E2EModule = importlib.import_module("L1AL1B.create_l1a1b_configuration_file_nitro")
         E2EModule.l1al1b_configuration(config)
         # Need to call C++
-#        subprocess.run(["L1AL1B/tango_l1b/build/tango_l1b", "../cfg/nitro/l1al1b_config.cfg"])
         subprocess.run(["L1AL1B/tango_l1b/build/tango_l1b", f"{cfg_path}/l1al1b_config.cfg"])
         Utils.add_attributes_to_output(logger, config['l1b_file'], attribute_dict)
 
@@ -80,15 +77,21 @@ def build(logger, config, step, cfg_path, attribute_dict):
         Utils.add_attributes_to_output(logger, config['l2_file'], attribute_dict) #?
 
 if __name__ == "__main__":
+
     
+    # Get logger for run script
+    build_logger = Utils.get_logger()
+
+    # Get input arguments
     cfgFile, step =  cmdline(sys.argv[1:])
     cfg_path, filename = os.path.split(cfgFile)
 
-    build_logger = Utils.get_logger()
-
+    # Get configuration info
     config = Utils.getConfig(build_logger, cfgFile)
     config['header']['path'] = cfg_path
 
+    # Get information (like git hash and config file name and version (if available) 
+    # that will be added to the output files as attributes
     main_attribute_dict = Utils.get_main_attributes(config)
 
     build(build_logger, config, step, cfg_path, main_attribute_dict)

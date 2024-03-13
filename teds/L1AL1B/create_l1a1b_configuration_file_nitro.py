@@ -19,6 +19,8 @@ def l1al1b_configuration(local_config):
     lines.append('binningtable_filename =' + local_config['binning_table']+'\n')
     # log file path
     lines.append('log_file_path = '+str(local_config['L1AL1B_log_path']) + '\n')
+    # instrument calibration choice (either spexone or tango)
+    lines.append('instrument_cal = '+str(local_config['L1AL1B_instrument_cal']) + '\n')
     #========================l1b group=========================================
     lines.append('[l1b]\n') 
     # Iteration limit for the stray light deconvolution procedure. Set to

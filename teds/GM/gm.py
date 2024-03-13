@@ -327,9 +327,9 @@ def sensor_simulation(logger, config, sat):
         act_angle_range = [-sensor_half_swath_deg, sensor_half_swath_deg, sensor_interval_deg]
         thetas = np.arange(act_angle_range[0]+0.5*sensor_interval_deg, act_angle_range[1], act_angle_range[2])
 
-        # along track angle range
-        alt_angle_range = [-np.rad2deg(np.arctan(0.5 * config['sensors'][key]['alt_sampling']/config['orbit']['sat_height'])),
-                           np.rad2deg(np.arctan(0.5 * config['sensors'][key]['alt_sampling']/config['orbit']['sat_height']))]
+        # along track angle range - commented out because unused
+        # alt_angle_range = [-np.rad2deg(np.arctan(0.5 * config['sensors'][key]['alt_sampling']/config['orbit']['sat_height'])),
+        #                   np.rad2deg(np.arctan(0.5 * config['sensors'][key]['alt_sampling']/config['orbit']['sat_height']))]
 
         # time range of observations and interval
         dt_range = [sat['dt_start'] + datetime.timedelta(minutes=config['sensors'][key]['start_time']),

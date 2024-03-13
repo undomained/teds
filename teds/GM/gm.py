@@ -9,10 +9,10 @@ import sys
 import os
 import netCDF4 as nc
 import yaml
-from lib.libWrite import writevariablefromname
-from lib.libOrbSim import Sensor, Satellite
-import lib.data_netcdf.data_netcdf as dn
-import lib.lib_utils as Utils
+from teds.lib.libWrite import writevariablefromname
+from teds.lib.libOrbSim import Sensor, Satellite
+import teds.lib.data_netcdf.data_netcdf as dn
+import teds.lib.lib_utils as Utils
 import datetime
 
 def check_input(logger, nact, check_list, place):
@@ -505,14 +505,15 @@ def geometry_module(logger, config):
     return
 
 
-if __name__ == '__main__' and __package__ is None:
+if __name__ == '__main__' :
 
-    sys.path.append( os.path.dirname( os.path.dirname( os.path.abspath(__file__) ) ) )
-
-#    config = yaml.safe_load(open(sys.argv[1]))
+    # Get logger for GM
     gm_logger = Utils.get_logger()
+    # Get configuration info
     cfgFile = sys.argv[1]
     config = Utils.getConfig(gm_logger, cfgFile)
+    # Get information (like git hash and config file name and version (if available) 
+    # that will be added to the output file as attributes
     main_attribute_dict = Utils.get_main_attributes(config, config_attributes_name='GM_configuration')
 
     geometry_module(gm_logger, config)

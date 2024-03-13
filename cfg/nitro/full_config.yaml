@@ -13,8 +13,8 @@ gm_file: '../data/no2/geometry.nc'
 #ckd_input: '../data/no2/ckd/ckd_nitro_20240229.nc'
 ckd_input: '../data/no2/ckd/ckd_nitro_20240301.nc'
 binning_table: '../data/no2/ckd/binning_table_no2.nc'
-#l1a_file: '../data/no2/l1a.nc'
-l1a_file: '../data/no2/l1a_test.nc'
+l1a_file: '../data/no2/l1a.nc'
+l1b_file: '../data/no2/l1b.nc'
 #########################################################
 #
 # GM 
@@ -107,7 +107,7 @@ noise:
 #l1a_file: '../data/no2/l1a.nc'
 # Following is commom with GM
 #gm_file: '../data/no2/geometry.nc'
-l1b_file: '../data/no2/l1b.nc'
+#l1b_file: '../data/no2/l1b.nc'
 #L1AL1B_path:  './'
 L1AL1B_cfg_path:  '../cfg/nitro/'                                         #Where the .cfg file needed to run C++ code will be placed
 L1AL1B_log_path:  '../logs/L1AL1B/'                                         #Where the .log file produced by the C++ code will be placed
@@ -116,9 +116,11 @@ settings_L1AL1B:
     geolocation:  0       #calculate geolocation (0 no, 1 yes), currently only 0 possible
     van_cittert_steps: 4  #van Citter iteration for stray light correction (0=no correction)
     sw_dark:         1                                   #switch dark current (1 on, 0 off)
-    sw_nonlin:       1                                   #switch non-linearity (1 on, 0 off)
+#   When non lin has been added to CKD sw_nonlin can be set to 1
+    sw_nonlin:       0                                   #switch non-linearity (1 on, 0 off)
     sw_prnu:         1                                   #switch pixel response non-uniformity (1 on, 0 off)
-#    sw_stray:        1                                   #switch dark spectrometer stray light (1 on, 0 off)
+#   When stray light has been added to CKD sw_stray can be set to 1
+    sw_stray:        0                                   #switch dark spectrometer stray light (1 on, 0 off)
     sw_rad:          1                                   #switch radiometric calibration (1 on, 0 off)
 ############################    
 

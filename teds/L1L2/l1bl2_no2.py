@@ -18,11 +18,16 @@ from lib import libDOAS, libAMF
 
 
 
-def ifdoe_run(cfg):
+def ifdoe_run(logger, cfg):
     '''
      Routine which contains the IFDOE processing chain, i.e
      the main sections.
     '''
+    l1b_file = cfg['l1b_file']
+    l2_file = cfg['l2_file']
+    gm_file = cfg['gm_file']
+
+    cfg = cfg['doas']
 
     if cfg['debug']['plot']:
         verboseLevel = 3
@@ -31,12 +36,10 @@ def ifdoe_run(cfg):
     else:
         verboseLevel = 0
 
-    # only one set of ref spec for one pixel TODO: change
+    # only one set of ref spec for one pixel TODO: change when ISRF is known
     groundPixel = 0
 
     startTime = time.time()
-
-    logger = logging.getLogger()
     
     logger.info('=== Start IFDOE processing')
     
@@ -49,7 +52,7 @@ def ifdoe_run(cfg):
 
     # A.3  Read ref.spec. files & rescale wavelengths to [-1:+1] 
 
-    logging.info('=== Reading ref.spec.')
+    logger.info('=== Reading ref.spec.')
 
     # read in ascii ref.spec. for given ground pixel
 
@@ -62,7 +65,7 @@ def ifdoe_run(cfg):
     
     # A.4  Setup loop bounds
 
-    scanN,pxlN,spectralN = libDOAS.getDimensionsRad(cfg['input']['rad'])
+    scanN,pxlN,spectralN = libDOAS.getDimensionsRad(l1b_file)
 
     if 'alt' in cfg:
         scanBeg = cfg['alt']['start']
@@ -87,7 +90,7 @@ def ifdoe_run(cfg):
 
     # read geometry
 
-    geo = libDOAS.readGeometry(cfg)
+    geo = libDOAS.readGeometry(gm_file)
 
     # B)  Solar spectrum
     # ------------------
@@ -95,21 +98,21 @@ def ifdoe_run(cfg):
 
     # B.1  Read spectrum & error
     if cfg['irr_from_sgm']:
-        irrWvl, irr, irrError, irrFlag = libDOAS.ReadIrrSGM(cfg['input']['irr'], pxlN)
+        irrWvl, irr, irrError, irrFlag = libDOAS.ReadIrrSGM(cfg['irr_file'], pxlN)
     else:
         # TODO: not implemented yet
         sys.exit()
-        # irrWvl, irr, irrError, irrFlag = libDOAS.ReadIrr(cfg['input']['irr'], pxlN)
+        # irrWvl, irr, irrError, irrFlag = libDOAS.ReadIrr(cfg['irr_file'], pxlN)
 
     # B.2  Filter for irradiance flags
     if (irrFlag!=0).any():
-        logging.info('Irr spectra: groundpixel(s) {} flagged'.format(np.where((irrFlag!=0).any(axis=1))[0][:]))
+        logger.info('Irr spectra: groundpixel(s) {} flagged'.format(np.where((irrFlag!=0).any(axis=1))[0][:]))
         results['errorFlag'][:,(irrFlag!=0).any(axis=1)] = 1
 
     # B.3  Calibrate spectrum
 
     if cfg['wlcal_solar']:
-        logging.info('=== Calibrating solar spectrum')
+        logger.info('=== Calibrating solar spectrum')
 
         # calibrate spectrum for each ground pixel
         irrWvlCal       = np.full((pxlN,irrWvl.shape[-1]),np.nan)
@@ -124,12 +127,12 @@ def ifdoe_run(cfg):
             try:
                 irrWvlCal[ipxl,:], irrCalWs[ipxl], irrCalWsSigma[ipxl], irrCalWq[ipxl], irrCalWqSigma[ipxl], irrCalChiSquare[ipxl], irrCalConverged[ipxl] = libDOAS.irrCal(irr[ipxl,:],irrError[ipxl,:],irrWvl[ipxl,:],cfg,IFDOERefSpec,groundPixel,verboseLevel)
             except:
-                logging.error(f'Pixel {ipxl} not converged')
+                logger.error(f'Pixel {ipxl} not converged')
                 irrCalConverged[ipxl] = 0
 
         # flag non-converged spectra
         if (irrCalConverged==0).any():
-            logging.error('Irr wvl cal: groundpixel(s) {} not converged'.format(np.where(irrCalConverged==0)))
+            logger.error('Irr wvl cal: groundpixel(s) {} not converged'.format(np.where(irrCalConverged==0)))
             results['errorFlag'][:,irrCalConverged==0] = 1
 
     else:
@@ -173,16 +176,16 @@ def ifdoe_run(cfg):
     results['R_O2O2'] = np.full((scanN,pxlN),np.nan)
     results['R_O2O2_precision'] = np.full((scanN,pxlN),np.nan)
 
-    if cfg['output']['export_spectra']:  
+    if cfg['export_spectra']:  
         results['wvl'] = np.full((scanN,pxlN,spectralN),np.nan)
         results['R_meas'] = np.full((scanN,pxlN,spectralN),np.nan)
         results['R_model'] = np.full((scanN,pxlN,spectralN),np.nan)
         results['R_res'] = np.full((scanN,pxlN,spectralN),np.nan)
 
     # open file before threading, to ensure thread safety
-    ncRad = nc.Dataset(cfg['input']['rad'])
+    ncRad = nc.Dataset(l1b_file)
 
-    logging.info('=== Starting radiance calibration and DOAS')
+    logger.info('=== Starting radiance calibration and DOAS')
 
     # scanline loop, inside internal function, so only the scanline index and mutable results dict have to be passed
     def process_scanline(iscan,results):
@@ -210,13 +213,13 @@ def ifdoe_run(cfg):
             
             #  skip if error flag is already raised
             if results['errorFlag'][iscan,ipxl] == 1 :
-                logging.error('Skipping scanline {}, pixel {}: error flag'.format(iscan,ipxl))
+                logger.error('Skipping scanline {}, pixel {}: error flag'.format(iscan,ipxl))
                 continue
 
 
             # D.2  Calibrate spectrum
             if cfg['wlcal_earth']:
-                logging.debug('=== Calibrating Earth spectrum')
+                logger.debug('=== Calibrating Earth spectrum')
                 
                 try:
                     radWvlCal, radCalWs, radCalWsSigma, radCalWq, radCalWqSigma, radCalChiSquare, radCalConverged = libDOAS.radCal(rad,radError,radWvl,cfg,IFDOERefSpec,0,verboseLevel)
@@ -225,7 +228,7 @@ def ifdoe_run(cfg):
 
                 # flag non-converged spectra
                 if radCalConverged!=1:
-                    logging.error('Rad wvl cal: scanline {}, groundpixel {} not converged'.format(iscan,ipxl))
+                    logger.error('Rad wvl cal: scanline {}, groundpixel {} not converged'.format(iscan,ipxl))
                     results['errorFlag'][iscan,ipxl] = 1
                     continue
 
@@ -258,7 +261,7 @@ def ifdoe_run(cfg):
 
             # F)  DOAS fit
             # ------------
-            logging.debug('=== DOAS fit')
+            logger.debug('=== DOAS fit')
 
             # F.1  Setup the model details
 
@@ -291,17 +294,17 @@ def ifdoe_run(cfg):
                 oe = libDOAS.OE(model=model, maxiter=cfg['max_iterations'], stateVectorConvThreshold=cfg['convergence_threshold'])
                 
                 oe()
-                logging.debug(f"converged > {oe.answer['converged']}")
+                logger.debug(f"converged > {oe.answer['converged']}")
 
                 # flag non-converged fit
                 if oe.answer['converged']==False:
                     results['errorFlag'][iscan,ipxl] = 1
-                    logging.error('DOAS: scanline {}, groundpixel {} not converged'.format(iscan,ipxl))
+                    logger.error('DOAS: scanline {}, groundpixel {} not converged'.format(iscan,ipxl))
                     continue
 
             except:
                 results['errorFlag'][iscan,ipxl] = 1
-                logging.error('DOAS : scanline {}, groundpixel {} unexpected error'.format(iscan,ipxl))
+                logger.error('DOAS : scanline {}, groundpixel {} unexpected error'.format(iscan,ipxl))
                 continue
 
             
@@ -325,12 +328,12 @@ def ifdoe_run(cfg):
                 if nOutliers > 0 :
                     outliers = True
                 if outliers:
-                    logging.debug('{} outliers detected at wvl: {}'.format(outlierIndex.sum(),outlierWvl))
+                    logger.debug('{} outliers detected at wvl: {}'.format(outlierIndex.sum(),outlierWvl))
                 else:
-                    logging.debug('No outliers detected.')
+                    logger.debug('No outliers detected.')
 
                 if nOutliers > cfg['max_outliers']:
-                    logging.error('Scanline {}, ground pixel {} : too many outliers ({}), raising error flag'.format(iscan,ipxl,nOutliers))
+                    logger.error('Scanline {}, ground pixel {} : too many outliers ({}), raising error flag'.format(iscan,ipxl,nOutliers))
                     results['errorFlag'][iscan,ipxl] = 1
                     continue
 
@@ -362,11 +365,11 @@ def ifdoe_run(cfg):
                         # flag non-converged fit
                         if oe.answer['converged']==False:
                             results['errorFlag'][iscan,ipxl] = 1
-                            logging.error('DOAS after outlier removal: scanline {}, groundpixel {} not converged'.format(iscan,ipxl))
+                            logger.error('DOAS after outlier removal: scanline {}, groundpixel {} not converged'.format(iscan,ipxl))
                         
                     except:
                         results['errorFlag'][iscan,ipxl] = 1
-                        logging.error('DOAS after outlier removal: scanline {}, groundpixel {} unexpected error'.format(iscan,ipxl))
+                        logger.error('DOAS after outlier removal: scanline {}, groundpixel {} unexpected error'.format(iscan,ipxl))
             
             else:
                 nOutliers = np.nan
@@ -395,26 +398,26 @@ def ifdoe_run(cfg):
             # -----------------
 
             # The "standard" overview or results (and model)   
-            logging.debug(oe)
-            logging.debug(model)
+            logger.debug(oe)
+            logger.debug(model)
 
             # # All input/output connected to 'oe'
 
-            logging.debug( '' )
-            logging.debug( '*************' )
-            logging.debug( '' )
+            logger.debug( '' )
+            logger.debug( '*************' )
+            logger.debug( '' )
 
             al = oe.answer.keys()
             for a in (al) :
-                logging.debug(f'{a} > {oe.answer[a]}')
+                logger.debug(f'{a} > {oe.answer[a]}')
 
 
-            logging.debug('========================================================')
-            logging.debug('Summary fitted parameters')
-            logging.debug('========================================================')
-            logging.debug('{:<10}{:>15}{:>15}'.format('(parameter)','(value)','(std)'))
+            logger.debug('========================================================')
+            logger.debug('Summary fitted parameters')
+            logger.debug('========================================================')
+            logger.debug('{:<10}{:>15}{:>15}'.format('(parameter)','(value)','(std)'))
             for i in range(len(model.stateVector)):
-                logging.debug('{:<10s}{:>15.6E}{:>15.6E}'.format(model.parameterNames[i], model.stateVector[i], precision[i]))
+                logger.debug('{:<10s}{:>15.6E}{:>15.6E}'.format(model.parameterNames[i], model.stateVector[i], precision[i]))
 
             if cfg['debug']['plot']:
 
@@ -511,7 +514,7 @@ def ifdoe_run(cfg):
                     results['R_O2O2_precision'][iscan,ipxl] *= szaFactor
 
 
-            if cfg['output']['export_spectra']:
+            if cfg['export_spectra']:
 
                 results['wvl'][iscan,ipxl,:len(wvl)] = wvl
                 results['R_meas'][iscan,ipxl,:len(wvl)] = RMeas*szaFactor
@@ -522,7 +525,7 @@ def ifdoe_run(cfg):
             # print(time.time()-start)
             results['errorFlag'][iscan,ipxl] = 0
 
-        logging.info('Processed scanline {}/{} in {}s'.format(iscan-scanBeg+1,scanEnd-scanBeg+1,np.round((time.time() - startTimeScanline),2) ))
+        logger.info('Processed scanline {}/{} in {}s'.format(iscan-scanBeg+1,scanEnd-scanBeg+1,np.round((time.time() - startTimeScanline),2) ))
 
         return
     # end of scanline loop
@@ -531,11 +534,11 @@ def ifdoe_run(cfg):
     if cfg['threads'] > 1:
 
         pool = multiprocessing.pool.ThreadPool(cfg['threads'])
-        logging.info(f"Processing with {cfg['threads']} threads")
+        logger.info(f"Processing with {cfg['threads']} threads")
 
         # handle errors inside pool
         def handle_error(error):
-            logging.error(error)
+            logger.error(error)
 
         # loop over scanlines in function for parallelization    
         for iscan in range(scanBeg,scanEnd+1,1):
@@ -555,39 +558,60 @@ def ifdoe_run(cfg):
     # H)  Finishing up
 
     # write results to output file
-    libDOAS.writeOutput(cfg,parameterNames,results,geo)
+    libDOAS.writeOutput(l2_file,cfg,parameterNames,results,geo)
 
 
-    logging.info(f"Output witten to {cfg['output']['doas']}")
+    logger.info(f"Output witten to {l2_file}")
 
 
-    logging.info(f'IFDOE calculation finished in {np.round(time.time()-startTime,1)} s')
+    logger.info(f'IFDOE calculation finished in {np.round(time.time()-startTime,1)} s')
     
 
     return results
 
 
-def amf_run(cfg):
+def amf_run(logger,cfg):
 
     startTime = time.time()
 
-    logging.info(f"Reading doas file: {cfg['input']['doas']}")
-    doas = libAMF.read_doas(cfg['input']['doas'])
+    logger.info(f"Reading DOAS results from L2 file: {cfg['l2_file']}")
+    doas = libAMF.read_doas(cfg['l2_file'])
 
-    logging.info(f"Reading atm file: {cfg['input']['atm']}")
-    atm = libAMF.read_atm(cfg['input']['atm'])
+    logger.info(f"Reading atm file: {cfg['sgm_atm_file']}")
+    atm = libAMF.read_atm(cfg['sgm_atm_file'])
 
-    logging.info('Calculating AMF')
-    amf_results = libAMF.get_amf(cfg, doas, atm)
+    logger.info('Calculating AMF')
+    amf_results = libAMF.get_amf(cfg['amf'], doas, atm)
 
 
-    logging.info(f"Writing AMF results to: {cfg['input']['doas']}")
+    logger.info(f"Writing AMF results to: {cfg['l2_file']}")
     libAMF.write_amf(cfg,amf_results)
 
-    logging.info(f'AMF calculation finished in {np.round(time.time()-startTime,1)} s')
+    logger.info(f'AMF calculation finished in {np.round(time.time()-startTime,1)} s')
 
     return amf_results
 
+
+def l1bl2_no2(logger,cfg):
+
+    startTime = time.time()
+
+    # Python parallises internally with numpy, for single thread optimum is 4 numpy threads
+    # for multi-threading use only 1 numpy thread, otherwise slow-down
+
+    if cfg['doas']['threads'] == 1:
+        numpy_cpu = 4
+    else:
+        numpy_cpu = 1
+
+    with threadpool_limits(limits=numpy_cpu, user_api='blas'):
+        doas_results = ifdoe_run(logger, cfg)
+                        
+    amf_results = amf_run(logger, cfg)
+
+    logger.info(f'L1L2 calculation finished in {np.round(time.time()-startTime,1)} s')
+
+    return
 
 if __name__ == '__main__':
     
@@ -640,10 +664,8 @@ if __name__ == '__main__':
     with threadpool_limits(limits=numpy_cpu, user_api='blas'):
 
         if cfg['doas']['run']:
-            doas_results = ifdoe_run(cfg['doas'])
-            
-            cfg['amf']['input']['doas'] = cfg['doas']['output']['doas'] # set doas output to input amf
-            
+            doas_results = ifdoe_run(cfg)
+                        
         if cfg['amf']['run']:
-            amf_results = amf_run(cfg['amf'])
+            amf_results = amf_run(cfg)
 

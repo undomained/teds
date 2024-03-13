@@ -55,7 +55,7 @@ def get_amf(cfg, doas, atm):
     results['no2_total_vcd_sgm'] = atm['col_no2'] /constants.NA * 1e4 # [molec/cm2] to [mol/m2]
 
     # load NN
-    amf_clear_NN = read_NN('LUT_AMF_clear', cfg['input']['LUT_NN_file'])
+    amf_clear_NN = read_NN('LUT_AMF_clear', cfg['LUT_NN_file'])
 
 
 
@@ -242,7 +242,7 @@ def predict_NN(input_vector, NN):
 
 def write_amf(cfg,amf):
 
-    with nc.Dataset(cfg['input']['doas'], 'a') as dst:
+    with nc.Dataset(cfg['l2_file'], 'a') as dst:
 
         dst.amf_config = str(cfg)
 

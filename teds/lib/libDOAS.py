@@ -1775,10 +1775,10 @@ def SplineInterp1D(x,y,xnew):
     return ynew
 
 
-def writeOutput(IFDOEconfig,parameterNames,results,geo):
+def writeOutput(l2_file,IFDOEconfig,parameterNames,results,geo):
     # write results to output file
 
-    dst = nc.Dataset(IFDOEconfig['output']['doas'], 'w', format='NETCDF4')
+    dst = nc.Dataset(l2_file, 'w', format='NETCDF4')
 
 
     dst.DOAS_config = str(IFDOEconfig)
@@ -1831,7 +1831,7 @@ def writeOutput(IFDOEconfig,parameterNames,results,geo):
 
     ##### add spectra to netCDF output
 
-    if IFDOEconfig['output']['export_spectra']:
+    if IFDOEconfig['export_spectra']:
         # add wvl dim
 
         wvl_dim = dst[group].createDimension('spectral_channel', results['wvl'].shape[-1])
@@ -1984,10 +1984,10 @@ def writeOutput(IFDOEconfig,parameterNames,results,geo):
     
     return
 
-def readGeometry(cfg):
+def readGeometry(gm_file):
     geo = {}
 
-    with nc.Dataset(cfg['input']['geo']) as f:
+    with nc.Dataset(gm_file) as f:
         for key in f.variables.keys():
             geo[key] = f[key][:]
 

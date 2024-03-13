@@ -1,4 +1,8 @@
 
+gm_file: ../data/no2/geometry.nc
+sgm_atm_file: ../data/no2/sgm_atmosphere_cams_fc.nc
+l1b_file: ../data/no2/sgm_radiance_cams_fc.nc
+l2_file: ../data/no2/no2_l2_cams_fc.nc
 
 doas:
 
@@ -7,16 +11,12 @@ doas:
 
   threads: 6 # on KNMI workstation optimum around 6 threads
 
-  input:
-    rad_from_sgm: yes
-    irr_from_sgm: yes
-    rad: ../data/no2/sgm_radiance_cams_fc.nc
-    irr: ../data/no2/sgm_radiance_cams_fc.nc
-    geo: ../data/no2/geometry.nc
+  rad_from_sgm: yes
+  irr_from_sgm: yes
+  irr_file: ../data/no2/sgm_radiance_cams_fc.nc
 
-  output:
-    doas: ../data/no2/no2_l2_cams_fc.nc
-    export_spectra: no
+
+  export_spectra: no
 
   debug:
     plot: no
@@ -128,6 +128,4 @@ amf:
 
   run: yes
 
-  input:
-    atm: ../data/no2/sgm_atmosphere_cams_fc.nc
-    LUT_NN_file: ../data/no2/LUT_NN_combined_20231113.nc
+  LUT_NN_file: ../data/no2/LUT_NN_combined_20231113.nc

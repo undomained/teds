@@ -29,6 +29,7 @@ int Settings_main::init_common( // {{{
     recognize_setting(last_calibration_step); // Process name of the last calibration step to execute (Processes need to support this, probably that will only be l1b).
     recognize_setting(binningtable_filename); // File with all the used binning tables.
     recognize_setting(log_file_path); // log file path .
+    recognize_setting(instrument_cal); // choice of instrument calibration.
     recognize_setting_vector(l1a_discard_frames_start); // Number of frames to discard at the beginning to mitigate memory effects.
     recognize_setting_vector(l1a_discard_frames_end); // Number of frames to discard at the beginning to mitigate memory effects.
     recognize_setting(output_level); // Flag for additional detailed (non-operational) output.

@@ -21,7 +21,7 @@ def im_configuration(local_config):
     # Location of the CKD file
     lines.append('ckd_file_in = ' +local_config['ckd_input'] + '\n')
     # Location of SGM output (input spectra)
-    lines.append('l1x_input = ' + local_config['rad_input'] + '\n')
+    lines.append('l1x_input = ' + local_config['sgm_rad_file'] + '\n')
     # Location of binning table file
     lines.append('binningtable_filename = ' +local_config['binning_table'] + '\n')
     # Location of L1A product (output)

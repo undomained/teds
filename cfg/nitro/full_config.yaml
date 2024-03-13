@@ -47,9 +47,6 @@ sensors:
     pitch: 0.0
     roll: 0.0
     yaw: 0.0
-# TODO: maybe we want to call this gm_output and gm_output_title?
-# Following is common with L1AL1B. See below
-#gm_file: '../data/no2/geometry.nc'
 gm_title: 'Tango Nitro E2ES GM output'
 
 #########################################################
@@ -110,25 +107,17 @@ S2_albedo:
 # Configuration file for running the Instrument module
 #
 #########################################################
-
-rad_input: '../data/no2/sgm_radiance.nc'                              # TODO: remove, duplicate
 IM_cfg_path:  '../cfg/nitro/'                                         #Where the .cfg file needed to run C++ code will be placed
 IM_log_path:  '../logs/IM/'                                         #Where the .log file produced by the C++ code will be placed
-# Following settings are common with L1AL1B
-#ckd_input: '../data/no2/ckd/ckd.nc'
-#binning_table: '../data/no2/ckd/binning_table.nc'
-#l1a_file: '../data/no2/l1a.nc'
 ############################
 settings_IM:
 # Not used in create_im_config script:
-#    fmc:             5                                  #forward motion compensation
+#    fmc:             5                                  #forward motion compensation## Not sure what this is for
     bin_id:          1                                   #across track binning
     co_adding:       2                                   #along track co-addng
     exp_time:        0.021                               #exposure time [sec]
-#    co_adding:       4                                   #along track co-addng
-#    exp_time:        0.066                               #exposure time [sec]
 # Not used in create_im_config script:
-#    stray_interpolating: yes                             #Whether to use interpolating stray light kernels
+#    stray_interpolating: yes                             #Whether to use interpolating stray light kernels  ## Note sure what it is for
     sw_dark:         1                                   #switch dark current (1 on, 0 off)
     sw_nonlin:       0                                   #switch non-linearity (1 on, 0 off)
     sw_prnu:         1                                   #switch pixel response non-uniformity (1 on, 0 off)
@@ -154,14 +143,6 @@ noise:
 #
 #########################################################
 #
-# Following settings are common with IM
-#ckd_input: '../data/no2/ckd/ckd.nc'
-#binning_table: '../data/no2/ckd/binning_table.nc'
-#l1a_file: '../data/no2/l1a.nc'
-# Following is commom with GM
-#gm_file: '../data/no2/geometry.nc'
-#l1b_file: '../data/no2/l1b.nc'
-#L1AL1B_path:  './'
 L1AL1B_cfg_path:  '../cfg/nitro/'                                         #Where the .cfg file needed to run C++ code will be placed
 L1AL1B_log_path:  '../logs/L1AL1B/'                                       #Where the .log file produced by the C++ code will be placed
 L1AL1B_instrument_cal:  'tango'                                           #Which instrument calibration is to be used (spexone or tango)

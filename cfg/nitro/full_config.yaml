@@ -42,8 +42,8 @@ sensors:
     n_ground_pixels: 100
     swath_width: 30.0   # km
     integration_time: 0.04 # seconds
+    start_time: 13.73 # minutes wrt orbit epoch
     end_time: 13.80   # minutes wrt orbit epoch
-    end_time: 13.74   # minutes wrt orbit epoch
     pitch: 0.0
     roll: 0.0
     yaw: 0.0
@@ -95,7 +95,7 @@ rtm:   # disamar (RTM) settings
     wave_start: 405         #nm
     wave_end:   465         #nm
     dwave:      0.05        #nm
-    cleanup: yes # rm disamar tmp directory when finished
+    cleanup: yes # rm disamartmp directory when finished
 
 S2_albedo:
     band: B01

@@ -163,7 +163,8 @@ noise:
 #l1b_file: '../data/no2/l1b.nc'
 #L1AL1B_path:  './'
 L1AL1B_cfg_path:  '../cfg/nitro/'                                         #Where the .cfg file needed to run C++ code will be placed
-L1AL1B_log_path:  '../logs/L1AL1B/'                                         #Where the .log file produced by the C++ code will be placed
+L1AL1B_log_path:  '../logs/L1AL1B/'                                       #Where the .log file produced by the C++ code will be placed
+L1AL1B_instrument_cal:  'tango'                                           #Which instrument calibration is to be used (spexone or tango)
 ############################
 settings_L1AL1B:
     geolocation:  0       #calculate geolocation (0 no, 1 yes), currently only 0 possible

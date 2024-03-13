@@ -5,6 +5,7 @@
 #include "functions.h"
 #include "logger.h"
 #include "tango_cal.h"
+#include "spexone_cal.h"
 
 // Argument switches. {{{
 const size_t nswitch = 3;
@@ -77,6 +78,7 @@ string read_key_from_config(// {{{
                 }
             }
         }
+    printf("Warning key '%s' not found in settings file (%s)! Returning empy string!\n", key.c_str(), settings_file.c_str());
     return "";
 } // }}}
 
@@ -198,10 +200,22 @@ int main( // {{{
 //    }
 
     Logger trunk(log_file,flags[iswitch_verbose],timestamp);
-    Tango_cal prog(&trunk);
+    int stat;
+    string instrument_cal_choice = read_key_from_config(settings_file, "instrument_cal");
+    printf("Info: instrument choice: --%s-- \n",instrument_cal_choice.c_str());
+    if (strcmp(instrument_cal_choice.c_str(), "spexone") == 0){
+        Spexone_cal prog(&trunk);
+        // Execute the program.
+        stat = prog.execute(settings_file,flags[iswitch_foldsettings]);
+    } else if (strcmp(instrument_cal_choice.c_str(), "tango") == 0){
+        Tango_cal prog(&trunk);
+        // Execute the program.
+        stat = prog.execute(settings_file,flags[iswitch_foldsettings]);
+    } else {
+        printf("Error: intrument_cal '%s' is not recognized. Should be either 'spexone' or 'tango'. Exiting.\n", instrument_cal_choice.c_str());
+        return 1;
+    }
 
-    // Execute the program.
-    int stat = prog.execute(settings_file,flags[iswitch_foldsettings]);
 
 #ifdef USE_MPI
     if (stat) {

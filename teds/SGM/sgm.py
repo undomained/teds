@@ -63,7 +63,7 @@ def sgm_output_rad(filename_rad, rad_output):
     _ = writevariablefromname(output_rad, 'solarirradiance', ('bins_spectral',), rad_output['solar irradiance'])
     # radiance
     _dims = ('bins_along_track', 'bins_across_track', 'bins_spectral')
-    _ = writevariablefromname(output_rad, 'radiance', _dims, rad_output['radiance'])
+    _ = writevariablefromname(output_rad, 'radiance_sgm', _dims, rad_output['radiance'])
     output_rad.close()
 
 

@@ -65,7 +65,7 @@ solarirradiance:
   valid_max: 1.E+30
   FillValue: -32767
 
-radiance:
+radiance_sgm:
   name: radiance
   long_name: 'radiance line-by-line'
   units: 'photons / (sr nm m2 s)'

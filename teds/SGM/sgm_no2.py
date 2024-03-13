@@ -472,7 +472,7 @@ def sgm_output_radio(config, rad_output):
     _ = writevariablefromname(output_rad, 'solarirradiance', ('bins_spectral',), rad_output['solar_irradiance'])
     # radiance
     dims = ('bins_along_track', 'bins_across_track', 'bins_spectral')
-    _ = writevariablefromname(output_rad, 'radiance', dims, rad_output['radiance'])
+    _ = writevariablefromname(output_rad, 'radiance_sgm', dims, rad_output['radiance'])
     output_rad.close()
 
 

@@ -25,7 +25,6 @@ def im_configuration(local_config):
     # Location of binning table file
     lines.append('binningtable_filename = ' +local_config['binning_table'] + '\n')
     # Location of L1A product (output)
-#    lines.append('l1a_outputfile = ' + local_config['lla_output'] + '\n')
     lines.append('l1a_outputfile = ' + local_config['l1a_file'] + '\n')
     # Which NetCDF group to use from the binning table file.
     # Here it is the same as the binning factor in ACT dimension.

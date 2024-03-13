@@ -19,6 +19,8 @@ import time
 import h5py
 import shutil
 import logging
+from itertools import repeat
+import tqdm
 
 from lib import libATM, libSGM, libRT_no2, libNumTools, constants
 from lib.libWrite import writevariablefromname
@@ -399,26 +401,22 @@ def set_disamar_cfg_sim(cfg, dis_cfg, ground_points, profiles, albedo, i_t, i_x)
 
 
 
-def run_disamar(filename):
+def run_disamar(filename,disamar_exe):
 
-    logger = logging.getLogger() 
+
     dis_cfg = libRT_no2.RT_configuration(filename=filename)
     output_filename = filename.replace('.in', '.h5')
 
-    RT = libRT_no2.rt_run(cfg=dis_cfg, disamar=config['rtm']['disamar_exe'], output=output_filename, quiet=True, debug=False)
-
-    cwd = os.getcwd()
+    RT = libRT_no2.rt_run(cfg=dis_cfg, disamar=disamar_exe, output=output_filename, quiet=True, debug=False)
 
     try:
         starttime = time.time()
         RT()
-        logger.info(f'finished: {filename} in {np.round(time.time()-starttime,1)} s')
+        # logging.info(f'finished: {filename} in {np.round(time.time()-starttime,1)} s')
         return 0
     except:
-        logger.error(f'failed: {filename}')
+        # logging.error(f'failed: {filename}')
         return -1
-
-    return
 
 
 def read_disamar_output(gm_data,tmp_dir):
@@ -460,7 +458,7 @@ def sgm_output_radio(config, rad_output):
     # write radiances
     nalt, nact, nlbl = rad_output['radiance'].shape
     # open file
-    output_rad = nc.Dataset(config['output']['rad'], mode='w')
+    output_rad = nc.Dataset(config['sgm_rad_file'], mode='w')
     output_rad.title = 'Tango E2ES SGM radiometric scene'
     output_rad.config = str(config)
     output_rad.processing_date = datetime.datetime.now().strftime('%Y%m%dT%H%M%S')
@@ -621,7 +619,7 @@ def sgm_output_atm_cams(config, atm, albedo, gm_data, microhh_data):
     plev = (1e-2 * atm['hyai'][np.newaxis,np.newaxis,...] + atm['psfc'][...,np.newaxis] * atm['hybi'][np.newaxis,np.newaxis,...]) # levels, hPa, TOA --> surface
 
     # create file
-    output_atm = nc.Dataset(config['output']['atm'], mode='w')
+    output_atm = nc.Dataset(config['sgm_atm_file'], mode='w')
     output_atm.title = 'Tango E2ES SGM atmospheric scene'
     output_atm.config = str(config)
     output_atm.processing_date = datetime.datetime.now().strftime('%Y%m%dT%H%M%S')
@@ -682,7 +680,7 @@ def sgm_output_atm_cams(config, atm, albedo, gm_data, microhh_data):
 
 
 
-def scene_generation_module_nitro(config, logging):
+def scene_generation_module_nitro(logging, config):
     """
     Scene generation algorithm for NO2
 
@@ -696,8 +694,9 @@ def scene_generation_module_nitro(config, logging):
     # 1) get the geometry data
     # =============================================================================================
 
-    gm_data = get_gm_data(config['input']['gm'])
+    gm_data = get_gm_data(config['gm_file'])
     nalt, nact = gm_data['sza'].shape
+    logging.info(f"Pixels along track: {nalt} ; Pixels across track: {nact}")
 
     # =============================================================================================
     # 2) get collocated S2 albedo data
@@ -755,7 +754,7 @@ def scene_generation_module_nitro(config, logging):
             else:
                 atm = np.full((nalt,nact), atm, dtype=object)
 
-            sgm_output_atm_afgl(config['output']['atm'], atm, albedo, gm_data, microhh_data)
+            sgm_output_atm_afgl(config['sgm_atm_file'], atm, albedo, gm_data, microhh_data)
             
         case 'cams':
 
@@ -781,7 +780,7 @@ def scene_generation_module_nitro(config, logging):
                 combine_mhh_cams( microhh_data, atm, species=['no2'])
 
 
-            logging.info(f"Writing scene atmosphere: {config['output']['atm']}")
+            logging.info(f"Writing scene atmosphere: {config['sgm_atm_file']}")
 
 
             sgm_output_atm_cams(config, atm, albedo, gm_data, microhh_data)
@@ -827,7 +826,8 @@ def scene_generation_module_nitro(config, logging):
     logging.info('Running DISAMAR')
 
     with multiprocessing.Pool(config['rtm']['n_threads']) as pool:
-        stat = pool.map(run_disamar, dis_cfg_filenames,chunksize=1)
+        # stat = pool.starmap(run_disamar, zip(dis_cfg_filenames, repeat(config['rtm']['disamar_exe'])),chunksize=1)
+        stat = pool.starmap(run_disamar, tqdm.tqdm(zip(dis_cfg_filenames, repeat(config['rtm']['disamar_exe'])),total=len(dis_cfg_filenames)),chunksize=1)
 
     if sum(stat) > 0:
         logging.error('Error in at least one RT calculation run with DISAMAR')
@@ -845,7 +845,7 @@ def scene_generation_module_nitro(config, logging):
     # =============================================================================================
     # 6) sgm output to radiometric file
     # =============================================================================================
-    logging.info(f"Writing scene radiance to: {config['output']['rad']}")
+    logging.info(f"Writing scene radiance to: {config['sgm_rad_file']}")
 
     sgm_output_radio(config, dis_output)
 
@@ -889,5 +889,5 @@ if __name__ == '__main__':
 
     logging.info(f'Reading config file: {sys.argv[1]}')
     config = yaml.safe_load(open(sys.argv[1]))
-    scene_generation_module_nitro(config,logging)
+    scene_generation_module_nitro(logging,config)
 

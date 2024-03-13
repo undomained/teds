@@ -29,7 +29,7 @@ atm:
         gases: [no2]
         filesuffix: src3_20180523_0930
         forced: no
-        dump: '../data/no2/microHH_dump.pkl'
+        dump: '../data/no2/tmp/microHH_dump.pkl'
 
     dem:                                    # correct surface pressure using tropomi dem (3k radius), only for CAMS
         use: True
@@ -59,14 +59,14 @@ rtm:                                        # disamar settings
 S2_albedo:
     band: B01
     forced:   no     
-    dump: '../data/no2/sgm_dumpfile.npy'
+    dump: '../data/no2/tmp/sgm_dumpfile.npy'
 # B01: 442.7 nm (S2A), 442.3 nm (S2B) 60m
 # B02: 492.4 nm (S2A), 492.1 nm (S2B)    10m
 
 
-input:
-    gm: '../data/no2/geometry.nc'
+# input
+gm_file: '../data/no2/geometry.nc'
 
-output:
-    rad: '../data/no2/sgm_radiance.nc'
-    atm: '../data/no2/sgm_atmosphere.nc'
+# output:
+sgm_rad: '../data/no2/sgm_radiance.nc'
+sgm_atm: '../data/no2/sgm_atmosphere.nc'

@@ -49,11 +49,10 @@ def build(logger, config, step, cfg_path, attribute_dict):
         Utils.add_attributes_to_output(logger, config['gm_file'], attribute_dict)
 
     if step == 'sgm' or step == 'all':
-        #TODO need to be filled in
-        # For nitro we need to run SGM.sgm_no2 module and fct scene_generation_module_no2
-        E2EModule = importlib.import_module("SGM.sgm")
-        E2EModule.scene_generation_module(config)
-        Utils.add_attributes_to_output(logger, config['sgm_file'], attribute_dict) #?
+        E2EModule = importlib.import_module("SGM.sgm_no2")
+        E2EModule.scene_generation_module_nitro(logger,config)
+        Utils.add_attributes_to_output(logger, config['sgm_rad_file'], attribute_dict)
+        Utils.add_attributes_to_output(logger, config['sgm_atm_file'], attribute_dict)
 
     if step == 'im' or step == 'all':
         # Create cfg file to be used for IM executable
@@ -72,9 +71,9 @@ def build(logger, config, step, cfg_path, attribute_dict):
         Utils.add_attributes_to_output(logger, config['l1b_file'], attribute_dict)
 
     if step == 'l1l2' or step == 'all':
-        E2EModule = importlib.import_module("L1L2.l1l2")
-        E2EModule.level1b_to_level2_processor(config)
-        Utils.add_attributes_to_output(logger, config['l2_file'], attribute_dict) #?
+        E2EModule = importlib.import_module("L1L2.l1bl2_no2")
+        E2EModule.l1bl2_no2(logger, config)
+        Utils.add_attributes_to_output(logger, config['l2_file'], attribute_dict)
 
 if __name__ == "__main__":
 

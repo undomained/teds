@@ -15,7 +15,7 @@ def get_logger():
     date_format = '%d/%m/%Y %H:%M:%S'
 
     logger = logging.getLogger(__name__)
-    logger.setLevel(logging.INFO)
+    logger.setLevel(log_level)
 
     c_handler = logging.StreamHandler(sys.stdout)
     c_handler.setFormatter(log_formatter)

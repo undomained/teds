@@ -244,7 +244,7 @@ def write_amf(cfg,amf):
 
     with nc.Dataset(cfg['l2_file'], 'a') as dst:
 
-        dst.amf_config = str(cfg)
+        # dst.amf_config = str(cfg)
 
         group = 'amf'
         newgroup = dst.createGroup(group)

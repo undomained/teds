@@ -1781,7 +1781,7 @@ def writeOutput(l2_file,IFDOEconfig,parameterNames,results,geo):
     dst = nc.Dataset(l2_file, 'w', format='NETCDF4')
 
 
-    dst.DOAS_config = str(IFDOEconfig)
+    # dst.DOAS_config = str(IFDOEconfig)
     dst.processing_date = datetime.datetime.now().strftime('%Y%m%dT%H%M%S')
 
     # create dims

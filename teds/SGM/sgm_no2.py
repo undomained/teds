@@ -460,7 +460,7 @@ def sgm_output_radio(config, rad_output):
     # open file
     output_rad = nc.Dataset(config['sgm_rad_file'], mode='w')
     output_rad.title = 'Tango E2ES SGM radiometric scene'
-    output_rad.config = str(config)
+    # output_rad.config = str(config)
     output_rad.processing_date = datetime.datetime.now().strftime('%Y%m%dT%H%M%S')
 
     output_rad.createDimension('bins_spectral', nlbl)     # spectral axis
@@ -529,7 +529,7 @@ def sgm_output_atm_afgl(filename_atm, atm, albedo, gm_data, microhh_data):
     # init file
     output_atm = nc.Dataset(filename_atm, mode='w')
     output_atm.title = 'Tango E2ES SGM atmospheric scene'
-    output_atm.config = str(config)
+    # output_atm.config = str(config)
     output_atm.processing_date = datetime.datetime.now().strftime('%Y%m%dT%H%M%S')
 
     output_atm.createDimension('bins_along_track', nalt)      # along track axis
@@ -621,7 +621,7 @@ def sgm_output_atm_cams(config, atm, albedo, gm_data, microhh_data):
     # create file
     output_atm = nc.Dataset(config['sgm_atm_file'], mode='w')
     output_atm.title = 'Tango E2ES SGM atmospheric scene'
-    output_atm.config = str(config)
+    # output_atm.config = str(config)
     output_atm.processing_date = datetime.datetime.now().strftime('%Y%m%dT%H%M%S')
 
 

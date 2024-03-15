@@ -1788,12 +1788,12 @@ def writeOutput(l2_file,IFDOEconfig,parameterNames,results,geo):
     alt_dim = dst.createDimension('scanline', geo['lat'].shape[0])
     act_dim = dst.createDimension('ground_pixel', geo['lat'].shape[1])
 
-    coord_string = "lat lon"
+    # coord_string = "lat lon"
 
     general_vars = ['lat','lon','sza','vza','saa','vaa']
     for var in general_vars:
         var_nc = dst.createVariable(var, float, ('scanline','ground_pixel'), fill_value=9.96921E36)
-        var_nc.coordinates = coord_string
+        # var_nc.coordinates = coord_string
         var_nc[:,:] = geo[var]
 
 
@@ -1827,7 +1827,7 @@ def writeOutput(l2_file,IFDOEconfig,parameterNames,results,geo):
     ifdoeError = dst[group].createVariable('ifdoe_error', int, ('scanline','ground_pixel'), fill_value=-2147483647)
     ifdoeError[:,:]   =   results['errorFlag']
     ifdoeError.comment = 'Simplified error flag from ifdoe program: 0 is no error, 1 is error'
-    ifdoeError.coordinates = coord_string
+    # ifdoeError.coordinates = coord_string
 
     ##### add spectra to netCDF output
 
@@ -1860,13 +1860,12 @@ def writeOutput(l2_file,IFDOEconfig,parameterNames,results,geo):
 
 
         if results[dictname].ndim == 1:
-            dimlist =  ('ground_pixel')
             var = dst[group].createVariable(fieldname, float, ('ground_pixel'), fill_value=9.96921E36)
             var[:] =   results[dictname]
 
         elif results[dictname].ndim == 2 and i==None:
             var = dst[group].createVariable(fieldname, float, ('scanline','ground_pixel'), fill_value=9.96921E36)
-            var.coordinates = coord_string
+            # var.coordinates = coord_string
             var[:,:] =   results[dictname]
 
         elif results[dictname].ndim == 2 and i!=None:
@@ -1878,7 +1877,7 @@ def writeOutput(l2_file,IFDOEconfig,parameterNames,results,geo):
                     poly_dim = 'intensity_offset_polynomial_exponents'
                 
                 var = dst[group].createVariable(fieldname, float, ('scanline','ground_pixel',poly_dim), fill_value=9.96921E36)
-                var.coordinates = coord_string
+                # var.coordinates = coord_string
 
             else:
                 var = dst[group+fieldname]
@@ -1960,24 +1959,24 @@ def writeOutput(l2_file,IFDOEconfig,parameterNames,results,geo):
     if IFDOEconfig['fit_window'][1] < 477.0:
         R_no2 = dst[group].createVariable('NO2_continuum_reflectance_at_reference_wavelength', float, ('scanline','ground_pixel'), fill_value=9.96921E36)
         R_no2.reference_wavelength = 440.0
-        R_no2.coordinates = coord_string
+        # R_no2.coordinates = coord_string
         R_no2[:,:] = results['R_NO2']
 
         R_no2_precision = dst[group].createVariable('NO2_continuum_reflectance_at_reference_wavelength_precision', float, ('scanline','ground_pixel'), fill_value=9.96921E36)
         R_no2_precision.reference_wavelength = 440.0
-        R_no2_precision.coordinates = coord_string
+        # R_no2_precision.coordinates = coord_string
         R_no2_precision[:,:] = results['R_NO2_precision']
 
 
     elif IFDOEconfig['fit_window'][1] > 477.0:
         R_o2o2 = dst[group].createVariable('O2O2_continuum_reflectance_at_reference_wavelength', float, ('scanline','ground_pixel'), fill_value=9.96921E36)
         R_o2o2.reference_wavelength = 477.0
-        R_o2o2.coordinates = coord_string
+        # R_o2o2.coordinates = coord_string
         R_o2o2[:,:] = results['R_O2O2']
 
         R_o2o2_precision = dst[group].createVariable('O2O2_continuum_reflectance_at_reference_wavelength_precision', float, ('scanline','ground_pixel'), fill_value=9.96921E36)
         R_o2o2_precision.reference_wavelength = 477.0
-        R_o2o2_precision.coordinates = coord_string
+        # R_o2o2_precision.coordinates = coord_string
         R_o2o2_precision[:,:] = results['R_O2O2_precision']
         
     dst.close()

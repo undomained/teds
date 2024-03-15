@@ -111,6 +111,19 @@ S2_albedo:
 #########################################################
 IM_cfg_path:  '../cfg/nitro/'                                         #Where the .cfg file needed to run C++ code will be placed
 IM_log_path:  '../logs/IM/'                                         #Where the .log file produced by the C++ code will be placed
+# if output files of inbetween steps are needed define the steps for which output is required
+# otherwise comment out l1x_output_files
+l1x_output_files : 
+    raw: '../data/no2/l1x_raw.nc'
+    dark: '../data/no2/l1x_dark.nc'
+    noise: '../data/no2/l1x_noise.nc'
+    nonlin: '../data/no2/l1x_nonlin.nc'
+    prnu: '../data/no2/l1x_prnu.nc'
+    unbin: '../data/no2/l1x_unbin.nc'
+    stray: '../data/no2/l1x_stray.nc'
+    rebin: '../data/no2/l1x_rebin.nc'
+    fov: '../data/no2/l1x_fov.nc'
+    rad: '../data/no2/l1x_rad.nc'
 ############################
 settings_IM:
 # Not used in create_im_config script:

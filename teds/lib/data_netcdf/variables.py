@@ -78,12 +78,10 @@ class Variable:
 
 
         attributes = variable_dict.get(name)
-        print(f"Variable attributes: {attributes}")
         if attributes is not None:
             if 'name' in attributes:
                 # SRON way: if name is set in the variables yaml file use that to name NetCDF variable
                 self._name = attributes['name']
-                print(f"Found actual name for variable: {self._name}")
             if 'FillValue' in attributes:
                 # FillValue is a special attribute
                 if self._fillvalue is None:
@@ -207,8 +205,6 @@ class Variable:
             Write given variable belonging to given parent to ntcdf file
             Also write the attributes belonging to this variable
         """
-
-        print(f"In write fillvalue: {self._fillvalue}")
         if self._fillvalue is not None:
             # if a fill value has been set add it as an argument.
             var = parent.createVariable(self._name, self._dtype, self._dimensions, fill_value=self._fillvalue)
@@ -230,17 +226,13 @@ class Variable:
         nattr = variable.ncattrs()
         self._attribute_list = []
         for attrname in nattr:
-            print(f"Reading attribute {attrname} for variable {self._name}")
             if attrname == '_FillValue':
-                print(f"Found fillvalue attribute for variable {self._name}")
                 # Note this is a special attribute, do not add to attribute list but set the
                 # self._fillvalue member.
                 fillvalue = variable.getncattr(attrname)
-                print(f"fillvalue: {fillvalue}")
                 self.set_fillvalue(fillvalue)
             else:
                 # Normal attribute, add to attributelist
-                print(f"Normal attribute")
                 attr = Attribute(attrname,level='variable')
                 attr.read(variable)
                 self._attribute_list.append(attr)

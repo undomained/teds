@@ -87,7 +87,7 @@ atm: # atm simulation settings
 rtm:   # disamar (RTM) settings
     tmp_dir:    '../data/no2/tmp/'
     disamar_cfg_template: '../cfg/nitro/disamar_config_sim.in_template'
-    disamar_exe: '/usr/people/leune/programs/disamar/Disamar_old.exe'
+    disamar_exe: '../data/no2/disamar/Disamar_old.exe'
     dismas_sim: True
     dismas_fwhm: 0.05       #nm
     n_threads: 16
@@ -184,7 +184,7 @@ doas:
 
   rad_from_sgm: no
   irr_from_sgm: yes
-  irr_file: ../data/no2/sgm_radiance_cams_fc.nc
+  irr_file: ../data/no2/sgm_radiance.nc
 
   export_spectra: no
   debug:
@@ -233,7 +233,7 @@ doas:
   convergence_threshold: 1.0
 
   # ---- Reference Spectra ----
-  # ref spec copnvolved with FWHM 0.6 nm
+  # ref spec convolved with FWHM 0.6 nm
   ref_solar: ../data/no2/refspec_06/solar_irradiance.xs
   ref_xs_no2: ../data/no2/refspec_06/no2.xs
   ref_xs_o3: ../data/no2/refspec_06/o3.xs

@@ -43,6 +43,8 @@ class Settings_main : public Settings {
     bool stray_apply { true };
     bool prnu_apply { true };
     bool rad_apply { true };
+    bool noise_apply { true };
+    bool swath_apply { true };
 
     // Constructor.
     Settings_main(

@@ -53,6 +53,8 @@ int Settings_main::init_common( // {{{
     recognize_setting(stray_apply);
     recognize_setting(prnu_apply);
     recognize_setting(rad_apply);
+    recognize_setting(swath_apply);
+    recognize_setting(noise_apply);
 
     return 0;
 } // }}}

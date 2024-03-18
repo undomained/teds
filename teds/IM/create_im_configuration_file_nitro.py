@@ -53,6 +53,10 @@ def im_configuration(local_config):
     lines.append('prnu_apply = '+str(local_config['settings_IM']['sw_prnu'])+'\n')
     # radiometric calibration
     lines.append('rad_apply = '+str(local_config['settings_IM']['sw_rad'])+'\n')
+    # swath stuff
+    lines.append('swath_apply = '+str(local_config['settings_IM']['sw_swath'])+'\n')
+    # noise stuff
+    lines.append('noise_apply = '+str(local_config['settings_IM']['sw_noise'])+'\n')
     if 'l1x_output_files' in local_config:
         l1x_output_files = local_config['l1x_output_files']
         for output in l1x_output_files:

@@ -139,6 +139,8 @@ settings_IM:
     sw_prnu:         1                                   #switch pixel response non-uniformity (1 on, 0 off)
     sw_stray:        0                                   #switch dark spectrometer stray light (1 on, 0 off)
     sw_rad:          1                                   #switch radiometric calibration (1 on, 0 off)
+    sw_swath:        0                                   #switch swath stuff (1 on, 0 off)
+    sw_noise:        0                                   #switch noise stuff (1 on, 0 off)
 ############################
 isrf:
     convolution:     1                                   #switch spectral convolution (1=yes), (0=no)

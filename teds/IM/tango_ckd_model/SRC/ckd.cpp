@@ -101,10 +101,10 @@ int CKD::read( // {{{
         vector<double> dark_chi2;
 
 // TODO For the moment reading of skip pars from CKD file commented out
-//        uint8_t intskip;
-//        netcdf_check(&nc_in,grp.getVar("dark_skip").getVar(&intskip));
-//
-//        dark_skip = intskip == 1;
+        uint8_t intskip;
+        netcdf_check(&nc_in,grp.getVar("dark_skip").getVar(&intskip));
+
+        dark_skip = intskip == 1;
 
         if (!dark_skip) {
 
@@ -134,10 +134,10 @@ int CKD::read( // {{{
         netcdf_check(&nc_in,grp = nc_in.ncid->getGroup("NOISE"));
 
 // TODO For the moment reading of skip pars from CKD file commented out
-//        uint8_t intskip;
-//        netcdf_check(&nc_in,grp.getVar("noise_skip").getVar(&intskip));
-//
-//        noise_skip = intskip == 1;
+        uint8_t intskip;
+        netcdf_check(&nc_in,grp.getVar("noise_skip").getVar(&intskip));
+
+        noise_skip = intskip == 1;
 
         if (!noise_skip) {
 
@@ -161,11 +161,10 @@ int CKD::read( // {{{
         vector<double> nonlin_lin_chi2;
         vector<double> nonlin_chi2;
 
-// TODO For the moment reading of skip pars from CKD file commented out
-//        uint8_t intskip;
-//        netcdf_check(&nc_in,grp.getVar("nonlin_skip").getVar(&intskip));
-//
-//        nonlin_skip = intskip == 1;
+        uint8_t intskip;
+        netcdf_check(&nc_in,grp.getVar("nonlin_skip").getVar(&intskip));
+
+        nonlin_skip = intskip == 1;
 
         if (!nonlin_skip) {
 
@@ -211,10 +210,10 @@ int CKD::read( // {{{
         netcdf_check(&nc_in,grp = nc_in.ncid->getGroup("PRNU"));
 
 // TODO For the moment reading of skip pars from CKD file commented out
-//        uint8_t intskip;
-//        netcdf_check(&nc_in,grp.getVar("prnu_skip").getVar(&intskip));
-//
-//        prnu_skip = intskip == 1;
+        uint8_t intskip;
+        netcdf_check(&nc_in,grp.getVar("prnu_skip").getVar(&intskip));
+
+        prnu_skip = intskip == 1;
 
         if (!prnu_skip) {
             // Pixel response non-uniformity.
@@ -229,10 +228,10 @@ int CKD::read( // {{{
         netcdf_check(&nc_in,grp = nc_in.ncid->getGroup("STRAYLIGHT"));
 
 // TODO For the moment reading of skip pars from CKD file commented out
-//        uint8_t intskip;
-//        netcdf_check(&nc_in,grp.getVar("stray_skip").getVar(&intskip));
-//
-//        stray_skip = intskip == 1;
+        uint8_t intskip;
+        netcdf_check(&nc_in,grp.getVar("stray_skip").getVar(&intskip));
+
+        stray_skip = intskip == 1;
 
         if (!stray_skip) {
             stray.n_kernels = static_cast<int>(grp.getDim("kernels").getSize());
@@ -332,10 +331,10 @@ int CKD::read( // {{{
         netcdf_check(&nc_in,grp = nc_in.ncid->getGroup("SWATH"));
 
 // TODO For the moment reading of skip pars from CKD file commented out
-//        uint8_t intskip;
-//        netcdf_check(&nc_in,grp.getVar("swath_skip").getVar(&intskip));
-//
-//        swath_skip = intskip == 1;
+        uint8_t intskip;
+        netcdf_check(&nc_in,grp.getVar("swath_skip").getVar(&intskip));
+
+        swath_skip = intskip == 1;
 
         if (!swath_skip) {
             // Swath vectors.
@@ -366,10 +365,10 @@ int CKD::read( // {{{
         netcdf_check(&nc_in,grp = nc_in.ncid->getGroup("RADIOMETRIC"));
 
 // TODO For the moment reading of skip pars from CKD file commented out
-//        uint8_t intskip;
-//        netcdf_check(&nc_in,grp.getVar("rad_skip").getVar(&intskip));
-//
-//        rad_skip = intskip == 1;
+        uint8_t intskip;
+        netcdf_check(&nc_in,grp.getVar("rad_skip").getVar(&intskip));
+
+        rad_skip = intskip == 1;
 
         if (!rad_skip) {
 

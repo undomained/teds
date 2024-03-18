@@ -295,7 +295,7 @@ class DataNetCDF:
                 if gr.get_name() == group:
                     return gr.find(name, var=var, kind=kind)
             #If we get here the group has not been found
-            self.logger.warning(f"Oops group with name {group} is not found in main directory of file {self._file_name}! So {kind} with name {name} can not be found.")
+            self._logger.warning(f"Oops group with name {group} is not found in main directory of file {self._file_name}! So {kind} with name {name} can not be found.")
             return None
 
         return None

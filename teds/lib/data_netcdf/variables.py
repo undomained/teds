@@ -104,10 +104,10 @@ class Variable:
             if 'name' in attributes_ckd:
                 # SRON way: if name is set in the variables yaml file use that to name NetCDF variable
                 self._name = attributes_ckd['name']
-            if 'FillValue' in attributes:
+            if 'FillValue' in attributes_ckd:
                 # FillValue is a special attribute
                 if self._fillvalue is None:
-                    self.set_fillvalue(attributes['FillValue'])
+                    self.set_fillvalue(attributes_ckd['FillValue'])
                 else:
                     warning_msg = f"A fill value was provided for initialization, but there is "\
                                   f"also a FillValue provided as attribute in the file {consts_ckd_file}! "\
@@ -117,7 +117,7 @@ class Variable:
             # Now make Atrributes of the remaining attributes
             attributes_ckd.pop('name',None)
             # should we pop FillValue from the attributes? Probably.
-            attributes.pop('FillValue',None)
+            attributes_ckd.pop('FillValue',None)
             for attribute, value in attributes_ckd.items():
                 atr = Attribute(attribute, value)
                 self._attribute_list.append(atr)

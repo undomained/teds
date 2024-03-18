@@ -59,45 +59,6 @@ int Program::execute( // {{{
     // Construct and read the CKD.
     unique_ptr<CKD> ckd = make_unique<CKD>(this);
     handle(ckd->read(set_main,LEVEL_L1B,false));
-// NOTE: the decision to apply or not to apply a step has been moved from frame to program.
-// So in principle there is no need anymore for the ckd skip vars
-// Nor is there a need to overwrite the ckd skip vars by the config apply vars.
-// So the overwriting code below is not needed anymore and will be removed soon
-    // It seems that at the moment skip vars have been added to CKD to determine the flow of the IM
-    // i.e. wether or not to run a certain step. In principle the flow of the IM should not
-    // be determined by CKD, but by config. But in frames the settings info is not accessable at the
-    // moment. But CKD skip vars ARE accessable. That probably needs to change at some point.
-    // Having two places where the flow of the IM is determined/set is at the least somewhat confusing.
-    // For now consider the CKD skip vars as kind of place holders. The original code kinda
-    // assumed that CKD skip vars have been set to value 0. And only when the apply var in config was set to zero
-    // did the corresponding skip var in CKD get set to true.
-    // Code has been updates to ALWAYS overwrite the skip var value with the config apply values
-    if (!set_main.dark_apply) {
-        ckd->dark_skip = true;
-    } else {
-        ckd->dark_skip = false;
-    }
-    if (!set_main.nonlin_apply) {
-        ckd->nonlin_skip = true;
-    } else {
-        ckd->nonlin_skip = false;
-    }
-    if (!set_main.prnu_apply) {
-        ckd->prnu_skip = true;
-    } else {
-        ckd->prnu_skip = false;
-    }
-    if (!set_main.stray_apply) {
-        ckd->stray_skip = true;
-    } else {
-        ckd->stray_skip = false;
-    }
-    if (!set_main.rad_apply) {
-        ckd->rad_skip = true;
-    } else {
-        ckd->rad_skip = false;
-    }
-// NOTE the above code to overwrite the ckd skip pars will be removed soon!
 
     size_t il1x_start;
     L1X_inputfile l1x_inputfile(this);

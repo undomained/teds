@@ -100,13 +100,10 @@ int CKD::read( // {{{
         // Define diagnostic variable.
         vector<double> dark_chi2;
 
-// TODO For the moment reading of skip pars from CKD file commented out
-        uint8_t intskip;
-        netcdf_check(&nc_in,grp.getVar("dark_skip").getVar(&intskip));
+        uint8_t intapply = set.dark_apply;
+        dark_apply = intapply == 1;
 
-        dark_skip = intskip == 1;
-
-        if (!dark_skip) {
+        if (dark_apply) {
 
             // Read the dark correction.
             netcdf_check(&nc_in,dim_dark_order = grp.getDim("dark_number_of_coefficients").getSize());
@@ -133,13 +130,10 @@ int CKD::read( // {{{
         NcGroup grp;
         netcdf_check(&nc_in,grp = nc_in.ncid->getGroup("NOISE"));
 
-// TODO For the moment reading of skip pars from CKD file commented out
-        uint8_t intskip;
-        netcdf_check(&nc_in,grp.getVar("noise_skip").getVar(&intskip));
+        uint8_t intapply = set.noise_apply;
+        noise_apply = intapply == 1;
 
-        noise_skip = intskip == 1;
-
-        if (!noise_skip) {
+        if (noise_apply) {
 
             // Shape the noise CKD.
             noise_g.resize(npix);
@@ -161,12 +155,10 @@ int CKD::read( // {{{
         vector<double> nonlin_lin_chi2;
         vector<double> nonlin_chi2;
 
-        uint8_t intskip;
-        netcdf_check(&nc_in,grp.getVar("nonlin_skip").getVar(&intskip));
+        uint8_t intapply = set.nonlin_apply;
+        nonlin_apply = intapply == 1;
 
-        nonlin_skip = intskip == 1;
-
-        if (!nonlin_skip) {
+        if (nonlin_apply) {
 
             netcdf_check(&nc_in,dim_nonlin_exptime = grp.getDim("nonlin_number_of_exposure_times").getSize());
             netcdf_check(&nc_in,dim_nonlin_spline = grp.getDim("nonlin_number_of_coefficients").getSize());
@@ -209,13 +201,10 @@ int CKD::read( // {{{
         NcGroup grp;
         netcdf_check(&nc_in,grp = nc_in.ncid->getGroup("PRNU"));
 
-// TODO For the moment reading of skip pars from CKD file commented out
-        uint8_t intskip;
-        netcdf_check(&nc_in,grp.getVar("prnu_skip").getVar(&intskip));
+        uint8_t intapply = set.prnu_apply;
+        prnu_apply = intapply == 1;
 
-        prnu_skip = intskip == 1;
-
-        if (!prnu_skip) {
+        if (prnu_apply) {
             // Pixel response non-uniformity.
             prnu_prnu.resize(npix);
             netcdf_check(&nc_in,grp.getVar("prnu_prnu").getVar(prnu_prnu.data()));
@@ -227,13 +216,10 @@ int CKD::read( // {{{
         NcGroup grp;
         netcdf_check(&nc_in,grp = nc_in.ncid->getGroup("STRAYLIGHT"));
 
-// TODO For the moment reading of skip pars from CKD file commented out
-        uint8_t intskip;
-        netcdf_check(&nc_in,grp.getVar("stray_skip").getVar(&intskip));
+        uint8_t intapply = set.stray_apply;
+        stray_apply = intapply == 1;
 
-        stray_skip = intskip == 1;
-
-        if (!stray_skip) {
+        if (stray_apply) {
             stray.n_kernels = static_cast<int>(grp.getDim("kernels").getSize());
             stray.n_spatial = static_cast<int>(grp.getDim("spatial").getSize());
             stray.n_spectral =
@@ -330,13 +316,10 @@ int CKD::read( // {{{
         NcGroup grp;
         netcdf_check(&nc_in,grp = nc_in.ncid->getGroup("SWATH"));
 
-// TODO For the moment reading of skip pars from CKD file commented out
-        uint8_t intskip;
-        netcdf_check(&nc_in,grp.getVar("swath_skip").getVar(&intskip));
+        uint8_t intapply = set.swath_apply;
+        swath_apply = intapply == 1;
 
-        swath_skip = intskip == 1;
-
-        if (!swath_skip) {
+        if (swath_apply) {
             // Swath vectors.
             swath_swathvectors.resize(dim_fov*DIM_VEC);
             netcdf_check(&nc_in,grp.getVar("swath_swathvectors").getVar(swath_swathvectors.data()));
@@ -364,13 +347,10 @@ int CKD::read( // {{{
         NcGroup grp;
         netcdf_check(&nc_in,grp = nc_in.ncid->getGroup("RADIOMETRIC"));
 
-// TODO For the moment reading of skip pars from CKD file commented out
-        uint8_t intskip;
-        netcdf_check(&nc_in,grp.getVar("rad_skip").getVar(&intskip));
+        uint8_t intapply = set.rad_apply;
+        rad_apply = intapply == 1;
 
-        rad_skip = intskip == 1;
-
-        if (!rad_skip) {
+        if (rad_apply) {
 
             // Radiometric calibration.
             rad_spectra.resize(dim_fov*dim_detector_spec);
@@ -381,107 +361,113 @@ int CKD::read( // {{{
 
 } // }}}
 
+// TODO
+// ! the check_opts fct and the write_opt fct seem not to be used anywhere.
+// ! Not sure how the were envisioned to be used. Since we should not/plan not
+// to write to the CKD
+// ! For the moment comment out this code.
+// ! At later stage the code can be deleted
 // Put detector options into the CKD (to write) and warn for inconsistencies.
-int CKD::check_opts( // {{{
-    Calibration_options opt // User calibration options for current step.
-)
-{
+//int CKD::check_opts( // {{{
+//    Calibration_options opt // User calibration options for current step.
+//)
+//{
+//
+//    // Execute all single-level steps.
+//    if (dark_apply) handle(check_opt(opt,lev,opt_dark,LEVEL_DARKCAL,"dark"));
+//    if (noise_apply) handle(check_opt(opt,lev,opt_noise,LEVEL_NOISECAL,"noise"));
+//    if (nonlin_apply) handle(check_opt(opt,lev,opt_nonlin,LEVEL_NONLINCAL,"non-linearity"));
+//    if (prnu_apply) handle(check_opt(opt,lev,opt_prnu,LEVEL_PRNUCAL,"PRNU"));
+//    if (stray_apply) handle(check_opt(opt,lev,opt_stray,LEVEL_STRAYCAL,"straylight"));
+//    handle(check_opt(opt,lev,opt_fov,LEVEL_FOVCAL,"field-of-view"));
+//    if (swath_apply) handle(check_opt(opt,lev,opt_swath,LEVEL_SWATHCAL,"swath"));
+//    handle(check_opt(opt,lev,opt_wave,LEVEL_WAVECAL,"wavelength"));
+//    if (rad_apply) handle(check_opt(opt,lev,opt_rad,LEVEL_RADCAL,"radiometric"));
+//    handle(check_opt(opt,lev,opt_pol,LEVEL_POLCAL,"polarimetric"));
+//
+//    return 0;
+//
+//} // }}}
+//
+//int CKD::write_opt( // {{{
+//    NcGroup grp,
+//    Calibration_options opt
+//)
+//{
+//    uint8_t boolwrite; // To write any form of boolean.
+//    if (lev > LEVEL_DARKCAL && dark_apply) {
+//        // Forced option.
+//        boolwrite = opt.dark_current?1:0;
+//        netcdf_check(nc_ckd,grp.putAtt("opt_dark_current",ncUbyte,boolwrite));
+//        // No optional options.
+//    }
+//    if (lev > LEVEL_NONLINCAL && nonlin_apply) {
+//        boolwrite = opt.nonlin?1:0;
+//        netcdf_check(nc_ckd,grp.putAtt("opt_nonlin",ncUbyte,boolwrite));
+//        // Optional options only relevant when executing non-linearity.
+//        if (opt.nonlin) {
+//            netcdf_check(nc_ckd,grp.putAtt("opt_nonlin_niter",ncUint,opt.nonlin_niter));
+//            netcdf_check(nc_ckd,grp.putAtt("opt_nonlin_tol",ncDouble,opt.nonlin_tol));
+//        }
+//    }
+//    if (lev > LEVEL_STRAYCAL && stray_apply) {
+//        boolwrite = opt.stray?1:0;
+//        netcdf_check(nc_ckd,grp.putAtt("opt_stray",ncUbyte,boolwrite));
+//        // Optional options only relevant when executing straylight.
+//        if (opt.stray) {
+//            netcdf_check(nc_ckd,grp.putAtt("opt_stray_van_cittert_steps",ncInt,opt.stray_van_cittert_steps));
+//        }
+//    }
+//
+//    return 0;
+//
+//} // }}}
+//
+//int CKD::check_opt( // {{{
+//    Calibration_options opt_user,
+//    level_t lev_user,
+//    Calibration_options &opt_ref,
+//    level_t lev_ref,
+//    string stepname
+//)
+//{
+//    
+//    if (lev_ref < lev_user) {
+//        // Warn for any inconsistencies in optional options if relevant.
+//
+//        // Relevant is if the reference options are high enough level that
+//        // the checked options can be relevant, that both the current and
+//        // the reference step execute the step and that the CKD does not
+//        // skip the step.
+//
+//        // Non-linearity.
+//        if (
+//            lev_ref > LEVEL_NONLINCAL &&
+//            nonlin_apply &&
+//            opt_user.nonlin &&
+//            opt_ref.nonlin
+//        ) {
+//            if (opt_user.nonlin_niter != opt_ref.nonlin_niter) writelog(log_warning,"Warning: Inconsistent non-linearity number of iterations between user optinos of current step (%d) and options when the CKD of step %s was created (%d).",opt_user.nonlin_niter,stepname.c_str(),opt_ref.nonlin_niter);
+//            if (opt_user.nonlin_tol != opt_ref.nonlin_tol) writelog(log_warning,"Warning: Inconsistent non-linearity convergence criterion between user optinos of current step (%.6e) and options when the CKD of step %s was created (%.6e).",opt_user.nonlin_tol,stepname.c_str(),opt_ref.nonlin_tol);
+//        }
+//        // Straylight.
+//        if (
+//            lev_ref > LEVEL_STRAYCAL &&
+//            stray_apply &&
+//            opt_user.stray &&
+//            opt_ref.stray
+//        ) {
+//            if (opt_user.stray_van_cittert_steps != opt_ref.stray_van_cittert_steps) writelog(log_warning,"Warning: Inconsistent straylight van Cittert steps between user optinos of current step (%d) and options when the CKD of step %s was created (%d).",opt_user.stray_van_cittert_steps,stepname.c_str(),opt_ref.stray_van_cittert_steps);
+//        }
+//    }
+//    if (lev_ref == lev_user) {
+//        opt_ref = opt_user; // This is the reason why opt_ref is a reference.
+//    }
+//    // if lev_ref is greater than lev_user, nothing needs to be done.
+//
+//    // If lev_user is L1B, there are only checks, no writes.
+//
+//    return 0;
 
-    // Execute all single-level steps.
-    if (!dark_skip) handle(check_opt(opt,lev,opt_dark,LEVEL_DARKCAL,"dark"));
-    if (!noise_skip) handle(check_opt(opt,lev,opt_noise,LEVEL_NOISECAL,"noise"));
-    if (!nonlin_skip) handle(check_opt(opt,lev,opt_nonlin,LEVEL_NONLINCAL,"non-linearity"));
-    if (!prnu_skip) handle(check_opt(opt,lev,opt_prnu,LEVEL_PRNUCAL,"PRNU"));
-    if (!stray_skip) handle(check_opt(opt,lev,opt_stray,LEVEL_STRAYCAL,"straylight"));
-    handle(check_opt(opt,lev,opt_fov,LEVEL_FOVCAL,"field-of-view"));
-    if (!swath_skip) handle(check_opt(opt,lev,opt_swath,LEVEL_SWATHCAL,"swath"));
-    handle(check_opt(opt,lev,opt_wave,LEVEL_WAVECAL,"wavelength"));
-    if (!rad_skip) handle(check_opt(opt,lev,opt_rad,LEVEL_RADCAL,"radiometric"));
-    handle(check_opt(opt,lev,opt_pol,LEVEL_POLCAL,"polarimetric"));
-
-    return 0;
-
-} // }}}
-
-int CKD::write_opt( // {{{
-    NcGroup grp,
-    Calibration_options opt
-)
-{
-    uint8_t boolwrite; // To write any form of boolean.
-    if (lev > LEVEL_DARKCAL && !dark_skip) {
-        // Forced option.
-        boolwrite = opt.dark_current?1:0;
-        netcdf_check(nc_ckd,grp.putAtt("opt_dark_current",ncUbyte,boolwrite));
-        // No optional options.
-    }
-    if (lev > LEVEL_NONLINCAL && !nonlin_skip) {
-        boolwrite = opt.nonlin?1:0;
-        netcdf_check(nc_ckd,grp.putAtt("opt_nonlin",ncUbyte,boolwrite));
-        // Optional options only relevant when executing non-linearity.
-        if (opt.nonlin) {
-            netcdf_check(nc_ckd,grp.putAtt("opt_nonlin_niter",ncUint,opt.nonlin_niter));
-            netcdf_check(nc_ckd,grp.putAtt("opt_nonlin_tol",ncDouble,opt.nonlin_tol));
-        }
-    }
-    if (lev > LEVEL_STRAYCAL && !stray_skip) {
-        boolwrite = opt.stray?1:0;
-        netcdf_check(nc_ckd,grp.putAtt("opt_stray",ncUbyte,boolwrite));
-        // Optional options only relevant when executing straylight.
-        if (opt.stray) {
-            netcdf_check(nc_ckd,grp.putAtt("opt_stray_van_cittert_steps",ncInt,opt.stray_van_cittert_steps));
-        }
-    }
-
-    return 0;
-
-} // }}}
-
-int CKD::check_opt( // {{{
-    Calibration_options opt_user,
-    level_t lev_user,
-    Calibration_options &opt_ref,
-    level_t lev_ref,
-    string stepname
-)
-{
-    
-    if (lev_ref < lev_user) {
-        // Warn for any inconsistencies in optional options if relevant.
-
-        // Relevant is if the reference options are high enough level that
-        // the checked options can be relevant, that both the current and
-        // the reference step execute the step and that the CKD does not
-        // skip the step.
-
-        // Non-linearity.
-        if (
-            lev_ref > LEVEL_NONLINCAL &&
-            !nonlin_skip &&
-            opt_user.nonlin &&
-            opt_ref.nonlin
-        ) {
-            if (opt_user.nonlin_niter != opt_ref.nonlin_niter) writelog(log_warning,"Warning: Inconsistent non-linearity number of iterations between user optinos of current step (%d) and options when the CKD of step %s was created (%d).",opt_user.nonlin_niter,stepname.c_str(),opt_ref.nonlin_niter);
-            if (opt_user.nonlin_tol != opt_ref.nonlin_tol) writelog(log_warning,"Warning: Inconsistent non-linearity convergence criterion between user optinos of current step (%.6e) and options when the CKD of step %s was created (%.6e).",opt_user.nonlin_tol,stepname.c_str(),opt_ref.nonlin_tol);
-        }
-        // Straylight.
-        if (
-            lev_ref > LEVEL_STRAYCAL &&
-            !stray_skip &&
-            opt_user.stray &&
-            opt_ref.stray
-        ) {
-            if (opt_user.stray_van_cittert_steps != opt_ref.stray_van_cittert_steps) writelog(log_warning,"Warning: Inconsistent straylight van Cittert steps between user optinos of current step (%d) and options when the CKD of step %s was created (%d).",opt_user.stray_van_cittert_steps,stepname.c_str(),opt_ref.stray_van_cittert_steps);
-        }
-    }
-    if (lev_ref == lev_user) {
-        opt_ref = opt_user; // This is the reason why opt_ref is a reference.
-    }
-    // if lev_ref is greater than lev_user, nothing needs to be done.
-
-    // If lev_user is L1B, there are only checks, no writes.
-
-    return 0;
-
-} // }}}
+//} // }}}
 

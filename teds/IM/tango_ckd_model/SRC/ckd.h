@@ -8,19 +8,19 @@
 class NetCDF_object;
 class Settings_main;
 
-struct Calibration_options {
-    // Currently, all options that are sitched off for any case are listed.
-    bool dark_current = true; // False for noise calibration.
-    bool nonlin = true; // False for FOV, swath and wavelength calibartion.
-    bool stray = true; // False for FOV, swath and wavelength calibration.
-    // These options are hardcoded in the constructors of the processor
-    // settings (the child classes).
-
-    // Optional calibration settings.
-    uint32_t nonlin_niter = 100; // Number of iterations that will be allowed when performing the inversion that applies the non-linearity correction.
-    double nonlin_tol = 1.0e-3; // Convergence tolerance when performing the inversion that applies the non-linearity correction.
-    int stray_van_cittert_steps = 3; // Number of Van Cittert iterations to perform straylight correction.
-};
+//struct Calibration_options {
+//    // Currently, all options that are sitched off for any case are listed.
+//    bool dark_current = true; // False for noise calibration.
+//    bool nonlin = true; // False for FOV, swath and wavelength calibartion.
+//    bool stray = true; // False for FOV, swath and wavelength calibration.
+//    // These options are hardcoded in the constructors of the processor
+//    // settings (the child classes).
+//
+//    // Optional calibration settings.
+//    uint32_t nonlin_niter = 100; // Number of iterations that will be allowed when performing the inversion that applies the non-linearity correction.
+//    double nonlin_tol = 1.0e-3; // Convergence tolerance when performing the inversion that applies the non-linearity correction.
+//    int stray_van_cittert_steps = 3; // Number of Van Cittert iterations to perform straylight correction.
+//};
 
 #include <complex>
 
@@ -88,7 +88,7 @@ class CKD : public Logger { // {{{
     vector<bool> vp_mask; // Skipped viewport mask.
 
     // Dark CKD.
-    bool dark_skip = false; // Flag for skipping dark correction step.
+    bool dark_apply = false; // Flag for applying dark correction step.
     vector<double> dark_offset; // Fixed dark signal (independent of integration time).
     vector<double> dark_current; // Dark signal added per second of integration time.
     double dark_nominal_temperature; // Nominal temperature temperature-difference fit.
@@ -96,12 +96,12 @@ class CKD : public Logger { // {{{
     double *diag_dark_chi2;
 
     // Noise CKD.
-    bool noise_skip = false; // Flag for skipping noise calibration step.
+    bool noise_apply = false; // Flag for applying noise calibration step.
     vector<double> noise_g; // Signal-dependent noise term.
     vector<double> noise_n; // Signal-independent noise term.
 
     // Nonlin CKD.
-    bool nonlin_skip = false; // Flag for skipping non-linearity step.
+    bool nonlin_apply = false; // Flag for applying non-linearity step.
     size_t nonlin_order; // B-spline order of the non-linearity correction.
     vector<double> nonlin_knots; // B-spline knots for non-linearity correction.
     vector<double> nonlin_fit; // B-spline fit for non-linearity correction to be used.
@@ -113,11 +113,11 @@ class CKD : public Logger { // {{{
     double *diag_nonlin_chi2;
 
     // PRNU CKD.
-    bool prnu_skip = false; // Flag for skipping PRNU step.
+    bool prnu_apply = false; // Flag for applying PRNU step.
     vector<double> prnu_prnu; // Pixel response non-uniformity.
 
     // Stray light CKD
-    bool stray_skip { false };
+    bool stray_apply { false };
     struct
     {
         int n_kernels {};
@@ -157,7 +157,7 @@ class CKD : public Logger { // {{{
     size_t dim_fov_spec_total; // Total of the sizes of each FOV.
 
     // Swath CKD.
-    bool swath_skip = false;
+    bool swath_apply = false;
     vector<double> swath_swathvectors; // Pointing vector per FOV in satellite coordinates.
     vector<double> swath_vectorplane_normals; // Normals of planes fitted through swath vectors of one viewport.
 
@@ -166,7 +166,7 @@ class CKD : public Logger { // {{{
     vector<double> wave_target; // Common wavelength grid for each pair of S+ and S- spectra.
 
     // Radiometric CKD.
-    bool rad_skip = false; // Flag for skipping radiometric calibration.
+    bool rad_apply = false; // Flag for apllying radiometric calibration.
     vector<double> rad_spectra; // Radiometric calibration factor for extracted spectra.
 
     // Polarimetric CKD.
@@ -178,33 +178,35 @@ class CKD : public Logger { // {{{
     double *diag_pol_eff_b; // Efficiency along the other axis (u with zero tilt).
     double *diag_pol_tilt; // Tilt angle of the ellipse.
 
-    // Detector options.
-    // These are the detector option structures used to generate each of
-    // the CKD steps. These are only used to warn for inconsistency and
-    // to have them into the CKD file so that the user can do it manually
-    // as well.
-    // Level dim is totally uncoupled to any interaction with L1A, because
-    // without it, there is no detector size or shape, so reading a L1A
-    // cannot be done safely (like walking over a plank blindfolded).
-    // All other steps have L1A measurements involved, so speaking about
-    // detector calibration options makes sense. Possibly, all optional
-    // stuff is more advanced than where you are, but then the options
-    // are there, but no option is relevant.
-    // We will save the forced options as well as the optional options.
-    // Of course, writing forced options into the CKD is CKD-file pollution,
-    // but it informs the user of what is done and it saves the program
-    // the effort for remembering what is forced in what step (and that
-    // is error prone when chaning these forced options).
-    Calibration_options opt_dark;
-    Calibration_options opt_noise;
-    Calibration_options opt_nonlin;
-    Calibration_options opt_prnu;
-    Calibration_options opt_stray;
-    Calibration_options opt_fov;
-    Calibration_options opt_swath;
-    Calibration_options opt_wave;
-    Calibration_options opt_rad;
-    Calibration_options opt_pol;
+// Not sure what te Calibration oprions are needed/used for
+// Commented out for the moment
+//    // Detector options.
+//    // These are the detector option structures used to generate each of
+//    // the CKD steps. These are only used to warn for inconsistency and
+//    // to have them into the CKD file so that the user can do it manually
+//    // as well.
+//    // Level dim is totally uncoupled to any interaction with L1A, because
+//    // without it, there is no detector size or shape, so reading a L1A
+//    // cannot be done safely (like walking over a plank blindfolded).
+//    // All other steps have L1A measurements involved, so speaking about
+//    // detector calibration options makes sense. Possibly, all optional
+//    // stuff is more advanced than where you are, but then the options
+//    // are there, but no option is relevant.
+//    // We will save the forced options as well as the optional options.
+//    // Of course, writing forced options into the CKD is CKD-file pollution,
+//    // but it informs the user of what is done and it saves the program
+//    // the effort for remembering what is forced in what step (and that
+//    // is error prone when chaning these forced options).
+//    Calibration_options opt_dark;
+//    Calibration_options opt_noise;
+//    Calibration_options opt_nonlin;
+//    Calibration_options opt_prnu;
+//    Calibration_options opt_stray;
+//    Calibration_options opt_fov;
+//    Calibration_options opt_swath;
+//    Calibration_options opt_wave;
+//    Calibration_options opt_rad;
+//    Calibration_options opt_pol;
 
     // Member functions.
     public:
@@ -215,28 +217,28 @@ class CKD : public Logger { // {{{
         level_t lev_target,
         bool write
     );
-
-    // Checks calibration options.
-    int check_opts(
-        Calibration_options opt
-    );
-
-    private:
-
-    // Writes used calibration optinos to group attributes.
-    int write_opt(
-        NcGroup grp,
-        Calibration_options opt
-    );
-
-    // Checks calibration options and saves the one for the actual step.
-    int check_opt(
-        Calibration_options opt_user,
-        level_t lev_user,
-        Calibration_options &opt_ref,
-        level_t lev_ref,
-        string stepname
-    );
+//
+//    // Checks calibration options.
+//    int check_opts(
+//        Calibration_options opt
+//    );
+//
+//    private:
+//
+//    // Writes used calibration optinos to group attributes.
+//    int write_opt(
+//        NcGroup grp,
+//        Calibration_options opt
+//    );
+//
+//    // Checks calibration options and saves the one for the actual step.
+//    int check_opt(
+//        Calibration_options opt_user,
+//        level_t lev_user,
+//        Calibration_options &opt_ref,
+//        level_t lev_ref,
+//        string stepname
+//    );
 
 }; // }}}
 

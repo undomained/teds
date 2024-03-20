@@ -52,8 +52,6 @@ def get_amf(cfg, doas, atm):
     results['no2_averaging_kernel'] = np.ma.masked_all_like(atm['temperature'])
     results['pressure_layer'] = atm['pressure_layers'][:,:,::-1]
 
-    results['no2_total_vcd_sgm'] = atm['col_no2'] /constants.NA * 1e4 # [molec/cm2] to [mol/m2]
-
     # load NN
     amf_clear_NN = read_NN('LUT_AMF_clear', cfg['LUT_NN_file'])
 
@@ -242,42 +240,55 @@ def predict_NN(input_vector, NN):
 
 def write_amf(cfg,amf):
 
+    # convert units
+    def molm2_to_moleccm2(var):
+        var = var *constants.NA / 1e4 #  [mol/m2] to [molec/cm2]
+        return var
+    
+    for var in ['no2_total_vcd','no2_total_scd']:
+        amf[var] = molm2_to_moleccm2(amf[var])
+
     with nc.Dataset(cfg['l2_file'], 'a') as dst:
 
         # dst.amf_config = str(cfg)
 
         group = 'amf'
-        newgroup = dst.createGroup(group)
+        if group not in dst.groups.keys():
+            newgroup = dst.createGroup(group)
 
-        p_dim = dst[group].createDimension('pressure_layer', amf['pressure_layer'].shape[-1])
+            p_dim = dst[group].createDimension('pressure_layer', amf['pressure_layer'].shape[-1])
         
         # coord_string = "lat lon"
 
 
         def write_field(dictname,fieldname,units=None):
 
-            if amf[dictname].ndim == 2:
-                var = dst[group].createVariable(fieldname, float, ('scanline','ground_pixel'), fill_value=9.96921E36)
-                # var.coordinates = coord_string
-                var[:,:] =   amf[dictname]
-
-            elif amf[dictname].ndim == 3:
-                var = dst[group].createVariable(fieldname, float, ('scanline','ground_pixel','pressure_layer'), fill_value=9.96921E36)
-                var[:,:,:] =  amf[dictname]
-
-            if units:
-                var.units = units
+            if fieldname in dst[group].variables.keys():
+                dst[group][fieldname][:] = amf[dictname]
+            
             else:
-                var.units = '-'
+
+                if amf[dictname].ndim == 2:
+                    var = dst[group].createVariable(fieldname, float, ('scanline','ground_pixel'), fill_value=9.96921E36)
+                    # var.coordinates = coord_string
+                    var[:,:] =   amf[dictname]
+
+                elif amf[dictname].ndim == 3:
+                    var = dst[group].createVariable(fieldname, float, ('scanline','ground_pixel','pressure_layer'), fill_value=9.96921E36)
+                    var[:,:,:] =  amf[dictname]
+
+                if units:
+                    var.units = units
+                else:
+                    var.units = '-'
 
             return
 
         write_field('amf_total','amf_total')
         write_field('no2_averaging_kernel','no2_averaging_kernel')
         write_field('pressure_layer','pressure_layer', units='hPa')
-        write_field('no2_total_vcd','no2_total_vcd', units='mol m-2')
-        write_field('no2_total_vcd_sgm','no2_total_vcd_sgm', units='mol m-2')
-        write_field('no2_total_scd','no2_total_scd', units='mol m-2')
+        write_field('no2_total_vcd','no2_total_vcd', units='molec./cm2')
+        write_field('no2_total_scd','no2_total_scd', units='molec./cm2')
 
     return
 

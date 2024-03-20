@@ -1,0 +1,12 @@
+
+sgm_atm_file: '../data/no2/sgm_atmosphere_cams_fc.nc'
+l2_file: '../data/no2/no2_l2_cams_fc.nc'
+
+
+
+pam:
+    figure_dir: ../data/no2/tmp/figs/
+
+    plot_list: { # usage: '{title}' : {'sgm_name':{var name in SGM file}, 'l2_name':{var name in L2 file}
+                'NO2 vertical column': {'sgm_name':'col_no2', 'l2_name':'no2_total_vcd'}
+    }

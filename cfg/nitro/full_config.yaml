@@ -13,7 +13,7 @@ sgm_rad_file: '../data/no2/sgm_radiance.nc'
 sgm_atm_file: '../data/no2/sgm_atmosphere.nc'
 #ckd_input: '../data/no2/ckd/ckd.nc'
 #binning_table: '../data/no2/ckd/binning_table.nc'
-ckd_input: '../data/no2/ckd/ckd_nitro_20240301.nc'
+ckd_input: '../data/no2/ckd/ckd_nitro_20240319.nc'
 binning_table: '../data/no2/ckd/binning_table_no2.nc'
 #
 l1a_file: '../data/no2/l1a.nc'
@@ -288,4 +288,17 @@ doas:
       Dring: [0.06, 0.06]
 
 amf:
-    LUT_NN_file: ../data/no2/LUT_NN_combined_20231113.nc
+    LUT_NN_file: ../data/no2/LUT_NN_combined_20231113.nc # file containing a neural network of the NO2 look-up tables
+
+
+########################################################
+#
+# PAM nitro
+# Configuration file for running the perfomance assesment module
+#
+#########################################################
+pam:
+    figure_dir: ../data/no2/tmp/figs/
+    plot_list: { # usage: '{title}' : {'sgm_name':{var name in SGM file}, 'l2_name':{var name in L2 file}
+                'NO2 vertical column': {'sgm_name':'col_no2', 'l2_name':'no2_total_vcd'}
+    }

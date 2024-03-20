@@ -651,7 +651,8 @@ if __name__ == '__main__':
         ch.setLevel(loglevel)
         ch.setFormatter(formatter) 
         logging.basicConfig(level=loglevel,handlers = [ch])
-        
+    
+    logger = logging.getLogger()
 
     # Python parallises internally with numpy, for single thread optimum is 4 numpy threads
     # for multi-threading use only 1 numpy thread, otherwise slow-down
@@ -664,8 +665,8 @@ if __name__ == '__main__':
     with threadpool_limits(limits=numpy_cpu, user_api='blas'):
 
         if cfg['doas']['run']:
-            doas_results = ifdoe_run(cfg)
+            doas_results = ifdoe_run(logger, cfg)
                         
         if cfg['amf']['run']:
-            amf_results = amf_run(cfg)
+            amf_results = amf_run(logger,cfg)
 

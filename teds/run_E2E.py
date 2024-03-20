@@ -75,6 +75,10 @@ def build(logger, config, step, cfg_path, attribute_dict):
         E2EModule.l1bl2_no2(logger, config)
         Utils.add_attributes_to_output(logger, config['l2_file'], attribute_dict)
 
+    if step == 'pam' or step == 'all':
+        E2EModule = importlib.import_module("PAM.pam")
+        E2EModule.pam_nitro(logger, config)
+
 if __name__ == "__main__":
 
     

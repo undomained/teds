@@ -15,3 +15,4 @@ sgp4
 numba
 tables
 threadpoolctl
+Cartopy

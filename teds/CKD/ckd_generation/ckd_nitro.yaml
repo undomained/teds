@@ -1,0 +1,78 @@
+# 
+{   
+    # CKD generator toggles
+    # To recalculate all ckds, only use if data input or calculate methods are added/changed
+    recalculate_ckds: False,  
+
+    # General paths
+    paths : {
+        'dir_nitro'             : './nitro_ckds',
+        'dir_external'          : './data_external/',
+        'dir_input'             : './data_nitro/',
+        'ckd_nitro'             : './ckd_nitro.nc', 
+   },
+
+     # Global dimensions
+    dimensions: {
+        spatial_detector_pixels : 2870,  # n_rows
+        spectral_detector_pixels: 1681,  # n_cols
+        spatial_samples_per_image: 100,
+        vector_elements         : 3,
+        number_of_views         : 1,
+    },
+
+    # Global attributes
+    attributes: { 
+        institution     : 'KNMI Royal Netherlands Meteorological Institute',
+        conventions     : 'CF-1.6',
+        project         : 'TANGO',
+        instrument      : 'Nitro Instrument',
+        product_name    : 'ckd_nitro.nc',
+        version         : '0.0',
+        creator_name    : 'KNMI RDSW L01',
+        creator_url     : 'knmi.nl',
+        publisher_name  : 'KNMI RDSW',
+        publisher_url   : 'knmi.nl',
+        arrcamera       : '3DCM800 Space Camera Head (3D Plus)',
+    },
+
+    skips: {  # Hopefully temporary, for now: add group path before param
+        DARK/dark_skip              : 0,
+        NOISE/noise_skip            : 0,
+        NON_LINEARITY/nonlin_skip   : 1,
+        PRNU/prnu_skip              : 0,
+        STRAYLIGHT/stray_skip       : 1,
+        SWATH/swath_skip            : 1,
+        RADIOMETRIC/rad_skip        : 0,
+    },
+
+    # Group dimensions
+    STRAYLIGHT: {
+        spatial         : 2870,  # n_rows
+        spectral        : 1681,  # n_cols
+    },
+    DARK: {
+        dark_number_of_coefficients: 1
+    },
+    RADIOMETRIC: {
+        isrf_samples: 100, # should ideally be replaced with coefficients of isrf fits
+    },
+    NON_LINEARITY: {
+        nonlin_number_of_exposure_times: 2,  # copied from carbon ckd 
+        nonlin_number_of_coefficients: 9, # copied from carbon ckd 
+        nonlin_number_of_knots: 7, # copied from carbon ckd 
+    }, 
+
+    # Single value parameters
+    noise_conversion_gain: 0.023,   # noise_g, src: carbon ckd
+    read_out_noise: 2.56,           # counts^2/e-, src: SNR budget
+    prnu: 5,                        # in %, src: SNR budget
+    fov: 3.44,                      # in degrees, src: SNR budget
+    c_opt_rad_resp: 4.22e+12,       # optical_radiometric_response_constant (temporary)
+    spectral_resolution: 0.6,       # in nm
+    image_extent_act: 9.9,          # in mm, across track direction
+    image_extent_spec: 5.77,        # in mm, spectral direction
+
+}
+
+

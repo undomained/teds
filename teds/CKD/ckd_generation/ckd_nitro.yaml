@@ -9,7 +9,7 @@
         'dir_nitro'             : './nitro_ckds',
         'dir_external'          : './data_external/',
         'dir_input'             : './data_nitro/',
-        'ckd_nitro'             : './ckd_nitro.nc', 
+        'ckd_nitro'             : '../ckd_nitro.nc', 
    },
 
      # Global dimensions

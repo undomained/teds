@@ -80,8 +80,10 @@ They can be found in `data/no2/ckd` directory (or some other directory. you can 
 `python CKD/create_binning_table.py`
 
 #### Creating CKD file
-TBW
-
+**nitro**
+`python CKD/ckd_generation/ckd_generator_nitro.py`, creates ckd_nitro.nc in CKD directory. 
+A custom `config.yaml` can be added as an argument, otherwise the ckd_nitro.yaml in the ckd_generation directory is used.
+More detailed information about the generator can be found in `CKD/ckd_generation/readme.md`.
 
 ### DISAMAR radiative transfer
 The Nitro SGM makes use of the KNMI DISAMAR software suite. This code is open source and available on https://gitlab.com/KNMI-OSS/disamar. See the DISAMAR readme for compiling instructions. The DISAMAR executable path then has to be given in the Nitro SGM yaml file.

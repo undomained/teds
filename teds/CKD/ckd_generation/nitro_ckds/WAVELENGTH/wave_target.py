@@ -70,6 +70,8 @@ def calculate(cfg):
         spl = CubicSpline(y, w_intp_x[:,i], extrapolate=True)
         dispersion[:,i] = spl(y_intp)
 
+    dispersion = np.flip(dispersion, axis = 0)
+
     # Add to netcdf data file
     dispersion_nc.createGroup('interpolated')
     dispersion_nc['interpolated'].createDimension('spatial_samples_per_image', N_spat_px)

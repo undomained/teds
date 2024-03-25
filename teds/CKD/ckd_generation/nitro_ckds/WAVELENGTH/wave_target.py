@@ -70,8 +70,6 @@ def calculate(cfg):
         spl = CubicSpline(y, w_intp_x[:,i], extrapolate=True)
         dispersion[:,i] = spl(y_intp)
 
-    dispersion = np.flip(dispersion, axis = 0)
-
     # Add to netcdf data file
     dispersion_nc.createGroup('interpolated')
     dispersion_nc['interpolated'].createDimension('spatial_samples_per_image', N_spat_px)
@@ -98,6 +96,9 @@ def generate(cfg):
         calculate(cfg)
         wave_map_nc = Dataset(filepath, 'r', format="NETCDF4")
         wave_map = wave_map_nc['interpolated/dispersion_interpolated']
+
+    # Reverse order
+    wave_map = np.flip(wave_map, axis = 0)
 
     dim_spat = 'spatial_samples_per_image'
     dim_spec = 'spectral_detector_pixels'

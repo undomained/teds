@@ -114,3 +114,9 @@ for skipname in skips.keys():
 print('[done] >> {} created'.format(Path(conf['paths']['ckd_nitro'])))
 
 nc_ckd.close()
+
+# Copy file with date for version control
+#dt = datetime.today().strftime('%Y%m%d')
+#ckd_current_path = conf['paths']['ckd_nitro']
+#ckd_version_path = ckd_current_path.replace('.nc', '_'+dt+'.nc')
+#os.popen('cp {} {}'.format(ckd_current_path, ckd_version_path)) 

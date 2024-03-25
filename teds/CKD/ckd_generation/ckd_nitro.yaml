@@ -2,7 +2,7 @@
 {   
     # CKD generator toggles
     # To recalculate all ckds, only use if data input or calculate methods are added/changed
-    recalculate_ckds: False,  
+    recalculate_ckds: True,  
 
     # General paths
     paths : {

@@ -7,13 +7,8 @@ can be used as input by using the same names.
 add_to_nc()
 Adds variable and its attributes to the netcdf ckd file.
 
-make_plot()
-Makes a simple 1D or 2D plot and saves it to figures folder
-
 """
 
-import matplotlib.pyplot as plt
-from defs import save_figure
 from pathlib import Path
 import inspect
 import numpy as np
@@ -57,43 +52,13 @@ class ckd_generator():
             newvar.setncattr(attrname, self.attr_vals[a])
 
         self.data = np.array(self.data)
-        if len(self.data.shape) == 2:
+        if len(self.data.shape) <= 2:
             newvar[:] = self.data  # Add data to variable
         elif len(self.data.shape) == 3:
             newvar[:,:] = self.data
         else:
             newvar = self.data
         return dataset
-    
-        
-    # Plot function
-    def make_plot(self, cfg):
-        if not len(self.data):
-            print("[generator_class] >> No data added to generator {}".format(self.name))
-            return 0
-        plt.rcParams.update({"text.usetex": False})
-        print("[generator_class] >> plotting {}.png".format(self.name))
-        fig, ax = plt.subplots(1,1, figsize = (8,8))
-        if len(self.dim_names) == 1:
-            ax.plot(self.data)
-            ax.set_xlabel(self.dim_names[0])
-            ax.set_ylabel(self.name)
-            ax.set_title(self.name)
-            save_figure(fig, self.name, cfg, formats = ['png'], v = False)
-        elif len(self.dim_names) == 2:
-            im = ax.pcolormesh(self.data, cmap = 'cubehelix', rasterized = True)
-            ax.set_xlabel(self.dim_names[1])
-            ax.set_ylabel(self.dim_names[0])
-            ax.set_title(self.name)
-            cbar = fig.colorbar(im)
-            if 'units' in self.attr_names:
-                ix = np.flatnonzero(np.array(self.attr_names) == 'units')[0]
-                units = self.attr_vals[ix]
-                unitlbl = '' if units == '1' else units
-                cbar.set_label(unitlbl, rotation=270, va = 'bottom')
-            save_figure(fig, self.name, cfg, formats = ['png'], v = False)
-        else:
-            print(self.name, 'cannot plot for this shape')
         
 
 

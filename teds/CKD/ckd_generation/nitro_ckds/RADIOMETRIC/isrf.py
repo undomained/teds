@@ -2,7 +2,7 @@
 Instrument Spectral Response Function
 """
 import numpy as np
-from tango.ckd_generation.generator_class import *
+from teds.CKD.ckd_generation.generator_class import *
 import os
 from netCDF4 import Dataset
 import csv

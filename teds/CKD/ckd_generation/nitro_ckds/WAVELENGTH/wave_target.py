@@ -4,7 +4,7 @@ Based on Dispersion data
 """
 
 import numpy as np
-from tango.ckd_generation.generator_class import *
+from teds.CKD.ckd_generation.generator_class import *
 from netCDF4 import Dataset
 from pandas import read_excel
 import os

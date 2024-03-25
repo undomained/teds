@@ -5,7 +5,7 @@ Wavelength dependend -> Uses Wavelength Map
 
 import numpy as np
 from scipy.interpolate import interp1d
-from tango.ckd_generation.generator_class import *
+from teds.CKD.ckd_generation.generator_class import *
 import os
 
 def generate(cfg):

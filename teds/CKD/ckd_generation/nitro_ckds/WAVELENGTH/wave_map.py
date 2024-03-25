@@ -3,7 +3,7 @@ Wavelength Map with Spectral Smile
 """
 
 import numpy as np
-from tango.ckd_generation.generator_class import *
+from teds.CKD.ckd_generation.generator_class import *
 import pandas as pd
 from netCDF4 import Dataset
 import os

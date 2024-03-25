@@ -4,7 +4,7 @@ Across track stage rotation
 
 
 import numpy as np
-from tango.ckd_generation.generator_class import *
+from teds.CKD.ckd_generation.generator_class import *
 
 def generate(cfg):
     gen = ckd_generator()

@@ -29,7 +29,7 @@ import yaml
 import os
 from datetime import datetime
 from glob import glob
-from tango.ckd_generation.generator_class import *
+from teds.CKD.ckd_generation.generator_class import *
 
 # set cwd to directory of this file
 os.chdir(os.path.dirname(os.path.realpath(__file__))) 

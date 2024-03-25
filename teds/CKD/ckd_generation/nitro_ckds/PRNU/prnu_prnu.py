@@ -4,7 +4,7 @@ Does not include Quantum Efficiency
 """
 
 import numpy as np
-from tango.ckd_generation.generator_class import *
+from teds.CKD.ckd_generation.generator_class import *
 from scipy.ndimage import gaussian_filter
 
 def generate(cfg):

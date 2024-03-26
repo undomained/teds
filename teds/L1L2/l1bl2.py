@@ -13,11 +13,11 @@ from copy import deepcopy
 import netCDF4 as nc
 import yaml
 
-from ..lib import libNumTools
-from ..lib import libRT
-from ..lib import libATM
-from ..lib import libINV
-from ..lib.libWrite import writevariablefromname
+from lib import libNumTools
+from lib import libRT
+from lib import libATM
+from lib import libINV
+from lib.libWrite import writevariablefromname
 import matplotlib.pyplot as plt
 
 

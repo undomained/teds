@@ -379,3 +379,146 @@ class TransformCoords:
                 else:
                     lon = lon + 360.0
         return lat, lon
+
+#=========================================================================
+
+# N-D linear interpolation
+
+def ndim_lin_interpol_get_indices_weights(xp, x):
+    
+    ndims = len(xp)
+
+    xf = []
+    for i in range(ndims):
+        xf.append(x[i].flatten())
+
+    nvals = xf[0].shape[0]
+
+    # nearest to grid points and weight in each dimension 
+    points = np.zeros((2,ndims,nvals), dtype=int)
+    weights = np.zeros((2,ndims,nvals)) * np.nan
+
+    for idim in range(ndims):
+        sign = np.sign(xp[idim][1] - xp[idim][0])
+
+        f_idx = np.interp( sign*xf[idim][:], sign*xp[idim][:], np.arange(xp[idim].shape[0]) )
+
+        p = np.floor( f_idx ).astype(int)
+        p[p<0] = 0
+        p[p>=xp[idim].shape[0]] = xp[idim].shape[0] - 1
+        points[0,idim,:] = p[:]
+
+        p = np.ceil( f_idx ).astype(int)
+        p[p<0] = 0
+        p[p>=xp[idim].shape[0]] = xp[idim].shape[0] - 1
+        points[1,idim,:] = p[:]
+
+        w = 1. - (f_idx % 1)
+        w[w<0.] = 0.0
+        w[w>1.] = 1.0
+        weights[0,idim,:] = w
+        weights[1,idim,:] = 1. - w
+
+    # combine the points to 2**nmdim indices and corresponding weights
+    n = 2**ndims
+
+    p = np.zeros((n, ndims, nvals), dtype=int)
+    w = np.ones((n,nvals))
+
+    for idim in range(ndims):
+        idx  = np.mod(( np.arange(n) / 2**idim).astype(int),2) 
+        p[:,idim,:] = points[:,idim,:][idx,:]
+        w = w * weights[:,idim,:][idx,:]
+
+    idx = []
+    for i in range( p.shape[1]):
+        idx.append( p[:,i,:].flatten().tolist() )
+    idx = tuple(idx)
+
+    return idx, w, x[0].shape
+
+def ndim_lin_interpol_get_values(A, idx, w, shape):
+    a = np.sum( np.reshape( A[idx], w.shape ) * w[:,:], axis=0) / np.sum( w[:,:], axis=0)
+    return np.reshape(a, shape)
+
+
+def ndim_lin_interpol(xp, A, x):
+
+    ndims = A.ndim
+    
+    points = np.zeros((ndims,2), dtype=np.int)
+    weights = np.zeros((ndims,2))
+    
+    for idim in range(ndims):
+        i0 = np.argmin( np.abs(x[idim] - xp[idim]) )
+
+        i1 = i0 + np.sign(x[idim] - xp[idim][i0]).astype(int)
+        
+        if i1>xp[idim].shape[0]-1:
+            i1=i0-1
+        if i1<0:
+            i1=i0+1
+        
+        xdiff = np.float( xp[idim][i1] - xp[idim][i0] )
+        if np.abs(xdiff) < 2*np.finfo(float).eps:
+            w0 = 1.
+        else: 
+            w0 =  1. - np.float( x[idim] - xp[idim][i0] ) / xdiff
+        
+        w1 = 1. - w0
+        
+        if w1<0:
+            w1=0
+            w0=1
+        if w1>1:
+            w1=0
+            w0=1 
+        
+        points[idim,0] = i0
+        points[idim,1] = i1
+        
+        weights[idim,0] = w0
+        weights[idim,1] = w1
+
+
+    n = 2**ndims
+    p = np.zeros((n, ndims), dtype=int)
+    w = np.ones(n)
+    
+    for idim in range(ndims):  
+        idx  = np.mod(( np.arange(n) / 2**idim).astype(int),2) 
+        p[:,idim] = points[idim,:][idx]
+        w = w * weights[idim,:][idx]
+
+    idx = tuple(p.T.tolist())
+    a = np.sum( A[idx] * w)
+
+    return a, idx, w
+
+
+def ndim_lin_interpol_evaluate(A, idx, w):
+    return np.sum( A[idx] * w)
+
+    
+# if __name__ == "__main__":
+#     import scipy.interpolate
+
+#     dims = np.array([4, 5, 6, 3, 5, 4, 8])
+#     ndim = dims.shape[0]
+    
+#     A = np.arange(dims.prod()).reshape(dims).astype(np.float)
+    
+#     xp = []
+#     for i in range(ndim):
+#         xp_n = np.arange(dims[i])
+#         xp.append(xp_n)
+        
+#     x = np.array([1.1, 2.7, 4.5, 0.1, 3., 0.6, 2.4])
+    
+#     res = ndim_lin_interpol(xp, A, x)
+    
+#     res2 = scipy.interpolate.interpn(xp, A, x)
+    
+#     print(res[0])
+    
+        

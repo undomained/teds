@@ -264,16 +264,16 @@ class Sensor:
 
         tsec_scaled = self.apply_scale_axis(tsec, self.ground_points['time_scaled_axis'])
         if np.max(np.abs(tsec_scaled)) > 1.:
-            print('ERROR: time out of range')
+            self.logger.error('ERROR: time out of range')
             return None
 
         thetas_scaled = self.apply_scale_axis(thetas, self.ground_points['thetas_scaled_axis'])
         if np.max(np.abs(thetas_scaled)) > 1.:
-            print('ERROR: theta  out of range')
+            self.logger.error('ERROR: theta  out of range')
             return None
 
         # interpolate satellite position
-        print('    satellite position')
+        self.logger.info('    satellite position')
         sat_p = np.zeros((tsec_scaled.shape[0], 3)) * np.nan
         sat_p[:, 0] = self.ground_points['f_sat_px'](tsec_scaled) * self.ground_points['p_scale_factor']
         sat_p[:, 1] = self.ground_points['f_sat_py'](tsec_scaled) * self.ground_points['p_scale_factor']
@@ -285,7 +285,7 @@ class Sensor:
         sat_height = sat_locs.geodetic.height.value
 
         # interpolate points
-        print('    satellite ground points')
+        self.logger.info('    satellite ground points')
         p = np.zeros((tsec_scaled.shape[0], thetas_scaled.shape[0], 3)) * np.nan
         p[:, :, 0] = self.ground_points['f_px'](tsec_scaled, thetas_scaled) * self.ground_points['p_scale_factor']
         p[:, :, 1] = self.ground_points['f_py'](tsec_scaled, thetas_scaled) * self.ground_points['p_scale_factor']
@@ -299,7 +299,7 @@ class Sensor:
 
         # get viewing angles
         if get_view_angles:
-            print('    viewing angles')
+            self.logger.info('    viewing angles')
             vza, vaa = self.get_theta_az(p, sat_p, lat, lon)
             vaa = np.where(vaa > 180.0, vaa-360., vaa)  # scale between -180 and 180
         else:
@@ -308,7 +308,7 @@ class Sensor:
 
         # get solar angles
         if get_solar_angles:
-            print('    solar angles')
+            self.logger.info('    solar angles')
             sun_p = get_sun(ap_ts).itrs.cartesian.xyz.value.T * u.AU.in_units('km')
             sza, saa = self.get_theta_az(p, sun_p, lat, lon)
             saa = np.where(saa > 180.0, saa-360., saa)  # scale between -180 and 180
@@ -323,10 +323,11 @@ class Sensor:
                 'vza': vza, 'vaa': vaa, 'sza': sza, 'saa': saa,
                 'thetas': thetas}
 
-    def __init__(self, theta_start, theta_end, d_theta):
+    def __init__(self, logger, theta_start, theta_end, d_theta):
 
         self.thetas = np.arange(theta_start, theta_end + d_theta, d_theta)
         self.n_thetas = self.thetas.shape[0]
+        self.logger = logger
 
         return
 
@@ -404,8 +405,9 @@ class Satellite:
 
         return pos
 
-    def __init__(self, orbdef, satnum=99999, nddot=0.0, intldesg='12345A', classification='U', revnum=0, elnum=1):
+    def __init__(self, logger, orbdef, satnum=99999, nddot=0.0, intldesg='12345A', classification='U', revnum=0, elnum=1):
 
+        self.logger = logger
         # init internal satrec object
         self.satrec = Satrec()
 

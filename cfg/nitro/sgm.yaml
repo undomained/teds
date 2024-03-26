@@ -1,0 +1,72 @@
+# Configuration file for running the scene generation module
+
+kernel_parameter:               #parameter to configure the 2D blurring of the scene
+    type:    2D Gaussian        #type pf kernel, current version has only one option
+    fwhm_x:  300                #FWHM in ACT direction
+    fwhm_y:  300                #FWHM in flight direction
+    size_factor: 2              #the size of the convolution kernel in units of fwhm
+
+atm:
+    type: cams                              # cams or afgl
+
+    gases: [no2, o3]                        # for now only no2 and o3
+
+    afgl:
+        nlay: 30                            #number of atmospheric layers
+        dzlay: 1000                         #geometrical thickness of the layers [m]
+        path: '../data/no2/prof.AFGL.US.std'
+
+    cams:
+        path: '../data/cams/cams_global_forecast_20230523.nc' # only contains 00:00 and 12:00 timeslices, 137 layers
+        start: 2023-05-23T09:30:00 
+
+        # path: '../data/cams/cams_global_reanalysis_20220523.nc' # only contains 09:00 timeslice, 60 layers
+        # start: 2022-05-23T09:30:00 
+
+    microHH:
+        use: True                           # replace lower atm with microHH
+        path_data: '../data/no2/microHH/Jaenschwalde_simulation1/'
+        gases: [no2]
+        filesuffix: src3_20180523_0930
+        forced: no
+        dump: '../data/no2/tmp/microHH_dump.pkl'
+
+    dem:                                    # correct surface pressure using tropomi dem (3k radius), only for CAMS
+        use: True
+        path: '../data/no2/dem.nc'
+
+
+rtm:                                        # disamar settings
+    tmp_dir:    '/data/ssd/leune/tango_tmp'
+
+    # disamar_cfg_template: '../cfg/nitro/disamar_config_sim_no2only.in_template'
+    disamar_cfg_template: '../cfg/nitro/disamar_config_sim.in_template'
+
+    # disamar_exe: '/usr/people/leune/programs/disamar/Disamar.exe'
+    disamar_exe: '/usr/people/leune/programs/disamar/Disamar_old.exe' # much faster
+
+    dismas_sim: True
+    dismas_fwhm: 0.05       #nm
+
+    n_threads: 16
+
+    wave_start: 405         #nm
+    wave_end:   465         #nm
+    dwave:      0.05        #nm
+
+    cleanup: no
+
+S2_albedo:
+    band: B01
+    forced:   no     
+    dump: '../data/no2/tmp/sgm_dumpfile.npy'
+# B01: 442.7 nm (S2A), 442.3 nm (S2B) 60m
+# B02: 492.4 nm (S2A), 492.1 nm (S2B)    10m
+
+
+# input
+gm_file: '../data/no2/geometry.nc'
+
+# output:
+sgm_rad: '../data/no2/sgm_radiance.nc'
+sgm_atm: '../data/no2/sgm_atmosphere.nc'

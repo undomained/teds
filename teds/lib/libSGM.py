@@ -17,7 +17,7 @@ import shapely
 import matplotlib.pyplot as plt
 from .libNumTools import convolution_2d
 
-def get_raw_sentinel2_data(lat, lon, S2_reading_log):
+def get_raw_sentinel2_data(lat, lon, S2_reading_log, band='B11'):
 
     # generate a geometry object with the latitude-longitude points
     latlon = [Point(xy) for xy in zip(lon.flatten(), lat.flatten())]
@@ -79,8 +79,8 @@ def get_raw_sentinel2_data(lat, lon, S2_reading_log):
     #   overview.plot.imshow()
 
     # Extract the high resolution albedo map of a selected wavelength (B07 is 783 nm)
-    S2_albedo = rioxarray.open_rasterio(collection_filtered[0].assets['B11'].get_absolute_href())
-    S2_ssd = collection_filtered[0].assets['B11'].extra_fields['gsd']
+    S2_albedo = rioxarray.open_rasterio(collection_filtered[0].assets[band].get_absolute_href())
+    S2_ssd = collection_filtered[0].assets[band].extra_fields['gsd']
     return(S2_albedo, S2_ssd)
 
 
@@ -123,12 +123,12 @@ def get_sentinel2_albedo_new(lat, lon):
     return albedo
 
 
-def get_sentinel2_albedo(gm_data, conf):
+def get_sentinel2_albedo(gm_data, conf, band='B11'):
 
     lon = gm_data['lon']
     lat = gm_data['lat']
     S2_reading_log = False
-    S2_albedo_raw, S2_ssd = get_raw_sentinel2_data(lat, lon, S2_reading_log)
+    S2_albedo_raw, S2_ssd = get_raw_sentinel2_data(lat, lon, S2_reading_log, band)
 
     # Note that the S2 data are scaled by a factor 1.E4
     # store data

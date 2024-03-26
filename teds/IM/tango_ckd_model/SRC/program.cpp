@@ -59,21 +59,6 @@ int Program::execute( // {{{
     // Construct and read the CKD.
     unique_ptr<CKD> ckd = make_unique<CKD>(this);
     handle(ckd->read(set_main,LEVEL_L1B,false));
-    if (!set_main.dark_apply) {
-        ckd->dark_skip = true;
-    }
-    if (!set_main.nonlin_apply) {
-        ckd->nonlin_skip = true;
-    }
-    if (!set_main.prnu_apply) {
-        ckd->prnu_skip = true;
-    }
-    if (!set_main.stray_apply) {
-        ckd->stray_skip = true;
-    }
-    if (!set_main.rad_apply) {
-        ckd->rad_skip = true;
-    }
 
     size_t il1x_start;
     L1X_inputfile l1x_inputfile(this);
@@ -153,7 +138,7 @@ int Program::execute( // {{{
     }
 
     for (size_t iframe=0 ; iframe<nframe ; iframe++) {
-        std::cout << "PROCESSING FRAME " << iframe << std::endl;
+        writelog(log_info,"PROCESSING FRAME %d...", iframe);
 
         unique_ptr<Frame> frm = make_unique<Frame>(this);
 
@@ -231,9 +216,14 @@ int Program::execute( // {{{
         if (il1x_start > L1X_FOV) {
 
             // Step: Uncalibate spectra. L1X_RAD to L1X_FOV.
-            handle(frm->uncalibrate_spectra(
-                ckd.get()
-            ));
+            if (set_main.rad_apply) {
+                writelog(log_debug,"    Going to apply radiometric calibration constants");
+                handle(frm->uncalibrate_spectra(
+                    ckd.get()
+                ));
+            } else{
+                writelog(log_warning,"    Not applying radiometric calibration constants");
+            }
             // L1X output FOV.
             handle(l1x[L1X_FOV]->write(
                 frm.get(), // Frame to write L1X from.
@@ -277,7 +267,12 @@ int Program::execute( // {{{
         if (il1x_start > L1X_UNBIN) {
 
             // Step: Straylight.
-            handle(frm->apply_straylight(set_main, ckd.get()));
+            if (set_main.stray_apply) {
+                writelog(log_debug,"    Going to apply stray light");
+                handle(frm->apply_straylight(set_main, ckd.get()));
+            } else{
+                writelog(log_warning,"    Not applying stray light");
+            }
 
             // L1X output UNBIN.
             handle(l1x[L1X_UNBIN]->write(
@@ -303,7 +298,12 @@ int Program::execute( // {{{
         if (il1x_start > L1X_NONLIN) {
 
             // step: prnu.
-            handle(frm->apply_prnu(ckd.get()));
+            if (set_main.prnu_apply) {
+                handle(frm->apply_prnu(ckd.get()));
+                writelog(log_debug,"    Going to apply PRNU");
+            } else{
+                writelog(log_warning,"    Not applying PRNU");
+            }
 
             // L1X output NONLIN.
             handle(l1x[L1X_NONLIN]->write(
@@ -318,7 +318,12 @@ int Program::execute( // {{{
         if (il1x_start > L1X_NOISE) {
 
             // Step: Non-linearity.
-            handle(frm->apply_nonlinearity(ckd.get()));
+            if (set_main.nonlin_apply) {
+                writelog(log_debug,"    Going to apply non linearity");
+                handle(frm->apply_nonlinearity(ckd.get()));
+            } else{
+                writelog(log_warning,"    Not applying non linearity");
+            }
 
             // L1X output NOISE.
             handle(l1x[L1X_NOISE]->write(
@@ -333,7 +338,12 @@ int Program::execute( // {{{
         if (il1x_start > L1X_DARK) {
 
             // Step: Dark current.
-            handle(frm->apply_dark_current(ckd.get()));
+            if (set_main.dark_apply) {
+                writelog(log_debug,"    Going to apply dark current");
+                handle(frm->apply_dark_current(ckd.get()));
+            } else {
+                writelog(log_warning,"    Not applying dark current");
+            }
 
             // L1X output DARK.
             handle(l1x[L1X_DARK]->write(
@@ -371,7 +381,12 @@ int Program::execute( // {{{
         if (il1x_start > L1X_RAW) {
 
             // Step: Dark offset.
-            handle(frm->apply_dark_offset(ckd.get()));
+            if (set_main.dark_apply) {
+                writelog(log_debug,"    Going to apply dark offset");
+                handle(frm->apply_dark_offset(ckd.get()));
+            } else{
+                writelog(log_warning,"    Not applying dark offset");
+            }
 
             // L1X output RAW.
             handle(l1x[L1X_RAW]->write(

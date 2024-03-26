@@ -19,6 +19,8 @@ class Settings_main : public Settings {
     // Sets defaults to the processors. Then, the settings only have to be
     // given once. Processors can always overwrite if they want to.
     string binningtable_filename = ""; // File with all the used binning tables.
+    string log_file_path = ""; // log file path.
+    string instrument_cal = ""; // choice of instrument calibration
     vector<size_t> l1a_discard_frames_start; // Number of frames to discard at the beginning to mitigate memory effects.
     vector<size_t> l1a_discard_frames_end; // Number of frames to discard at the beginning to mitigate memory effects.
     int output_level = 0; // Flag for additional detailed (non-operational) output.

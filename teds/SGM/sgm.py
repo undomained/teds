@@ -16,16 +16,17 @@ import numpy as np
 import yaml
 from scipy.interpolate import RegularGridInterpolator, griddata
 from tqdm import tqdm
+from teds.lib.libWrite import writevariablefromname
+from scipy.interpolate import griddata
 
-from ..lib import libATM, libNumTools, libRT, libSGM, libSURF
-from ..lib.libWrite import writevariablefromname
+from teds.lib import libATM, libNumTools, libRT, libSGM, libSURF
+from teds.lib.libWrite import writevariablefromname
 
 
 class Emptyclass:
     """Empty class. Data container."""
     
     pass
-
 
 class Dict2Class:
     """Convert a dictionaly to a class."""
@@ -62,7 +63,7 @@ def sgm_output_rad(filename_rad, rad_output):
     _ = writevariablefromname(output_rad, 'solarirradiance', ('bins_spectral',), rad_output['solar irradiance'])
     # radiance
     _dims = ('bins_along_track', 'bins_across_track', 'bins_spectral')
-    _ = writevariablefromname(output_rad, 'radiance', _dims, rad_output['radiance'])
+    _ = writevariablefromname(output_rad, 'radiance_sgm', _dims, rad_output['radiance'])
     output_rad.close()
 
 
@@ -246,6 +247,7 @@ def scene_generation_module(config):
     """
     Scent generation algorithm.
     """
+    
     # first get the geometry data
     gm_data = get_gm_data(config['gm_input'])
     nact = gm_data['sza'][0].size
@@ -329,8 +331,8 @@ def scene_generation_module(config):
     nwav = len(rad_output['wavelength_lbl'])
     # generate optics object for one representative model atmosphere of the domain
 
-    nalt_ref = np.int0(nalt/2 - 0.5)
-    nact_ref = np.int0(nact/2 - 0.5)
+    nalt_ref = np.intp(nalt/2 - 0.5)
+    nact_ref = np.intp(nact/2 - 0.5)
 
     optics = libRT.optic_abs_prop(rad_output['wavelength_lbl'], atm[nalt_ref, nact_ref].zlay)
 
@@ -655,6 +657,10 @@ def scene_generation_module_new(config, sw_raw_geo_data_only=False):
 
 
 if __name__ == '__main__':
+    
+    sys.path.append( os.path.dirname( os.path.dirname( os.path.abspath(__file__) ) ) )
+
+
     config = yaml.safe_load(open(sys.argv[1]))
     scene_generation_module_new(config)
 

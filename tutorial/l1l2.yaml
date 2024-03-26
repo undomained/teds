@@ -3,10 +3,11 @@
 retrieval_init:                 #initialization parameter for inversion
     max_iter: 35
     chi2_lim: 0.05
-    sw_pixel_mask: ''
-    sw_ALT_select: yes
+    sw_pixel_mask: False
+    sw_ALT_select: False
     first_ALT_index: 0
     last_ALT_index: 1
+    sw_prof_init: 'sgm'         #switch between 'afgl' and 'sgm' initialization 
 
 pixel_mask: False
 
@@ -17,17 +18,19 @@ atmosphere:
 
 std_atm: 'prof.AFGL.US.std'     #path to AFGL model atmosphere
 
-l1b_input: 'data/l1b.nc'
+sgm_input: '../data/sgm_atmosphere.nc'
 
-afgl_input: 'data/prof.AFGL.US.std'
+l1b_input: '../data/l1b.nc'
 
-sun_reference: 'data/solar_spectrum.nc'
+afgl_input: '../data/prof.AFGL.US.std'
 
-hapi_path: 'data/hapi/'
+sun_reference: '../data/solar_spectrum.nc'
 
-xsec_dump: 'data/xsec_dump_L2.pkl'
+hapi_path: '../data/hapi/'
 
-l2_output: 'data/l2.nc'
+xsec_dump: '../data/xsec_dump_L2.pkl'
+
+l2_output: '../data/l2.nc'
 
 filename:
     level2:       'Tango_Carbon_l2'       #output file for geophysical scene
@@ -36,7 +39,7 @@ filename:
 
 spec_settings:              #settings for line-by-line spectra
     wavestart:   1590       #initial wavelength (indicator)
-    waveend:     1664       #final wavlength of measurement
+    waveend:     1675       #final wavlength of measurement
     wave_extend: 2.0        #shortwave and longwave extension of the measurement grid [nm]
     dwave:       0.002      #nm
 
@@ -53,5 +56,5 @@ isrf_settings:
 surface:
     wave_alb: [1600, 1650]  #wavelengths at which the surface albedo is specified in the output
 
-xsec_forced: True          #flag to froce new cross section calculation
+xsec_forced: False          #flag to force new cross section calculation
 

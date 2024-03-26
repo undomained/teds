@@ -65,7 +65,7 @@ solarirradiance:
   valid_max: 1.E+30
   FillValue: -32767
 
-radiance:
+radiance_sgm:
   name: radiance
   long_name: 'radiance line-by-line'
   units: 'photons / (sr nm m2 s)'
@@ -118,7 +118,7 @@ ydistance:
 subcol_density_co2:
   name: dcol_co2
   long_name: CO2 layer column density
-  units: molec./cm2
+  units: molec./m2
   valid_min: 0.
   valid_max: 1.E+28
   FillValue: -32767
@@ -126,7 +126,7 @@ subcol_density_co2:
 subcol_density_ch4:
   name: dcol_ch4
   long_name: CH4 layer column density
-  units: molec./cm2
+  units: molec./m2
   valid_min: 0.
   valid_max: 1.E+28
   FillValue: -32767
@@ -134,6 +134,22 @@ subcol_density_ch4:
 subcol_density_h2o:
   name: dcol_h2o
   long_name: H2O layer column density
+  units: molec./m2
+  valid_min: 0.
+  valid_max: 1.E+28
+  FillValue: -32767
+
+subcol_density_no2:
+  name: dcol_no2
+  long_name: NO2 layer column density
+  units: molec./cm2
+  valid_min: 0.
+  valid_max: 1.E+28
+  FillValue: -32767
+
+subcol_density_o3:
+  name: dcol_o3
+  long_name: O3 layer column density
   units: molec./cm2
   valid_min: 0.
   valid_max: 1.E+28
@@ -170,6 +186,47 @@ column_air:
   valid_min: 0.
   valid_max: 1.E+32
   FillValue: -32767
+
+column_no2:
+  name: col_no2
+  long_name: NO2 total column density
+  units: molec./cm2
+  valid_min: 0.
+  valid_max: 1.E+32
+  FillValue: -32767
+
+column_o3:
+  name: col_o3
+  long_name: O3 total column density
+  units: molec./cm2
+  valid_min: 0.
+  valid_max: 1.E+32
+  FillValue: -32767
+
+pressure_levels:
+  name: pressure_levels
+  long_name: Pressure at layer interfaces
+  units: hPa
+
+pressure_layers:
+  name: pressure_layers
+  long_name: Pressure at layer midpoints
+  units: hPa
+
+temperature:
+  name: temperature
+  long_name: Temperature at layer midpoints
+  units: K
+
+conc_no2:
+  name: conc_no2
+  long_name: NO2 layer concentration
+  units: ppmv
+
+conc_o3:
+  name: conc_o3
+  long_name: O3 layer concentration
+  units: ppmv
 
 # level 2 output
 convergence:

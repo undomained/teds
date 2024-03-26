@@ -55,6 +55,7 @@ class Settings_proc : public Settings {
 
     // From main settings. You can adapt this per processor if you want.
     string binningtable_filename = ""; // File with all the used binning tables.
+    string log_file_path = ""; // log file path.
     vector<size_t> l1a_discard_frames_start; // Number of frames to discard at the beginning to mitigate memory effects.
     vector<size_t> l1a_discard_frames_end; // Number of frames to discard at the beginning to mitigate memory effects.
     // Omitting the l1a_discard_frames_start and l1a_discard_frames_end means

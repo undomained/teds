@@ -2,7 +2,7 @@
 {   
     # CKD generator toggles
     # To recalculate all ckds, only use if data input or calculate methods are added/changed
-    recalculate_ckds: True,  
+    recalculate_ckds: False,  
 
     # General paths
     paths : {
@@ -19,6 +19,7 @@
         spatial_samples_per_image: 100,
         vector_elements         : 3,
         number_of_views         : 1,
+        single_double           : 1, 
     },
 
     # Global attributes

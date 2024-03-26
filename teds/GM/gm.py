@@ -470,7 +470,7 @@ def gm_output_old(logger, config, vza, vaa, sza, saa, lat_grid, lon_grid,):
     return
 
 
-def geometry_module(logger, config):
+def geometry_module(config, logger=None):
     """
     Geometry module to specify geometry.
 
@@ -479,6 +479,8 @@ def geometry_module(logger, config):
     # TODO: dict? they are numpy arays. Toch?
     # the gm output is orginazed in dictionaries of the format dic[nalt, nact]
 
+    if not logger:
+        logger = Utils.get_logger()
     if config['profile'] == "individual_spectra":
         vza, vaa, sza, saa, lat_grid, lon_grid = get_individual_spectra(logger, config)
 
@@ -516,7 +518,7 @@ if __name__ == '__main__' :
     # that will be added to the output file as attributes
     main_attribute_dict = Utils.get_main_attributes(config, config_attributes_name='GM_configuration')
 
-    geometry_module(gm_logger, config)
+    geometry_module(config, gm_logger)
 
     # add attributes to the output file
     Utils.add_attributes_to_output(gm_logger, config['gm_file'], main_attribute_dict)

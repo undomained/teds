@@ -17,7 +17,7 @@ import shapely
 import matplotlib.pyplot as plt
 from .libNumTools import convolution_2d
 
-def get_raw_sentinel2_data(lat, lon, S2_reading_log, band):
+def get_raw_sentinel2_data(lat, lon, S2_reading_log, band='B11'):
 
     # generate a geometry object with the latitude-longitude points
     latlon = [Point(xy) for xy in zip(lon.flatten(), lat.flatten())]

@@ -2,7 +2,7 @@ import os, sys
 import logging
 import yaml
 import subprocess
-import lib.data_netcdf.data_netcdf as dn
+import teds.lib.data_netcdf.data_netcdf as dn
 
 def get_logger():
     """

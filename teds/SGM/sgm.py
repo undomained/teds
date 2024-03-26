@@ -16,11 +16,11 @@ import numpy as np
 import yaml
 from scipy.interpolate import RegularGridInterpolator, griddata
 from tqdm import tqdm
-from lib.libWrite import writevariablefromname
+from teds.lib.libWrite import writevariablefromname
 from scipy.interpolate import griddata
 
-from lib import libATM, libNumTools, libRT, libSGM, libSURF
-from lib.libWrite import writevariablefromname
+from teds.lib import libATM, libNumTools, libRT, libSGM, libSURF
+from teds.lib.libWrite import writevariablefromname
 
 
 class Emptyclass:

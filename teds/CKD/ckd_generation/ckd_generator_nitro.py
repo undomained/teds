@@ -108,7 +108,7 @@ for varpath in varpaths:
 skips = conf['skips']        
 for skipname in skips.keys():
     skipvar = nc_ckd.createVariable(skipname, 'u1', [])
-    skipvar = skips[skipname]
+    skipvar[:] = skips[skipname]
 
 # TODO
 # - implement temperature dependence/interpolation if we have data for detector

@@ -16,8 +16,7 @@ def generate(cfg):
     gen.dtype = 'f8'
     
     Npx_spat = cfg['dimensions']['spatial_detector_pixels']
-    row = np.linspace(Npx_spat+0.1, 0.1, shape[0]) # spatial pixel index for each spatial sample
-
+    row = np.linspace(Npx_spat-5.8, 5.8, shape[0]) # spatial pixel index for each spatial sample
 
     gen.data = np.repeat(np.array(row, ndmin=2), shape[1], axis=0).T
 

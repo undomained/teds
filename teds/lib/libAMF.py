@@ -7,7 +7,7 @@ import time
 import netCDF4 as nc
 from scipy import interpolate
 
-from lib import constants
+from teds.lib import constants
 
 
 def read_atm(file_atm):

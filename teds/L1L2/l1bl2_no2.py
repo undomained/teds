@@ -9,13 +9,36 @@ import matplotlib.pyplot as plt
 from threadpoolctl import threadpool_limits
 import multiprocessing.pool
 import time
+from scipy.ndimage import gaussian_filter1d
+import datetime
 
-currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-parentdir = os.path.dirname(currentdir)
-sys.path.insert(0, parentdir) 
+from teds.lib import libDOAS, libAMF
+from teds.lib.libWrite import writevariablefromname
 
-from lib import libDOAS, libAMF
+def conv_irr(sgm_rad_file, fwhm):
+    # convolve irradiance with Gaussian ISRF
+    with nc.Dataset(sgm_rad_file) as f:
 
+        irr = f['solar_irradiance'][:] # [spectral_bins] - "photons / (nm m2 s)"
+        wvl = f['wavelength'][:] # [spectral_bins] - nm
+
+    stepsize = wvl[1]-wvl[0]
+    fwhm_step = fwhm/stepsize
+    sigma = fwhm_step /np.sqrt(8*np.log(2))
+    convolved_irr = gaussian_filter1d(irr, sigma)
+
+    file_out = sgm_rad_file.replace('.nc','_conv_irr.nc')
+    # open file
+    with nc.Dataset(file_out, mode='w') as output_conv_irr:
+        output_conv_irr.processing_date = datetime.datetime.now().strftime('%Y%m%dT%H%M%S')
+        output_conv_irr.comment = f'Convolved irradiance with Gaussian FWHM {fwhm} nm'
+        output_conv_irr.createDimension('bins_spectral', len(irr))     # spectral axis
+        # wavelength
+        _ = writevariablefromname(output_conv_irr, 'wavelength', ('bins_spectral',), wvl)
+        # solar irradiance
+        _ = writevariablefromname(output_conv_irr, 'solarirradiance', ('bins_spectral',), convolved_irr)
+
+    return file_out
 
 
 def ifdoe_run(logger, cfg):
@@ -23,11 +46,6 @@ def ifdoe_run(logger, cfg):
      Routine which contains the IFDOE processing chain, i.e
      the main sections.
     '''
-    l1b_file = cfg['l1b_file']
-    l2_file = cfg['l2_file']
-    gm_file = cfg['gm_file']
-
-    cfg = cfg['doas']
 
     if cfg['debug']['plot']:
         verboseLevel = 3
@@ -65,7 +83,7 @@ def ifdoe_run(logger, cfg):
     
     # A.4  Setup loop bounds
 
-    scanN,pxlN,spectralN = libDOAS.getDimensionsRad(l1b_file)
+    scanN,pxlN,spectralN = libDOAS.getDimensionsRad(cfg['rad_file'])
 
     if 'alt' in cfg:
         scanBeg = cfg['alt']['start']
@@ -90,7 +108,7 @@ def ifdoe_run(logger, cfg):
 
     # read geometry
 
-    geo = libDOAS.readGeometry(gm_file)
+    geo = libDOAS.readGeometry(cfg['gm_file'])
 
     # B)  Solar spectrum
     # ------------------
@@ -183,7 +201,7 @@ def ifdoe_run(logger, cfg):
         results['R_res'] = np.full((scanN,pxlN,spectralN),np.nan)
 
     # open file before threading, to ensure thread safety
-    ncRad = nc.Dataset(l1b_file)
+    ncRad = nc.Dataset(cfg['rad_file'])
 
     logger.info('=== Starting radiance calibration and DOAS')
 
@@ -558,10 +576,10 @@ def ifdoe_run(logger, cfg):
     # H)  Finishing up
 
     # write results to output file
-    libDOAS.writeOutput(l2_file,cfg,parameterNames,results,geo)
+    libDOAS.writeOutput(cfg['l2_file'],cfg,parameterNames,results,geo)
 
 
-    logger.info(f"Output witten to {l2_file}")
+    logger.info(f"Output witten to {cfg['l2_file']}")
 
 
     logger.info(f'IFDOE calculation finished in {np.round(time.time()-startTime,1)} s')
@@ -596,6 +614,24 @@ def l1bl2_no2(logger,cfg):
 
     startTime = time.time()
 
+    # use irradiance file from SGM. optional convolving
+    if cfg['doas']['irr_from_sgm']:
+        if cfg['doas']['convolve_irr']:
+            convolved_irr_file = conv_irr(cfg['sgm_rad_file'],cfg['isrf']['fwhm'])
+            cfg['doas']['irr_file'] = convolved_irr_file
+        else:
+            cfg['doas']['irr_file'] = cfg['sgm_rad_file']
+    
+    # optionally use radiance from SGM
+    if cfg['doas']['rad_from_sgm']:
+        cfg['doas']['rad_file'] = cfg['sgm_rad_file']
+    else:
+        cfg['doas']['rad_file'] = cfg['l1b_file']
+
+    cfg['doas']['l2_file'] = cfg['l2_file']
+    cfg['doas']['gm_file'] = cfg['gm_file']            
+
+
     # Python parallises internally with numpy, for single thread optimum is 4 numpy threads
     # for multi-threading use only 1 numpy thread, otherwise slow-down
 
@@ -605,7 +641,7 @@ def l1bl2_no2(logger,cfg):
         numpy_cpu = 1
 
     with threadpool_limits(limits=numpy_cpu, user_api='blas'):
-        doas_results = ifdoe_run(logger, cfg)
+        doas_results = ifdoe_run(logger, cfg['doas'])
                         
     amf_results = amf_run(logger, cfg)
 

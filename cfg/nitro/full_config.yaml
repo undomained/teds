@@ -187,7 +187,7 @@ doas:
 
   rad_from_sgm: no
   irr_from_sgm: yes
-  irr_file: ../data/no2/sgm_radiance.nc
+  convolve_irr: yes # Convolve SGM irradiance with Gaussian ISRF FWHM from IM
 
   export_spectra: no
   debug:

@@ -9,7 +9,7 @@ from collections import OrderedDict
 import math
 import datetime
 
-from lib import constants
+from teds.lib import constants
 
 class OptimalEstimationException(Exception):
     pass

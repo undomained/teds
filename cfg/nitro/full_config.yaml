@@ -92,8 +92,8 @@ rtm:   # disamar (RTM) settings
     dismas_sim: True
     dismas_fwhm: 0.05       #nm
     n_threads: 16
-    wave_start: 405         #nm
-    wave_end:   465         #nm
+    wave_start: 395         #nm
+    wave_end:   502         #nm
     dwave:      0.05        #nm
     cleanup: yes # rm disamartmp directory when finished
 

@@ -23,7 +23,7 @@ def get_logger():
 
     return logger
 
-def build_simple(logger, bin_file, nrow, ncols, row_binning, col_factor=1):
+def build_simple(logger, bin_file, nrows, ncols, row_binning, col_factor=1):
     """
         Creating simple binning tables for given binning factors.
     """
@@ -123,7 +123,7 @@ if __name__ == '__main__' and __package__ is None:
 
     build_logger = get_logger()
 
-    binning_table_file_name = "../data/no2/ckd/binning_table_no2.nc"
+    binning_table_file_name = "../data/no2/binning_table_no2.nc"
     # For now:
     nrows = 2870 
     ncols = 1681

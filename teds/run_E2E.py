@@ -22,7 +22,7 @@ def cmdline(arguments):
               (l1l2) or all steps (all)."""
     parser = argparse.ArgumentParser(description= usage)
     parser.add_argument( "cfgFile", metavar="FILE", help=cfgHelp)
-    parser.add_argument( "step", metavar='STEP', choices=['gm','sgm','im','l1al1b','l1l2','all'],
+    parser.add_argument( "step", metavar='STEP', choices=['gm','sgm','im','l1al1b','l1l2','pam','all'],
                        help="The steps that the E2E processor has to run.")
                     
     args = parser.parse_args(arguments)

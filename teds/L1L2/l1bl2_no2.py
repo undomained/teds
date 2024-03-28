@@ -265,7 +265,17 @@ def ifdoe_run(logger, cfg):
             # E)  Reflectance
             # ---------------
             # # E.1  Interpolate solar grid to earth grid using ref_solar
-            irrRegridded, irrErrorRegridded = libDOAS.SolarToEarthWvl(IFDOERefSpec,radWvlScaled,irrWvlScaled,irr,irrError,ipxl)
+            # irrRegridded, irrErrorRegridded = libDOAS.SolarToEarthWvl(IFDOERefSpec,radWvlScaled,irrWvlScaled,irr,irrError,ipxl)
+
+            # # E.1  Interpolate solar grid to earth grid
+            irrRegridded, irrErrorRegridded = libDOAS.SolarToEarthWvl_simple(radWvlScaled,irrWvlScaled,irr,irrError,ipxl)
+
+            # plt.figure()
+            # plt.plot(radWvlScaled, irrRegridded, label='Irr regrid')
+            # plt.plot(irrWvlScaled[ipxl,:], irr[ipxl,:], label='Irr')
+            # plt.plot(radWvlScaled, rad/0.022, label='Rad')
+            # plt.legend()
+            # plt.show()
 
             commonWvl = radWvlScaled
 

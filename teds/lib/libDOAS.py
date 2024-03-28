@@ -1718,7 +1718,7 @@ def ReadRad(f, iscan):
     radFlag = f['OBSERVATION_DATA/radiance_mask'][iscan,:,:] # [alt, act, spectral_bins] -  0 = good, 1 = bad
     radError = f['OBSERVATION_DATA/radiance_noise'][iscan,:,:] # [alt, act, spectral_bins] - 
 
-    radWvl = f['OBSERVATION_DATA/wavelength'][iscan,:,:] # [act, spectral_bins] - nm
+    radWvl = f['OBSERVATION_DATA/wavelength'][:,:] # [act, spectral_bins] - nm
 
     # photons to mol
     rad /= constants.NA
@@ -1726,6 +1726,20 @@ def ReadRad(f, iscan):
 
     return radWvl, rad, radError, radFlag
 
+# ======================
+
+def SolarToEarthWvl_simple(radWvlScaled,irrWvlScaled,irr,irrError,ipxl):
+    # Interpolate solar grid to earth grid
+
+    splineIrr = interpolate.InterpolatedUnivariateSpline(irrWvlScaled[ipxl,:],irr[ipxl,:], ext=1, k=4)
+    irrRegridded = splineIrr(radWvlScaled)
+
+    splineIrrError = interpolate.InterpolatedUnivariateSpline(irrWvlScaled[ipxl,:],irrError[ipxl,:], ext=1, k=4)
+    irrErrorRegridded = splineIrrError(radWvlScaled)
+
+    return irrRegridded, irrErrorRegridded
+
+# ======================
 
 def SolarToEarthWvl(IFDOERefSpec,radWvlScaled,irrWvlScaled,irr,irrError,ipxl):
     # Interpolate solar grid to earth grid using ref_solar

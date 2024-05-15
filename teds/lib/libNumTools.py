@@ -5,6 +5,11 @@ import matplotlib.pyplot as plt
 import scipy
 import math
 from numba import njit
+from scipy.interpolate import RegularGridInterpolator, griddata
+from tqdm import tqdm
+
+class Emptyclass:
+    pass
 
 @njit(cache=True)
 def convolution(spectrum, isrf, istart, iend):
@@ -379,7 +384,6 @@ class TransformCoords:
                 else:
                     lon = lon + 360.0
         return lat, lon
-
 #=========================================================================
 
 # N-D linear interpolation
@@ -521,4 +525,133 @@ def ndim_lin_interpol_evaluate(A, idx, w):
     
 #     print(res[0])
     
-        
+def interpolate_data_irregular(indata, gm_data, gases):
+    """Interpolate irregular data in lat-lon coordinates.
+
+    Parameters
+    ----------
+    indata : Class 
+        Class containing meterological data
+    gm_data : Dict
+        Dictionary containing the parameters from geometry module.
+    config : List
+        Contains lits of gases to be processed
+    """
+    # create a new container for SGM meteo data
+    outdata = Emptyclass()
+    outdata.__setattr__("lat", gm_data.lat)
+    outdata.__setattr__("lon", gm_data.lon)
+    outdata.__setattr__("zlev", indata.zlev)
+    outdata.__setattr__("zlay", indata.zlay)
+
+    print('Interpolating data to GM mesh...')
+
+    dim_alt, dim_act = outdata.lat.shape   # dimensions
+    dxdy = np.column_stack((indata.lat.ravel(), indata.lon.ravel()))
+
+    # Interpolate values to GM grid
+    albedo = griddata(dxdy, indata.albedo_conv.ravel(), (outdata.lat, outdata.lon), fill_value=0.0)
+    for gas in gases:
+        conv_gas = indata.__getattribute__(gas+"_conv")
+        interpdata = np.zeros([dim_alt, dim_act, indata.zlay.size])
+        for iz in tqdm(range(indata.zlay.size)):
+            interpdata[:, :, iz] = griddata(dxdy, conv_gas[:,:, iz].ravel(), (outdata.lat, outdata.lon), fill_value=0.0)
+        outdata.__setattr__(gas, interpdata)
+    print('                     ...done')
+    return albedo, outdata
+
+def interpolate_data_regular(indata, gm_data, gases):
+    """Interpolate data on regular cartesian grid.
+
+    Meteo data is in regular x-y grid and this is used to interpolate
+    the values to x-y of gm grid. This is implementation is faster
+    compare to interpolating data in lat-lon grid.
+
+    Parameters
+    ----------
+    indata : Class
+        Meteo data
+    gm_data : Dict
+        Parameters from geometry module
+    gases : List
+        List of gases to be processed
+
+    Returns
+    -------
+    albedo : Matrix
+        Albedo on gm grid
+    outdata: Class
+        Meteo data on gm grid
+    """
+    print('Interpolating data to GM mesh...')
+    outdata = Emptyclass()
+    outdata.__setattr__("lat", gm_data.lat)
+    outdata.__setattr__("lon", gm_data.lon)
+
+    dim_alt, dim_act = outdata.lat.shape   # dimensions
+    dim_lay = indata.zlay.shape[2]
+    dim_lev = indata.zlev.shape[2]
+    
+    # Interpolate albedo to GM grid
+    fa = RegularGridInterpolator((indata.ypos, indata.xpos), indata.albedo_conv, 
+                                 bounds_error=False, fill_value=0.0)
+    albedo = fa((gm_data.ypos, gm_data.xpos))
+    for gas in gases:
+        interpdata = np.zeros([dim_alt, dim_act, dim_lay])
+        conv_gas = indata.__getattribute__("dcol_"+gas+"_conv")
+        for iz in tqdm(range(dim_lay)):
+            gasmin = np.min(conv_gas[:, :, iz])
+            fa = RegularGridInterpolator((indata.ypos, indata.xpos), conv_gas[:, :, iz], 
+                                         bounds_error=False, fill_value=gasmin)
+            interpdata[:, :, iz] = fa((gm_data.ypos, gm_data.xpos))
+        outdata.__setattr__(gas.upper(), interpdata)
+
+    #Here, we make a shortcut using a equally vertically gridded atmosphere 
+    #So we duplicate the vertical grid!
+    dum = np.tile(indata.zlay[0,0,:], dim_alt*dim_act)
+    outdata.__setattr__("zlay", np.reshape(dum,(dim_alt,dim_act,dim_lay)))
+
+    dum = np.tile(indata.col_air[0,0], dim_alt*dim_act)
+    outdata.__setattr__("air", np.reshape(dum,(dim_alt,dim_act)))
+
+    dum = np.tile(indata.zlev[0,0,:], dim_alt*dim_act)
+    outdata.__setattr__("zlev", np.reshape(dum,(dim_alt,dim_act,dim_lev)))
+     
+    print('                             ...done')
+    return albedo, outdata
+
+def convolvedata(data, config):
+
+    """Convolve meteo and albedo data.
+
+    Parameters
+    ----------
+    meteodata : Class
+        Meteo data
+    config : Dict
+        Dict containing configuration parameters.
+
+    """
+    print('Convolution data...')
+    
+    dx = np.mean(np.diff(data.xpos))
+    dy = np.mean(np.diff(data.ypos))
+    
+    conv_settings = getconvolutionparams(config['kernel_parameter'], dx, dy)
+    
+    # convolution of albedo   
+    data.__setattr__("albedo_conv", convolution_2d(data.albedo, conv_settings))
+    
+
+    for gas in config['conv_gases']:
+        concgas = data.__getattribute__("dcol_"+gas)
+        conv_gas = np.zeros_like(concgas)
+        for iz in tqdm(range(data.zlay[0,0,:].size)):
+            # convolution
+            conv_gas[:, :, iz] = convolution_2d(concgas[:, :, iz], conv_settings)
+            data.__setattr__("dcol_"+gas+"_conv", conv_gas)
+
+    print('                     ...done')
+    
+    return data
+

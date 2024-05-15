@@ -20,6 +20,10 @@ from lib import libINV
 from lib.libWrite import writevariablefromname
 import matplotlib.pyplot as plt
 
+class Emptyclass:
+    """Empty class. Data container."""
+    
+    pass
 
 def get_l1b(filename):
     # getting l1b data from file
@@ -57,27 +61,34 @@ def get_sgm_atm(filen_sgm_atm):
     return (surf_sgm, atm_sgm)
 
 
-def write_gasdata(gas, output_l2, _dims, _dims3d, nalt_l2, nact, nlay, l2product):
+def write_gasdata(gas, output_l2, _dims, _dims3d, nalt_l2, nact, nlay, l2product, retrieval_init):
     scale = {'CO2': 1.E6, 'CH4': 1.E9, 'H2O': 1.E6}
     # names
     xgas = "X" + gas
     xgas_precision = xgas + " precision"
     xgas_ker = xgas + ' col avg kernel'
     l2_X = np.zeros((nalt_l2, nact))
-    l2_X_prec = np.zeros((nalt_l2, nact))
-    l2_X_avgk = np.zeros((nalt_l2, nact, nlay))
+    l2_X_prec  = np.zeros((nalt_l2, nact))
+    l2_X_avgk  = np.zeros((nalt_l2, nact, nlay))
+    l2_X_prof  = np.zeros((nalt_l2, nact, nlay))
+
     for ialt in range(nalt_l2):
         for iact in range(nact):
             tmp = (l2product[ialt, iact][xgas]*scale[gas])
             l2_X[ialt, iact] = tmp
             l2_X_prec[ialt, iact] = l2product[ialt, iact][xgas_precision]*scale[gas]
             l2_X_avgk[ialt, iact, :] = l2product[ialt, iact][xgas_ker][:]
+            l2_X_prof[ialt, iact, :] = retrieval_init['trace gases'][gas]['ref_profile']
+            
     # write data
-    prec_varname = 'precision'+xgas
+    prec_varname   = 'precision'+xgas
     avgker_varname = 'avgkernel'+xgas
-    _ = writevariablefromname(output_l2, xgas, _dims, l2_X)
-    _ = writevariablefromname(output_l2, prec_varname, _dims, l2_X_prec)
+    aprof_varname  = 'apriori_profile'+gas
+
+    _ = writevariablefromname(output_l2, xgas,           _dims,   l2_X)
+    _ = writevariablefromname(output_l2, prec_varname,   _dims,   l2_X_prec)
     _ = writevariablefromname(output_l2, avgker_varname, _dims3d, l2_X_avgk)
+    _ = writevariablefromname(output_l2, aprof_varname,  _dims3d, l2_X_prof)
 
 def write_proxygasdata(gas, output_l2, _dims, nalt_l2, nact, nlay, l2product):
     scale = {'CO2': 1.E6, 'CH4': 1.E9, 'H2O': 1.E6}
@@ -86,19 +97,27 @@ def write_proxygasdata(gas, output_l2, _dims, nalt_l2, nact, nlay, l2product):
     xgas_precision = xgas + " precision"
     l2_X = np.zeros((nalt_l2, nact))
     l2_X_prec = np.zeros((nalt_l2, nact))
+    l2_X_accu = np.zeros((nalt_l2, nact))
+    l2_X_qav  = np.zeros((nalt_l2, nact), dtype = np.int16)
+    
     for ialt in range(nalt_l2):
         for iact in range(nact):
             tmp = (l2product[ialt, iact][xgas]*scale[gas])
             l2_X[ialt, iact] = tmp
             l2_X_prec[ialt, iact] = l2product[ialt, iact][xgas_precision]*scale[gas]
+            l2_X_accu[ialt, iact] = 99999.
+            l2_X_qav[ialt, iact]  = 100
 
     # define names in constants_outputvariables
     vargas = "proxyX"+gas
     varprecgas = "precision"+vargas
+    varaccugas = "accuracy" +vargas
+    varqavgas  = "qa_value" +vargas
     # write data
     _ = writevariablefromname(output_l2, vargas, _dims, l2_X)
     _ = writevariablefromname(output_l2, varprecgas, _dims, l2_X_prec)
-
+    _ = writevariablefromname(output_l2, varaccugas, _dims, l2_X_accu)
+    _ = writevariablefromname(output_l2, varqavgas,  _dims, l2_X_qav)
 
 def level2_output(filename, l2product, retrieval_init, l1bproduct, settings):
     # output of level 2 data
@@ -121,46 +140,124 @@ def level2_output(filename, l2product, retrieval_init, l1bproduct, settings):
     output_l2.createDimension('number_layers', nlay)     # spectral axis
     output_l2.createDimension('bins_across_track', nact)     # across track axis
     output_l2.createDimension('bins_along_track', nalt_l2)     # along track axis
+    output_l2.createDimension('bins_albedo', 1)     # spectral bins albedo
+    grp_ns    = output_l2.createGroup('non_scattering_retrieval')
+    grp_prior = output_l2.createGroup('prior')
+    grp_diag  = output_l2.createGroup('diagnostics')
 
     # layer height
 
     _ = writevariablefromname(output_l2, 'central_layer_height', ('number_layers',),  retrieval_init['zlay'])
 
     # dimensions
-    _dims = ('bins_along_track', 'bins_across_track')
+    _dimalt = ('bins_along_track')
+    _dims   = ('bins_along_track', 'bins_across_track')
     _dims3d = ('bins_along_track', 'bins_across_track', 'number_layers',)
     # variables
     l2_conv = np.zeros((nalt_l2, nact), dtype = np.int32)
     l2_numb_iter = np.zeros((nalt_l2, nact), dtype = np.int32)
+    l2_proc_flag = np.zeros((nalt_l2, nact), dtype = np.int16) + 100
     l2_chi2 = np.zeros((nalt_l2, nact))
     l2_alb = np.zeros((nalt_l2, nact))
+    l2_spec_shift  = np.zeros((nalt_l2, nact))
+    l2_spec_squeeze = np.zeros((nalt_l2, nact))
+    l2_aqutime = np.zeros(nalt_l2) + 99999.   #aquisition time (dummy)
+    
     for ialt in range(nalt_l2):
         for iact in range(nact):
-            l2_conv[ialt, iact] = int(l2product[ialt, iact]['convergence'])
-            l2_numb_iter[ialt, iact] = l2product[ialt, iact]['number_iter']
-            l2_chi2[ialt, iact] = l2product[ialt, iact]['chi2']
-            l2_alb[ialt, iact] = l2product[ialt, iact]['alb0']
+            l2_conv[ialt, iact]         = int(l2product[ialt, iact]['convergence'])
+            l2_numb_iter[ialt, iact]    = l2product[ialt, iact]['number_iter']
+            l2_chi2[ialt, iact]         = l2product[ialt, iact]['chi2']
+            l2_alb[ialt, iact]          = l2product[ialt, iact]['alb0']
+            l2_spec_shift[ialt, iact]   = l2product[ialt, iact]['spec_shift']
+            l2_spec_squeeze[ialt, iact] = l2product[ialt, iact]['spec_squeeze']
 
+    # aquisition time
+    _ = writevariablefromname(output_l2, 'aqui_time',       _dimalt, l2_aqutime)
+    # processing flag
+    _ = writevariablefromname(grp_diag,  'process_flag',    _dims, l2_proc_flag)
     # convergence
-    _ = writevariablefromname(output_l2, 'convergence', _dims,  l2_conv)
+    _ = writevariablefromname(grp_diag,  'convergence',     _dims, l2_conv)
     # latitude
-    _ = writevariablefromname(output_l2, 'latitude', _dims, l1bproduct['latitude'][nalt_start:nalt_end, :nact])
+    _ = writevariablefromname(output_l2, 'latitude',        _dims, l1bproduct['latitude'][nalt_start:nalt_end, :nact])
     # longitude
-    _ = writevariablefromname(output_l2, 'longitude', _dims, l1bproduct['longitude'][nalt_start:nalt_end, :nact])
+    _ = writevariablefromname(output_l2, 'longitude',       _dims, l1bproduct['longitude'][nalt_start:nalt_end, :nact])
     # maxiterations
-    _ = writevariablefromname(output_l2, 'maxiterations', _dims, l2_numb_iter)
+    _ = writevariablefromname(grp_diag,  'maxiterations',   _dims, l2_numb_iter)
     # chi2
-    _ = writevariablefromname(output_l2, 'spectralchi2', _dims, l2_chi2)
+    _ = writevariablefromname(grp_diag,  'spectralchi2',    _dims, l2_chi2)
     # albedo
-    _ = writevariablefromname(output_l2, 'albedo', _dims, l2_alb)
+    _ = writevariablefromname(output_l2, 'albedo',          _dims, l2_alb)
+    # surface pressure
+    _ = writevariablefromname(grp_prior, 'surface_pressure',_dims, retrieval_init['surface pressure'])
+    # surface elevation
+    _ = writevariablefromname(grp_prior, 'surface_elevation',_dims, retrieval_init['surface elevation'])
+    # spectral shift
+    _ = writevariablefromname(output_l2, 'spectralshift',   _dims, l2_spec_shift)
+    # chi2
+    _ = writevariablefromname(output_l2, 'spectralsqueeze', _dims, l2_spec_squeeze)
+    
+    scale = {'CO2': 1.E6, 'CH4': 1.E9, 'H2O': 1.E6}
+    # names
 
-    # XCO2, XCH4, XH20
-    write_gasdata("CO2", output_l2, _dims, _dims3d, nalt_l2, nact, nlay, l2product)
-    write_gasdata("CH4", output_l2, _dims, _dims3d, nalt_l2, nact, nlay, l2product)
-    write_gasdata("H2O", output_l2, _dims, _dims3d, nalt_l2, nact, nlay, l2product)
-    # write proxy CO2, CH4
-    write_proxygasdata("CO2", output_l2, _dims, nalt_l2, nact, nlay, l2product)
-    write_proxygasdata("CH4", output_l2, _dims, nalt_l2, nact, nlay, l2product)
+    gases = ['CO2', 'CH4', 'H2O']
+    for gas in gases:
+        xgas = "X" + gas
+        xgas_precision = xgas + " precision"
+        xgas_ker = xgas + ' col avg kernel'
+
+        l2_X = np.zeros((nalt_l2, nact))
+        l2_X_prec  = np.zeros((nalt_l2, nact))
+        l2_X_avgk  = np.zeros((nalt_l2, nact, nlay))
+        l2_X_prof  = np.zeros((nalt_l2, nact, nlay))
+
+        for ialt in range(nalt_l2):
+            for iact in range(nact):
+                tmp = (l2product[ialt, iact][xgas]*scale[gas])
+                l2_X[ialt, iact] = tmp
+                l2_X_prec[ialt, iact] = l2product[ialt, iact][xgas_precision]*scale[gas]
+                l2_X_avgk[ialt, iact, :] = l2product[ialt, iact][xgas_ker][:]
+                l2_X_prof[ialt, iact, :] = retrieval_init['trace gases'][gas]['ref_profile']
+            
+            # write data
+            prec_varname   = 'precision'+xgas
+            avgker_varname = 'avgkernel'+xgas
+            aprof_varname  = 'apriori_profile'+gas
+
+        _ = writevariablefromname(grp_ns, xgas,           _dims,   l2_X)
+        _ = writevariablefromname(grp_ns, prec_varname,   _dims,   l2_X_prec)
+        _ = writevariablefromname(output_l2, avgker_varname, _dims3d, l2_X_avgk)
+        _ = writevariablefromname(grp_prior, aprof_varname,  _dims3d, l2_X_prof)
+    
+    #next the main product, proxy
+    gases = ['CO2', 'CH4']
+    for gas in gases:
+
+        xgas = "X" + gas + " proxy"
+        xgas_precision = xgas + " precision"
+        l2_X = np.zeros((nalt_l2, nact))
+        l2_X_prec = np.zeros((nalt_l2, nact))
+        l2_X_accu = np.zeros((nalt_l2, nact))
+        l2_X_qav  = np.zeros((nalt_l2, nact), dtype = np.int16)
+    
+        for ialt in range(nalt_l2):
+            for iact in range(nact):
+                l2_X[ialt, iact] = (l2product[ialt, iact][xgas]*scale[gas])
+                l2_X_prec[ialt, iact] = l2product[ialt, iact][xgas_precision]*scale[gas]
+                l2_X_accu[ialt, iact] = 99999.
+                l2_X_qav[ialt, iact]  = 100
+
+        # define names in constants_outputvariables
+        vargas = "proxyX"+gas
+        varprecgas = "precision"+vargas
+        varaccugas = "accuracy" +vargas
+        varqavgas  = "qa_value" +vargas
+        # write data
+        _ = writevariablefromname(output_l2, vargas, _dims, l2_X)
+        _ = writevariablefromname(output_l2, varprecgas, _dims, l2_X_prec)
+        _ = writevariablefromname(output_l2, varaccugas, _dims, l2_X_accu)
+        _ = writevariablefromname(output_l2, varqavgas,  _dims, l2_X_qav)
+
     output_l2.close()
 
 
@@ -210,6 +307,8 @@ def level2_diags_output(filename, l2product, measurement):
 
 def level1b_to_level2_processor(config, sw_diag_output = False):
     # get the l1b files
+
+    print('level 1B to 2 proessor ...')
     l1b = get_l1b(config['l1b_input'])
 
     # get sgm geo data
@@ -217,7 +316,7 @@ def level1b_to_level2_processor(config, sw_diag_output = False):
 
     # get pixel mask
     # if (config['retrieval_init']['sw_pixel_mask']):
-#        print('take pixel mask')
+#        print('take pixel mask')get_AFGL_atm_homogenous_distribution
 #        mask = np.load(config['pixel_mask_input'])
 # 
     # else:
@@ -316,7 +415,7 @@ def level1b_to_level2_processor(config, sw_diag_output = False):
         nalt_start = 0
         nalt_end = nalt
     nalt_l2 = nalt_end-nalt_start
-
+    
     l2product = np.ndarray((nalt_l2, nact), np.object_)
     measurement = np.ndarray((nalt_l2, nact), np.object_)
 
@@ -351,6 +450,10 @@ def level1b_to_level2_processor(config, sw_diag_output = False):
                     retrieval_init['trace gases']['H2O']['ref_profile'] = atm_sgm['dcol_h2o'][ialt, iact, :]
                 else:
                     sys.exit('sw_prof_init of l1bl2 configuration not set correctly!')
+                    
+                retrieval_init['surface pressure']  = np.zeros([nalt_l2,nact])+1013.  #these are dummy values for the time being
+                retrieval_init['surface elevation'] = np.zeros([nalt_l2,nact])
+
                 wavelength = l1b['wavelength'][iact, mask[ialt,iact, :]].data
                 istart = np.argmin(np.abs(wavelength - wave_start))
                 iend = np.argmin(np.abs(wavelength - wave_end))
@@ -412,6 +515,9 @@ def level1b_to_level2_processor(config, sw_diag_output = False):
                 l2product[ialt_l2, iact]['XCO2 proxy precision'] = float("nan")
                 l2product[ialt_l2, iact]['XCH4 proxy precision'] = float("nan")
 
+            l2product[ialt_l2, iact]['spec_shift']   = 0.  #dummies for the time beeing
+            l2product[ialt_l2, iact]['spec_squeeze'] = 0.
+
             # XCO2[iact] = l2product[ialt_l2, iact]['XCO2 proxy']*1.E6
             # XCO2_prec[iact] = l2product[ialt_l2, iact]['XCO2 proxy precision']*1.E6
             # XCO2_true_smoothed[iact] = np.dot(l2product[ialt_l2, iact]['XCO2 col avg kernel'],
@@ -420,7 +526,7 @@ def level1b_to_level2_processor(config, sw_diag_output = False):
 
     # output to netcdf file
     level2_output(config['l2_output'], l2product, retrieval_init, l1b, config['retrieval_init'])
-    
+
     if(sw_diag_output):
         level2_diags_output(config['l2_diag'], l2product, measurement)
 
@@ -428,7 +534,7 @@ def level1b_to_level2_processor(config, sw_diag_output = False):
 
 #    print('cumulative run time: ',runtime_cum)
 
-    return
+    return l2product
 
 def level2_nan(retrieval_init, nlay):
 
@@ -452,231 +558,6 @@ def level2_nan(retrieval_init, nlay):
 
     return(output)
     
-# def level2_output_old(filename, l2product, retrieval_init, l1bproduct, settings):
-#     # output of level 2 data
-#     nalt_l2 = len(l2product)
-#     nalt = l1bproduct['latitude'][:, 0].size
-#     nact = len(l2product[0])
-#     nlay = len(l2product[0][0]['XCO2 col avg kernel'])
-
-#     if (settings['sw_ALT_select']):
-#         nalt_start = settings['first_ALT_index']
-#         nalt_end = settings['last_ALT_index']
-#     else:
-#         nalt_start = 0
-#         nalt_end = nalt
-#     nalt_l2 = nalt_end-nalt_start
-
-#     output_l2 = nc.Dataset(filename, mode='w')
-
-#     output_l2.title = 'Tango Carbon E2ES L2 product'
-#     output_l2.createDimension('number_layers', nlay)     # spectral axis
-#     output_l2.createDimension('bins_across_track', nact)     # across track axis
-#     output_l2.createDimension('bins_along_track', nalt_l2)     # along track axis
-
-#     l2_conv = output_l2.createVariable('convergence', np.int32, ('bins_along_track', 'bins_across_track',))
-#     l2_conv.units = '1'
-#     l2_conv.long_name = 'convergence'
-#     l2_conv.valid_min = 0
-#     l2_conv.valid_max = 1
-#     l2_conv.FillValue = -32767
-#     for ialt in range(nalt_l2):
-#         for iact in range(nact):
-#             l2_conv[ialt, iact] = int(l2product[ialt, iact]['convergence'])
-
-#     l2_zlay = output_l2.createVariable('zlay', np.float64, ('number_layers',))
-#     l2_zlay.units = 'm'
-#     l2_zlay.long_name = 'layer height'
-#     l2_zlay.valid_min = 0.
-#     l2_zlay.valid_max = 1.E6
-#     l2_zlay.FillValue = -32767
-#     l2_zlay[:] = retrieval_init['zlay'][:]
-
-#     l2_lat = output_l2.createVariable('latitude', np.float64, ('bins_along_track', 'bins_across_track',))
-#     l2_lat.units = 'degree'
-#     l2_lat.long_name = 'latitude'
-#     l2_lat.valid_min = -90.
-#     l2_lat.valid_max = +90.
-#     l2_lat.FillValue = -32767
-#     l2_lat[:, :] = l1bproduct['latitude'][nalt_start:nalt_end, :nact]
-
-#     l2_lon = output_l2.createVariable('longitude', np.float64, ('bins_along_track', 'bins_across_track',))
-#     l2_lon.units = 'degree'
-#     l2_lon.long_name = 'longitude'
-#     l2_lon.valid_min = -90.
-#     l2_lon.valid_max = +90.
-#     l2_lon.FillValue = -32767
-#     l2_lon[:, :] = l1bproduct['longitude'][nalt_start:nalt_end, :nact]
-
-#     l2_numb_iter = output_l2.createVariable('max iter', np.int32, ('bins_along_track', 'bins_across_track',))
-#     l2_numb_iter.units = '1'
-#     l2_numb_iter.long_name = 'number of iterations'
-#     l2_numb_iter.valid_min = 0
-#     l2_numb_iter.valid_max = retrieval_init['maximum iteration']
-#     l2_numb_iter.FillValue = -32767
-
-#     for ialt in range(nalt_l2):
-#         for iact in range(nact):
-#             l2_numb_iter[ialt, iact] = l2product[ialt, iact]['number_iter']
-
-#     l2_chi2 = output_l2.createVariable('chi2', np.float64, ('bins_along_track', 'bins_across_track',))
-#     l2_chi2.units = '1'
-#     l2_chi2.long_name = 'spectral chi square of the fit'
-#     l2_chi2.valid_min = 0.
-#     l2_chi2.valid_max = 100.
-#     l2_chi2.FillValue = -32767
-#     for ialt in range(nalt_l2):
-#         for iact in range(nact):
-#             l2_chi2[ialt, iact] = l2product[ialt, iact]['chi2']
-
-#     l2_alb = output_l2.createVariable('albedo', np.float64, ('bins_along_track', 'bins_across_track',))
-#     l2_alb.units = '1'
-#     l2_alb.long_name = 'Lambertian surface albedo'
-#     l2_alb.valid_min = 0.
-#     l2_alb.valid_max = 1.
-#     l2_alb.FillValue = -32767
-#     for ialt in range(nalt_l2):
-#         for iact in range(nact):
-#             l2_alb[ialt, iact] = l2product[ialt, iact]['alb0']
-
-#     units = {'CO2': 'ppm', 'CH4': 'ppb', 'H2O': 'ppm'}
-#     scale = {'CO2': 1.E6, 'CH4': 1.E9, 'H2O': 1.E6}
-#     maxval = {'CO2': 2.E3, 'CH4': 8.E3, 'H2O': 5.E6}
-#     # non-scattering data product
-
-#     l2_XCO2 = output_l2.createVariable('XCO2', np.float64, ('bins_along_track', 'bins_across_track',))
-#     l2_XCO2.units = units['CO2']
-#     l2_XCO2.long_name = 'CO2 dry air column mixing ratio XCO2'
-#     l2_XCO2.valid_min = 0.
-#     l2_XCO2.valid_max = 2.E20  # maxval['CO2']
-#     l2_XCO2.FillValue = -32767
-
-#     l2_XCO2_prec = output_l2.createVariable('precision XCO2', np.float64,
-#                                             ('bins_along_track', 'bins_across_track',))
-#     l2_XCO2_prec.units = units['CO2']
-#     l2_XCO2_prec.long_name = 'CO2 precision of dry air column mixing ratio XCO2'
-#     l2_XCO2_prec.valid_min = 0.
-#     l2_XCO2_prec.valid_max = 0.1*maxval['CO2']
-#     l2_XCO2_prec.FillValue = -32767
-
-#     l2_XCO2_avgk = output_l2.createVariable('col avg kernel XCO2', np.float64,
-#                                             ('bins_along_track', 'bins_across_track', 'number_layers',))
-#     l2_XCO2_avgk.units = '1'
-#     l2_XCO2_avgk.long_name = 'CO2 column averaging kernel of XCO2'
-#     l2_XCO2_avgk.valid_min = 0.
-#     l2_XCO2_avgk.valid_max = 10.
-#     l2_XCO2_avgk.FillValue = -32767
-
-#     for ialt in range(nalt_l2):
-#         for iact in range(nact):
-#             tmp = (l2product[ialt, iact]['XCO2']*scale['CO2'])
-#             l2_XCO2[ialt, iact] = tmp
-#             l2_XCO2_prec[ialt, iact] = l2product[ialt, iact]['XCO2 precision']*scale['CO2']
-#             l2_XCO2_avgk[ialt, iact, :] = l2product[ialt, iact]['XCO2 col avg kernel'][:]
-
-#     l2_XCH4 = output_l2.createVariable('XCH4', np.float64, ('bins_along_track', 'bins_across_track',))
-#     l2_XCH4.units = units['CH4']
-#     l2_XCH4.long_name = 'CH4 dry air column mixing ratio XCH4'
-#     l2_XCH4.valid_min = 0.
-#     l2_XCH4.valid_max = maxval['CH4']
-#     l2_XCH4.FillValue = -32767
-
-#     l2_XCH4_prec = output_l2.createVariable('precision XCH4', np.float64,
-#                                             ('bins_along_track', 'bins_across_track',))
-#     l2_XCH4_prec.units = units['CH4']
-#     l2_XCH4_prec.long_name = 'CH4 precision of dry air column mixing ratio XCH4'
-#     l2_XCH4_prec.valid_min = 0.
-#     l2_XCH4_prec.valid_max = 0.1*maxval['CH4']
-#     l2_XCH4_prec.FillValue = -32767
-
-#     l2_XCH4_avgk = output_l2.createVariable('col avg kernel XCH4', np.float64,
-#                                             ('bins_along_track', 'bins_across_track', 'number_layers',))
-#     l2_XCH4_avgk.units = '1'
-#     l2_XCH4_avgk.long_name = 'CH4 column averaging kernel of XCH4'
-#     l2_XCH4_avgk.valid_min = 0.
-#     l2_XCH4_avgk.valid_max = 10.
-#     l2_XCH4_avgk.FillValue = -32767
-
-#     for ialt in range(nalt_l2):
-#         for iact in range(nact):
-#             l2_XCH4[ialt, iact] = (l2product[ialt, iact]['XCH4']*scale['CH4'])
-#             l2_XCH4_prec[ialt, iact] = l2product[ialt, iact]['XCH4 precision']*scale['CH4']
-#             l2_XCH4_avgk[ialt, iact, :] = l2product[ialt, iact]['XCH4 col avg kernel'][:]
-
-#     l2_XH2O = output_l2.createVariable('XH2O', np.float64, ('bins_along_track', 'bins_across_track',))
-#     l2_XH2O.units = units['H2O']
-#     l2_XH2O.long_name = 'H2O dry air column mixing ratio XH2O'
-#     l2_XH2O.valid_min = 0.
-#     l2_XH2O.valid_max = maxval['H2O']
-#     l2_XH2O.FillValue = -32767
-
-#     l2_XH2O_prec = output_l2.createVariable('precision XH2O', np.float64,
-#                                             ('bins_along_track', 'bins_across_track',))
-#     l2_XH2O_prec.units = units['H2O']
-#     l2_XH2O_prec.long_name = 'H2O precision of dry air column mixing ratio XH2O'
-#     l2_XH2O_prec.valid_min = 0.
-#     l2_XH2O_prec.valid_max = 0.1*maxval['H2O']
-#     l2_XH2O_prec.FillValue = -32767
-
-#     l2_XH2O_avgk = output_l2.createVariable('col avg kernel XH2O', np.float64,
-#                                             ('bins_along_track', 'bins_across_track', 'number_layers',))
-#     l2_XH2O_avgk.units = '1'
-#     l2_XH2O_avgk.long_name = 'H2O column averaging kernel of XH2O'
-#     l2_XH2O_avgk.valid_min = 0.
-#     l2_XH2O_avgk.valid_max = 10.
-#     l2_XH2O_avgk.FillValue = -32767
-
-#     for ialt in range(nalt_l2):
-#         for iact in range(nact):
-#             l2_XH2O[ialt, iact] = l2product[ialt, iact]['XH2O']*scale['H2O']
-#             l2_XH2O_prec[ialt, iact] = l2product[ialt, iact]['XH2O precision']*scale['H2O']
-#             l2_XH2O_avgk[ialt, iact, :] = l2product[ialt, iact]['XH2O col avg kernel'][:]
-
-#     # proxy data product
-
-#     l2_XCO2_proxy = output_l2.createVariable('XCO2 proxy', np.float64, ('bins_along_track', 'bins_across_track',))
-#     l2_XCO2_proxy.units = units['CO2']
-#     l2_XCO2_proxy.long_name = 'CO2 proxy dry air column mixing ratio XCO2'
-#     l2_XCO2_proxy.valid_min = 0.
-#     l2_XCO2_proxy.valid_max = maxval['CO2']
-#     l2_XCO2_proxy.FillValue = -32767
-
-#     l2_XCO2_proxy_prec = output_l2.createVariable('precision XCO2 proxy',
-#                                                   np.float64, ('bins_along_track', 'bins_across_track',))
-#     l2_XCO2_proxy_prec.units = units['CO2']
-#     l2_XCO2_proxy_prec.long_name = 'CO2 precision of proxy  dry air column mixing ratio XCO2'
-#     l2_XCO2_proxy_prec.valid_min = 0.
-#     l2_XCO2_proxy_prec.valid_max = 0.1*maxval['CO2']
-#     l2_XCO2_proxy_prec.FillValue = -32767
-
-#     for ialt in range(nalt_l2):
-#         for iact in range(nact):
-#             l2_XCO2_proxy[ialt, iact] = l2product[ialt, iact]['XCO2 proxy']*scale['CO2']
-#             l2_XCO2_proxy_prec[ialt, iact] = l2product[ialt, iact]['XCO2 proxy precision']*scale['CO2']
-
-#     l2_XCH4_proxy = output_l2.createVariable('XCH4 proxy', np.float64, ('bins_along_track', 'bins_across_track',))
-#     l2_XCH4_proxy.units = units['CH4']
-#     l2_XCH4_proxy.long_name = 'CH4 proxy dry air column mixing ratio XCH4'
-#     l2_XCH4_proxy.valid_min = 0.
-#     l2_XCH4_proxy.valid_max = maxval['CH4']
-#     l2_XCH4_proxy.FillValue = -32767
-
-#     l2_XCH4_proxy_prec = output_l2.createVariable('precision XCH4 proxy',
-#                                                   np.float64, ('bins_along_track', 'bins_across_track',))
-#     l2_XCH4_proxy_prec.units = units['CH4']
-#     l2_XCH4_proxy_prec.long_name = 'CH4 precision of proxy  dry air column mixing ratio XCH4'
-#     l2_XCH4_proxy_prec.valid_min = 0.
-#     l2_XCH4_proxy_prec.valid_max = 0.1*maxval['CH4']
-#     l2_XCH4_proxy_prec.FillValue = -32767
-
-#     for ialt in range(nalt_l2):
-#         for iact in range(nact):
-#             l2_XCH4_proxy[ialt, iact] = l2product[ialt, iact]['XCH4 proxy']*scale['CH4']
-#             l2_XCH4_proxy_prec[ialt, iact] = l2product[ialt, iact]['XCH4 proxy precision']*scale['CH4']
-
-#     output_l2.close()
-#     return
-
 if __name__ == '__main__':
     config = yaml.safe_load(open(sys.argv[1]))
     level1b_to_level2_processor(config)

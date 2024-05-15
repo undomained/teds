@@ -17,7 +17,11 @@ import shapely
 import matplotlib.pyplot as plt
 from .libNumTools import convolution_2d
 
-def get_raw_sentinel2_data(lat, lon, S2_reading_log, band='B11'):
+class Emptyclass:
+    """Empty class. Data container."""    
+    pass
+
+def get_raw_sentinel2_data(lat, lon, S2_reading_log, bands=['B11']):
 
     # generate a geometry object with the latitude-longitude points
     latlon = [Point(xy) for xy in zip(lon.flatten(), lat.flatten())]
@@ -78,13 +82,18 @@ def get_raw_sentinel2_data(lat, lon, S2_reading_log, band='B11'):
     #    overview = overview.rio.reproject('EPSG:4326', shape=(overview.shape[1], overview.shape[2]))
     #   overview.plot.imshow()
 
-    # Extract the high resolution albedo map of a selected wavelength (B07 is 783 nm)
-    S2_albedo = rioxarray.open_rasterio(collection_filtered[0].assets[band].get_absolute_href())
-    S2_ssd = collection_filtered[0].assets[band].extra_fields['gsd']
+    # Extract the high resolution albedo map of a selected wavelength bands
+    S2_albedo = Emptyclass()
+    S2_ssd    = Emptyclass()
+    
+    for band in bands:
+        S2_albedo.__setattr__(band, rioxarray.open_rasterio(collection_filtered[0].assets[band].get_absolute_href()))
+        S2_ssd.__setattr__(band,collection_filtered[0].assets[band].extra_fields['gsd'])
+                           
     return(S2_albedo, S2_ssd)
 
 
-def get_sentinel2_albedo_new(lat, lon):
+def get_sentinel2_albedo_new(lat, lon, band):
     """Get sentinal 2 albedo.
 
     Parameters
@@ -94,39 +103,53 @@ def get_sentinel2_albedo_new(lat, lon):
     lon : Matrix
         Longitude at microHH grids
     """    
+    #band defintion of S2-A data from https://en.wikipedia.org/wiki/Sentinel-2 (central wavelength, band width)
+    
+    band_spec = {'B01':[442.1,21.], 'B02':[492.4,66.], 'B03':[559.8,36.],
+                 'B04':[664.6,31.], 'B05':[704.1,15.], 'B06':[740.5,15.],
+                 'B07':[782.8,20.], 'B08':[832.8,106.],'B08A':[864.7,21.],
+                 'B09':[945.1,20.], 'B10':[1372.5,31.],'B11':[1613.7,91.],
+                 'B12':[2202.4,175.] }
+    
+    albedo = Emptyclass()
     print("Getting S2 albedo data ...")
     S2_reading_log = False
-    S2_albedo_raw, S2_ssd = get_raw_sentinel2_data(lat, lon, S2_reading_log)
+    S2_albedo_raw, S2_ssd = get_raw_sentinel2_data(lat, lon, S2_reading_log, band)
 
     # Note that the S2 data are scaled by a factor 1.E4
     # Note that the albedo values need to be divided by 10,000.
     if S2_reading_log:
         S2_albedo_raw.plot(robust=True)
 
+
+    bands = S2_albedo_raw.__dict__.keys()
+    
     # Change coordinate system to WGS84
-    S2_albedo_resampled = S2_albedo_raw.rio.reproject('EPSG:4326')
-    if S2_reading_log:
-        S2_albedo_resampled[:, :].plot(robust=True)
+    for band in bands:
+       
+        S2_albedo_band=S2_albedo_raw.__getattribute__('B02')
+        S2_albedo_resampled = S2_albedo_band.rio.reproject('EPSG:4326')
+        if S2_reading_log:
+            S2_albedo_resampled[:, :].plot(robust=True)
 
-    # Extract data on target grid
-    # Define an interpolating function interp such that interp(lat,lon) is an
-    # interpolated value. Note that data.y and data.x are lat, long coordinates.
-    interp = RegularGridInterpolator((S2_albedo_resampled.y, S2_albedo_resampled.x),
-                                     S2_albedo_resampled.values[0], method='cubic')
+        # Extract data on target grid
+        # Define an interpolating function interp such that interp(lat,lon) is an
+        # interpolated value. Note that data.y and data.x are lat, long coordinates.
+        interp = RegularGridInterpolator((S2_albedo_resampled.y, S2_albedo_resampled.x),
+                                         S2_albedo_resampled.values[0], method='cubic')
 
-    # The 2D interpolator only works with 1D lat/lon grids.
-    albedo = np.reshape(interp(np.column_stack((lat.flatten(), lon.flatten()))), lat.shape)
-
-    # Note that the albedo values need to be divided by 10,000.
-    albedo = albedo / 1e4
-    print("                      ...done")
+        # The 2D interpolator only works with 1D lat/lon grids.
+        # Note that the albedo values need to be divided by 10,000.
+        alb = np.reshape(interp(np.column_stack((lat.flatten(), lon.flatten()))), lat.shape)*1.E-4
+        albedo.__setattr__(band+'_albedo',alb)
+        albedo.__setattr__(band+'_central_wave',band_spec[band][0])
+        albedo.__setattr__(band+'_band_width',band_spec[band][1])
+        print("                      ...done")
+        
     return albedo
 
+def get_sentinel2_albedo(lat,lon, conf):
 
-def get_sentinel2_albedo(gm_data, conf, band='B11'):
-
-    lon = gm_data['lon']
-    lat = gm_data['lat']
     S2_reading_log = False
     S2_albedo_raw, S2_ssd = get_raw_sentinel2_data(lat, lon, S2_reading_log, band)
 

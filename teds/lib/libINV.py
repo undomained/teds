@@ -216,7 +216,7 @@ def Gauss_Newton_iteration(retrieval_init, atm, optics, measurement, max_iter, c
 
     # we have to use k_dic because of the labeling of the forward model derivatives.
     # Something to change in a next version. I get made about the differnet labeling
-
+    
     for ispec, value in enumerate(k_dic.values()):
         if(value == 'molec_07'):  # CO2
             col = np.sum(retrieval_init['trace gases']['CO2']['ref_profile'])

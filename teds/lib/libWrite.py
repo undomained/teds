@@ -51,6 +51,7 @@ def writevariablefromname(grp, _name, dims, data):
         Data of the variable.
 
     """
+
     attr = variable_dict.get(_name)
     var = grp.createVariable(attr["name"], data.dtype, dims)
     for _ky, val in attr.items():

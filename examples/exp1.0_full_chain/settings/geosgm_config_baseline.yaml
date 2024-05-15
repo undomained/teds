@@ -1,0 +1,22 @@
+atmosphere:
+    nlay: 30                    #number of atmospheric layers
+    dzlay: 1000                 #geometrical thickness of the layers [m]
+        
+afgl:                           #configure use of AFGL background
+    afgl_only: False            #true means homogenous AFGL background only
+    gases: ["co2", "h2o", "ch4"]
+    
+meteo:                          #configure use of microHH plume simulation
+  dump: "tmp/microHH.pkl"
+  path_data: "/media/jochen/SRON_Data/microHH/Jaenschwalde/"
+  filesuffix: "src3_20180523_1100"  # sourcename_yyyymmdd_hhmm
+  gases: ["co2", "no2", "no"]
+            
+scale_gas:                  #only relevant for AFGL profiles 
+    xco2: 410.              #ppm
+    xch4: 1800.             #ppb
+    xh2o: 10000.            #ppm
+
+S2:
+    force_data_ret:   False               # flag to force Sentinel 2 calculation
+    band_section: ['B02', 'B03', 'B11']   # use e.g. https://en.wikipedia.org/wiki/Sentinel-2 for band defintion

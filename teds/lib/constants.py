@@ -19,3 +19,8 @@ MCH4         = 16.04E-3           # Molar mass CH4 [kg/mol]
 LH2O         = 2.5E6              # Latent heat of condensation for water [J/kg]
 PSTD         = 1013.25            # Standard pressure [hPa]
 
+scale_Xco2   = 1.E6               #ppm
+scale_Xch4   = 1.E9               #ppb
+scale_Xh2o   = 1.E6               #ppm
+scale_Xno    = 1.E9               #ppb
+scale_Xno2   = 1.E9               #ppb

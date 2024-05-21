@@ -2,7 +2,6 @@
 // in the LICENSE file in the root directory of this project.
 
 #include "header.h"
-#include "git.h"
 #include "functions.h"
 #include "logger.h"
 #include "netcdf_object.h"
@@ -58,7 +57,6 @@ int NetCDF_object::open( // {{{
         netcdf_check(this,ncid->putAtt("Conventions","CF-1.6"));
         netcdf_check(this,ncid->putAtt("institution","SRON Netherlands Institute for Space Research"));
         netcdf_check(this,ncid->putAtt("instrument","TANGO"));
-        netcdf_check(this,ncid->putAtt("processing_version",git_tag));
         netcdf_check(this,ncid->putAtt("product_name",filename));
         netcdf_check(this,ncid->putAtt("project","TANGO Project"));
         //netcdf_check(this,ncid->putAtt("creator_email","SPEXone-MPC@sron.nl"));

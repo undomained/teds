@@ -5,7 +5,6 @@
 # tango_l1b.x target.
 
 target_sources(tango_l1b.x PRIVATE
-  # Entry points
   driver.cpp
   processor.cpp
   array.cpp
@@ -15,49 +14,26 @@ target_sources(tango_l1b.x PRIVATE
   inversion.cpp
   lininv.cpp
   matrix.cpp
-  multigaussfit.cpp
   netcdf_object.cpp
   planet.cpp
   settings.cpp
-  splitgaussfit.cpp
-  theodolite.cpp
   vector.cpp
   logger.cpp
   batch.cpp
   binningtable.cpp
   ckd.cpp
-  darkcal.cpp
-  dimcal.cpp
-  fovcal.cpp
-  l1a_calibration.cpp
   l1a.cpp
   l1a_file_metadata.cpp
   l1a_flight.cpp
   l1a_manager.cpp
   l1b.cpp
-  l1c.cpp
   l1x.cpp
   main.cpp
-  noisecal.cpp
-  nonlincal.cpp
-  prnucal.cpp
-  radcal.cpp
   settings_main.cpp
   settings_proc.cpp
-  straycal.cpp
-  swathcal.cpp
-  wavecal.cpp
-  tango_cal.cpp
-  l1a_frames.cpp
   cubic_spline.cpp
   parallel.cpp
 )
-
-add_custom_target(gitfile
-  COMMAND ${CMAKE_COMMAND}
-  -D PROJECT_SOURCE_DIR=${PROJECT_SOURCE_DIR}
-  -P ${PROJECT_SOURCE_DIR}/cmake/modules/get_git_info.cmake)
-add_dependencies(tango_l1b.x gitfile)
 
 target_include_directories(tango_l1b.x PUBLIC
   ${CMAKE_CURRENT_BINARY_DIR})

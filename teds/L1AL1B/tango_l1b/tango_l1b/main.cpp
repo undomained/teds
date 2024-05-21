@@ -4,7 +4,6 @@
 #include "header.h"
 #include "functions.h"
 #include "logger.h"
-#include "tango_cal.h"
 #include "driver.h"
 
 // Argument switches. {{{
@@ -207,13 +206,6 @@ int main( // {{{
         Spexone_cal prog(&trunk);
         // Execute the program.
         stat = prog.execute(settings_file,flags[iswitch_foldsettings]);
-    } else if (strcmp(instrument_cal_choice.c_str(), "tango") == 0){
-        Tango_cal prog(&trunk);
-        // Execute the program.
-        stat = prog.execute(settings_file,flags[iswitch_foldsettings]);
-    } else {
-        printf("Error: intrument_cal '%s' is not recognized. Should be either 'spexone' or 'tango'. Exiting.\n", instrument_cal_choice.c_str());
-        return 1;
     }
 
 

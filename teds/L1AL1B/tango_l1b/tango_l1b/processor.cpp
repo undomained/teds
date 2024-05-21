@@ -13,8 +13,6 @@
 #include "batch.h"
 #include "l1a_manager.h"
 #include "l1a_flight.h"
-#include "l1a_calibration.h"
-#include "l1a_frames.h"
 #include "parallel.h"
 #include "processor.h"
 
@@ -111,12 +109,7 @@ int Processor::execute( // {{{
         // The settings is used to acquire information from, the L1A file list and
         // eventually some subset information.
         unique_ptr<L1A_manager> l1am;
-        if (set->l1a_type == L1A_FLIGHT) l1am = make_unique<L1A_flight>(this);
-        else if (set->l1a_type == L1A_CALIBRATION) l1am = make_unique<L1A_calibration>(this);
-        else if (set->l1a_type == L1A_FRAMES) l1am = make_unique<L1A_frames>(this);
-        else {
-            raise_error("Error: Non-existing L1A style given.");
-        }
+        l1am = make_unique<L1A_flight>(this);
 
         handle(l1am->init(set,ckd,&orb)); // Constructor with error handling.
 

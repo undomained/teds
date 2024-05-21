@@ -2,7 +2,7 @@
 # the LICENSE file in the root directory of this project.
 
 # CMake
-cmake_minimum_required(VERSION 3.7.2)
+cmake_minimum_required(VERSION 3.25)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH}
   ${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules)
 
@@ -16,7 +16,7 @@ else()
 endif()
 
 # Project
-project(ckdmodel VERSION 1.0 LANGUAGES CXX)
+project(tango_im VERSION 1.0 LANGUAGES CXX)
 
 # Options and variables
 set(INCLUDE_PATHS "" CACHE STRING
@@ -37,25 +37,25 @@ if (NOT EXISTS ${CMAKE_BINARY_DIR}/CMakeCache.txt)
 endif()
 
 # Define main target
-add_executable(ckdmodel "")
-target_compile_features(ckdmodel PUBLIC cxx_std_20)
+add_executable(tango_im.x "")
+target_compile_features(tango_im.x PUBLIC cxx_std_20)
 
 # MPI (Test program does not need MPI, maybe later)
 if (USE_MPI)
-  target_compile_definitions(ckdmodel PUBLIC USE_MPI)
+  target_compile_definitions(tango_im.x PUBLIC USE_MPI)
   message("Using MPI")
 else()
   message("Not using MPI")
 endif()
 
 # Process user defined include paths and libraries
-target_include_directories(ckdmodel PUBLIC ${INCLUDE_PATHS})
+target_include_directories(tango_im.x PUBLIC ${INCLUDE_PATHS})
 # Convert variables to list first
 foreach(_var LIBRARIES LIBRARY_PATHS INCLUDE_PATHS)
   convert_to_list(${_var})
 endforeach()
 generate_library_targets(LIBRARY_PATHS LIBRARIES)
-target_link_libraries(ckdmodel PRIVATE ${LIBRARIES})
+target_link_libraries(tango_im.x PRIVATE ${LIBRARIES})
 
 # Print info
 message(
@@ -66,4 +66,4 @@ message("Build configuration: ${CMAKE_BUILD_TYPE}")
 message("Install location: ${CMAKE_INSTALL_PREFIX}")
 
 # Sources
-add_subdirectory(SRC)
+add_subdirectory(tango_im)

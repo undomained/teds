@@ -19,7 +19,7 @@
 #include "radcal.h"
 #include "l1b.h"
 #include "l1c.h"
-#include "spexone_cal.h"
+#include "driver.h"
 
 Spexone_cal::Spexone_cal( // {{{
     Logger *creator

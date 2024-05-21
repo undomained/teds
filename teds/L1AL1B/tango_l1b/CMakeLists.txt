@@ -2,7 +2,7 @@
 # the LICENSE file in the root directory of this project.
 
 # CMake
-cmake_minimum_required(VERSION 3.7.2)
+cmake_minimum_required(VERSION 3.25)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH}
   ${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules)
@@ -18,7 +18,7 @@ else()
 endif()
 
 # Project
-project(tango VERSION 1.0 LANGUAGES CXX)
+project(tango_l1b VERSION 1.0 LANGUAGES CXX)
 
 # Options and variables
 set(INCLUDE_PATHS "" CACHE STRING
@@ -41,25 +41,25 @@ if (NOT EXISTS ${CMAKE_BINARY_DIR}/CMakeCache.txt)
 endif()
 
 # Define main target
-add_executable(tango_l1b "")
-target_compile_features(tango_l1b PUBLIC cxx_std_20)
+add_executable(tango_l1b.x "")
+target_compile_features(tango_l1b.x PUBLIC cxx_std_20)
 
 # MPI (Test program does not need MPI, maybe later)
 if (USE_MPI)
-  target_compile_definitions(tango_l1b PUBLIC USE_MPI)
+  target_compile_definitions(tango_l1b.x PUBLIC USE_MPI)
   message("Using MPI")
 else()
   message("Not using MPI")
 endif()
 
 # Process user defined include paths and libraries
-target_include_directories(tango_l1b PUBLIC ${INCLUDE_PATHS})
+target_include_directories(tango_l1b.x PUBLIC ${INCLUDE_PATHS})
 # Convert variables to list first
 foreach(_var LIBRARIES LIBRARY_PATHS INCLUDE_PATHS)
   convert_to_list(${_var})
 endforeach()
 generate_library_targets(LIBRARY_PATHS LIBRARIES)
-target_link_libraries(tango_l1b PRIVATE ${LIBRARIES})
+target_link_libraries(tango_l1b.x PRIVATE ${LIBRARIES})
 
 # Print info
 message(
@@ -70,6 +70,6 @@ message("Build configuration: ${CMAKE_BUILD_TYPE}")
 message("Install location: ${CMAKE_INSTALL_PREFIX}")
 
 # Sources
-add_subdirectory(tango)
+add_subdirectory(tango_l1b)
 add_subdirectory(external/gadfit)
-target_link_libraries(tango_l1b PUBLIC gadfit)
+target_link_libraries(tango_l1b.x PUBLIC gadfit)

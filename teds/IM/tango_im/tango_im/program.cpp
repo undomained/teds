@@ -1,6 +1,5 @@
 #include "functions.h"
 #include "header.h"
-#include "git.h"
 #include "logger.h"
 #include "netcdf_object.h"
 #include "settings_main.h"
@@ -29,9 +28,6 @@ int Program::execute( // {{{
     bool foldsettings
 )
 {
-
-    writelog(log_info,"%s %s (%s)", "CKD instrument model", git_tag.c_str(), git_date.c_str());
-    writelog(log_debug,"Commit: %s",git_commit.c_str());
 
     // Log the settings into the log file.
     // This scope makes sure to clean any I/O-related stuff from the stack.

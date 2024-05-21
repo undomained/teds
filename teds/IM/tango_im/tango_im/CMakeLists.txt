@@ -1,4 +1,7 @@
-target_sources(ckdmodel PRIVATE
+# This source code is licensed under the 3-clause BSD license found in
+# the LICENSE file in the root directory of this project.
+
+target_sources(tango_im.x PRIVATE
   array.cpp
   binningtable.cpp
   bspline.cpp
@@ -25,23 +28,18 @@ target_sources(ckdmodel PRIVATE
   linear_spline.cpp
 )
 
-get_target_property(_sources ckdmodel SOURCES)
-add_custom_target(gitfile
-  COMMAND ${CMAKE_COMMAND}
-  -D PROJECT_SOURCE_DIR=${PROJECT_SOURCE_DIR}
-  -P ${PROJECT_SOURCE_DIR}/cmake/modules/get_git_info.cmake)
-add_dependencies(ckdmodel gitfile)
+get_target_property(_sources tango_im.x SOURCES)
 
-target_include_directories(ckdmodel PUBLIC
+target_include_directories(tango_im.x PUBLIC
   ${CMAKE_CURRENT_BINARY_DIR})
 
 # Link against a linear algebra library
 if (LINALG_FLAVOR MATCHES "mkl")
   # If LINALG_FLAVOR has been set then use that library
   find_package(MKL REQUIRED)
-  target_include_directories(ckdmodel PUBLIC ${MKL_INCLUDE_DIR})
-  target_link_libraries(ckdmodel PUBLIC ${MKL_LIBRARIES})
-  target_compile_definitions(ckdmodel PUBLIC USE_MKL)
+  target_include_directories(tango_im.x PUBLIC ${MKL_INCLUDE_DIR})
+  target_link_libraries(tango_im.x PUBLIC ${MKL_LIBRARIES})
+  target_compile_definitions(tango_im.x PUBLIC USE_MKL)
   set(linalg_library_name "MKL")
 else()
   # Otherwise attempt to detect if MKL is used
@@ -52,7 +50,7 @@ else()
     "-DLINK_DIRECTORIES=${LIBRARY_PATHS}"
     "-DLINK_LIBRARIES=${LIBRARIES}")
   if (LINALG_TEST)
-    target_compile_definitions(ckdmodel PUBLIC USE_MKL)
+    target_compile_definitions(tango_im.x PUBLIC USE_MKL)
     set(linalg_library_name "MKL")
   else()
     set(linalg_library_name "system default")

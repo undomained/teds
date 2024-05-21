@@ -5,7 +5,7 @@
 #include "functions.h"
 #include "logger.h"
 #include "tango_cal.h"
-#include "spexone_cal.h"
+#include "driver.h"
 
 // Argument switches. {{{
 const size_t nswitch = 3;

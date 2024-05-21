@@ -1,7 +1,13 @@
 # This source code is licensed under the 3-clause BSD license found in
 # the LICENSE file in the root directory of this project.
 
-target_sources(tango_l1b PRIVATE
+# Add source files and definitions (e.g. project version) to the
+# tango_l1b.x target.
+
+target_sources(tango_l1b.x PRIVATE
+  # Entry points
+  driver.cpp
+  processor.cpp
   array.cpp
   bspline.cpp
   fourier.cpp
@@ -35,7 +41,6 @@ target_sources(tango_l1b PRIVATE
   noisecal.cpp
   nonlincal.cpp
   prnucal.cpp
-  processor.cpp
   radcal.cpp
   settings_main.cpp
   settings_proc.cpp
@@ -43,7 +48,6 @@ target_sources(tango_l1b PRIVATE
   swathcal.cpp
   wavecal.cpp
   tango_cal.cpp
-  spexone_cal.cpp
   l1a_frames.cpp
   cubic_spline.cpp
   parallel.cpp
@@ -53,18 +57,18 @@ add_custom_target(gitfile
   COMMAND ${CMAKE_COMMAND}
   -D PROJECT_SOURCE_DIR=${PROJECT_SOURCE_DIR}
   -P ${PROJECT_SOURCE_DIR}/cmake/modules/get_git_info.cmake)
-add_dependencies(tango_l1b gitfile)
+add_dependencies(tango_l1b.x gitfile)
 
-target_include_directories(tango_l1b PUBLIC
+target_include_directories(tango_l1b.x PUBLIC
   ${CMAKE_CURRENT_BINARY_DIR})
 
 # Link against a linear algebra library
 if (LINALG_FLAVOR MATCHES "mkl")
   # If LINALG_FLAVOR has been set then use that library
   find_package(MKL REQUIRED)
-  target_include_directories(tango_l1b PUBLIC ${MKL_INCLUDE_DIR})
-  target_link_libraries(tango_l1b PUBLIC ${MKL_LIBRARIES})
-  target_compile_definitions(tango_l1b PUBLIC USE_MKL)
+  target_include_directories(tango_l1b.x PUBLIC ${MKL_INCLUDE_DIR})
+  target_link_libraries(tango_l1b.x PUBLIC ${MKL_LIBRARIES})
+  target_compile_definitions(tango_l1b.x PUBLIC USE_MKL)
   set(linalg_library_name "MKL")
 else()
   # Otherwise attempt to detect if MKL is used
@@ -75,7 +79,7 @@ else()
     "-DLINK_DIRECTORIES=${LIBRARY_PATHS}"
     "-DLINK_LIBRARIES=${LIBRARIES}")
   if (LINALG_TEST)
-    target_compile_definitions(tango_l1b PUBLIC USE_MKL)
+    target_compile_definitions(tango_l1b.x PUBLIC USE_MKL)
     set(linalg_library_name "MKL")
   else()
     set(linalg_library_name "system default")

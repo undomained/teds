@@ -1,5 +1,4 @@
 #include "header.h"
-#include "git.h"
 #include "functions.h"
 #include "logger.h"
 #include "netcdf_object.h"
@@ -45,17 +44,13 @@ int NetCDF_object::open( // {{{
         netcdf_check(this,ncid->putAtt("Conventions","CF-1.6"));
         netcdf_check(this,ncid->putAtt("institution","SRON Netherlands Institute for Space Research"));
         netcdf_check(this,ncid->putAtt("instrument","TANGO"));
-        netcdf_check(this,ncid->putAtt("processing_version",git_tag));
         netcdf_check(this,ncid->putAtt("product_name",filename));
         netcdf_check(this,ncid->putAtt("project","TANGO Project"));
-        //netcdf_check(this,ncid->putAtt("creator_email","@sron.nl"));
         netcdf_check(this,ncid->putAtt("creator_name","SRON/Earth Science"));
         netcdf_check(this,ncid->putAtt("creator_url","https://www.sron.nl/missions-earth"));
-        //netcdf_check(this,ncid->putAtt("publisher_email","@sron.nl"));
         netcdf_check(this,ncid->putAtt("publisher_name","SRON/Earth Science"));
         netcdf_check(this,ncid->putAtt("publisher_url","https://www.sron.nl/missions-earth"));
         netcdf_check(this,ncid->putAtt("date_created",now_timestring()));
-        //netcdf_check(this,ncid->putAtt("git_commit",git_commit));
     }
     return 0;
 } // }}}

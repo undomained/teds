@@ -1,8 +1,9 @@
-#ifndef SETTINGS_ISRF_H
-#define SETTINGS_ISRF_H
+#pragma once
 
 #include "header.h"
 #include "settings.h"
+
+namespace tango {
 
 // ISRF settings.
 class Settings_isrf : public Settings {
@@ -30,4 +31,4 @@ class Settings_isrf : public Settings {
 
 };
 
-#endif
+} // namespace tango

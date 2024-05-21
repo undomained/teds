@@ -1,10 +1,11 @@
 // This source code is licensed under the 3-clause BSD license found
 // in the LICENSE file in the root directory of this project.
 
-#ifndef MATRIX_H
-#define MATRIX_H
+#pragma once
 
 #include "header.h"
+
+namespace tango {
 
 // Forward declaration.
 class Logger;
@@ -189,4 +190,4 @@ class Matrix {
 
 };
 
-#endif
+} // namespace tango

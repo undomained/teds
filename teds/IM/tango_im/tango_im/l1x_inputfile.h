@@ -1,8 +1,9 @@
-#ifndef L1X_INPUTFILE_H
-#define L1X_INPUTFILE_H
+#pragma once
 
 #include "header.h"
 #include "logger.h"
+
+namespace tango {
 
 // Forward declaration.
 class Netcdf_object;
@@ -52,4 +53,4 @@ class L1X_inputfile : public Logger { // {{{
 
 }; // }}}
 
-#endif
+} // namespace tango

@@ -4,6 +4,8 @@
 #include "header.h"
 #include "batch.h"
 
+namespace tango {
+
 Batch::Batch() {}
 Batch::~Batch() {}
 
@@ -17,3 +19,4 @@ void Batch::setSize( // {{{
     remove.resize(nl1a,true); // Default remove flag.
 } // }}}
 
+} // namespace tango

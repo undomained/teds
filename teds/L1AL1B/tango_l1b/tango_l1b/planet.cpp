@@ -7,6 +7,8 @@
 #include "netcdf_object.h"
 #include "planet.h"
 
+namespace tango {
+
 // Constructor.
 Planet::Planet( // {{{
     Logger *creator,
@@ -269,3 +271,4 @@ int Planet::dem( // {{{
 
 } // }}}
 
+} // namespace tango

@@ -17,6 +17,8 @@
 #include "program.h"
 #include <random>
 
+namespace tango {
+
 Program::Program( // {{{
     Logger *creator
 ) : Logger(creator)
@@ -445,3 +447,4 @@ int Program::execute( // {{{
 
 } // }}}
 
+} // namespace tango

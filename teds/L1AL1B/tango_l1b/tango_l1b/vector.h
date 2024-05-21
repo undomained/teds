@@ -1,10 +1,11 @@
 // This source code is licensed under the 3-clause BSD license found
 // in the LICENSE file in the root directory of this project.
 
-#ifndef VECTOR_H
-#define VECTOR_H
+#pragma once
 
 #include "header.h"
+
+namespace tango {
 
 struct Vector {
     private:
@@ -84,4 +85,4 @@ struct Quaternion {
     void get(double *res);
 };
 
-#endif
+} // namespace tango

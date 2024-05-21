@@ -3,6 +3,8 @@
 #include "logger.h"
 #include "bspline.h"
 
+namespace tango {
+
 // Constructor.
 Bspline::Bspline( // {{{
     Logger *creator, // Object that creates the B-spline.
@@ -282,3 +284,4 @@ int Bspline::jacapply( // {{{
 
 } // }}}
 
+} // namespace tango

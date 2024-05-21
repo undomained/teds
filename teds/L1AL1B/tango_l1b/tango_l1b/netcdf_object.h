@@ -1,11 +1,12 @@
 // This source code is licensed under the 3-clause BSD license found
 // in the LICENSE file in the root directory of this project.
 
-#ifndef NETCDF_OBJECT_H
-#define NETCDF_OBJECT_H
+#pragma once
 
 #include "header.h"
 #include "logger.h"
+
+namespace tango {
 
 // Performs a NetCDF action and if it fails, raise error with NetCDF error message.
 #define netcdf_check(netcdf_instance,act) \
@@ -41,4 +42,4 @@ public:
     int close(bool strict=true);
 };
 
-#endif
+} // namespace tango

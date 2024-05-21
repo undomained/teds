@@ -1,11 +1,12 @@
 // This source code is licensed under the 3-clause BSD license found
 // in the LICENSE file in the root directory of this project.
 
-#ifndef LININV_H
-#define LININV_H
+#pragma once
 
 #include "header.h"
 #include "matrix.h" // Required because of member variable of type squareoption_t.
+
+namespace tango {
 
 class Lininv {
     public:
@@ -84,4 +85,4 @@ int linear_invert_outlierprotect(
     double *res // Retreived state.
 );
 
-#endif
+} // namespace tango

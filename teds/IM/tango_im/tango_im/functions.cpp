@@ -1,6 +1,8 @@
 #include "header.h"
 #include "functions.h"
 
+namespace tango {
+
 string now_timestring( // {{{
 )
 {
@@ -273,3 +275,5 @@ auto binaryFindIdx(const std::vector<double>& list, const double x) -> int
         }
     }
 }
+
+} // namespace tango

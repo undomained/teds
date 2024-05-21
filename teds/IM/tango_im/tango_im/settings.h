@@ -1,5 +1,4 @@
-#ifndef SETTINGS_H
-#define SETTINGS_H
+#pragma once
 
 #include "header.h"
 #include "logger.h"
@@ -53,6 +52,8 @@
 
 // }}}
 
+namespace tango {
+
 // Settings class. These are one class for processor settings and main settings.
 class Settings : public Logger { // {{{
 
@@ -89,4 +90,4 @@ class Settings : public Logger { // {{{
 
 }; // }}}
 
-#endif
+} // namespace tango

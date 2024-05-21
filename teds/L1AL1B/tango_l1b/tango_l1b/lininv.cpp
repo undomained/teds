@@ -6,6 +6,8 @@
 #include "matrix.h"
 #include "lininv.h"
 
+namespace tango {
+
 // Sorry, this interface is terrible, all arguments in a different form.
 // Unfortunately, this is the only one that works.
 int invert_s_y( // {{{
@@ -289,3 +291,4 @@ int linear_invert_outlierprotect( // {{{
 
 } // }}}
 
+} // namespace tango

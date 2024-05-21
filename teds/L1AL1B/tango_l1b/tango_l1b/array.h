@@ -1,12 +1,13 @@
 // This source code is licensed under the 3-clause BSD license found
 // in the LICENSE file in the root directory of this project.
 
-#ifndef ARRAY_H
-#define ARRAY_H
+#pragma once
 
 #include "header.h"
 
 #define SORT_BRUTEFORCE_THRESHOLD 7
+
+namespace tango {
 
 // This class has no objects. The constructor and destructor are private and even
 // their own methods do not create object. All member functions are static, so it
@@ -71,4 +72,4 @@ class Array {
 template class Array<double>;
 template class Array<uint64_t>;
 
-#endif
+} // namespace tango

@@ -1,8 +1,9 @@
-#ifndef FRAME_H
-#define FRAME_H
+#pragma once
 
 #include "header.h"
 #include "logger.h"
+
+namespace tango {
 
 class Settings_l1b;
 class Settings_isrf;
@@ -116,4 +117,4 @@ class Frame : public Logger { // {{{
 
 }; // }}}
 
-#endif
+} // namespace tango

@@ -9,6 +9,8 @@
 #include "l1b.h"
 #include "driver.h"
 
+namespace tango {
+
 Spexone_cal::Spexone_cal( // {{{
     Logger *creator
 ) : Logger(creator)
@@ -104,3 +106,4 @@ int Spexone_cal::execute( // {{{
 
 } // }}}
 
+} // namespace tango

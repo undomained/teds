@@ -8,6 +8,8 @@
 
 #include <numeric>
 
+namespace tango {
+
 // Constructor, only taking over the logging.
 NetCDF_object::NetCDF_object( // {{{
     Logger *creator
@@ -122,3 +124,4 @@ int NetCDF_object::close( // {{{
     return 0;
 } // }}}
 
+} // namespace tango

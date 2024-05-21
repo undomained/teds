@@ -1,18 +1,19 @@
 // This source code is licensed under the 3-clause BSD license found
 // in the LICENSE file in the root directory of this project.
 
-#ifndef CKD_H
-#define CKD_H
+#pragma once
 
 #include "header.h"
 #include "logger.h"
 #include "settings_proc.h" // For members with class Calibration_options.
 
+#include <complex>
+
+namespace tango {
+
 // Forward declaration.
 class NetCDF_object;
 class Settings_main;
-
-#include <complex>
 
 class CKD : public Logger { // {{{
 
@@ -255,4 +256,4 @@ class CKD : public Logger { // {{{
 
 }; // }}}
 
-#endif
+} // namespace tango

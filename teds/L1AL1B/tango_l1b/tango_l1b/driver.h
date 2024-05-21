@@ -1,8 +1,7 @@
 // This source code is licensed under the 3-clause BSD license found
 // in the LICENSE file in the root directory of this project.
 
-#ifndef SPEXONE_CAL_H
-#define SPEXONE_CAL_H
+#pragma once
 
 #include "header.h"
 #include "logger.h"
@@ -10,6 +9,8 @@
 #ifdef USE_MPI
 #include <mpi.h>
 #endif
+
+namespace tango {
 
 class Spexone_cal : public Logger {
 
@@ -28,4 +29,4 @@ class Spexone_cal : public Logger {
 
 };
 
-#endif
+} // namespace tango

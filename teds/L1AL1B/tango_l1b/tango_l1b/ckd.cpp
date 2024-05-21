@@ -9,6 +9,8 @@
 #include "settings_proc.h"
 #include "ckd.h"
 
+namespace tango {
+
 // Constructor only passing argument to the parent.
 CKD::CKD( // {{{
     Logger *creator
@@ -972,3 +974,4 @@ int CKD::check_opt( // {{{
 
 } // }}}
 
+} // namespace tango

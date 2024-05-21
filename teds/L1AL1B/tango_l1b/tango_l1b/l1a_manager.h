@@ -1,11 +1,12 @@
 // This source code is licensed under the 3-clause BSD license found
 // in the LICENSE file in the root directory of this project.
 
-#ifndef L1A_MANAGER_H
-#define L1A_MANAGER_H
+#pragma once
 
 #include "header.h"
 #include "logger.h"
+
+namespace tango {
 
 // Forward declaration.
 class Calibration_options;
@@ -86,4 +87,4 @@ class L1A_manager : public Logger { // {{{
 
 }; // }}}
 
-#endif
+} // namespace tango

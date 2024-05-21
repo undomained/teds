@@ -1,8 +1,9 @@
-#ifndef SETTINGS_L1B_H
-#define SETTINGS_L1B_H
+#pragma once
 
 #include "header.h"
 #include "settings.h"
+
+namespace tango {
 
 class NetCDF_object;
 class CKD;
@@ -50,4 +51,4 @@ class Settings_l1b : public Settings {
 
 };
 
-#endif
+} // namespace tango

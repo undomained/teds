@@ -1,13 +1,14 @@
 // This source code is licensed under the 3-clause BSD license found
 // in the LICENSE file in the root directory of this project.
 
-#ifndef L1B_H
-#define L1B_H
+#pragma once
 
 #include "header.h"
 #include "settings_proc.h"
 #include "parallel.h"
 #include "processor.h"
+
+namespace tango {
 
 // Forward declaration.
 class NetCDF_object;
@@ -275,4 +276,4 @@ class L1B : public Processor { // {{{
     std::vector<float> tmp_buf_float {};
 }; // }}}
 
-#endif
+} // namespace tango

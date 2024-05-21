@@ -1,8 +1,9 @@
-#ifndef SETTINGS_MAIN_H
-#define SETTINGS_MAIN_H
+#pragma once
 
 #include "header.h"
 #include "settings.h"
+
+namespace tango {
 
 // Main settings.
 class Settings_main : public Settings {
@@ -63,4 +64,4 @@ class Settings_main : public Settings {
 
 };
 
-#endif
+} // namespace tango

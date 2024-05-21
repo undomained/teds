@@ -5,6 +5,8 @@
 #include "functions.h"
 #include "array.h"
 
+namespace tango {
+
 string now_timestring( // {{{
 )
 {
@@ -303,3 +305,4 @@ void fill_holes( // {{{
     }
 } // }}}
 
+} // namespace tango

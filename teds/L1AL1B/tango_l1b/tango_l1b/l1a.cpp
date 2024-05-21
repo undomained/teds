@@ -5,8 +5,8 @@
 #include "functions.h"
 #include "logger.h"
 #include "matrix.h"
-#include "lininv.h"
 #include "fourier.h"
+#include "lininv.h"
 #include "bspline.h"
 #include "netcdf_object.h"
 #include "settings_proc.h"
@@ -17,6 +17,8 @@
 #include "l1a.h"
 
 #include "cubic_spline.h"
+
+namespace tango {
 
 // Constructor.
 L1A::L1A( // {{{
@@ -900,3 +902,4 @@ int L1A::extract( // {{{
 
 } // }}}
 
+} // namespace tango

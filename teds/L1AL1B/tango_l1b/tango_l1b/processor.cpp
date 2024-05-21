@@ -4,7 +4,6 @@
 #include "header.h"
 #include "functions.h"
 #include "logger.h"
-#include "fourier.h"
 #include "bspline.h"
 #include "netcdf_object.h"
 #include "settings_main.h"
@@ -15,6 +14,8 @@
 #include "l1a_flight.h"
 #include "parallel.h"
 #include "processor.h"
+
+namespace tango {
 
 // Constructor. This directly provides access to the CKD. Child-class
 // constructors use the CKD, for the skip flag (if it is a skippable step).
@@ -354,3 +355,4 @@ int Processor::batch_one( // {{{
     return 0;
 } // }}}
 
+} // namespace tango

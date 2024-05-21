@@ -6,6 +6,8 @@
 #include "logger.h"
 #include "settings.h"
 
+namespace tango {
+
 // Constructor, only constructing the logger part.
 Settings::Settings( // {{{
     Logger *creator
@@ -106,3 +108,4 @@ int Settings::init( // {{{
 
 } // }}}
 
+} // namespace tango

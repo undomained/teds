@@ -6,6 +6,8 @@
 #include "logger.h"
 #include "matrix.h"
 
+namespace tango {
+
 void Matrix::matmul_sl_sym( // {{{
     size_t sz,
     squareoption_t opt,
@@ -349,3 +351,4 @@ void Matrix::printmatrix_sym( // {{{
     }
 } // }}}
 
+} // namespace tango

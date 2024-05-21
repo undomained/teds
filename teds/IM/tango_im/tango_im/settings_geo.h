@@ -1,9 +1,10 @@
-#ifndef SETTINGS_GEO_H
-#define SETTINGS_GEO_H
+#pragma once
 
 #include "header.h"
 #include "logger.h"
 #include "settings.h"
+
+namespace tango {
 
 class Settings_geo : public Settings { // {{{
 
@@ -34,4 +35,4 @@ class Settings_geo : public Settings { // {{{
 
 }; // }}}
 
-#endif
+} // namespace tango

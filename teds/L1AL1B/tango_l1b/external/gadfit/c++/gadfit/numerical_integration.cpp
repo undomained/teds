@@ -16,6 +16,7 @@
 #include "fit_function.h"
 #include "gauss_kronrod_parameters.h"
 
+#include <algorithm>
 #include <numeric>
 
 #include <iomanip>

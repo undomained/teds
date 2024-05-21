@@ -1,8 +1,9 @@
-#ifndef BSPLINE_H
-#define BSPLINE_H
+#pragma once
 
 #include "header.h"
 #include "logger.h"
+
+namespace tango {
 
 class Bspline : public Logger {
 
@@ -36,4 +37,4 @@ class Bspline : public Logger {
 
 };
 
-#endif
+} // namespace tango

@@ -1,7 +1,8 @@
-#ifndef LOGGER_H
-#define LOGGER_H
+#pragma once
 
 #include "header.h"
+
+namespace tango {
 
 enum loglevel_t {
     log_verbose = 0, // Log on screen only when running with -v.
@@ -79,4 +80,4 @@ class Logger {
 
 };
 
-#endif
+} // namespace tango

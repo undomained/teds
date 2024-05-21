@@ -1,11 +1,12 @@
 // This source code is licensed under the 3-clause BSD license found
 // in the LICENSE file in the root directory of this project.
 
-#ifndef SETTINGS_PROC_H
-#define SETTINGS_PROC_H
+#pragma once
 
 #include "header.h"
 #include "settings.h"
+
+namespace tango {
 
 // Forward declaration.
 class Settings_main;
@@ -146,4 +147,4 @@ class Settings_proc : public Settings {
 
 };
 
-#endif
+} // namespace tango

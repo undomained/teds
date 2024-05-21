@@ -12,6 +12,8 @@
 
 #include <vector>
 
+namespace tango {
+
 class LinearSpline
 {
 private:
@@ -28,3 +30,5 @@ public:
                  const std::vector<double>& y_values);
     auto eval(const double x) const -> double;
 };
+
+} // namespace tango

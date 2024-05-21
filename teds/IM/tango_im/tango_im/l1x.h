@@ -1,8 +1,9 @@
-#ifndef L1X_H
-#define L1X_H
+#pragma once
 
 #include "header.h"
 #include "logger.h"
+
+namespace tango {
 
 // Forward declaration.
 class NetCDF_object;
@@ -99,4 +100,4 @@ class L1X: public Logger { // {{{
 
 }; // }}}
 
-#endif
+} // namespace tango

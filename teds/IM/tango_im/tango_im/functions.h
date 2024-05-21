@@ -1,9 +1,10 @@
-#ifndef FUNCTIONS_H
-#define FUNCTIONS_H
+#pragma once
 
 #include "header.h"
 
 // Header of normal functions.
+
+namespace tango {
 
 string now_timestring();
 int juliandate(
@@ -54,4 +55,4 @@ void fill_holes(
 [[nodiscard]] auto binaryFindIdx(const std::vector<double>& list,
                                  const double x) -> int;
 
-#endif
+} // namespace tango

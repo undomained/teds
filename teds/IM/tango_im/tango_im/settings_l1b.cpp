@@ -5,6 +5,8 @@
 #include "settings_l1b.h"
 #include "ckd.h"
 
+namespace tango {
+
 // Constructor: Set the tag to the right content.
 Settings_l1b::Settings_l1b(
     Logger *creator
@@ -33,3 +35,5 @@ int Settings_l1b::init_common( // {{{
     return 0;
 
 } // }}}
+
+} // namespace tango

@@ -1,11 +1,12 @@
 // This source code is licensed under the 3-clause BSD license found
 // in the LICENSE file in the root directory of this project.
 
-#ifndef L1A_FLIGHT_H
-#define L1A_FLIGHT_H
+#pragma once
 
 #include "header.h"
 #include "l1a_manager.h"
+
+namespace tango {
 
 class L1A_flight : public L1A_manager { // {{{
 
@@ -28,4 +29,4 @@ class L1A_flight : public L1A_manager { // {{{
 
 }; // }}}
 
-#endif
+} // namespace tango

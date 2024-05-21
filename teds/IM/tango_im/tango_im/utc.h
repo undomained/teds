@@ -1,8 +1,9 @@
-#ifndef UTC_H
-#define UTC_H
+#pragma once
 
 #include "header.h"
 #include "logger.h"
+
+namespace tango {
 
 class UTC : public Logger {
 
@@ -22,4 +23,4 @@ class UTC : public Logger {
     );
 };
 
-#endif
+} // namespace tango

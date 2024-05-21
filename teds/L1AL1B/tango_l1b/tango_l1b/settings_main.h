@@ -1,11 +1,12 @@
 // This source code is licensed under the 3-clause BSD license found
 // in the LICENSE file in the root directory of this project.
 
-#ifndef SETTINGS_MAIN_H
-#define SETTINGS_MAIN_H
+#pragma once
 
 #include "header.h"
 #include "settings.h"
+
+namespace tango {
 
 // Main framework settings. These are there to launch different processors in
 // a batch.
@@ -44,4 +45,4 @@ class Settings_main : public Settings {
 
 };
 
-#endif
+} // namespace tango

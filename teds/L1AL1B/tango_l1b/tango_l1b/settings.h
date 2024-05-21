@@ -1,11 +1,12 @@
 // This source code is licensed under the 3-clause BSD license found
 // in the LICENSE file in the root directory of this project.
 
-#ifndef SETTINGS_H
-#define SETTINGS_H
+#pragma once
 
 #include "header.h"
 #include "logger.h"
+
+namespace tango {
 
 // Settings recognition macros. {{{
 
@@ -92,4 +93,4 @@ class Settings : public Logger { // {{{
 
 }; // }}}
 
-#endif
+} // namespace tango

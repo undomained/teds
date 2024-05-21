@@ -1,12 +1,13 @@
 // This source code is licensed under the 3-clause BSD license found
 // in the LICENSE file in the root directory of this project.
 
-#ifndef PROCESSOR_H
-#define PROCESSOR_H
+#pragma once
 
 #include "header.h"
 #include "logger.h"
 #include "l1a_manager.h" // For orbit_metadata.
+
+namespace tango {
 
 class NetCDF_object;
 class Settings_main;
@@ -93,4 +94,4 @@ class Processor : public Logger { // {{{
 
 }; // }}}
 
-#endif
+} // namespace tango

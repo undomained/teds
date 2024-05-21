@@ -3,6 +3,8 @@
 #include "netcdf_object.h"
 #include "utc.h"
 
+namespace tango {
+
 UTC::UTC( // {{{
     Logger *creator
 ) : Logger(creator)
@@ -29,3 +31,4 @@ int UTC::init( // {{{
 
 } // }}}
 
+} // namespace tango

@@ -7,6 +7,8 @@
 #include "settings_main.h"
 #include "settings_proc.h"
 
+namespace tango {
+
 // Constructor that progresses the argument ultimately to its grandparent.
 Settings_proc::Settings_proc(
     Logger *creator
@@ -81,3 +83,4 @@ int Settings_proc::apply_main_settings( // {{{
 
 } // }}}
 
+} // namespace tango

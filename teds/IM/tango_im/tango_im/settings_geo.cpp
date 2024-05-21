@@ -2,6 +2,8 @@
 #include "settings.h"
 #include "settings_geo.h"
 
+namespace tango {
+
 // Settings functions.
 Settings_geo::Settings_geo( // {{{
     Logger *creator
@@ -33,3 +35,4 @@ int Settings_geo::init_common( // {{{
 
 } // }}}
 
+} // namespace tango

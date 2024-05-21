@@ -1,12 +1,13 @@
 // This source code is licensed under the 3-clause BSD license found
 // in the LICENSE file in the root directory of this project.
 
-#ifndef L1A_H
-#define L1A_H
+#pragma once
 
 #include "header.h"
 #include "logger.h"
 #include "vector.h"
+
+namespace tango {
 
 // Forward declaration.
 class Netcdf_object;
@@ -161,4 +162,4 @@ class L1A : public Logger { // {{{
 
 }; // }}}
 
-#endif
+} // namespace tango

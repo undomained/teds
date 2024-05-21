@@ -6,6 +6,8 @@
 #include "logger.h"
 #include "settings_main.h"
 
+namespace tango {
+
 // Constructor: Set the tag to the right content.
 Settings_main::Settings_main(
     Logger *creator
@@ -37,3 +39,4 @@ int Settings_main::init_common( // {{{
     return 0;
 } // }}}
 
+} // namespace tango

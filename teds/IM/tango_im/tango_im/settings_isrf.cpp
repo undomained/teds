@@ -3,6 +3,8 @@
 #include "logger.h"
 #include "settings_isrf.h"
 
+namespace tango {
+
 // Constructor: Set the tag to the right content.
 Settings_isrf::Settings_isrf(
     Logger *creator
@@ -26,3 +28,4 @@ int Settings_isrf::init_common( // {{{
 
 } // }}}
 
+} // namespace tango

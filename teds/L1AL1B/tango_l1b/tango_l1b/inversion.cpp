@@ -8,6 +8,8 @@
 #include "lininv.h"
 #include "inversion.h"
 
+namespace tango {
+
 Inversion::Inversion( // {{{
     Logger *creator, // Object that creates this instance.
     size_t a_nstate, // Number of state parameters.
@@ -259,3 +261,4 @@ int Inversion::execute_linear_invert( // {{{
 
 } // }}}
 
+} // namespace tango

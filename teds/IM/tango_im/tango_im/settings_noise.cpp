@@ -3,6 +3,8 @@
 #include "logger.h"
 #include "settings_noise.h"
 
+namespace tango {
+
 // Constructor: Set the tag to the right content.
 Settings_noise::Settings_noise(
     Logger *creator
@@ -23,3 +25,5 @@ int Settings_noise::init_common( // {{{
     recognize_setting(seed);
     return 0;
 } // }}}
+
+ } // namespace tango

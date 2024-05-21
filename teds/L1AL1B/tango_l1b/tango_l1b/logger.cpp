@@ -7,6 +7,8 @@
 
 #include <parallel.h>
 
+namespace tango {
+
 Logger::Logger( // {{{
     Logger *creator
 )
@@ -205,3 +207,5 @@ auto Logger::setInactive(const bool inactive) -> void
 {
     this->inactive = inactive;
 }
+
+} // namespace tango

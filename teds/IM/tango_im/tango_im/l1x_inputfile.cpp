@@ -6,6 +6,8 @@
 #include "l1x_inputfile.h"
 #include "array.h"
 
+namespace tango {
+
 // Constructor.
 L1X_inputfile::L1X_inputfile( // {{{
     Logger *creator
@@ -217,3 +219,4 @@ int L1X_inputfile::init( // {{{
 
 } // }}}
 
+} // namespace tango

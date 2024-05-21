@@ -1,11 +1,12 @@
 // This source code is licensed under the 3-clause BSD license found
 // in the LICENSE file in the root directory of this project.
 
-#ifndef PLANET_H
-#define PLANET_H
+#pragma once
 
 #include "header.h"
 #include "logger.h"
+
+namespace tango {
 
 // Forward declaration.
 class Vector;
@@ -76,4 +77,4 @@ class Planet : public Logger {
 
 };
 
-#endif
+} // namespace tango

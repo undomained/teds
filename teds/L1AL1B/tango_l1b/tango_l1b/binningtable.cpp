@@ -16,6 +16,8 @@
 // with just pre-binning should be defined with a table that does no
 // furtherm binning.
 
+namespace tango {
+
 // Constructor.
 Binningtable_file::Binningtable_file( // {{{
     Logger *creator
@@ -557,3 +559,4 @@ int Binningtable::explore_cell( // {{{
 
 } // }}}
 
+} // namespace tango

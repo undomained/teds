@@ -1,11 +1,12 @@
 // This source code is licensed under the 3-clause BSD license found
 // in the LICENSE file in the root directory of this project.
 
-#ifndef BINNINGTABLE_H
-#define BINNINGTABLE_H
+#pragma once
 
 #include "header.h"
 #include "logger.h"
+
+namespace tango {
 
 // Forward declaration.
 class NetCDF_object;
@@ -90,4 +91,4 @@ class Binningtable : public Logger { // {{{
 
 }; // }}}
 
-#endif
+} // namespace tango

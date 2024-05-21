@@ -1,5 +1,4 @@
-#ifndef PROGRAM_H
-#define PROGRAM_H
+#pragma once
 
 #include "header.h"
 #include "logger.h"
@@ -7,6 +6,8 @@
 #ifdef WITH_MPI
 #include <mpi.h>
 #endif
+
+namespace tango {
 
 class Program : public Logger {
 
@@ -24,4 +25,4 @@ class Program : public Logger {
 
 };
 
-#endif
+} // namespace tango

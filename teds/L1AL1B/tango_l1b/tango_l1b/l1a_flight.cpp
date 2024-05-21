@@ -10,6 +10,8 @@
 #include "l1a.h"
 #include "l1a_flight.h"
 
+namespace tango {
+
 // Constructor.
 L1A_flight::L1A_flight( // {{{
     Logger *creator
@@ -133,3 +135,4 @@ int L1A_flight::organize( // {{{
 
 } // }}}
 
+} // namespace tango

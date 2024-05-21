@@ -11,12 +11,12 @@ const size_t nswitch = 3;
 const size_t iswitch_verbose = 0; // -v
 const size_t iswitch_foldsettings = 1; // -f
 const size_t iswitch_timestamps = 2; // -t
-const vector<string> switches = {
+const std::vector<std::string> switches = {
     "-v", // Verbose.
     "-f", // Fold settings.
     "-t" // Time stamps.
 };
-const vector<string> switch_meanings = {
+const std::vector<std::string> switch_meanings = {
     "More logging on screen.", // Verbose (-v).
     "Add vim fold markers around settings in log file.", // Fold settings (-f).
     "Add time stamps in file names of any output file." // Time stamps (-t).
@@ -27,15 +27,15 @@ void printusage( // {{{
     const char *executable
 )
 {
-    string programname = executable;
+    std::string programname = executable;
     size_t pos = programname.find("/");
-    while (pos != string::npos) {
+    while (pos != std::string::npos) {
         programname = programname.substr(pos+1);
         pos = programname.find("/");
     }
-    string all_switches = "";
+    std::string all_switches = "";
     for (size_t iswitch=0 ; iswitch<nswitch ; iswitch++) {
-        all_switches += format(" [%s]",switches[iswitch].c_str());
+        all_switches += std::format(" [%s]",switches[iswitch].c_str());
     }
     printf("%s%s settings_file.cfg\n",programname.c_str(),all_switches.c_str());
     for (size_t iswitch=0 ; iswitch<nswitch ; iswitch++) {
@@ -43,17 +43,17 @@ void printusage( // {{{
     }
 } // }}}
 
-string read_key_from_config(// {{{
-    string settings_file,
-    string key
+std::string read_key_from_config(// {{{
+    std::string settings_file,
+    std::string key
 )
 {
-    ifstream fileStream(settings_file.c_str());
+    std::ifstream fileStream(settings_file.c_str());
     std::string line;
     while (getline(fileStream, line))
         {
-            istringstream is_line(line);
-            string found_key;
+            std::istringstream is_line(line);
+            std::string found_key;
             if (std::getline(is_line, found_key, '='))
             {
                 // Remove trailing spaces from key.
@@ -81,10 +81,10 @@ string read_key_from_config(// {{{
     return "";
 } // }}}
 
-string get_log_file_name(// {{{
-    string settings_file, 
-    string log_file_path,
-    string timestamp
+std::string get_log_file_name(// {{{
+    std::string settings_file, 
+    std::string log_file_path,
+    std::string timestamp
 )
 {
 
@@ -97,21 +97,21 @@ string get_log_file_name(// {{{
     size_t slashpos = settings_file.rfind("/");
     // Get position of the start of the file name (i.e. without the path)
     size_t file_name_start = 0;
-    if (slashpos != string::npos) {
+    if (slashpos != std::string::npos) {
         file_name_start = slashpos+1;
     }
     // Get the file name
-    string file_name = settings_file.substr(file_name_start);
+    std::string file_name = settings_file.substr(file_name_start);
 
     // Look for the extension dot.
     size_t dotpos = file_name.find(".");
     // Give warning and exit if settings file is without extension (then you are not running the code as described in Readme).
-    if (dotpos == string::npos) {
+    if (dotpos == std::string::npos) {
         printf("Warning: Settings file has no extension. Please provide a settings file WITH extension .cfg!\n");
         return "";
     }
 
-    string log_file = log_file_path + file_name.substr(0,dotpos) + timestamp + ".log";
+    std::string log_file = log_file_path + file_name.substr(0,dotpos) + timestamp + ".log";
     printf("logfile name: {%s}\n", log_file.c_str());
     return log_file;
 
@@ -128,10 +128,10 @@ int main( // {{{
     MPI_Init(&argc, &argv);
 #endif
 
-    vector<bool> flags(nswitch,false);
+    std::vector<bool> flags(nswitch,false);
 
     // Regular argument.
-    string settings_file = "";
+    std::string settings_file = "";
 
     for (int iarg=1 ; iarg<argc ; iarg++) {
         bool switch_found = false;
@@ -159,23 +159,23 @@ int main( // {{{
     }
 
     // Create time stamp.
-    string timestamp = "";
+    std::string timestamp = "";
     if (flags[iswitch_timestamps]) {
         // This is a slightly adapted version of the function now_timestring.
         // It has a different format and therefore also a different length.
-        time_t now = chrono::system_clock::to_time_t(chrono::system_clock::now());
+        time_t now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
         struct tm *timeinfo = localtime(&now);
         const size_t sz = 17; // With \0.
         char buffer[sz];
         strftime(buffer,sz,"_%Y%m%dT%H%M%S",timeinfo);
-        timestamp = string(buffer);
+        timestamp = std::string(buffer);
     }
 
     // At this moment no logger defined so not possible to use settings objects
     // Use fct to find log_file_path in config file
-    string log_file_path = read_key_from_config(settings_file, "log_file_path");
+    std::string log_file_path = read_key_from_config(settings_file, "log_file_path");
 
-    string log_file = get_log_file_name(settings_file, log_file_path, timestamp);
+    std::string log_file = get_log_file_name(settings_file, log_file_path, timestamp);
     if (log_file.empty()) return 1;
 
 //    // Derive log file.
@@ -198,12 +198,12 @@ int main( // {{{
 //        return 1;
 //    }
 
-    Logger trunk(log_file,flags[iswitch_verbose],timestamp);
+    tango::Logger trunk(log_file,flags[iswitch_verbose],timestamp);
     int stat;
-    string instrument_cal_choice = read_key_from_config(settings_file, "instrument_cal");
+    std::string instrument_cal_choice = read_key_from_config(settings_file, "instrument_cal");
     printf("Info: instrument choice: --%s-- \n",instrument_cal_choice.c_str());
     if (strcmp(instrument_cal_choice.c_str(), "spexone") == 0){
-        Spexone_cal prog(&trunk);
+        tango::Spexone_cal prog(&trunk);
         // Execute the program.
         stat = prog.execute(settings_file,flags[iswitch_foldsettings]);
     }

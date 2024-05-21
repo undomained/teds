@@ -1,10 +1,11 @@
 // This source code is licensed under the 3-clause BSD license found
 // in the LICENSE file in the root directory of this project.
 
-#ifndef FUNCTIONS_H
-#define FUNCTIONS_H
+#pragma once
 
 #include "header.h"
+
+namespace tango {
 
 // Header of normal functions.
 
@@ -47,4 +48,4 @@ void fill_holes(
     double *arr
 );
 
-#endif
+} // namespace tango

@@ -1,5 +1,4 @@
-#ifndef HEADER_H
-#define HEADER_H
+#pragma once
 
 // This h-file is always included.
 
@@ -22,6 +21,8 @@
 #include <stdio.h>
 #include <chrono>
 #include <netcdf>
+
+namespace tango {
 
 using namespace std;
 using namespace netCDF;
@@ -145,4 +146,4 @@ constexpr int n { 4 }; // number of sides a box has
 
 } // namespace box
 
-#endif
+} // namespace tango

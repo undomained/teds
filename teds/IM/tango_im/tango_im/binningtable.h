@@ -1,8 +1,9 @@
-#ifndef BINNINGTABLE_H
-#define BINNINGTABLE_H
+#pragma once
 
 #include "header.h"
 #include "logger.h"
+
+namespace tango {
 
 // Forward declaration.
 class NetCDF_object;
@@ -56,4 +57,4 @@ class Binningtable : public Logger { // {{{
 
 }; // }}}
 
-#endif
+} // namespace tango

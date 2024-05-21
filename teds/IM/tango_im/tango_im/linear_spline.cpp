@@ -8,6 +8,8 @@
 
 #include <cmath>
 
+namespace tango {
+
 // Threshold for determining if the knots are equally spaced
 constexpr double equal_spacing_tol { 1e1
                                      * std::numeric_limits<double>::epsilon() };
@@ -57,3 +59,5 @@ auto LinearSpline::eval(const double x) const -> double
         return std::lerp(values[idx], values[idx + 1], t);
     }
 }
+
+} // namespace tango

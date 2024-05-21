@@ -1,7 +1,7 @@
 #include "header.h"
 #include "functions.h"
-#include "fourier.h"
 #include "bspline.h"
+#include "fourier.h"
 #include "netcdf_object.h"
 #include "settings_main.h"
 #include "settings_l1b.h"
@@ -19,6 +19,8 @@
 
 #include <numeric>
 #include <cmath>
+
+namespace tango {
 
 // Constructor.
 Frame::Frame( // {{{
@@ -541,3 +543,5 @@ int Frame::apply_dark_offset(CKD *ckd)
     }
     return 0;
 }
+
+} // namespace tango

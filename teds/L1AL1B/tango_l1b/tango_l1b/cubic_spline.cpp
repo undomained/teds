@@ -7,6 +7,8 @@
 
 #include <cmath>
 
+namespace tango {
+
 // Threshold for determining if the knots are equally spaced
 constexpr double equal_spacing_tol {
     1e1 * std::numeric_limits<double>::epsilon() };
@@ -126,3 +128,5 @@ auto CubicSpline::eval(const double x) const -> double
     const double Dx3 { Dx2 * Dx };
     return values[idx] + A[idx] * Dx + B[idx] * Dx2 + C[idx] * Dx3;
 }
+
+} // namespace tango

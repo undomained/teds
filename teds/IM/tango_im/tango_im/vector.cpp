@@ -4,6 +4,8 @@
 #include "header.h"
 #include "vector.h"
 
+namespace tango {
+
 // Constructors.
 Vector::Vector() {
     v.resize(DIM_VEC);
@@ -210,3 +212,4 @@ void Quaternion::get(double *res) {
     res[3] = r;
 }
 
+} // namespace tango

@@ -9,6 +9,8 @@
 
 #include <algorithm>
 
+namespace tango {
+
 L1A_file_metadata::L1A_file_metadata( // {{{
     Logger *creator
 ) : Logger(creator)
@@ -128,3 +130,5 @@ int L1A_file_metadata::read_metadata( // {{{
     return 0;
 
 } // }}}
+
+} // namespace tango

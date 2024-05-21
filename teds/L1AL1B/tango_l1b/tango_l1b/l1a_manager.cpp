@@ -12,6 +12,8 @@
 #include "batch.h"
 #include "l1a_manager.h"
 
+namespace tango {
+
 // Constructor.
 L1A_manager::L1A_manager( // {{{
     Logger *creator
@@ -322,3 +324,4 @@ int L1A_manager::destruct_batch( // {{{
 
 } // }}}
 
+} // namespace tango

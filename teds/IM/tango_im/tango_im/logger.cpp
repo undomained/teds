@@ -2,6 +2,8 @@
 #include "functions.h"
 #include "logger.h"
 
+namespace tango {
+
 Logger::Logger( // {{{
     Logger *creator
 )
@@ -189,3 +191,4 @@ void Logger::percentagelog_close( // {{{
     cout.flush();
 } // }}}
 
+} // namespace tango

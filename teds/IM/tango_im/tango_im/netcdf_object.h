@@ -1,5 +1,4 @@
-#ifndef NETCDF_OBJECT_H
-#define NETCDF_OBJECT_H
+#pragma once
 
 #include "header.h"
 #include "logger.h"
@@ -17,6 +16,8 @@
         errormessage = errormessage.substr(0,breakfound); \
         raise_error("NetCDF error: '%s' occurred for file '%s'.",errormessage.c_str(),(netcdf_instance)->filename.c_str()); \
     }
+
+namespace tango {
 
 // NetCDF structure that uses destructor to mention that the file is closed.
 // The destructor of the NcFile itself does the actual file closing.
@@ -40,4 +41,4 @@ class NetCDF_object : public Logger {
     );
 };
 
-#endif
+} // namespace tango

@@ -19,6 +19,8 @@
 #include <algorithm>
 #include <cstring>
 
+namespace tango {
+
 double AngToX(const double ang, const double h, const double eR){
 	double xl;
 	//const double eR = 6371.0;
@@ -936,3 +938,5 @@ int L1B::process_finalize( // {{{
     }
     return 0;
 } // }}}
+
+} // namespace tango

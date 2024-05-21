@@ -1,11 +1,12 @@
 // This source code is licensed under the 3-clause BSD license found
 // in the LICENSE file in the root directory of this project.
 
-#ifndef BSPLINE_H
-#define BSPLINE_H
+#pragma once
 
 #include "header.h"
 #include "logger.h"
+
+namespace tango {
 
 class Bspline : public Logger {
 
@@ -39,4 +40,4 @@ class Bspline : public Logger {
 
 };
 
-#endif
+} // namespace tango

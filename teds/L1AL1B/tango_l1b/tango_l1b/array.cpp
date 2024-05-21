@@ -5,6 +5,8 @@
 #include "functions.h"
 #include "array.h"
 
+namespace tango {
+
 template<class T>
 void Array<T>::partition( // {{{
     int lo,
@@ -176,3 +178,4 @@ void Array<T>::select( // {{{
     res /= (tar_hi-tar_lo+1);
 } // }}}
 
+} // namespace tango

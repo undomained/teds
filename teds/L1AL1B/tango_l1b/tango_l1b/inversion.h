@@ -1,11 +1,12 @@
 // This source code is licensed under the 3-clause BSD license found
 // in the LICENSE file in the root directory of this project.
 
-#ifndef INVERSION_H
-#define INVERSION_H
+#pragma once
 
 #include "header.h"
 #include "logger.h"
+
+namespace tango {
 
 // A class for a iterative non-linear inversion.
 // TODO: Expand this with more features like in Sicor or RemoTeC.
@@ -105,4 +106,4 @@ class Inversion : public Logger {
 
 };
 
-#endif
+} // namespace tango

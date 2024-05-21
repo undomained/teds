@@ -7,6 +7,8 @@
 #include "l1x.h"
 #include <random>
 
+namespace tango {
+
 // Constructor.
 L1X::L1X( // {{{
     Logger *creator
@@ -411,3 +413,4 @@ int L1X::write( // {{{
 
 } // }}}
 
+} // namespace tango

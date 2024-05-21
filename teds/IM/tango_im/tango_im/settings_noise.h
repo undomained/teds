@@ -1,8 +1,9 @@
-#ifndef SETTINGS_NOISE_H
-#define SETTINGS_NOISE_H
+#pragma once
 
 #include "header.h"
 #include "settings.h"
+
+namespace tango {
 
 // Noise settings.
 class Settings_noise : public Settings {
@@ -29,4 +30,4 @@ class Settings_noise : public Settings {
 
 };
 
-#endif
+} // namespace tango

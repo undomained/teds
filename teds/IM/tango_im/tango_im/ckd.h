@@ -1,8 +1,12 @@
-#ifndef CKD_H
-#define CKD_H
+#pragma once
 
 #include "header.h"
 #include "logger.h"
+
+#include <complex>
+#include <vector>
+
+namespace tango {
 
 // Forward declaration.
 class NetCDF_object;
@@ -242,4 +246,4 @@ class CKD : public Logger { // {{{
 
 }; // }}}
 
-#endif
+} // namespace tango

@@ -4,8 +4,7 @@
 #include "header.h"
 #include "functions.h"
 #include "logger.h"
-
-#include <parallel.h>
+#include "parallel.h"
 
 namespace tango {
 

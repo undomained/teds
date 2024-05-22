@@ -49,8 +49,6 @@ target_link_libraries(tango_l1b.x PRIVATE ${LIBRARIES})
 
 # Sources
 add_subdirectory(tango_l1b)
-add_subdirectory(external/gadfit)
-target_link_libraries(tango_l1b PUBLIC gadfit)
 
 # Retrieve locations from the list of supplied libraries and convert
 # into a string.

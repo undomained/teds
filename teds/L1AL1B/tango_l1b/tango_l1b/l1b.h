@@ -257,12 +257,6 @@ class L1B : public Processor { // {{{
     // two images left (image #40 is assigned to the next MPI
     // process).
     std::vector<int> mpi_buf_multiplicities {};
-    // Keeps track of the time spent by process 0 collecting data from
-    // other processes.
-    gadfit::Timer mpi_io_timer {};
-    // Keeps track of the time spent by process 0 in the final step
-    // collecting data from other processes.
-    gadfit::Timer mpi_final_io_timer {};
     // Current number of MPI buffers allocated on this MPI process
     size_t cur_buf_size {};
     // Maximum number of MPI buffers allocated on this MPI process

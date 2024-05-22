@@ -424,8 +424,6 @@ int L1B::process_init( // {{{
     mpi_buffer_markers.resize(num_procs);
     mpi_requests.resize(nl1a_total, MPI_REQUEST_NULL);
     mpi_buf_multiplicities.resize(nl1a_total, 0);
-    mpi_io_timer.reset();
-    mpi_final_io_timer.reset();
     // Get the dimensions and size of each netCDF variable in mpi_nc_vars.
     for (int i_var {}; i_var < static_cast<int>(mpi_nc_vars.size()); ++i_var) {
         const int n_dims { mpi_nc_vars.at(i_var).second.getDimCount() };
@@ -783,11 +781,7 @@ int L1B::process_batch(size_t ibatch, const Calibration_options& opt)
             }
         }
     } else {
-        mpi_io_timer.start();
         const bool last_round { iobs == mpi_ranges[1] - 1 };
-        if (last_round) {
-            mpi_final_io_timer.start();
-        }
         // Tests if any data was received in the main double loop.
         bool active_run {};
         do {
@@ -891,10 +885,6 @@ int L1B::process_batch(size_t ibatch, const Calibration_options& opt)
             // there are no more active MPI requests and all data has
             // been received by process 0.
         } while (last_round && active_run);
-        if (last_round) {
-            mpi_final_io_timer.stop();
-        }
-        mpi_io_timer.stop();
     }
     return 0;
 } // }}}
@@ -928,13 +918,6 @@ int L1B::process_finalize( // {{{
                          n_peak_images.at(i_rank));
             }
         }
-        writelog(log_info,
-                 "MPI communication time on process 0: %.3f s (%i calls total)",
-                 mpi_io_timer.totalWallTime(),
-                 mpi_io_timer.totalNumberOfCalls());
-        writelog(log_info,
-                 "Final communication step on process 0: %.3f s",
-                 mpi_final_io_timer.totalWallTime());
     }
     return 0;
 } // }}}

@@ -90,8 +90,6 @@ int Processor::execute( // {{{
 
         // Perform the process.
         MPI_Barrier(MPI_COMM_WORLD); // For timings
-        gadfit::Timer timer {};
-        timer.start();
         writelog(log_info,"Starting process.");
 
         // Mark, if it is a skippable process, that it is not skipped.
@@ -189,32 +187,6 @@ int Processor::execute( // {{{
 
         // 6. Do whatever must be done at the end, after the last batch.
         handle(process_finalize()); // After the last batch.
-
-        // 7. Print detailed timings for each MPI process.
-        timer.stop();
-        if (num_procs > 1) {
-            std::vector<gadfit::Times> times(num_procs);
-            gatherTimes(MPI_COMM_WORLD, my_rank, num_procs, timer, times);
-            for (int i_rank {}; i_rank < num_procs; ++i_rank) {
-                writelog(log_trace,
-                         "Wall time for MPI process %3i: %.5f s",
-                         i_rank,
-                         times.at(i_rank).wall);
-            }
-            for (int i_rank {}; i_rank < num_procs; ++i_rank) {
-                writelog(log_trace,
-                         " CPU time for MPI process %3i: %.5f s",
-                         i_rank,
-                         times.at(i_rank).cpu);
-            }
-        } else {
-            writelog(log_trace,
-                     "Wall time for process: %.5f s",
-                     timer.totalWallTime());
-            writelog(log_trace,
-                     "CPU time for process: %.5f s",
-                     timer.totalCPUTime());
-        }
 
         // 8. To be on the safe side because parts of the processor
         //    include asynchronous MPI.

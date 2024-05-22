@@ -5,7 +5,6 @@
 
 #include "header.h"
 #include "settings_proc.h"
-#include "parallel.h"
 #include "processor.h"
 
 namespace tango {
@@ -44,18 +43,6 @@ class Settings_l1b : public Settings_proc { // {{{
     double extremeweight = NC_FILL_DOUBLE; // Clip on weight factor for guess during geolocation convergence.
     double geolocation_tol = NC_FILL_DOUBLE; // Tolerance for convergence along line of sight (length units).
     int l1b_output_level = 0; // Level of detailed output. Own implementation, because output file is not the CKD file.
-    // Relative workload on the first MPI process compared to the
-    // other processes. Example: if this value is 0.9 (i.e. 90%) then
-    // with 10 MPI processes and 1000 images process 0 is assigned the
-    // first 90 images. The reason process 0 should be dealt less
-    // images is that it also needs to perform I/O operations.
-    double first_proc_rel_workload { 0.9 };
-    // Number of images each MPI task processes before sending them to
-    // process 0. Default is 10, i.e. an asynchronous MPI send is
-    // initiated after every 10th image. Increasing this will reduce
-    // the amount of communication but increase memory usage on all
-    // MPI processes.
-    int mpi_send_size { 10 };
     // NetCDF file containing geolocation data (lat, lon, sza, saa, vza, vaa)
     std::string geometry_file {};
 
@@ -161,113 +148,6 @@ class L1B : public Processor { // {{{
 
     // The planet.
     unique_ptr<Planet> earth; // Just a silly name of a variable from type Planet.
-
-    // We use these enums to connect netCDF variables with the
-    // corresponding data, e.g. var_dolp and dolp.
-    enum class MpiNcVarId
-    {
-        time,
-        radiance_raw,
-        radiance_raw_noise,
-        radiance_mask,
-        intens,
-        intens_noise,
-        small_q,
-        small_q_noise,
-        small_u,
-        small_u_noise,
-        dolp,
-        dolp_noise,
-        aolp,
-        aolp_noise,
-        lat,
-        lon,
-        alt,
-        vza,
-        vaa,
-        sza,
-        saa,
-    };
-    // These netCDF variables are targeted for MPI parallelization.
-    std::vector<std::pair<MpiNcVarId, netCDF::NcVar>> mpi_nc_vars {};
-    // Each MPI buffer in mpi_buffers corresponds to one image,
-    // although not all nl1a_total images are allocated at the same
-    // time. Each MPI buffer contains the data defined by mpi_nc_vars,
-    // i.e. variables such as DoLP, AoLP, etc. are serialized into a
-    // single buffer per iteration (image).
-    std::vector<std::vector<float>> mpi_buffers {};
-    // The starting index of each quantity (DoLP, AoLP, ...) in an MPI buffer
-    std::vector<int> mpi_buffer_starts {};
-    // When writing data to file, defines the starting indices of each
-    // netCDF variable (the startp argument of netCDF::NcVar::putVar)
-    std::vector<std::vector<size_t>> mpi_nc_starts {};
-    // When writing data to file, defines the number of indices along
-    // each dimension for the netCDF variables (the countp argument of
-    // netCDF::NcVar::putVar)
-    std::vector<std::vector<size_t>> mpi_nc_counts {};
-    // Size of an MPI buffer per image. Note that each member of
-    // mpi_buffer is resized to an integer multiple (greater than 1)
-    // of this variable because it's more efficient to send multiple
-    // images in a batch, i.e. not initiate an asynchronous MPI
-    // command after each iteration.
-    int mpi_buffer_size {};
-    // For process 0 (my_rank=0), keeps track of images for which the
-    // data has already been received. The total number of those
-    // images is nl1a_total minus those assigned to process 0. For all
-    // other processes keeps track of MPI_Isend operations that have
-    // successfully completed and thus signals that the corresponding
-    // memory may be released.
-    std::vector<MPI_Request> mpi_requests {};
-    // Keeps track of the highest image index for which a buffer has
-    // been allocated for the given MPI process. For instance, with
-    // 9000 images and 20 MPI processes, let's say process 15 has been
-    // assigned images 6750...7200 but only the MPI buffers for images
-    // 6750...7014 have been allocated because it's too expensive to
-    // keep the whole orbit in memory. Then
-    // mpi_buffer_markers[14]=7014. This value is increased as the
-    // calculation progresses until all buffers have been allocated
-    // and all data transmitted to process 0.
-    std::vector<int> mpi_buffer_markers {};
-    // Same meaning as Settings_l1b::mpi_send_size
-    int mpi_send_size { 1 };
-    // Determines the size of the MPI buffer allocated on a given
-    // iteration inside the main loop over images. Its values are
-    // typically either mpi_send_size or 0. In the following example
-    // the columns are R - MPI rank, N - image index, M -
-    // mpi_buf_multiplicities[N].
-    //
-    // R  N  M
-    // ...
-    // 1 34  0
-    // 2 35  3 # Allocate MPI_buffer with size 3 * mpi_buffer_size
-    // 2 36  0 # Do not allocate new buffer; write data into previously
-    // 2 37  0 #    allocated buffer
-    // 2 38  2 # Allocate MPI_buffer with size 2 * mpi_buffer_size and not
-    // 2 39  0 #    2 * mpi_buffer_size because there aren't enough images left.
-    // 3 40  3
-    // ...
-    //
-    // For image 35 an MPI buffer is allocated with size 3 *
-    // mpi_buffer_size (meaning mpi_send_size=3). In subsequent
-    // iterations a new buffer is not allocated and instead data is
-    // written into the previously allocated buffer. At the end of
-    // iteration 37 data is sent to process 0 and soon after the
-    // buffer is released. At iteration 38 a new buffer is allocated
-    // but with the size 2 * mpi_buffer_size because there are only
-    // two images left (image #40 is assigned to the next MPI
-    // process).
-    std::vector<int> mpi_buf_multiplicities {};
-    // Current number of MPI buffers allocated on this MPI process
-    size_t cur_buf_size {};
-    // Maximum number of MPI buffers allocated on this MPI process
-    size_t max_buf_size {};
-    // In mpi_ranges, data corresponding to different images is stored
-    // sequentially. This means that all data corresponding to a
-    // single variable such as dolp is stored non-contiguously. We use
-    // tmp_buf_dbl/float for rearranging the data layout before
-    // writing it to file.
-    std::vector<double> tmp_buf_dbl {};
-    std::vector<float> tmp_buf_float {};
 }; // }}}
 
 } // namespace tango

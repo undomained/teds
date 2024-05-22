@@ -12,7 +12,6 @@
 #include "batch.h"
 #include "l1a_manager.h"
 #include "l1a_flight.h"
-#include "parallel.h"
 #include "processor.h"
 
 namespace tango {
@@ -89,7 +88,6 @@ int Processor::execute( // {{{
     } else {
 
         // Perform the process.
-        MPI_Barrier(MPI_COMM_WORLD); // For timings
         writelog(log_info,"Starting process.");
 
         // Mark, if it is a skippable process, that it is not skipped.
@@ -187,10 +185,6 @@ int Processor::execute( // {{{
 
         // 6. Do whatever must be done at the end, after the last batch.
         handle(process_finalize()); // After the last batch.
-
-        // 8. To be on the safe side because parts of the processor
-        //    include asynchronous MPI.
-        MPI_Barrier(MPI_COMM_WORLD);
     }
 
     // 7. Write the obtained CKD to output NetCDF file.

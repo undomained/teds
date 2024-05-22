@@ -4,7 +4,6 @@
 #include "header.h"
 #include "functions.h"
 #include "logger.h"
-#include "parallel.h"
 
 namespace tango {
 
@@ -40,8 +39,6 @@ Logger::Logger( // {{{
     string a_timestamp
 )
 {
-    MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
     setInactive(my_rank > 0);
     trunk = NULL; // We are the trunk.
     verboseflag = a_verboseflag;

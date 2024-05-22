@@ -31,7 +31,6 @@ target_sources(tango_l1b PRIVATE
   settings_main.cpp
   settings_proc.cpp
   cubic_spline.cpp
-  parallel.cpp
 )
 target_sources(tango_l1b.x PRIVATE main.cpp)
 

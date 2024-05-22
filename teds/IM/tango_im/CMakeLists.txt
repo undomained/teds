@@ -3,20 +3,14 @@
 
 # CMake
 cmake_minimum_required(VERSION 3.25)
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH}
-  ${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules)
 
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH}
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../L1AL1B/tango_l1b/cmake)
 include(Tools)
-# When using newer version of CMake some commands behave
-# differently. This conditional helps to guard against that.
-if (CMAKE_VERSION VERSION_LESS 3.13.5)
-  include(redefine_target_sources)
-else()
-  cmake_policy(VERSION 3.13.5)
-endif()
 
 # Project
-project(tango_im VERSION 1.0 LANGUAGES CXX)
+file(STRINGS ../../../project_version.txt TANGO_VERSION REGEX "^[0-9.]+")
+project(tango_im VERSION ${TANGO_VERSION} LANGUAGES CXX)
 
 # Options and variables
 set(INCLUDE_PATHS "" CACHE STRING
@@ -24,29 +18,12 @@ set(INCLUDE_PATHS "" CACHE STRING
 set(LIBRARY_PATHS "" CACHE STRING
   "Directories containing libraries to be linked against")
 set(LIBRARIES "" CACHE STRING "Libraries to be linked against")
-set(LINALG_FLAVOR "" CACHE STRING "Choose the linear algebra library")
-
-# Attempt to detect the default values of some variables, but only
-# during the first configuring and only if not already specified by
-# the user (e.g., in the initial cache file).
-if (NOT EXISTS ${CMAKE_BINARY_DIR}/CMakeCache.txt)
-  # Detect USE_MPI
-  try_compile(MPI_OK ${PROJECT_BINARY_DIR}
-    ${PROJECT_SOURCE_DIR}/cmake/tests/MPI.cpp)
-  option(USE_MPI "Whether to compile with MPI support" ${MPI_OK})
-endif()
+option(BUILD_SHARED_LIBS
+  "If enabled, dependencies are built as shared libraries by default" OFF)
 
 # Define main target
 add_executable(tango_im.x "")
 target_compile_features(tango_im.x PUBLIC cxx_std_20)
-
-# MPI (Test program does not need MPI, maybe later)
-if (USE_MPI)
-  target_compile_definitions(tango_im.x PUBLIC USE_MPI)
-  message("Using MPI")
-else()
-  message("Not using MPI")
-endif()
 
 # Process user defined include paths and libraries
 target_include_directories(tango_im.x PUBLIC ${INCLUDE_PATHS})
@@ -57,6 +34,9 @@ endforeach()
 generate_library_targets(LIBRARY_PATHS LIBRARIES)
 target_link_libraries(tango_im.x PRIVATE ${LIBRARIES})
 
+# Sources
+add_subdirectory(tango_im)
+
 # Print info
 message(
   "C++ compiler: ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}")
@@ -64,6 +44,3 @@ get_all_flags(CXX all_flags)
 message("Compiler flags: ${all_flags}")
 message("Build configuration: ${CMAKE_BUILD_TYPE}")
 message("Install location: ${CMAKE_INSTALL_PREFIX}")
-
-# Sources
-add_subdirectory(tango_im)

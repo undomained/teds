@@ -2,9 +2,9 @@
 # the LICENSE file in the root directory of this project.
 
 # Add source files and definitions (e.g. project version) to the
-# tango_l1b.x target.
+# tango_l1b target.
 
-target_sources(tango_l1b.x PRIVATE
+target_sources(tango_l1b PRIVATE
   driver.cpp
   processor.cpp
   array.cpp
@@ -28,37 +28,35 @@ target_sources(tango_l1b.x PRIVATE
   l1a_manager.cpp
   l1b.cpp
   l1x.cpp
-  main.cpp
   settings_main.cpp
   settings_proc.cpp
   cubic_spline.cpp
   parallel.cpp
 )
+target_sources(tango_l1b.x PRIVATE main.cpp)
 
-target_include_directories(tango_l1b.x PUBLIC
-  ${CMAKE_CURRENT_BINARY_DIR})
+# C++20 features
+target_compile_features(tango_l1b PUBLIC cxx_std_20)
 
-# Link against a linear algebra library
-if (LINALG_FLAVOR MATCHES "mkl")
-  # If LINALG_FLAVOR has been set then use that library
-  find_package(MKL REQUIRED)
-  target_include_directories(tango_l1b.x PUBLIC ${MKL_INCLUDE_DIR})
-  target_link_libraries(tango_l1b.x PUBLIC ${MKL_LIBRARIES})
-  target_compile_definitions(tango_l1b.x PUBLIC USE_MKL)
-  set(linalg_library_name "MKL")
-else()
-  # Otherwise attempt to detect if MKL is used
-  try_compile(LINALG_TEST ${CMAKE_CURRENT_BINARY_DIR}
-    ${PROJECT_SOURCE_DIR}/cmake/tests/MKL.cpp
-    CMAKE_FLAGS
-    "-DINCLUDE_DIRECTORIES=${INCLUDE_PATHS}"
-    "-DLINK_DIRECTORIES=${LIBRARY_PATHS}"
-    "-DLINK_LIBRARIES=${LIBRARIES}")
-  if (LINALG_TEST)
-    target_compile_definitions(tango_l1b.x PUBLIC USE_MKL)
-    set(linalg_library_name "MKL")
-  else()
-    set(linalg_library_name "system default")
-  endif()
-endif()
-message("Using linear algebra library: ${linalg_library_name}")
+# Exporting
+target_include_directories(tango_l1b INTERFACE
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/..>
+  $<INSTALL_INTERFACE:include>)
+set(_headers
+  ckh.h)
+set_target_properties(tango_l1b PROPERTIES PUBLIC_HEADER "${_headers}")
+install(TARGETS tango_l1b
+  EXPORT tango_l1bConfig
+  PUBLIC_HEADER DESTINATION include/tango_l1b)
+install(EXPORT tango_l1bConfig
+  NAMESPACE tango_l1b::
+  DESTINATION lib/cmake/tango_l1b)
+include(CMakePackageConfigHelpers)
+write_basic_package_version_file(
+  ${PROJECT_BINARY_DIR}/tango_l1bConfigVersion.cmake
+  VERSION ${PROJECT_VERSION}
+  COMPATIBILITY SameMajorVersion)
+install(FILES ${PROJECT_BINARY_DIR}/tango_l1bConfigVersion.cmake
+  DESTINATION lib/cmake/tango_l1b)
+export(EXPORT tango_l1bConfig NAMESPACE tango_l1b::
+  FILE ${PROJECT_BINARY_DIR}/tango_l1bConfig.cmake)

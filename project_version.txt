@@ -1,0 +1,4 @@
+# Current version of the Tango end-to-end simulator. In order to avoid
+# duplication, all modules and documentation should read the version
+# number from this file.
+0.1

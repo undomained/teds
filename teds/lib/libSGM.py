@@ -127,7 +127,7 @@ def get_sentinel2_albedo_new(lat, lon, band):
     # Change coordinate system to WGS84
     for band in bands:
        
-        S2_albedo_band=S2_albedo_raw.__getattribute__('B02')
+        S2_albedo_band=S2_albedo_raw.__getattribute__(band)
         S2_albedo_resampled = S2_albedo_band.rio.reproject('EPSG:4326')
         if S2_reading_log:
             S2_albedo_resampled[:, :].plot(robust=True)
@@ -151,7 +151,12 @@ def get_sentinel2_albedo_new(lat, lon, band):
 def get_sentinel2_albedo(lat,lon, conf, band='B11'):
 
     S2_reading_log = False
-    S2_albedo_raw, S2_ssd = get_raw_sentinel2_data(lat, lon, S2_reading_log, band)
+    
+    bands = [band]
+    S2_albedo_raw, S2_ssd = get_raw_sentinel2_data(lat, lon, S2_reading_log, bands)
+
+    S2_albedo_raw = S2_albedo_raw.__getattribute__(band)
+    S2_ssd = S2_ssd.__getattribute__(band)
 
     # Note that the S2 data are scaled by a factor 1.E4
     # store data

@@ -41,9 +41,11 @@ def shrink_extend_domain(gm_x, gm_y, x, y):
         Existing meteo data longitudes
     
     """
+    xmarge = 300.
+    ymarge = 300.
     # get bounds of the GM domain
-    _x = np.array([gm_x[0,0], gm_x[0,-1], gm_x[-1,0], gm_x[-1,-1]])
-    _y = np.array([gm_y[0,0], gm_y[0,-1], gm_y[-1,0], gm_y[-1,-1]])
+    _x = np.array([gm_x[0,0]-xmarge, gm_x[0,-1]+xmarge , gm_x[-1,0]-xmarge, gm_x[-1,-1]+xmarge])
+    _y = np.array([gm_y[0,0]-ymarge, gm_y[0,-1]-ymarge,  gm_y[-1,0]+ymarge, gm_y[-1,-1]+ymarge])
 
     # compute dx, dy
     dx = (x[1] - x[0])
@@ -59,7 +61,7 @@ def shrink_extend_domain(gm_x, gm_y, x, y):
     if _x.max() > x[-1]:
         pad_x2 = np.int_((_x.max() - x[-1])/dx + 1)
     else:
-        ix2 = np.searchsorted(x, _x.max())
+        ix2 = np.searchsorted(x, _x.max()) + 1
     if _y.min() <= y[0]:
         pad_y1 = np.int_((y[0] - _y.min())/dy + 1)
     else:
@@ -67,8 +69,9 @@ def shrink_extend_domain(gm_x, gm_y, x, y):
     if _y.max() >= y[-1]:
         pad_y2 = np.int_((_y.max() - y[-1])/dy + 1)
     else:
-        iy2 = np.searchsorted(y, _y.max())
+        iy2 = np.searchsorted(y, _y.max()) + 1
 
+    
     # compute new x and y and then latitude and longitude
     x_left = np.arange(-pad_x1, 0)*dx + x[0]
     x_right = np.arange(pad_x2)*dx + dx + x[-1]
@@ -118,6 +121,7 @@ def get_atmosphericdata_new(gm_lat, gm_lon, meteo_settings):
     # shrink or extend domain according to the input
 
     src = data.__getattribute__(meteo_settings['gases'][0]+"_source")
+
     # # if the mesh is regular (see Topology section in https://www.xdmf.org/index.php/XDMF_Model_and_Format)
     # if data.gridtype == "3DCoRectMesh":
     # create a transform method 
@@ -127,6 +131,7 @@ def get_atmosphericdata_new(gm_lat, gm_lon, meteo_settings):
     gm_x, gm_y = trans.latlon2xymts(gm_lat, gm_lon)
 
     x_new, y_new, idx, idy, padx, pady = shrink_extend_domain(gm_x, gm_y, data.x, data.y)
+    
     XX, YY = np.meshgrid(x_new, y_new)
     lat_new, lon_new = trans.xymts2latlon(XX, YY)
     # else:
@@ -246,6 +251,7 @@ def get_AFGL_atm_homogenous_distribution(AFGL_path, nlay, dzlay, xco2_ref=405, x
     # print('XCH4 ', xch4)
     # print('XH2O ', xh2o)
     # print('H2O col',np.sum(atm.H2O))
+    # sys.exit()
     return(atm)
 
 
@@ -699,16 +705,188 @@ class atmosphere_data:
 
         # Read data from file
         raw = np.genfromtxt(filename, skip_header=21, unpack=True)
+def interpolate_data_irregular(meteodata, gm_data, gases):
+    """Interpolate irregular data in lat-lon coordinates.
 
-        wv_in = np.array([a*1E3 for a in raw[0, :]])  # wavelength [nm]
-        alb_in = np.array([a/1E2 for a in raw[1, :]])  # albedo [0...1]
-        # Check if wavelength in ascending order. If not, flip arrays.
-        if wv_in[0] > wv_in[-1]:
-            # Interpolate albedo to wavelength array
-            self.alb = np.interp(self.wave, np.flip(wv_in), np.flip(alb_in))
-        else:
-            self.alb = np.interp(self.wave, wv_in, alb_in)
+    Parameters
+    ----------
+    meteodata : Class 
+        Class containing meterological data
+    gm_data : Dict
+        Dictionary containing the parameters from geometry module.
+    config : List
+        Contains lits of gases to be processed
+    """
+    # create a new container for SGM meteo data
+    sgmmeteo = Emptyclass()
+    sgmmeteo.__setattr__("lat", gm_data.lat)
+    sgmmeteo.__setattr__("lon", gm_data.lon)
+    sgmmeteo.__setattr__("zlev", meteodata.zlev)
+    sgmmeteo.__setattr__("zlay", meteodata.zlay)
 
+    print('Interpolating data to GM mesh...')
+
+    dim_alt, dim_act = sgmmeteo.lat.shape   # dimensions
+    dxdy = np.column_stack((meteodata.lat.ravel(), meteodata.lon.ravel()))
+
+    # Interpolate values to GM grid
+    albedo = griddata(dxdy, meteodata.albedo_conv.ravel(), (sgmmeteo.lat, sgmmeteo.lon), fill_value=0.0)
+    for gas in gases:
+        conv_gas = meteodata.__getattribute__(gas+"_conv")
+        interpdata = np.zeros([dim_alt, dim_act, meteodata.zlay.size])
+        for iz in tqdm(range(meteodata.zlay.size)):
+            interpdata[:, :, iz] = griddata(dxdy, conv_gas[:,:, iz].ravel(), (sgmmeteo.lat, sgmmeteo.lon), fill_value=0.0)
+        sgmmeteo.__setattr__(gas, interpdata)
+    print('                     ...done')
+    return albedo, sgmmeteo
+
+def interpolate_data_new(input_data, gm_data, gases):
+    """Interpolate data on regular cartesian grid.
+
+    Meteo data is in regular x-y grid and this is used to interpolate
+    the values to x-y of gm grid. This is implementation is faster
+    compare to interpolating data in lat-lon grid.
+
+    Parameters
+    ----------
+    meteodata : Class
+        Meteo data
+    gm_data : Dict
+        Parameters from geometry module
+    gases : List
+        List of gases to be processed
+
+    Returns
+    -------
+    albedo : Matrix
+        Albedo on gm grid
+    sgmmeteo: Class
+        Meteo data on gm grid
+    """
+    print('Interpolating data to GM mesh...')
+    output = Emptyclass()
+    output.__setattr__("lat", gm_data.lat)
+    output.__setattr__("lon", gm_data.lon)
+
+    dim_alt, dim_act = output.lat.shape   # dimensions
+    dim_lay = input_data.zlay.shape[2]
+    dim_lev = input_data.zlev.shape[2]
+    
+    # Interpolate albedo to GM grid
+    fa = RegularGridInterpolator((input_data.ypos, input_data.xpos), input_data.albedo_conv, 
+                                 bounds_error=False, fill_value=0.0)
+    albedo = fa((gm_data.ypos, gm_data.xpos))
+    for gas in gases:
+        interpdata = np.zeros([dim_alt, dim_act, dim_lay])
+        conv_gas = input_data.__getattribute__("dcol_"+gas+"_conv")
+        for iz in tqdm(range(dim_lay)):
+            gasmin = np.min(conv_gas[:, :, iz])
+            fa = RegularGridInterpolator((input_data.ypos, input_data.xpos), conv_gas[:, :, iz], 
+                                         bounds_error=False, fill_value=gasmin)
+            interpdata[:, :, iz] = fa((gm_data.ypos, gm_data.xpos))
+        output.__setattr__(gas.upper(), interpdata)
+
+    #Here, we make a shortcut using a equally vertically gridded atmosphere 
+    #So we duplicate the vertical grid!
+    dum = np.tile(input_data.zlay[0,0,:], dim_alt*dim_act)
+    output.__setattr__("zlay", np.reshape(dum,(dim_alt,dim_act,dim_lay)))
+
+    dum = np.tile(input_data.col_air[0,0], dim_alt*dim_act)
+    output.__setattr__("air", np.reshape(dum,(dim_alt,dim_act)))
+
+    dum = np.tile(input_data.zlev[0,0,:], dim_alt*dim_act)
+    output.__setattr__("zlev", np.reshape(dum,(dim_alt,dim_act,dim_lev)))
+     
+    print('                             ...done')
+    return albedo, output
+
+def combine_meteo_standard_atm_new(meteo, atm_std, config):
+
+    #extract specific settings 
+    afgl_only     = config["afgl"]["afgl_only"]
+
+    gases_microHH = config["meteo"]["gases"]
+    gases_afgl    = config["afgl"]["gases"]
+    gases_all = list(set(gases_microHH)|set(gases_afgl))
+    gases_afgl_microHH = list(set(gases_microHH)&set(gases_afgl))
+    
+    nalt, nact = meteo.lat.shape
+    nlay = atm_std.zlay.size
+
+    atm = Emptyclass()
+    
+    names_3d = ["dcol_"+x for x in gases_all] + ['zlay', 'zlev']
+    names_2d = ['col_air','lat' , 'lon', 'psurf']+["X"+x for x in gases_all]
+
+    for name in names_3d:
+        atm.__setattr__(name, np.zeros([nalt,nact,nlay]))
+    for name in names_2d:
+        atm.__setattr__(name, np.zeros([nalt,nact]))
+    atm.__setattr__('zlev', np.zeros([nalt,nact,nlay+1]))
+
+    #take fields from afgl
+    for klay in range(nlay):
+        atm.zlay[:,:,klay] = atm_std.zlay[klay]
+        atm.zlev[:,:,klay] = atm_std.zlev[klay]
+    for name in gases_afgl:
+        for klay in range(nlay):
+            atm.__getattribute__('dcol_'+name)[:,:,klay] = atm_std.__getattribute__(name.upper())[klay]
+
+    atm.zlev[:,:,nlay] = atm_std.zlev[nlay]
+
+    atm.col_air[:,:]= np.sum(atm_std.air[:])
+    atm.psurf[:,:]  = np.sum(atm_std.psurf)
+    atm.lat[:]      = meteo.lat[:]
+    atm.lon[:]      = meteo.lon[:] 
+    atm.__setattr__('xpos',meteo.x_new[:])
+    atm.__setattr__('ypos',meteo.y_new[:])
+    atm.__setattr__("albedo", meteo.albedo)
+    
+    if(not afgl_only):
+
+        #use AFGL above top boundary of microHH, and add microHH at lower altitudes
+        print('Combining microHH and AFGL model')
+
+        # index of standard atmosphere that corresponds to meteo.zlev
+        idx = (np.abs(atm_std.zlev - np.max(meteo.zlev))).argmin()
+
+        if (atm_std.zlev[idx] != np.max(meteo.zlev)):
+            sys.exit('vertical grids are not aligned in libATM.combine_microHH_standard_atm')
+
+        # define a mask for vertical integration of microHH data
+        ztop = atm_std.zlev[idx: nlay]
+        zbot = atm_std.zlev[idx+1: nlay+1]
+        midx = {}
+        for ilay in range(ztop.size):
+            midx[ilay] = np.where((meteo.zlay < ztop[ilay]) & (meteo.zlay >= zbot[ilay]))
+
+        #generate fields for micorHH gases
+        for name in gases_microHH:
+            for ialt in tqdm(range(nalt)):
+                for iact in range(nact):
+                    tmp = atm.__getattribute__('dcol_'+name)[ialt,iact,:]   #tmp defines a pointer here
+                    for ilay in range(ztop.size):
+                        tmp[idx+ilay] += np.sum(meteo.__getattribute__(name+'_raw')[ialt, iact, midx[ilay]])
+        
+        #extract information on emission sources
+        substr = 'source'
+        attr = meteo.__dict__.keys()
+        attr_src = [string for string in attr if substr in string]
+        for src in attr_src:
+            atm.__setattr__(src,meteo.__getattribute__(src))
+
+        substr = 'emission'
+        attr = meteo.__dict__.keys()
+        attr_emi = [string for string in attr if substr in string]
+        for emi in attr_emi:
+            atm.__setattr__(emi,meteo.__getattribute__(emi))
+
+    #dry air column mixing ratio [1]
+    for gas in gases_all:
+        atm.__getattribute__('X'+gas)[:] = \
+            np.sum(atm.__getattribute__('dcol_'+gas),axis=2)/atm.col_air[:]
+    
+    return atm
 
 def combine_meteo_standard_atm(meteodata, atm_std, gases, suffix=""):
     nalt, nact = meteodata.lat.shape
@@ -752,77 +930,49 @@ def combine_meteo_standard_atm(meteodata, atm_std, gases, suffix=""):
 
     return atm
 
+def create_atmosphere_ind_spectra(nalt, nact, atm_std, albedo):
+    """Create default atmosphere.
 
-# def read_microHH_data(filename, keys_to_read, time=2):
-#     """
-#     Read the data
+    Parameters
+    ----------
+    nalt : Int
+        Size across long track
+    nact : Int
+        Size across cross trackget_sgm_raw_data(config['geo_output_raw'])
+    atm_std : class
+        Atandard atmosphere definition
+    """
 
-#     Parameters
-#     ----------
-#     filename : TYPE
-#         DESCRIPTION.
-#     keys_to_read : TYPE
-#         DESCRIPTION.
-#     time : Integer, optional
-#         This represents the time index corresponding to a time. The default is 2.
+    nlay = atm_std.zlay.size
+    atm = Emptyclass()
+        
+    names_3d = ['dcol_ch4', 'dcol_co2', 'dcol_h2o', 'zlay']
+    names_2d = ['col_air','albedo', 'lat' , 'lon', 'psurf', 'Xch4','Xco2', 'Xh2o']
+    for name in names_3d:
+        atm.__setattr__(name, np.zeros([nalt,nact,nlay]))
+    for name in names_2d:
+        atm.__setattr__(name, np.zeros([nalt,nact]))
+    atm.__setattr__('zlev', np.zeros([nalt,nact,nlay+1]))
 
-#     Returns
-#     -------
-#     data container at a time. CO2 is in moles/m^3
+    for klay in range(nlay):
+        atm.zlay[:,:,klay]     = atm_std.zlay[klay]
+        atm.dcol_co2[:,:,klay] = atm_std.CO2[klay]
+        atm.dcol_ch4[:,:,klay] = atm_std.CH4[klay]
+        atm.dcol_h2o[:,:,klay] = atm_std.H2O[klay]
 
-#     """
+    for klev in range(nlay+1):    
+        atm.zlev[:,:,klev]= atm_std.zlev[klev]
 
-#     # longitude :   Zonal location
-#     # latitude :   Meridional location
-#     # ps :   Surface air pressure
-#     # zsurf: Surface elevation
-#     # p :    Air pressure
-#     # ph :   air pressure at cell edge
-#     # zh :   height above surface at cell edge [m]
-#     # z :    layer height above surface [m]
-#     # ta :   Absolute temperature
-#     # hus :  Specific humidity
-#     # ua :   Zonal wind
-#     # va :   Meridional wind
-#     # wa :   Vertical wind
-#     # CO2_PP_L :     CO2 tracer mole fraction low release
-#     # CO2_PP_M :     CO2 tracer mole fraction medium release
-#     # CO2_PP_H :     CO2 tracer mole fraction high release
-#     # CO2_PP_M_ECW : CO2 tracer mole fraction medium release, from individual tower groups
+    atm.col_air[:,:]= np.sum(atm_std.air[:])
+    atm.psurf[:,:]  = np.sum(atm_std.psurf)
+    atm.albedo[:]   = albedo
+    atm.lat[:]      = np.empty((nalt,nact,)).fill(np.nan)
+    atm.lon[:]      = np.empty((nalt,nact,)).fill(np.nan)
+    atm.__setattr__('xpos',np.empty((nact,)).fill(np.nan))
+    atm.__setattr__('ypos',np.empty((nalt,)).fill(np.nan))
+    
+    atm.xco2 = np.sum(atm.dcol_co2,axis=2)/atm.col_air*1.E6 #ppm
+    atm.xch4 = np.sum(atm.dcol_ch4,axis=2)/atm.col_air*1.E9 #ppb
+    atm.xh2o = np.sum(atm.dcol_h2o,axis=2)/atm.col_air*1.E6 #ppm
 
-#     # time: size of 97, starts at 2018-05-23 00:00:00, time step is 15mins
-#     #       So 0 is 2018-05-23 00:00:00
-#     #          1 is 2018-05-23 00:00:15
-#     #          97 is 2018-05-24 00:00:00
-
-#     fl = nc.Dataset(filename, 'r')
-#     # Outside these indices in lat-lon data is masked so no use reading it
-#     i1 = 36
-#     i2 = 264
-#     j1 = 8
-#     j2 = 252
-
-#     # this is dict
-#     data = Emptyclass()
-
-#     # read all data
-#     for ky in keys_to_read:
-#         # if "CO2" in ky:
-#         #     co2_tmp = (fl[ky][time, :, i1:i2, j1:j2]).filled(fill_value=0)
-#         #     if 'p' not in data.__dict__.keys():
-#         #         data.__setattr__('p', fl['p'][time, :, i1:i2, j1:j2])
-#         #     if 'ta' not in data.__dict__.keys():
-#         #         data.__setattr__("ta", fl['ta'][time, :, i1:i2, j1:j2])
-#         #     # pV = nRT => n/V = p/RT [N/m2  mol K/J  1/K]  = [mol/ m3]
-#         #     # air_density = data.p/(data.ta * constants.Rgas)
-
-#         #     data.__setattr__(ky, (co2_tmp*data.p)/(data.ta*constants.Rgas).data)
-#         if ky in ['longitude', 'latitude']:
-#             data.__setattr__(ky, (fl[ky][i1:i2, j1:j2]).data)
-#         elif ky in ['ps', 'zsurf']:
-#             data.__setattr__(ky, (fl[ky][time, i1:i2, j1:j2]).data)
-#         else:
-#             data.__setattr__(ky, fl[ky][time, :, i1:i2, j1:j2])
-#     fl.close()
-
-#     return data
+    return atm

@@ -299,7 +299,7 @@ class optic_abs_prop:
         #            atm_data: atmosphere_data object
         # returns:   
         #            prop['molec_XX']: dictionary with optical properties with XXXX HITRAN identifier code
-        #            prop['molec_XX']['xsec']: absorption optical thickness [wavelength, nlay] [-]
+        #            prop['molec_XX']['xsec']: absorption cross sections [wavelength, nlay] [cm2]
         """
         nlay = self.zlay.size
         nwave = self.wave.size
@@ -346,7 +346,7 @@ class optic_abs_prop:
         nwave = self.wave.size
 
         conv = 1.E-4  # cross sections are given in cm^2, atmospheric densities in m^2
-                          
+                                  
         for name in self.prop.keys():
             if(name[0:5] == 'molec'):
                 spec = self.prop[name]['species']

@@ -98,22 +98,21 @@ levelheight:
   valid_max: 1.E+5
   FillValue: -32767
   
-xdistance:
-  name: xdistance
-  long_name: 'horizontal x distance'
+xpos:
+  name: xpos
+  long_name: 'horizontal x position'
   units: 'm'  
   valid_min: -30000.
   valid_max: +30000.
   FillValue: -32767
 
-ydistance:
-  name: ydistance
-  long_name: 'horizontal y distance'
+ypos:
+  name: ypos
+  long_name: 'horizontal y position'
   units: 'm'  
   valid_min: -30000.
   valid_max: +30000.
   FillValue: -32767
-
 
 subcol_density_co2:
   name: dcol_co2
@@ -150,6 +149,22 @@ subcol_density_no2:
 subcol_density_o3:
   name: dcol_o3
   long_name: O3 layer column density
+  units: molec./cm2
+  valid_min: 0.
+  valid_max: 1.E+28
+  FillValue: -32767
+
+subcol_density_no2:
+  name: dcol_no2
+  long_name: NO2 layer column density
+  units: molec./cm2
+  valid_min: 0.
+  valid_max: 1.E+28
+  FillValue: -32767
+
+subcol_density_no:
+  name: dcol_no
+  long_name: NO layer column density
   units: molec./cm2
   valid_min: 0.
   valid_max: 1.E+28
@@ -237,6 +252,22 @@ convergence:
   valid_max: 1
   FillValue: -32767
 
+aqui_time:
+  name: aquisition time
+  long_name: aquisition time of sensing UTC
+  units: 's'
+  valid_min: 0
+  valid_max: 1E+25
+  FillValue: -32767
+
+process_flag:
+  name: processing flag 
+  long_name: processing flag to indicate processor anormalies
+  units: '1'
+  valid_min: 0
+  valid_max: 101
+  FillValue: -32767
+
 maxiterations:
   name: max iter
   long_name: number of iterations
@@ -253,6 +284,38 @@ spectralchi2 :
   valid_max: 100.
   FillValue: -32767
 
+spectralshift :
+  name: spectral shift
+  long_name: 'constant shift of the spectral calibration'
+  units: 'nm'
+  valid_min: 0 
+  valid_max: 10.
+  FillValue: -32767
+
+spectralsqueeze :
+  name: spectral squeeze
+  long_name: 'squeeze of the spectral calibration'
+  units: '1'
+  valid_min: 0 
+  valid_max: 10.
+  FillValue: -32767
+
+surface_pressure:
+  name: 'surface pressure'
+  long_name: 'surface pressure'
+  units: hPa
+  valid_min: 0.
+  valid_max: 1400.
+  FillValue: -32767
+
+surface_elevation:
+  name: 'surface elevation'
+  long_name: 'surface elevation with respect to WGS-84'
+  units: m
+  valid_min: 0.
+  valid_max: 9000.
+  FillValue: -32767
+
 XCO2:
   name: 'XCO2'
   long_name: 'CO2 dry air column mixing ratio XCO2'
@@ -261,12 +324,28 @@ XCO2:
   valid_max: 3000.
   FillValue: -32767
 
+apriori_profileCO2:
+  name: apri_prof_co2
+  long_name: 'a priori profile CO2 in layer column density'
+  units: molec./cm2
+  valid_min: 0.
+  valid_max: 1.E+28
+  FillValue: -32767
+
 precisionXCO2:
   name: precision XCO2
   long_name: 'CO2 precision of dry air column mixing ratio XCO2'  
   units: ppmv
   valid_min: 0.
   valid_max: 300.
+  FillValue: -32767
+
+qa_valueXCO2:
+  name: qa value XCO2
+  long_name: 'CO2 quality value of dry air column mixing ratio XCO2'  
+  units: ppmv
+  valid_min: 0.
+  valid_max: 101.
   FillValue: -32767
 
 avgkernelXCO2:
@@ -285,12 +364,28 @@ XCH4:
   valid_max: 180000.
   FillValue: -32767
 
+apriori_profileCH4:
+  name: apri_prof_ch4
+  long_name: 'a priori profile CH4 in layer column density'
+  units: molec./cm2
+  valid_min: 0.
+  valid_max: 1.E+28
+  FillValue: -32767
+
 precisionXCH4:
   name: precision XCH4
   long_name: 'CH4 precision of dry air column mixing ratio XCH4'  
   units: ppbv
   valid_min: 0.
   valid_max: 180.
+  FillValue: -32767
+
+qa_valueXCH4:
+  name: qa value XCH4
+  long_name: 'CH4 quality value of dry air column mixing ratio XCH4'  
+  units: ppbv
+  valid_min: 0.
+  valid_max: 101.
   FillValue: -32767
 
 avgkernelXCH4:
@@ -309,12 +404,36 @@ XH2O:
   valid_max: 1.E+04
   FillValue: -32767
 
+apriori_profileH2O:
+  name: apri_prof_h2o
+  long_name: 'a priori profile H2O in layer column density'
+  units: molec./cm2
+  valid_min: 0.
+  valid_max: 1.E+28
+  FillValue: -32767
+
 precisionXH2O:
   name: precision XH2O
   long_name: 'H2O precision of dry air column mixing ratio XH2O'  
   units: ppmv
   valid_min: 0.
   valid_max: 1.E+03
+  FillValue: -32767
+
+accuracyXH2O:
+  name: accuracy XH2O
+  long_name: 'H2O accuracy of dry air column mixing ratio XH2O'  
+  units: ppmv
+  valid_min: 0.
+  valid_max: 1.E+03
+  FillValue: -32767
+
+qa_valueXH2O:
+  name: qa value XH2O
+  long_name: 'H2O quality value of dry air column mixing ratio XH2O'  
+  units: ppmv
+  valid_min: 0.
+  valid_max: 101.
   FillValue: -32767
 
 avgkernelXH2O:
@@ -341,6 +460,22 @@ precisionproxyXCO2:
   valid_max: 2.E+19
   FillValue: -32767
 
+accuracyproxyXCO2:
+  name: 'accuracy XCO2 proxy'
+  long_name: 'CO2 accuracy of dry air column mixing ratio XCO2'  
+  units: ppmv
+  valid_min: 0.
+  valid_max: 300.
+  FillValue: -32767
+
+qa_valueproxyXCO2:
+  name: qa value XCO2
+  long_name: 'proxy XCO2 quality value of dry air column mixing ratio XCO2'  
+  units: ppmv
+  valid_min: 0.
+  valid_max: 101.
+  FillValue: -32767
+
 proxyXCH4:
   name: 'XCH4 proxy'
   long_name: 'CH4 proxy dry air column mixing ratio XCH4'
@@ -357,6 +492,21 @@ precisionproxyXCH4:
   valid_max: 2.E+19
   FillValue: -32767
 
+accuracyproxyXCH4:
+  name: 'accuracy XCH4 proxy'
+  long_name: 'CH4 accuracy of dry air column mixing ratio XCH4'  
+  units: ppbv
+  valid_min: 0.
+  valid_max: 180.
+  FillValue: -32767
+
+qa_valueproxyXCH4:
+  name: qa value XCH4
+  long_name: 'proxy XCH4 quality value of dry air column mixing ratio'  
+  units: ppmv
+  valid_min: 0.
+  valid_max: 101.
+  FillValue: -32767
 # diagnostics to a file that are not included in the level 2 data product
 l2wavelength:
   name: wavelength
@@ -422,10 +572,210 @@ radiance_noise:
   valid_min: 0.
   valid_max: 1.E+24
 
-radiance_mask:
-  name: radiance_mask
-  units: 'good bad'
-  long_name: 'radiance error mask'
+co2_source_location:
+  name: 'CO2 source location'
+  units: '[m, degree, degree]'
+  long_name: 'CO2 source location [height, latitude, longitude]'
   FillValue: -32767
-  valid_min: 0
-  valid_max: 1
+  valid_min: -180.
+  valid_max: 10000.
+
+ch4_source_location:
+  name: 'CH4 source location'
+  units: '[m, degree, degree]'
+  long_name: 'CH4 source location [height, latitude, longitude]'
+  FillValue: -32767
+  valid_min: -180.
+  valid_max: 10000.
+
+no_source_location:
+  name: 'NO source location'
+  units: '[m, degree, degree]'
+  long_name: 'NO source location [height, latitude, longitude]'
+  FillValue: -32767
+  valid_min: -180.
+  valid_max: 10000.
+
+no2_source_location:
+  name: 'NO2 source location'
+  units: '[m, degree, degree]'
+  long_name: 'NO2 source location [height, latitude, longitude]'
+  FillValue: -32767
+  valid_min: -180.
+  valid_max: 10000.
+
+co2_emission:
+  name: 'CO2 emission'
+  units: '[kg/s]'
+  long_name: 'CO2 emission'
+  FillValue: -32767
+  valid_min: 0.
+  valid_max: 10000.
+
+no2_emission:
+  name: 'NO2 emission'
+  units: '[kg/s]'
+  long_name: 'NO2 emission'
+  FillValue: -32767
+  valid_min: 0.
+  valid_max: 10000.
+
+no_emission:
+  name: 'NO emission'
+  units: '[kg/s]'
+  long_name: 'NO emission'
+  FillValue: -32767
+  valid_min: 0.
+  valid_max: 10000.
+
+ch4_emission:
+  name: 'CH4 emission'
+  units: '[kg/s]'
+  long_name: 'CH4 emission'
+  FillValue: -32767
+  valid_min: 0.
+  valid_max: 10000.
+
+Xno:
+  name: 'XNO'
+  long_name: 'NO dry air column mixing ratio XNO'
+  units: ppbv
+  valid_min: 0.
+  valid_max: 1.E+04
+  FillValue: -32767
+
+Xno2:
+  name: 'XNO2'
+  long_name: 'NO2 dry air column mixing ratio XNO2'
+  units: ppbv
+  valid_min: 0.
+  valid_max: 1.E+04
+  FillValue: -32767
+
+Xco2:
+  name: 'XCO2'
+  long_name: 'CO2 dry air column mixing ratio XCO2'
+  units: ppmv
+  valid_min: 0.
+  valid_max: 1.E+04
+  FillValue: -32767
+
+Xch4:
+  name: 'XCH4'
+  long_name: 'CH4 dry air column mixing ratio XCH4'
+  units: ppbv
+  valid_min: 0.
+  valid_max: 1.E+04
+  FillValue: -32767
+
+Xh2o:
+  name: 'XH2O'
+  long_name: 'H2O dry air column mixing ratio XH2O'
+  units: ppmv
+  valid_min: 0.
+  valid_max: 1.E+04
+  FillValue: -32767
+
+albedo_B01:
+  name: albedo B01
+  long_name: 'S2 albedo band B01'
+  units: '-'
+  valid_min: 0.0
+  valid_max: 1.0
+  FillValue: -32767
+
+albedo_B02:
+  name: albedo B02
+  long_name: 'S2 albedo band B02'
+  units: '-'
+  valid_min: 0.0
+  valid_max: 1.0
+  FillValue: -32767
+
+albedo_B03:
+  name: albedo B03
+  long_name: 'S2 albedo band B03'
+  units: '-'
+  valid_min: 0.0
+  valid_max: 1.0
+  FillValue: -32767
+
+albedo_B04:
+  name: albedo B04
+  long_name: 'S2 albedo band B04'
+  units: '-'
+  valid_min: 0.0
+  valid_max: 1.0
+  FillValue: -32767
+
+albedo_B05:
+  name: albedo B05
+  long_name: 'S2 albedo band B05'
+  units: '-'
+  valid_min: 0.0
+  valid_max: 1.0
+  FillValue: -32767
+
+albedo_B06:
+  name: albedo B06
+  long_name: 'S2 albedo band B06'
+  units: '-'
+  valid_min: 0.0
+  valid_max: 1.0
+  FillValue: -32767
+
+albedo_B07:
+  name: albedo B07
+  long_name: 'S2 albedo band B07'
+  units: '-'
+  valid_min: 0.0
+  valid_max: 1.0
+  FillValue: -32767
+
+albedo_B08:
+  name: albedo B08
+  long_name: 'S2 albedo band B08'
+  units: '-'
+  valid_min: 0.0
+  valid_max: 1.0
+  FillValue: -32767
+
+albedo_B08A:
+  name: albedo B08A
+  long_name: 'S2 albedo band B08A'
+  units: '-'
+  valid_min: 0.0
+  valid_max: 1.0
+  FillValue: -32767
+
+albedo_B09:
+  name: albedo B09
+  long_name: 'S2 albedo band B09'
+  units: '-'
+  valid_min: 0.0
+  valid_max: 1.0
+  FillValue: -32767
+
+albedo_B10:
+  name: albedo B10
+  long_name: 'S2 albedo band B10'
+  units: '-'
+  valid_min: 0.0
+  valid_max: 1.0
+  FillValue: -32767
+
+albedo_B11:
+  name: albedo B11
+  long_name: 'S2 albedo band B11'
+  units: '-'
+  valid_min: 0.0
+  valid_max: 1.0
+  FillValue: -32767
+
+albedo_B12:
+  name: albedo B12
+  long_name: 'S2 albedo band B12'
+  units: '-'
+  valid_min: 0.0
+  valid_max: 1.0
+  FillValue: -32767

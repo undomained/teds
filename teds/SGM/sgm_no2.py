@@ -710,7 +710,7 @@ def scene_generation_module_nitro(logging, config):
         albedo = np.load(config['S2_albedo']['dump'])
     else:
         logging.info(f"Downloading S2 data for band: {config['S2_albedo']['band']}")
-        albedo = libSGM.get_sentinel2_albedo(gm_data, config,band=config['S2_albedo']['band'])
+        albedo = libSGM.get_sentinel2_albedo(gm_data['lat'], gm_data['lon'], config,band=config['S2_albedo']['band'])
         np.save(config['S2_albedo']['dump'], albedo)    # .npy extension is added if not given
     
 

@@ -148,7 +148,7 @@ def get_sentinel2_albedo_new(lat, lon, band):
         
     return albedo
 
-def get_sentinel2_albedo(lat,lon, conf):
+def get_sentinel2_albedo(lat,lon, conf, band='B11'):
 
     S2_reading_log = False
     S2_albedo_raw, S2_ssd = get_raw_sentinel2_data(lat, lon, S2_reading_log, band)

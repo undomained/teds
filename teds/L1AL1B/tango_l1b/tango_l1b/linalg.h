@@ -5,21 +5,10 @@
 
 #pragma once
 
-#ifdef USE_MKL
-
-#include <mkl_blas.h>
-#include <mkl_lapack.h>
-
-#else
-
-extern "C" {
-    auto dgttrf_(const int*,
-                 double*,
-                 double*,
-                 double*,
-                 double*,
-                 int*,
-                 int*) -> void;
+extern "C"
+{
+    auto dgttrf_(const int*, double*, double*, double*, double*, int*, int*)
+      -> void;
     auto dgttrs_(const char*,
                  const int*,
                  const int*,
@@ -32,5 +21,3 @@ extern "C" {
                  const int*,
                  int*) -> void;
 }
-
-#endif

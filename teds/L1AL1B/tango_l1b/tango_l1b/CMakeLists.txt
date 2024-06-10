@@ -1,36 +1,26 @@
 # This source code is licensed under the 3-clause BSD license found in
 # the LICENSE file in the root directory of this project.
 
-# Add source files and definitions (e.g. project version) to the
-# tango_l1b target.
-
 target_sources(tango_l1b PRIVATE
+  # Entry points
   driver.cpp
-  processor.cpp
-  array.cpp
-  bspline.cpp
-  fourier.cpp
-  functions.cpp
-  inversion.cpp
-  lininv.cpp
-  matrix.cpp
-  netcdf_object.cpp
-  planet.cpp
+  # IO
+  io.cpp
+  time.cpp
+  timer.cpp
   settings.cpp
-  vector.cpp
-  logger.cpp
-  batch.cpp
-  binningtable.cpp
-  ckd.cpp
-  l1a.cpp
-  l1a_file_metadata.cpp
-  l1a_flight.cpp
-  l1a_manager.cpp
-  l1b.cpp
-  l1x.cpp
-  settings_main.cpp
-  settings_proc.cpp
+  settings_l1b.cpp
+  yaml.cpp
+  # Math
+  algorithm.cpp
+  linear_spline.cpp
   cubic_spline.cpp
+  fourier.cpp
+  # Processing
+  binning_table.cpp
+  calibration.cpp
+  ckd.cpp
+  spectrum.cpp
 )
 target_sources(tango_l1b.x PRIVATE main.cpp)
 

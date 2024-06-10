@@ -6,12 +6,13 @@
 #include "linalg.h"
 
 #include <cmath>
+#include <limits>
 
 namespace tango {
 
 // Threshold for determining if the knots are equally spaced
-constexpr double equal_spacing_tol {
-    1e1 * std::numeric_limits<double>::epsilon() };
+constexpr double equal_spacing_tol { 1e1
+                                     * std::numeric_limits<double>::epsilon() };
 
 CubicSpline::CubicSpline(const std::vector<double>& x_values,
                          const std::vector<double>& y_values)

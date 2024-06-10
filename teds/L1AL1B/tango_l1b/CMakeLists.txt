@@ -27,8 +27,17 @@ set(INCLUDE_PATHS "" CACHE STRING
 set(LIBRARY_PATHS "" CACHE STRING
   "Directories containing libraries to be linked against")
 set(LIBRARIES "" CACHE STRING "Libraries to be linked against")
+set(SPDLOG_PATH "" CACHE STRING "Path to spdlog installation directory")
+set(YAML_CPP_PATH "" CACHE STRING "Path to yaml-cpp installation directory")
+set(POCKETFFT_PATH "" CACHE STRING "Path to pocketfft.h")
 option(BUILD_SHARED_LIBS
   "If enabled, builds a shared library, else static" OFF)
+option(INCLUDE_COVERAGE "Defines new target called 'coverage'" OFF)
+set(COVERAGE_FLAGS "--coverage" CACHE STRING
+  "Additional compiler flags used when running code coverage")
+if (INCLUDE_COVERAGE)
+  string(APPEND CMAKE_CXX_FLAGS " ${COVERAGE_FLAGS}")
+endif()
 
 # Define main target
 add_library(tango_l1b "")
@@ -50,6 +59,64 @@ target_link_libraries(tango_l1b.x PRIVATE ${LIBRARIES})
 # Sources
 add_subdirectory(tango_l1b)
 
+# Dependencies
+include(FetchContent)
+find_package(OpenMP REQUIRED)
+target_link_libraries(tango_l1b PUBLIC OpenMP::OpenMP_CXX)
+# find_package(Threads)
+find_package(spdlog HINTS ${SPDLOG_PATH})
+if (TARGET spdlog::spdlog)
+  message("target found")
+else()
+  if (first_run)
+    message("spdlog not found, downloading")
+  endif()
+  FetchContent_Declare(spdlog
+    GIT_REPOSITORY https://github.com/gabime/spdlog
+    GIT_TAG bae78f7b6c32fbfb97dd5751591734c12103fc1a)
+  FetchContent_MakeAvailable(spdlog)
+  install(DIRECTORY ${spdlog_SOURCE_DIR}/include/spdlog DESTINATION include)
+  install(TARGETS spdlog EXPORT tango_l1bConfig)
+endif()
+target_link_libraries(tango_l1b PUBLIC spdlog::spdlog)
+find_package(yaml-cpp 0.7 QUIET HINTS ${YAML_CPP_PATH})
+if (TARGET yaml-cpp::yaml-cpp OR TARGET yaml-cpp)
+  if (TARGET yaml-cpp::yaml-cpp)
+    get_target_property(_loc yaml-cpp::yaml-cpp IMPORTED_LOCATION_RELEASE)
+  else()
+    get_target_property(_loc yaml-cpp IMPORTED_LOCATION_RELEASE)
+  endif()
+  message(STATUS "Found ${_loc}")
+  target_link_libraries(tango_l1b PUBLIC yaml-cpp)
+else()
+  if (first_run)
+    message("yaml-cpp >= 0.7 not found, downloading")
+  endif()
+  FetchContent_Declare(yaml-cpp
+    GIT_REPOSITORY https://github.com/jbeder/yaml-cpp
+    GIT_TAG 5057a5329332993fa5618f4c7f1aff4c31c21413)
+  FetchContent_MakeAvailable(yaml-cpp)
+  target_link_libraries(tango_l1b PUBLIC yaml-cpp)
+  install(TARGETS yaml-cpp EXPORT tango_l1bConfig)
+endif()
+find_package(pocketfft QUIET HINTS ${POCKETFFT_PATH})
+if (TARGET pocketfft::pocketfft)
+  get_target_property(_loc pocketfft::pocketfft INTERFACE_INCLUDE_DIRECTORIES)
+  message(STATUS "Found ${_loc}")
+  target_link_libraries(tango_l1b PUBLIC pocketfft::pocketfft)
+else()
+  if (first_run)
+    message("pocketfft not found, downloading")
+  endif()
+  FetchContent_Declare(pocketfft
+    GIT_REPOSITORY https://bitbucket.org/sron_earth/pocketfft
+    GIT_TAG 35ef5eb45223b59c94146691a0ee50b8ec301909)
+  FetchContent_MakeAvailable(pocketfft)
+  get_target_property(_loc pocketfft INTERFACE_INCLUDE_DIRECTORIES)
+  target_link_libraries(tango_l1b PUBLIC pocketfft)
+  install(TARGETS pocketfft EXPORT tango_l1bConfig)
+endif()
+
 # Retrieve locations from the list of supplied libraries and convert
 # into a string.
 get_target_property(all_libs tango_l1b LINK_LIBRARIES)
@@ -62,7 +129,7 @@ endforeach()
 list(JOIN all_libs " " all_libs)
 # Gather all compiler flags
 get_all_flags(CXX all_flags)
-target_compile_definitions(tango_l1b PUBLIC
+target_compile_definitions(tango_l1b PRIVATE
   TANGO_PROJECT_VERSION="${TANGO_VERSION}"
   TANGO_GIT_COMMIT_ABBREV="${GIT_COMMIT_ABBREV}"
   TANGO_CMAKE_HOST_SYSTEM="${CMAKE_HOST_SYSTEM}"

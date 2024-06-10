@@ -18,12 +18,18 @@ set(INCLUDE_PATHS "" CACHE STRING
 set(LIBRARY_PATHS "" CACHE STRING
   "Directories containing libraries to be linked against")
 set(LIBRARIES "" CACHE STRING "Libraries to be linked against")
+set(TANGO_L1B_PATH "" CACHE STRING "Path to the Tango L1B library")
+# set(SPDLOG_PATH "" CACHE STRING "Path to spdlog installation directory")
+# set(YAML_CPP_PATH "" CACHE STRING "Path to yaml-cpp installation directory")
 option(BUILD_SHARED_LIBS
   "If enabled, dependencies are built as shared libraries by default" OFF)
 
 # Define main target
 add_executable(tango_im.x "")
 target_compile_features(tango_im.x PUBLIC cxx_std_20)
+include(GetGitRevisionDescription)
+get_git_head_revision(_ GIT_COMMIT)
+string(SUBSTRING ${GIT_COMMIT} 0 8 GIT_COMMIT_ABBREV)
 
 # Process user defined include paths and libraries
 target_include_directories(tango_im.x PUBLIC ${INCLUDE_PATHS})
@@ -36,6 +42,31 @@ target_link_libraries(tango_im.x PRIVATE ${LIBRARIES})
 
 # Sources
 add_subdirectory(tango_im)
+
+# Dependencies
+find_package(tango_l1b REQUIRED HINTS ${TANGO_L1B_PATH})
+target_link_libraries(tango_im.x PRIVATE tango_l1b::tango_l1b)
+
+# Retrieve locations from the list of supplied libraries and convert
+# into a string.
+get_target_property(all_libs tango_im.x LINK_LIBRARIES)
+foreach(_lib ${LIBRARIES})
+  get_target_property(_loc ${_lib} IMPORTED_LOCATION)
+  # Clean the location if from a build instead of an install directory
+  string(REGEX REPLACE "\\$<BUILD_INTERFACE:([^>]+).+" "\\1" _loc "${_loc}")
+  list(APPEND all_libs ${_loc})
+endforeach()
+list(JOIN all_libs " " all_libs)
+# Gather all compiler flags
+get_all_flags(CXX all_flags)
+target_compile_definitions(tango_im.x PRIVATE
+  TANGO_PROJECT_VERSION="${TANGO_VERSION}"
+  TANGO_GIT_COMMIT_ABBREV="${GIT_COMMIT_ABBREV}"
+  TANGO_CMAKE_HOST_SYSTEM="${CMAKE_HOST_SYSTEM}"
+  TANGO_EXECUTABLE="${CMAKE_CURRENT_BINARY_DIR}/tango_l1b"
+  TANGO_CXX_COMPILER="${CMAKE_CXX_COMPILER}"
+  TANGO_CXX_COMPILER_FLAGS="${all_flags}"
+  TANGO_LIBRARIES="${all_libs}")
 
 # Print info
 message(

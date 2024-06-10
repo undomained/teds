@@ -41,3 +41,6 @@ set(LIBRARIES netcdf_c++4 netcdf
   #hdf5_hl
   #hdf5
   z dl fftw3 lapack CACHE STRING "")
+
+# Path to the Tango L1B processor installation or build directory
+# set(TANGO_L1B_PATH /use/local/tango_l1b CACHE STRING "")

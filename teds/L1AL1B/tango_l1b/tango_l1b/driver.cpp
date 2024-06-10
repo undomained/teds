@@ -1,109 +1,176 @@
 // This source code is licensed under the 3-clause BSD license found
 // in the LICENSE file in the root directory of this project.
 
-#include "header.h"
-#include "logger.h"
-#include "netcdf_object.h"
-#include "settings_main.h"
-#include "ckd.h"
-#include "l1b.h"
 #include "driver.h"
+
+#include "binning_table.h"
+#include "calibration.h"
+#include "ckd.h"
+#include "io.h"
+#include "l1.h"
+#include "settings_l1b.h"
+#include "timer.h"
+
+#include <spdlog/spdlog.h>
 
 namespace tango {
 
-Spexone_cal::Spexone_cal( // {{{
-    Logger *creator
-) : Logger(creator)
+auto driver(const SettingsL1B& settings,
+            const int argc,
+            const char* const argv[]) -> void
 {
-} // }}}
-Spexone_cal::~Spexone_cal() {}
+    // Set up loggers and print general information
+    initLogging(false);
+    printHeading("Tango L1B processor", false);
+    printSystemInfo(TANGO_PROJECT_VERSION,
+                    TANGO_GIT_COMMIT_ABBREV,
+                    TANGO_CMAKE_HOST_SYSTEM,
+                    TANGO_EXECUTABLE,
+                    TANGO_CXX_COMPILER,
+                    TANGO_CXX_COMPILER_FLAGS,
+                    TANGO_LIBRARIES,
+                    settings.io.binning_table);
 
-int Spexone_cal::execute( // {{{
-    string settings_file,
-    bool foldsettings
-)
-{
-    if (num_procs > 1) {
-        writelog(log_info, "Number of MPI processes: %i", num_procs);
-    }
-    // Log the settings into the log file.
-    // This scope makes sure to clean any I/O-related stuff from the stack.
-    // It would remain there until the end of the program.
-    {
-        struct stat settingsfile_info;
-        check_error(stat(settings_file.c_str(),&settingsfile_info),"Error acquiring file information from '%s'.",settings_file.c_str());
-        string modtime = ctime(&settingsfile_info.st_mtime);
-        size_t found = modtime.find("\n");
-        modtime = modtime.substr(0,found);
-        writelog(log_debug,"Settings file: '%s' (Last modified %s).%s",settings_file.c_str(),modtime.c_str(),foldsettings?" {{{":"");
-        ifstream setstream(settings_file.c_str());
-        check_error(setstream.fail(),"Error opening settings file: '%s'.",settings_file.c_str());
-        string line;
-        while (getline(setstream,line)) {
-            writelog(log_debug,line.c_str());
+    // Read in the CKD
+    printHeading("CKD");
+    CKD ckd(settings.io.ckd, settings.swath.spectrum_width);
+
+    // Initialize L1 products by reading all L1A data (everything is
+    // stored in memory).
+    std::vector<L1> l1_products {};
+    readL1(settings.io.l1a,
+           settings.image_start,
+           settings.image_end.value_or(fill::i),
+           l1_products);
+
+    // Initialize the binning table and bin the CKD
+    const BinningTable binning_table {
+        ckd.n_detector_rows,
+        ckd.n_detector_cols,
+        settings.io.binning_table,
+        static_cast<int>(l1_products.front().binning_table_id)
+    };
+    binning_table.bin(ckd.pixel_mask);
+    binning_table.bin(ckd.dark.offset);
+    binning_table.bin(ckd.dark.current);
+    binning_table.bin(ckd.noise.g);
+    binning_table.bin(ckd.noise.n2);
+    binning_table.bin(ckd.prnu.prnu);
+    binning_table.binPixelIndices(ckd.swath.pix_indices);
+
+    // Run retrieval
+    printHeading("Retrieval");
+    std::array<Timer, static_cast<int>(ProcLevel::n_levels)> timers {};
+#pragma omp parallel for schedule(dynamic)
+    for (int i_alt = 0; i_alt < static_cast<int>(l1_products.size()); ++i_alt) {
+        printPercentage(i_alt, l1_products.size(), "Processing images");
+        auto& l1 { l1_products[i_alt] };
+        // Initialize pixel mask with that from the CKD
+        l1.pixel_mask = ckd.pixel_mask;
+
+        // Normalize by bin sizes
+        if (l1.level == ProcLevel::l1a
+            && settings.cal_level >= ProcLevel::dark) {
+            binningTable(binning_table, l1);
         }
-        writelog(log_debug,"End of settings file.%s",foldsettings?" }}}":"");
-    }
-
-    // Read logistic (main) settings.
-    Settings_main set_main(this);
-    handle(set_main.init(settings_file));
-
-    // Verify the process list. It must be either:
-    // 1. A contiguous block of CKD steps (need not be in right order).
-    // 2. Just L1B.
-    // 3. Just L1C.
-    vector<bool> execution(nlevel,false);
-    for (size_t iproc=0 ; iproc<set_main.process.size() ; iproc++) {
-        string &processname = set_main.process[iproc];
-        if (processname.compare("l1b") == 0) execution[LEVEL_L1B] = true;
-        else {
-            raise_error("Error: Unrecognized process: %s.",processname.c_str());
+        // Dark offset
+        if (l1.level < ProcLevel::dark
+            && settings.cal_level >= ProcLevel::dark) {
+            timers[static_cast<int>(ProcLevel::dark)].start();
+            darkOffset(ckd, settings.dark.enabled, l1);
+            timers[static_cast<int>(ProcLevel::dark)].stop();
+        }
+        // Noise
+        if (l1.level < ProcLevel::noise
+            && settings.cal_level >= ProcLevel::noise) {
+            timers[static_cast<int>(ProcLevel::noise)].start();
+            noise(ckd, settings.noise.enabled, binning_table, l1);
+            timers[static_cast<int>(ProcLevel::noise)].stop();
+        }
+        // Dark current
+        if (l1.level < ProcLevel::dark
+            && settings.cal_level >= ProcLevel::dark) {
+            timers[static_cast<int>(ProcLevel::dark)].start();
+            darkCurrent(ckd, settings.dark.enabled, l1);
+            timers[static_cast<int>(ProcLevel::dark)].stop();
+        }
+        // Nonlinearity
+        if (l1.level < ProcLevel::nonlin
+            && settings.cal_level >= ProcLevel::nonlin) {
+            timers[static_cast<int>(ProcLevel::nonlin)].start();
+            nonlinearity(ckd, settings.nonlin.enabled, l1);
+            timers[static_cast<int>(ProcLevel::nonlin)].stop();
+        }
+        // PRNU and QE
+        if (l1.level < ProcLevel::prnu
+            && settings.cal_level >= ProcLevel::prnu) {
+            timers[static_cast<int>(ProcLevel::prnu)].start();
+            PRNU(ckd, settings.prnu.enabled, l1);
+            timers[static_cast<int>(ProcLevel::prnu)].stop();
+        }
+        // Stray light
+        if (l1.level < ProcLevel::stray
+            && settings.cal_level >= ProcLevel::stray) {
+            timers[static_cast<int>(ProcLevel::stray)].start();
+            strayLight(
+              ckd, binning_table, settings.stray.van_cittert_steps, l1);
+            timers[static_cast<int>(ProcLevel::stray)].stop();
+        }
+        // Swath
+        if (l1.level < ProcLevel::swath
+            && settings.cal_level >= ProcLevel::swath) {
+            timers[static_cast<int>(ProcLevel::swath)].start();
+            extractSpectra(ckd, settings.swath.enabled, l1);
+            timers[static_cast<int>(ProcLevel::swath)].stop();
+        }
+        // Radiometric
+        if (l1.level < ProcLevel::rad && settings.cal_level >= ProcLevel::rad) {
+            timers[static_cast<int>(ProcLevel::rad)].start();
+            radiometric(ckd, settings.rad.enabled, l1);
+            timers[static_cast<int>(ProcLevel::rad)].stop();
+        }
+        if (settings.reverse_wavelength) {
+            for (auto& spectrum : l1.spectra) {
+                std::ranges::reverse(spectrum.signal);
+                std::ranges::reverse(spectrum.stdev);
+            }
         }
     }
-    // Now we have the boolean array, check if it fulfills the desires.
-    // L1B and L1C should be on their own.
-    // For L1B, no CKD output should be written.
-    // For L1C, no CKD should exist.
-    bool write_ckd;
-    if (execution[LEVEL_L1B] || execution[LEVEL_L1C]) {
-        write_ckd = false; // For L1C, this does not matter.
-        check_error(set_main.process.size() != 1,"Error: L1B and L1C processes cannot be combined with other processes.");
-    } else write_ckd = true;
-    bool turned_on = false;
-    bool turned_off = false;
-    level_t level_first = LEVEL_FILLVALUE;
-    level_t level_last = LEVEL_FILLVALUE;
-    for (size_t ilev=0 ; ilev<nlevel ; ilev++) {
-        if (execution[ilev]) {
-            check_error(turned_off,"Error: Non-contiguous batch of processor steps selected.");
-            if (!turned_on) level_first = (level_t) ilev; // Save first action for CKD reading.
-            turned_on = true;
-            level_last = (level_t) ilev;
-        } else {
-            if (turned_on) turned_off = true;
+    spdlog::info("Processing images 100.0%");
+    if (settings.reverse_wavelength) {
+        for (auto& wavelengths : ckd.wave.wavelength) {
+            std::ranges::reverse(wavelengths);
         }
     }
-    check_error(!turned_on,"Error: No processor selected at all.");
-    check_error(level_first == LEVEL_FILLVALUE,"Program error: Variable level_first not properly initialized during search loop.");
-    check_error(level_last == LEVEL_FILLVALUE,"Program error: Variable level_last not properly initialized during search loop.");
+    // For writing to output, store the CKD wavelength grid in L1
+    l1_products.front().wavelength =
+      std::make_shared<std::vector<std::vector<double>>>(ckd.wave.wavelength);
 
-    level_t level_ckd;
-    check_error(level_first != LEVEL_L1B && set_main.last_calibration_step.compare("") != 0,"Error: Reduced calibration steps only supported for L1B processor.");
-    if (set_main.last_calibration_step.compare("") == 0) level_ckd = level_first;
+    // Write output
+    timers.back().start();
+    writeL1(settings.io.l1b, settings.getConfig(), l1_products, argc, argv);
+    timers.back().stop();
 
-    // Construct CKD. Read actions not in constructor because of possible errors.
-    CKD ckd(this);
-    // Do not read for L1C. If L1C is selected, it is the only process.
-    if (!execution[LEVEL_L1C]) handle(ckd.read(set_main,level_ckd,write_ckd));
+    // Overview of timings
+    spdlog::info("");
+    spdlog::info("Timings:");
+    spdlog::info("               Noise: {:8.3f} s",
+                 timers[static_cast<int>(ProcLevel::noise)].time());
+    spdlog::info("Dark offset, current: {:8.3f} s",
+                 timers[static_cast<int>(ProcLevel::dark)].time());
+    spdlog::info("        Nonlinearity: {:8.3f} s",
+                 timers[static_cast<int>(ProcLevel::nonlin)].time());
+    spdlog::info("                PRNU: {:8.3f} s",
+                 timers[static_cast<int>(ProcLevel::prnu)].time());
+    spdlog::info("         Stray light: {:8.3f} s",
+                 timers[static_cast<int>(ProcLevel::stray)].time());
+    spdlog::info("               Swath: {:8.3f} s",
+                 timers[static_cast<int>(ProcLevel::swath)].time());
+    spdlog::info("         Radiometric: {:8.3f} s",
+                 timers[static_cast<int>(ProcLevel::rad)].time());
+    spdlog::info("      Writing output: {:8.3f} s", timers.back().time());
 
-    for (int lev=(int)level_first ; lev<=(int)level_last ; lev++) {
-        unique_ptr<Processor> proc;
-        if (lev == LEVEL_L1B) proc = make_unique<L1B>(this,&ckd);
-        handle(proc->execute(settings_file,&set_main));
-    }
-    return 0;
-
-} // }}}
+    printHeading("Success");
+}
 
 } // namespace tango

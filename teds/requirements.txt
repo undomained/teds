@@ -17,4 +17,4 @@ tables
 threadpoolctl
 Cartopy
 openpyxl== 3.1.2
-
+piccolo_theme==0.22.0

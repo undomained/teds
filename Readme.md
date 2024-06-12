@@ -1,6 +1,8 @@
 Tango end-to-end simulator
 ==========================
 
+Documentation: https://teds.rtfd.io/
+
 License
 -------
 

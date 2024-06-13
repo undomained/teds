@@ -44,7 +44,7 @@ def build(logger, config, step, cfg_path, attribute_dict):
     if step == 'gm' or step == 'all':
 
         E2EModule = importlib.import_module("GM.gm")
-        E2EModule.geometry_module(logger, config)
+        E2EModule.geometry_module(config, logger=logger)
         # add attributes to the output file
         Utils.add_attributes_to_output(logger, config['gm_file'], attribute_dict)
 

@@ -14,7 +14,14 @@ set(CMAKE_BUILD_TYPE Release CACHE STRING "")
 #set(LIBRARY_PATHS /opt/intel/mkl/lib/intel64 CACHE STRING "")
 
 # Linear algebra libraries
-set(LIBRARIES netcdf_c++4 netcdf fftw3 lapack CACHE STRING "")
+set(LIBRARIES netcdf_c++4 netcdf lapack CACHE STRING "")
 
 # Where to install
 set(CMAKE_INSTALL_PREFIX /usr/local/tango CACHE STRING "")
+
+# If installed, point to where the dependencies are located. This is
+# not necessary if they are in a standard location installed by your
+# package manager.
+#set(SPDLOG_PATH /usr/local/spdlog CACHE STRING "")
+#set(YAML_CPP_PATH /usr/local/yaml-cpp CACHE STRING "")
+#set(POCKETFFT_PATH /usr/local/pocketfft CACHE STRING "")

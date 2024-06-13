@@ -31,6 +31,16 @@ include(GetGitRevisionDescription)
 get_git_head_revision(_ GIT_COMMIT)
 string(SUBSTRING ${GIT_COMMIT} 0 8 GIT_COMMIT_ABBREV)
 
+# Sources
+add_subdirectory(tango_im)
+
+# Dependencies
+find_package(OpenMP REQUIRED)
+find_package(Threads)
+find_package(spdlog QUIET)
+find_package(tango_l1b REQUIRED HINTS ${TANGO_L1B_PATH})
+target_link_libraries(tango_im.x PRIVATE tango_l1b::tango_l1b)
+
 # Process user defined include paths and libraries
 target_include_directories(tango_im.x PUBLIC ${INCLUDE_PATHS})
 # Convert variables to list first
@@ -39,13 +49,6 @@ foreach(_var LIBRARIES LIBRARY_PATHS INCLUDE_PATHS)
 endforeach()
 generate_library_targets(LIBRARY_PATHS LIBRARIES)
 target_link_libraries(tango_im.x PRIVATE ${LIBRARIES})
-
-# Sources
-add_subdirectory(tango_im)
-
-# Dependencies
-find_package(tango_l1b REQUIRED HINTS ${TANGO_L1B_PATH})
-target_link_libraries(tango_im.x PRIVATE tango_l1b::tango_l1b)
 
 # Retrieve locations from the list of supplied libraries and convert
 # into a string.

@@ -1,24 +1,10 @@
-# Initial cache variables for the SPEXone processor
-
-# The syntax used here is
-#  set(<variable> <value> CACHE <type> <docstring>) .
-# You only need to edit the <value> parameter.
-
-# GNU compilers
+# Set compilers
 set(CMAKE_CXX_COMPILER /usr/lib64/ccache/g++ CACHE STRING "")
 set(CMAKE_C_COMPILER /usr/lib64/ccache/gcc CACHE STRING "")
 
-# GNU flags
+# Set compiler flags
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG" CACHE STRING "")
 set(CMAKE_CXX_FLAGS_DEBUG "-Og -g -Wall -Wextra -Wcast-align -Wformat -Winvalid-pch -Wmissing-declarations -Wmissing-include-dirs -Wconversion -Wredundant-decls -Wswitch-default -Wswitch-enum -pedantic" CACHE STRING "")
-
-# Intel compilers
-#set(CMAKE_CXX_COMPILER icpc CACHE STRING "")
-#set(CMAKE_C_COMPILER icc CACHE STRING "")
-
-# Intel flags
-#set(CMAKE_CXX_FLAGS_RELEASE "-Ofast -no-ipo -DNDEBUG" CACHE STRING "")
-#set(CMAKE_CXX_FLAGS_DEBUG "-O3 -g -debug all -traceback" CACHE STRING "")
 
 # Whether to build in Release or Debug configuration.
 set(CMAKE_BUILD_TYPE Release CACHE STRING "")
@@ -30,13 +16,14 @@ set(INCLUDE_PATHS /usr/include CACHE STRING "")
 set(LIBRARY_PATHS /usr/lib64 CACHE STRING "")
 
 # Linear algebra libraries
-set(LIBRARIES libnetcdf_c++4.so libnetcdf.so libz.so libdl.so.2 libfftw3.so liblapack.so.3.11.0 CACHE STRING "")
+set(LIBRARIES libnetcdf_c++4.so libnetcdf.so liblapack.so.3.11.0 CACHE STRING "")
 
-# With MKL
-#set(LIBRARIES netcdf_c++4 netcdf z dl fftw3 mkl_gf_lp64 mkl_sequential mkl_core CACHE STRING "")
+# Where to install
+set(CMAKE_INSTALL_PREFIX /usr/local/tango CACHE STRING "")
 
-# Whether to build with MPI support (usually automatically detected)
-#set(USE_MPI ON CACHE BOOL "")
-
-# Where to install the SPEXone processor
-set(CMAKE_INSTALL_PREFIX /usr/local/ CACHE STRING "")
+# If installed, point to where the dependencies are located. This is
+# not necessary if they are in a standard location installed by your
+# package manager.
+set(SPDLOG_PATH /usr/local/spdlog CACHE STRING "")
+set(YAML_CPP_PATH /usr/local/yaml-cpp CACHE STRING "")
+set(POCKETFFT_PATH /usr/local/pocketfft CACHE STRING "")

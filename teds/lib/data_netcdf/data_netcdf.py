@@ -288,7 +288,7 @@ class DataNetCDF:
                     # item found
                     return item
             #If we get here the item with name name is not found.
-            self.logger.warning(f"Oops {kind} with name {name} is not found in main directory of file {self._file_name}!")
+            self._logger.warning(f"Oops {kind} with name {name} is not found in main directory of file {self._file_name}!")
             return None
         else:
             for gr in self._group_list:

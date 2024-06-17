@@ -208,8 +208,10 @@ class Variable:
         if self._fillvalue is not None:
             # if a fill value has been set add it as an argument.
             var = parent.createVariable(self._name, self._dtype, self._dimensions, fill_value=self._fillvalue)
-        else:
+        elif self._dimensions is not None:
             var = parent.createVariable(self._name, self._dtype, self._dimensions)
+        else:
+            var = parent.createVariable(self._name, self._dtype)
         for attr in self._attribute_list:
             attr.write(var)
         var[:] = self._value

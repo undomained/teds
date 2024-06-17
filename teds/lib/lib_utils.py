@@ -2,6 +2,8 @@ import os, sys
 import logging
 import yaml
 import subprocess
+
+from teds.IM.Python.input.input_yaml import Input_yaml
 import teds.lib.data_netcdf.data_netcdf as dn
 
 def get_logger():
@@ -32,15 +34,20 @@ def getConfig(logger, cfgFile):
        - configuration: configuration info
     """
     cfg_path, filename = os.path.split(cfgFile)
-    stream =  open(cfgFile, 'r')
-    config = yaml.safe_load(stream)
+
+    config_input = Input_yaml(logger, cfgFile)
+    config = config_input.read()
+    print(f"{config_input}")
+
+#    stream =  open(cfgFile, 'r')
+#    config = yaml.safe_load(stream)
     if 'header' in config.keys():
         config['header']['path']=cfg_path
     else:
         config['header'] = {'path':cfg_path, 'file_name': filename, 'version': 'not set'}
 
-   #TODO do we need the below capability?
-   # Fill in variables in the configuration
+    #TODO do we need the below capability?
+    # Fill in variables in the configuration
     for key in config:
         if isinstance(config[key], str):
             config[key] = config[key].format(**config)
@@ -53,6 +60,8 @@ def getConfig(logger, cfgFile):
     for key in config:
         config_string += f"    {key} = {config[key]}\n"
 
+
+    config_string = config_input.print()
     logger.info(config_string)
 
     return config

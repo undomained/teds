@@ -1,17 +1,15 @@
 import yaml
-from teds.IM.Python.input_base import Input
+from teds.IM.Python.input.input_base import Input
 
 class Input_yaml(Input):
 
     def __init__(self, logger, file_name):
-        print(f"INPUT YAML FILE NAME: {file_name}")
         self._logger = logger
         self._file_name = file_name
         self._data = None
 
 
     def read(self):
-        print(f"CALLING YAML READ FCT")
         stream = self.open_file()
         data = yaml.safe_load(stream)
         self.close_file(stream)
@@ -22,7 +20,6 @@ class Input_yaml(Input):
         """
             Loop over entries in yaml and create and return a string
         """
-        #data = self.read()
         data = self._data
         yaml_string = f"Contents of yaml file {self._file_name}:"
         for key, value in data.items():

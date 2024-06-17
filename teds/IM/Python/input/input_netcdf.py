@@ -1,4 +1,4 @@
-from input_base import Input
+from teds.IM.Python.input.input_base import Input
 import teds.lib.data_netcdf.data_netcdf as dn
 
 class Input_netcdf(Input):
@@ -16,7 +16,6 @@ class Input_netcdf(Input):
         return netcdf_data
 
     def print(self):
-#        netcdf_data = dn.DataNetCDF(self._logger, self._file_name, mode='r')
         netcdf_data = self.read()
         data_str = ''
         data_str += str(netcdf_data)

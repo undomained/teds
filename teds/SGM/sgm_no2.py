@@ -713,6 +713,9 @@ def scene_generation_module_nitro(logging, config):
         albedo = libSGM.get_sentinel2_albedo(gm_data['lat'], gm_data['lon'], config,band=config['S2_albedo']['band'])
         np.save(config['S2_albedo']['dump'], albedo)    # .npy extension is added if not given
     
+    # clip albedo
+    albedo[albedo>1.0] = 1.0
+    albedo[albedo<0.0] = 0.0
 
     # =============================================================================================
     # 3) get collocated microHH data and apply convolution

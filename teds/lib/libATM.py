@@ -203,7 +203,7 @@ def get_atmosphericdata(s2_lat, s2_lon,  meteo_settings, kernel_settings):
     for gas in meteo_settings['gases']:
         concgas = data.__getattribute__(gas)
         conv_gas = np.zeros_like(concgas)
-                
+
         for iz in range(data.z.size):
             conv_gas[iz, :, :] = convolution_2d(concgas[iz, :, :], conv_settings)
         data.__setattr__("conv_"+gas, conv_gas)

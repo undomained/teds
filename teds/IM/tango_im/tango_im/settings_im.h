@@ -1,0 +1,170 @@
+// This source code is licensed under the 3-clause BSD license found
+// in the LICENSE file in the root directory of this project.
+
+// Class for storing all user defined configuration parameters of the
+// Tango L1A-L1B processor. A single instance is used throughout the
+// code. For more details see settings.h and settings_l1b.h from the
+// L1B processor.
+
+#pragma once
+
+#include <tango_l1b/settings.h>
+
+namespace tango {
+
+class SettingsIM : public Settings
+{
+private:
+    auto checkParameters() -> void override;
+
+public:
+    Setting<std::string> instrument {
+        { "instrument" },
+        "",
+        "which instrument to run the simulator for (carbon, nitro)"
+    };
+    Setting<std::string> processing_version {
+        { "processing_version" },
+        {},
+        "L0-L4 processing toolchain version"
+    };
+    Setting<ProcLevel> cal_level {
+        { "cal_level" },
+        ProcLevel::l1a,
+        "L1X level of the output file. For instance cal_level prnu means that\n"
+        "the output data remains calibrated up to and including the PRNU\n"
+        "correction, i.e. everything down to stray light has been unapplied."
+    };
+    Setting<int> image_start {
+        { "image_start" },
+        {},
+        "first image to be processed (counting starts at 0)",
+    };
+    Setting<std::optional<int>> image_end {
+        { "image_end" },
+        "last image to be processed (inclusive, counting starts at 0)",
+    };
+
+    struct
+    {
+        Setting<int> binning_table_id {
+            { "detector", "binning_table_id" },
+            0,
+            "which group from the binning table file to use",
+        };
+        Setting<double> exposure_time { { "detector", "exposure_time" },
+                                        {},
+                                        "exposure time for all images" };
+        Setting<int> nr_coadditions {
+            { "detector", "nr_coadditions" },
+            1,
+            "In the end, the images are multiplied by this number and the\n"
+            "coadding factors are stored in the output file."
+        };
+    } detector;
+
+    struct
+    {
+        Setting<bool> enabled {
+            { "isrf", "enabled" },
+            true,
+            "Whether to convolve the radiance spectra with the ISRF or\n"
+            "linearly interpolate from the line-by-line onto the CKD\n"
+            "wavelength grid.",
+        };
+        Setting<double> fwhm_gauss {
+            { "isrf", "fwhm_gauss" },
+            0.1,
+            "the ISRF FWHM used for convolving the line-by-line spectra",
+        };
+    } isrf;
+
+    struct
+    {
+        Setting<bool> enabled {
+            { "dark", "enabled" },
+            true,
+            "whether to include dark offset and current",
+        };
+    } dark;
+
+    struct
+    {
+        Setting<bool> enabled {
+            { "noise", "enabled" },
+            true,
+            "whether to include noise",
+        };
+        Setting<int> seed {
+            { "noise", "seed" },
+            0,
+            "random number generator seed if applying noise",
+        };
+    } noise;
+
+    struct
+    {
+        Setting<bool> enabled {
+            { "nonlin", "enabled" },
+            true,
+            "whether to include nonlinearity",
+        };
+    } nonlin;
+
+    struct
+    {
+        Setting<bool> enabled {
+            { "prnu", "enabled" },
+            true,
+            "whether to include PRNU",
+        };
+    } prnu;
+
+    struct
+    {
+        Setting<bool> enabled {
+            { "stray", "enabled" },
+            true,
+            "whether to include stray light",
+        };
+
+        Setting<int> van_cittert_steps {
+            { "stray", "van_cittert_steps" },
+            3,
+            "number of Van Cittert (deconvolution) steps for stray light\n"
+            "correction (0 disables this step)",
+        };
+    } stray;
+
+    struct
+    {
+        Setting<bool> enabled {
+            { "rad", "enabled" },
+            true,
+            "whether to include radiometric",
+        };
+    } rad;
+
+    struct
+    {
+        Setting<std::string> ckd { { "io", "ckd" }, {}, "CKD file path" };
+        Setting<std::string> binning_table {
+            { "io", "binning_table" },
+            {},
+            "Path to a NetCDF file containing binning tables and count arrays\n"
+            "Which ones to use is determined by the L1A fiel\n"
+            "/image_attributes/binning_table"
+        };
+        Setting<std::string> l1b { { "io", "l1b" }, {}, "L1B product (input)" };
+        Setting<std::string> l1a { { "io", "l1a" },
+                                   {},
+                                   "L1A product (output)" };
+    } io;
+
+    SettingsIM() = default;
+    SettingsIM(const std::string& yaml_file) : Settings { yaml_file } {}
+    auto scanKeys() -> void override;
+    ~SettingsIM() = default;
+};
+
+} // namespace tango

@@ -143,6 +143,8 @@ noise:
     seed:    100       # Seed for noise generation
 dark:
     enabled: 1         # apply dark current and dark offset (1) or not (0)
+nonlin:
+    enabled: 1         # apply non linearity (1) or not (0)
 prnu:
     enabled: 1         # apply PRNU and QE (1) or not (0)
 stray:

@@ -1,0 +1,6 @@
+algos:
+    - ISRF
+    - Draw_On_Detector
+#    - Simple_Regrid
+    - PRNU
+    - Dark_Current

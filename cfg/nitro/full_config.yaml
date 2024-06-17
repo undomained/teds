@@ -9,17 +9,26 @@ header:
 #########################################################
 gm_file: '../data/no2/geometry.nc'
 #
-sgm_rad_file: '../data/no2/sgm_radiance.nc'
+#sgm_rad_file: '../data/no2/sgm_radiance.nc'
+sgm_rad_file: '../data/no2/sgm_radiance_wide.nc'
 sgm_atm_file: '../data/no2/sgm_atmosphere.nc'
-#ckd_input: '../data/no2/ckd/ckd.nc'
-#binning_table: '../data/no2/ckd/binning_table.nc'
-ckd_input: '../data/no2/ckd/ckd_nitro_20240319.nc'
-binning_table: '../data/no2/ckd/binning_table_no2.nc'
-#
-l1a_file: '../data/no2/l1a.nc'
-l1b_file: '../data/no2/l1b.nc'
 l2_file: '../data/no2/l2.nc'
-
+# Input and output definition for IM and L1B
+# TODO: do we want to change it as well for the other steps?????
+io: 
+    binning_table: '../data/no2/ckd/binning_table_no2.nc'
+    # output of IM (and input for L1AL1B):
+    l1a: '../data/no2/l1a.nc'
+    # output of L1AL1B:
+    l1b: '../data/no2/l1b.nc'
+    # CKD for L1AL1B
+    ckd: '../data/no2/ckd/ckd_nitro_MvH_updated.nc'
+    # possibility to have different ckds for IM and L1B
+    # L1B uses ckd. IM uses ckd_im
+    ckd_im: '../data/no2/ckd/ckd_nitro_MvH_updated.nc'
+    # Define in between output files for IM
+    # Base name:
+    im_algo_output: '../data/no2/im_l1x_{algo_name}.nc'
 #########################################################
 #
 # GM 
@@ -113,47 +122,33 @@ S2_albedo:
 IM_cfg_path:  '../cfg/nitro/'                                         #Where the .cfg file needed to run C++ code will be placed
 IM_log_path:  '../logs/IM/'                                         #Where the .log file produced by the C++ code will be placed
 # if output files of inbetween steps are needed define the steps for which output is required
-# otherwise comment out l1x_output_files
-l1x_output_files : 
-    raw: '../data/no2/l1x_raw.nc'
-    dark: '../data/no2/l1x_dark.nc'
-    noise: '../data/no2/l1x_noise.nc'
-    nonlin: '../data/no2/l1x_nonlin.nc'
-    prnu: '../data/no2/l1x_prnu.nc'
-    unbin: '../data/no2/l1x_unbin.nc'
-    stray: '../data/no2/l1x_stray.nc'
-    rebin: '../data/no2/l1x_rebin.nc'
-    fov: '../data/no2/l1x_fov.nc'
-    rad: '../data/no2/l1x_rad.nc'
+proctable:
+    file: '../cfg/nitro/proctable.yaml'
+    scenario: 'algos'
 ############################
-settings_IM:
-# Not used in create_im_config script:
-#    fmc:             5                                  #forward motion compensation## Not sure what this is for
-    bin_id:          1                                   #across track binning
-    co_adding:       2                                   #along track co-addng
-    exp_time:        0.021                               #exposure time [sec]
-# Not used in create_im_config script:
-#    stray_interpolating: yes                             #Whether to use interpolating stray light kernels  ## Note sure what it is for
-    sw_dark:         1                                   #switch dark current (1 on, 0 off)
-    sw_nonlin:       0                                   #switch non-linearity (1 on, 0 off)
-    sw_prnu:         1                                   #switch pixel response non-uniformity (1 on, 0 off)
-    sw_stray:        0                                   #switch dark spectrometer stray light (1 on, 0 off)
-    sw_rad:          1                                   #switch radiometric calibration (1 on, 0 off)
-    sw_swath:        0                                   #switch swath stuff (1 on, 0 off)
-    sw_noise:        0                                   #switch noise stuff (1 on, 0 off)
-############################
+instrumen: 'nitro'
+processing_version: ????
+cal_level: 'l1a' # To indicate wether to uncalibrate the whole way (l1a) or to stop at a certain point ('prnu' -> uncalibrate until (NOT INCLUDING) prnu step)
+image_start: 0
+image_end: 1
+detector:
+    binning_table_id: 1         # across track binning
+    exposure_time:    0.021     # exposure time [sec]
+    nr_coadditions:   2         # along track co-adding
 isrf:
-    convolution:     1                                   #switch spectral convolution (1=yes), (0=no)
-    fwhm:            0.60                                #full width half max [nm] (for carbon: 0.45 and for nitro 0.60)
-############################    
-select_images:       False                               #select certain images form the sgm input
-first_image:         0
-last_image:          1
-############################
+    enabled: 1         # apply spectral convolution (1) or not (0)
+    fwhm_gauss: 0.6    #full width half max [nm] (for carbon: 0.45 and for nitro 0.60)
 noise:
-    switch:          0                                   # switch noise on (1) or off (0)
-    seed:            100                                 #seed for random generator
-############################    
+    enabled: 1         # Add noise (1) or not (0)
+    seed:    100       # Seed for noise generation
+dark:
+    enabled: 1         # apply dark current and dark offset (1) or not (0)
+prnu:
+    enabled: 1         # apply PRNU and QE (1) or not (0)
+stray:
+    enabled: 1         # apply straylight (1) or not (0)
+rad:
+    enabled: 1         # apply radiametric (1) or not ()
 #########################################################
 #
 # L1AL1B specific
@@ -161,6 +156,7 @@ noise:
 #
 #########################################################
 #
+#ckd_input_L1B: '../data/no2/ckd/ckd_nitro_MvH_updated.nc'
 L1AL1B_cfg_path:  '../cfg/nitro/'                                         #Where the .cfg file needed to run C++ code will be placed
 L1AL1B_log_path:  '../logs/L1AL1B/'                                       #Where the .log file produced by the C++ code will be placed
 L1AL1B_instrument_cal:  'tango'                                           #Which instrument calibration is to be used (spexone or tango)

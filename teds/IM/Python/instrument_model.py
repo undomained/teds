@@ -70,7 +70,7 @@ def  add_main_attributes(out_data, attributes):
         out_data.add(name, value=value, kind='attribute')
     return
 
-def initialize_output(input_data, algo_list, dimensions, main_attributes):
+def initialize_output(logger, input_data, algo_list, dimensions, main_attributes):
     """
         Initialize the output files.
         Add dimensions and output dataset
@@ -87,19 +87,19 @@ def initialize_output(input_data, algo_list, dimensions, main_attributes):
     # If ISRF in algo list it is mixed
     # Is this check sufficient?
     # Check if draw_on_detector algo is in algo list:
-    output.add(name='scanline', value=dim_alt, kind='dimension') 
+    output.add(name='scanline', value=dimensions['dim_alt'], kind='dimension')
     if 'Draw_On_Detector' in algo_list:
         # we have a detector image so detector dimensions can be used in output
-        output.add(name='row', value=dim_spat, kind='dimension') 
-        output.add(name='col', value=dim_spec, kind='dimension') 
-        output_data = np.zeros((dim_alt, dim_spat, dim_spec))
+        output.add(name='row', value=dimensions['dim_spat'], kind='dimension')
+        output.add(name='col', value=dimensions['dim_spec'], kind='dimension')
+        output_data = np.zeros((dimensions['dim_alt'], dimensions['dim_spat'], dimensions['dim_spec']))
         output.add(name='measurement', value=output_data, dimensions=('scanline','row','col'), kind='variable')
     elif 'ISRF' in algo_list:
         print(f"Creating ISRF dimensions for final output")
         # detector columns combined with actrack dimension
-        output.add(name='act', value=dim_act, kind='dimension') 
-        output.add(name='col', value=dim_spec, kind='dimension') 
-        output_data = np.zeros((dim_alt, dim_act, dim_spec))
+        output.add(name='act', value=dimensions['dim_act'], kind='dimension')
+        output.add(name='col', value=dimensions['dim_spec'], kind='dimension')
+        output_data = np.zeros((dimensions['dim_alt'], dimensions['dim_act'], dimensions['dim_spec']))
         output.add(name='measurement', value=output_data, dimensions=('scanline','act','col'), kind='variable')
     else:
         # ISRF AND Draw_On_Detector not in algo_list. Any other algos are on detector pixels. Can not be applied.
@@ -173,10 +173,10 @@ def instrument_model(config, logger, main_attributes):
     dim_spec = input_data.get_dataset('detector_column', c_name='ckd', kind='dimension')
     dim_act = input_data.get_dataset('across_track', c_name='ckd', kind='dimension')
     logger.info(f"Found dim_spec: {dim_spec} and dim_spat: {dim_spat} and dim_act: {dim_act}")
-    dimensions = {'dim_act':dim_act,'dim_spec': dim_spec, 'dim_spat': dim_spat. 'dim_alt': dim_alt}
+    dimensions = {'dim_act':dim_act,'dim_spec': dim_spec, 'dim_spat': dim_spat, 'dim_alt': dim_alt}
 
     # Get the output data into list of data containers
-    output_datasets = initialize_output(input_data, algo_list, dimensions, main_attributes)
+    output_datasets = initialize_output(logger, input_data, algo_list, dimensions, main_attributes)
 
     # Loop over images
     for img in range(n_images):

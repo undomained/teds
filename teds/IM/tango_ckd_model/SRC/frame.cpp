@@ -392,9 +392,6 @@ int Frame::draw_on_detector( // {{{
             const int ipix_right = fov_ipix2_cur[ispec];
             double &weightleft = fov_weight1_cur[ispec];
             const auto s { intens[ifov*ckd->dim_detector_spec + ispec] };
-            if (std::abs(image[ipix_left]) < 1e-100) {
-                image[ipix_left] = s;
-            }
             image[ipix_right] = (s - weightleft * image[ipix_left]) / (1.0 - weightleft);
         }
     }

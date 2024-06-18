@@ -126,8 +126,8 @@ proctable:
     file: '../cfg/nitro/proctable.yaml'
     scenario: 'algos'
 ############################
-instrumen: 'nitro'
-processing_version: ????
+instrument: 'nitro'
+processing_version: 0.000
 cal_level: 'l1a' # To indicate wether to uncalibrate the whole way (l1a) or to stop at a certain point ('prnu' -> uncalibrate until (NOT INCLUDING) prnu step)
 image_start: 0
 image_end: 1
@@ -136,21 +136,21 @@ detector:
     exposure_time:    0.021     # exposure time [sec]
     nr_coadditions:   2         # along track co-adding
 isrf:
-    enabled: 1         # apply spectral convolution (1) or not (0)
-    fwhm_gauss: 0.6    #full width half max [nm] (for carbon: 0.45 and for nitro 0.60)
+    enabled: yes         # apply spectral convolution (yes/no)
+    fwhm_gauss: 0.6      #full width half max [nm] (for carbon: 0.45 and for nitro 0.60)
 noise:
-    enabled: 1         # Add noise (1) or not (0)
-    seed:    100       # Seed for noise generation
+    enabled: yes         # Add noise (yes/no)
+    seed:    100         # Seed for noise generation
 dark:
-    enabled: 1         # apply dark current and dark offset (1) or not (0)
+    enabled: yes         # apply dark current and dark offset (yes/no)
 nonlin:
-    enabled: 1         # apply non linearity (1) or not (0)
+    enabled: yes         # apply non linearity (yes/no)
 prnu:
-    enabled: 1         # apply PRNU and QE (1) or not (0)
+    enabled: yes         # apply PRNU and QE (yes/no)
 stray:
-    enabled: 1         # apply straylight (1) or not (0)
+    enabled: yes         # apply straylight (yes/no)
 rad:
-    enabled: 1         # apply radiametric (1) or not ()
+    enabled: yes         # apply radiametric (yes/no)
 #########################################################
 #
 # L1AL1B specific

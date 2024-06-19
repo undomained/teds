@@ -47,26 +47,6 @@ def genHeader(conf, nc_ckd):
     nc_ckd.creator_name = "SRON/Earth Science"
 
 
-def genPixelMask(conf, nc_ckd):
-    '''Generate detector bad pixel mask and save into a NetCDF file.
-
-    Parameters
-    ----------
-      conf - settings read from the YAML file
-      nc_ckd - NetCDF file to save the result to
-    '''
-
-    nc_var = nc_ckd.createVariable('pixel_mask',
-                                   'b',
-                                   ('detector_row', 'detector_column'),
-                                   fill_value=np.int8(-128))
-    nc_var.long_name = 'detector pixel mask'
-    nc_var.valid_range = (np.int8(0), np.int8(1))
-    nc_var.flag_values = (np.int8(0), np.int8(1))
-    nc_var.flag_meanings = 'good bad'
-    nc_var[:] = 0
-
-
 def genDark(conf, nc_ckd):
     '''Generate detector dark CKD and save into a NetCDF file.
 
@@ -342,6 +322,29 @@ def genRadiometric(conf, nc_ckd):
     nc_var[:] = 4222381848451.05
 
 
+def genPixelMask(conf, nc_ckd):
+    '''Generate detector bad pixel mask and save into a NetCDF file.
+
+    Parameters
+    ----------
+      conf - settings read from the YAML file
+      nc_ckd - NetCDF file to save the result to
+    '''
+
+    nc_var = nc_ckd.createVariable('pixel_mask',
+                                   'b',
+                                   ('detector_row', 'detector_column'),
+                                   fill_value=np.int8(-128))
+    nc_var.long_name = 'detector pixel mask'
+    nc_var.valid_range = (np.int8(0), np.int8(1))
+    nc_var.flag_values = (np.int8(0), np.int8(1))
+    nc_var.flag_meanings = 'good bad'
+    mask = np.logical_or(abs(nc_ckd['dark/current'][:]) > 1e4,
+                         abs(nc_ckd['dark/offset'][:]) > 600.0)
+    mask = np.logical_or(mask, abs(nc_ckd['prnu/prnu'][:]) < 1e-10)
+    nc_var[:] = mask
+
+
 if __name__ == '__main__':
     if len(sys.argv) < 2:
         print('usage: ckd_generator.py [ckd.yaml]')
@@ -352,9 +355,6 @@ if __name__ == '__main__':
 
     print('Generating dimensions and global attributes')
     genHeader(conf, nc_ckd)
-
-    print('Generating detector bad pixel mask')
-    genPixelMask(conf, nc_ckd)
 
     print('Generating dark offset and current')
     genDark(conf, nc_ckd)
@@ -376,5 +376,8 @@ if __name__ == '__main__':
 
     print('Generating radiometric CKD')
     genRadiometric(conf, nc_ckd)
+
+    print('Generating detector bad pixel mask')
+    genPixelMask(conf, nc_ckd)
 
     nc_ckd.close()

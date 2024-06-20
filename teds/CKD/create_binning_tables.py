@@ -2,7 +2,7 @@ import sys, os
 import logging
 import numpy as np
 import math
-import lib.data_netcdf.data_netcdf as dn
+import teds.lib.data_netcdf.data_netcdf as dn
 
 def get_logger():
     """
@@ -38,7 +38,7 @@ def build_simple(logger, bin_file, nrows, ncols, row_binning, col_factor=1):
 
     # Create the binning tables for the different row binnings
     for row_factor in row_binning:
-        table_name = f"Table_0{row_factor}"
+        table_name = f"Table_{row_factor}"
         #create group
         bin_data.add(name=table_name, kind='group') 
 

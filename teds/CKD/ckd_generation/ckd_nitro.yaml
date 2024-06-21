@@ -16,9 +16,10 @@
         number_of_views         : 1,
         single_double           : 1, 
 
-        straylight: {
-            spatial         : 2870,  # n_rows
-            spectral        : 1681,  # n_cols
+        stray: {
+            kernel              : 10,  # kernel size
+            kernel_fft_sizes    : 1681,  # n_cols
+            edges_of_box        : 4,
         },
     },
 
@@ -50,7 +51,7 @@
     lbl_min_wl: 395,                # nm, line by line spectrum minimum wavelength
     lbl_max_wl: 502,                # nm, line by line spectrum maximum wavelength
     lbl_resolution: 0.05,           # nm, line by line spectrum resolution 
-
+    rcc: 4222381848451.05,          # radiometric calibration constant
 }
 
 

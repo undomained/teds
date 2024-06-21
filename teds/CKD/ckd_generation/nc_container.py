@@ -91,11 +91,19 @@ class NC_container:
     def get_group_name(self):
         path = self.get_path_ckd_file()
         j = path.rfind('/')
-        group = path[:j]
+        group = path[:j].replace('/','')
         return group
     
     def get_shape(self, dims):
-        return tuple(self.cfg['dimensions'][dim] for dim in dims)
+        dimshape = []
+        for dim in dims:
+            if dim not in self.cfg['dimensions'].keys():
+                grp = self.get_group_name()
+                dimshape.append(self.cfg['dimensions'][grp][dim])
+            else:
+                dimshape.append(self.cfg['dimensions'][dim])
+        return dimshape
+        #return tuple(self.cfg['dimensions'][dim] for dim in dims)
          
     def close(self):
         print(f"[done] >> {self.cfg['paths']['ckd_nitro']} created")

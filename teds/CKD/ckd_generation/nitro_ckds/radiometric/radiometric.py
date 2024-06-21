@@ -1,0 +1,17 @@
+import numpy as np
+
+def generate(ncc):
+    """
+    Radiometric Calibration Constant
+    """
+    cfg = ncc.cfg
+    dims = ['across_track', 'detector_col']
+    rcc = np.ones(ncc.get_shape(dims)) * cfg['rcc']
+    attr = {
+        'long_name': 'Radiometric calibration constant',
+        'comment' : 'Single value, will be replaced with wavelength dependend dispersion and transmission'
+    }
+    
+    ncc.create_var_auto(dims, rcc, attr, 'f8')
+
+

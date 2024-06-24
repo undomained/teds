@@ -17,10 +17,13 @@ l2_file: '../data/no2/l2.nc'
 # TODO: do we want to change it as well for the other steps?????
 io: 
     binning_table: '../data/no2/ckd/binning_table_no2.nc'
+    # Input IM:
+    l1b_im: '../data/no2/sgm_radiance_wide.nc'
     # output of IM (and input for L1AL1B):
-    l1a: '../data/no2/l1a.nc'
+    l1a: '../data/no2/l1a_cpp.nc'
     # output of L1AL1B:
-    l1b: '../data/no2/l1b.nc'
+#    l1b: '../data/no2/l1b.nc'
+    l1b: '../data/no2/sgm_radiance_wide.nc'
     # CKD for L1AL1B
     ckd: '../data/no2/ckd/ckd_nitro_MvH_updated.nc'
     # possibility to have different ckds for IM and L1B
@@ -130,27 +133,32 @@ instrumen: 'nitro'
 processing_version: ????
 cal_level: 'l1a' # To indicate wether to uncalibrate the whole way (l1a) or to stop at a certain point ('prnu' -> uncalibrate until (NOT INCLUDING) prnu step)
 image_start: 0
-image_end: 1
+image_end: 100
 detector:
     binning_table_id: 1         # across track binning
     exposure_time:    0.021     # exposure time [sec]
     nr_coadditions:   2         # along track co-adding
 isrf:
-    enabled: 1         # apply spectral convolution (1) or not (0)
+#    enabled: true      # apply spectral convolution (1) or not (0)
+    enabled: false      # apply spectral convolution (1) or not (0)
     fwhm_gauss: 0.6    #full width half max [nm] (for carbon: 0.45 and for nitro 0.60)
 noise:
-    enabled: 1         # Add noise (1) or not (0)
+    enabled: false      # Add noise (1) or not (0)
+#    enabled: true      # Add noise (1) or not (0)
     seed:    100       # Seed for noise generation
 dark:
-    enabled: 1         # apply dark current and dark offset (1) or not (0)
+    enabled: true      # apply dark current and dark offset (1) or not (0)
 nonlin:
-    enabled: 1         # apply non linearity (1) or not (0)
+#    enabled: true      # apply non linearity (1) or not (0)
+    enabled: false     # apply non linearity (1) or not (0)
 prnu:
-    enabled: 1         # apply PRNU and QE (1) or not (0)
+    enabled: true      # apply PRNU and QE (1) or not (0)
 stray:
-    enabled: 1         # apply straylight (1) or not (0)
+#    enabled: true      # apply straylight (1) or not (0)
+    enabled: false     # apply straylight (1) or not (0)
 rad:
-    enabled: 1         # apply radiametric (1) or not ()
+#    enabled: true      # apply radiametric (1) or not ()
+    enabled: false     # apply radiametric (1) or not ()
 #########################################################
 #
 # L1AL1B specific

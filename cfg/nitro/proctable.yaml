@@ -4,3 +4,5 @@ algos:
 #    - Simple_Regrid
     - PRNU
     - Dark_Current
+    - Coadding
+    - ADC

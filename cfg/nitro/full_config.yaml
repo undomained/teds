@@ -129,8 +129,8 @@ proctable:
     file: '../cfg/nitro/proctable.yaml'
     scenario: 'algos'
 ############################
-instrumen: 'nitro'
-processing_version: ????
+instrument: 'nitro'
+processing_version: 0.000
 cal_level: 'l1a' # To indicate wether to uncalibrate the whole way (l1a) or to stop at a certain point ('prnu' -> uncalibrate until (NOT INCLUDING) prnu step)
 image_start: 0
 image_end: 100

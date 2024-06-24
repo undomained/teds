@@ -64,7 +64,7 @@ auto driver(const SettingsIM& settings,
                     settings.io.binning_table);
 
     // Read in the CKD
-    printHeading("CKD");
+    printHeading("Reading CKD and input data");
     const CKD ckd { settings.io.ckd };
     // For undoing nonlinearity calibration we need the inverse of the
     // nonlinearity spline from the CKD.

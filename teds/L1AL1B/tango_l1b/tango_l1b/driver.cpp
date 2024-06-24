@@ -32,7 +32,7 @@ auto driver(const SettingsL1B& settings,
                     settings.io.binning_table);
 
     // Read in the CKD
-    printHeading("CKD");
+    printHeading("Reading CKD and input data");
     CKD ckd(settings.io.ckd, settings.swath.spectrum_width);
 
     // Initialize L1 products by reading all L1A data (everything is

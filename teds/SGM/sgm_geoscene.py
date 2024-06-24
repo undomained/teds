@@ -6,9 +6,7 @@
 #     the LICENSE file in the root directory of this project.
 # =============================================================================
 
-import os
 import sys
-import pickle
 import netCDF4 as nc
 import numpy as np
 import yaml
@@ -16,28 +14,55 @@ from ..lib import constants
 from ..lib import libATM, libSGM
 from ..lib.libWrite import writevariablefromname
 
+from netCDF4 import Dataset
+from xarray import DataArray
+from typing import List
+
+
+def read_sentinel2_albedo(filename: str) -> List[DataArray]:
+    '''Read a list of Sentinel 2 albedos from a NetCDF file.
+
+    '''
+    nc = Dataset(filename)
+    albedos = []
+    for group in nc.groups:
+        albedo = DataArray(nc[group]['albedo'][:],
+                           dims=('y', 'x'),
+                           coords={
+                               'y': nc[group]['y'][:],
+                               'x': nc[group]['x'][:]
+                           })
+        albedo.attrs['gsd'] = nc[group]['gsd'][:]
+        albedo.attrs['band_label'] = group
+        albedo.rio.write_crs(nc[group].crs, inplace=True)
+        albedos.append(albedo)
+    return albedos
+
+
 class Emptyclass:
     """Empty class. Data container."""
-    
+
     pass
 
+
 def get_gm_data(filename):
-    
+
     names = ['sza', 'saa', 'vza', 'vaa', 'lat', 'lon']
-    
+
     input = nc.Dataset(filename, mode='r')
-    
+
     gm_data = Emptyclass()
 
     for name in names:
         gm_data.__setattr__(name, input[name][:])
-        
+
     input.close()
-    
+
     return gm_data
-    
+
+
 def geosgm_output(filename, atm):
-    # write geophysical scene data to output 
+    # write geophysical scene data to output
 
     nalt, nact, nlay = atm.zlay.shape
     nlev = nlay+1
@@ -72,14 +97,15 @@ def geosgm_output(filename, atm):
                                   atm.__getattribute__('X'+gas))
 
     # albedo
-    
-    bands = [x.removesuffix('_albedo') for x in atm.albedo.__dict__.keys() if '_albedo' in x]
-    for band in bands:
-        var_alb = writevariablefromname(output_atm, 'albedo_'+ band, _dims2d, 
-                                        atm.albedo.__getattribute__(band+'_albedo'))
-        var_alb.setncattr("central wavelength", atm.albedo.__getattribute__(band+'_central_wave'))
-        var_alb.setncattr("band width", atm.albedo.__getattribute__(band+'_band_width'))
-
+    for s2_albedo in atm.albedo:
+        print(s2_albedo.values)
+        var_alb = writevariablefromname(
+            output_atm,
+            'albedo_' + s2_albedo.band_label,
+            _dims2d,
+            s2_albedo.values)
+        var_alb.setncattr("central wavelength", s2_albedo.central_wavelength)
+        var_alb.setncattr("band width", s2_albedo.bandwidth)
 
 #    _ = writevariablefromname(output_atm, 'albedo', _dims2d, atm.albedo)
     # xpos and ypos       
@@ -134,8 +160,8 @@ def geoscene_generation(config):
 
     # individual spectra and single swath
     if (config['profile'] == 'individual_spectra'):
-        #use this profile whe you want to study the retrieval dependence as a 
-        #function of one parameter   
+        #use this profile whe you want to study the retrieval dependence as a
+        #function of one parameter
         if(nalt!= 1):
             sys.exit("input error in sgm, for profile = indiudual spectra, nalt!=1")
         albedo = np.zeros([nalt, nact])
@@ -143,31 +169,29 @@ def geoscene_generation(config):
             sys.exit("input error in sgm, albedo dimension not consistent with gm")
         albedo[0, :] = config['scene_spec']['albedo'][:]
         atm = libATM.create_atmosphere_ind_spectra(nalt, nact, atm_std, albedo)
-    
+
     # Orbit
     if (config['profile'] == 'orbit'):
 
         # meteorological data
-        meteodata = libATM.get_atmosphericdata_new(gm_data.lat, gm_data.lon, config['meteo'])
-        
-        # get albedo on the microhh grid
-        file_exists = os.path.isfile(config['S2_dump'])
-        if (file_exists and (not config['S2']['force_data_ret'])):
-            albedo = pickle.load(open(config['S2_dump'], 'rb'))
-        else:
-            albedo = libSGM.get_sentinel2_albedo_new(meteodata.lat, meteodata.lon, config['S2']['band_section'])
-            pickle.dump(albedo, open(config['S2_dump'], 'wb')) # .pkl extension is added if not given
-            
-        meteodata.__setattr__("albedo", albedo)
-        
-        atm = libATM.combine_meteo_standard_atm_new(meteodata, atm_std, config)
-            
-    geosgm_output(config['geo_output'], atm)
+        meteodata = libATM.get_atmosphericdata_new(
+            gm_data.lat, gm_data.lon, config['meteo'])
 
+        # Get albedo on the microHH grid
+        s2_albedos = read_sentinel2_albedo(config['sentinel2']['albedo_file'])
+        s2_albedos = libSGM.get_sentinel2_albedo(
+            s2_albedos,
+            meteodata.lat,
+            meteodata.lon,
+            config,
+            config['sentinel2']['albedo_file'],
+            config['sentinel2']['band_section'])
+        meteodata.__setattr__("albedo", s2_albedos)
+        atm = libATM.combine_meteo_standard_atm_new(meteodata, atm_std, config)
+    geosgm_output(config['geo_output'], atm)
     print('=>sgm geoscene calculation finished successfully')
-    return
+
 
 if __name__ == '__main__':
     config = yaml.safe_load(open(sys.argv[1]))
     geoscene_generation(config)
-

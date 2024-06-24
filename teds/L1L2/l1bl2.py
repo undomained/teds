@@ -13,11 +13,11 @@ from copy import deepcopy
 import netCDF4 as nc
 import yaml
 
-from lib import libNumTools
-from lib import libRT
-from lib import libATM
-from lib import libINV
-from lib.libWrite import writevariablefromname
+from teds.lib import libNumTools
+from teds.lib import libRT
+from teds.lib import libATM
+from teds.lib import libINV
+from teds.lib.libWrite import writevariablefromname
 import matplotlib.pyplot as plt
 
 class Emptyclass:
@@ -25,22 +25,21 @@ class Emptyclass:
     
     pass
 
-def get_l1b(filename):
+def get_l1b(l1b_filename, geometry_filename):
     # getting l1b data from file
-    input = nc.Dataset(filename, mode='r')
+    nc_l1b = nc.Dataset(l1b_filename, mode='r')
     l1b_data = {}
-    l1b_data['sza'] = deepcopy(input['GEOLOCATION_DATA']['sza'][:])
-    l1b_data['saa'] = deepcopy(input['GEOLOCATION_DATA']['saa'][:])
-    l1b_data['vza'] = deepcopy(input['GEOLOCATION_DATA']['vza'][:])
-    l1b_data['vaa'] = deepcopy(input['GEOLOCATION_DATA']['vaa'][:])
-    l1b_data['latitude'] = deepcopy(input['GEOLOCATION_DATA']['lat'][:])
-    l1b_data['longitude'] = deepcopy(input['GEOLOCATION_DATA']['lon'][:])
-    l1b_data['wavelength'] = deepcopy(input['OBSERVATION_DATA']['wavelength'][:])
-    l1b_data['radiance'] = deepcopy(input['OBSERVATION_DATA']['radiance'][:])
-#    l1b_data['radmask'] = deepcopy(input['OBSERVATION_DATA']['radiance_mask'][:])
-    l1b_data['noise'] = deepcopy(input['OBSERVATION_DATA']['radiance_noise'][:])
-    
-    input.close()
+    l1b_data['wavelength'] = deepcopy(nc_l1b['sensor_bands/wavelength'][:])
+    l1b_data['radiance'] = deepcopy(nc_l1b['observation_data/i'][:])
+    l1b_data['noise'] = deepcopy(nc_l1b['observation_data/i_stdev'][:])
+    # getting geometry data from file
+    nc_geom = nc.Dataset(geometry_filename, mode='r')
+    l1b_data['sza'] = deepcopy(nc_geom['sza'][:])
+    l1b_data['saa'] = deepcopy(nc_geom['saa'][:])
+    l1b_data['vza'] = deepcopy(nc_geom['vza'][:])
+    l1b_data['vaa'] = deepcopy(nc_geom['vaa'][:])
+    l1b_data['latitude'] = deepcopy(nc_geom['lat'][:])
+    l1b_data['longitude'] = deepcopy(nc_geom['lon'][:])
     return (l1b_data)
 
 
@@ -48,7 +47,7 @@ def get_sgm_atm(filen_sgm_atm):
     data = nc.Dataset(filen_sgm_atm, mode='r')
     atm_sgm = {}
     surf_sgm = {}
-    surf_sgm['albedo'] = deepcopy(data['albedo'][:])
+    surf_sgm['albedo'] = deepcopy(data['albedo B11'][:])
     atm_sgm['zlay'] = deepcopy(data['zlay'][:])
     atm_sgm['zlev'] = deepcopy(data['zlev'][:])
     atm_sgm['dcol_co2'] = deepcopy(data['dcol_co2'][:])
@@ -309,7 +308,7 @@ def level1b_to_level2_processor(config, sw_diag_output = False):
     # get the l1b files
 
     print('level 1B to 2 proessor ...')
-    l1b = get_l1b(config['l1b_input'])
+    l1b = get_l1b(config['l1b_input'], config['geometry_input'])
 
     # get sgm geo data
     surf_sgm, atm_sgm = get_sgm_atm(config['sgm_input'])

@@ -44,7 +44,7 @@ First step is to obtain CMake. On Ubuntu and similar distributions it can likely
 
 .. code-block:: bash
 
-   sudo apt-get install cmake
+   sudo apt install cmake
 
 Running CMake (the configuration step) creates a set of persistent variables which are contained in a file called ``CMakeCache.txt`` in the build directory. These are referred to as cache variables and they are the user-configurable settings of the project. All the important decisions such as which compiler to use, which libraries to link against, etc., are stored as cache variables. There are several ways of setting the cache variables, one of which is to define them in a file that can be read by CMake. This is called the initial cache file, template of which are provided with the source code so you don't have to compose it from scratch.
 

@@ -220,12 +220,10 @@ auto readL1(const std::string& filename,
 
     // Determine data level
     std::string processing_level_str {};
-    bool old_format { false };
     try {
         nc.getAtt("processing_level").getValues(processing_level_str);
     } catch (const netCDF::exceptions::NcBadId&) {
         processing_level_str = "L1B";
-        old_format = true;
     }
     ProcLevel level {};
     if (processing_level_str == "L1A") {
@@ -241,11 +239,9 @@ auto readL1(const std::string& filename,
 
     // The along-track dimension is called along_track for a L1B
     // products and detector_image otherwise.
-    std::string alt_dim_name { level <= ProcLevel::stray ? "detector_image"
-                                                         : "along_track" };
-    if (old_format) {
-        alt_dim_name = "bins_along_track";
-    }
+    const std::string alt_dim_name { level <= ProcLevel::stray
+                                       ? "detector_image"
+                                       : "along_track" };
     const size_t alt_beg { static_cast<size_t>(image_start) };
     const size_t alt_end { image_end == fill::i
                              ? nc.getDim(alt_dim_name).getSize()
@@ -319,31 +315,18 @@ auto readL1(const std::string& filename,
         }
     }
     if (level > ProcLevel::stray) {
-        const std::string dim_act_name { old_format ? "bins_across_track"
-                                                    : "across_track" };
-        const std::string dim_wave_name { old_format ? "bins_spectral"
-                                                     : "wavelength" };
-        const auto n_act { nc.getDim(dim_act_name).getSize() };
-        const auto n_wavelength { nc.getDim(dim_wave_name).getSize() };
+        const auto n_act { nc.getDim("across_track").getSize() };
+        const auto n_wavelength { nc.getDim("wavelength").getSize() };
         std::vector<double> spectra(n_images * n_act * n_wavelength);
         std::vector<double> spectra_stdev(n_images * n_act * n_wavelength);
         std::vector<double> wavelength(n_act * n_wavelength);
-        if (old_format) {
-            nc.getVar("radiance")
-              .getVar({ alt_beg, 0, 0 },
-                      { n_images, n_act, n_wavelength },
-                      spectra.data());
-            nc.getVar("wavelength").getVar(wavelength.data());
-        } else {
-            const auto nc_grp { nc.getGroup("science_data") };
-            nc_grp.getVar("i").getVar({ alt_beg, 0, 0 },
-                                      { n_images, n_act, n_wavelength },
-                                      spectra.data());
-            nc_grp.getVar("i_stdev").getVar({ alt_beg, 0, 0 },
-                                            { n_images, n_act, n_wavelength },
-                                            spectra_stdev.data());
-            nc_grp.getVar("wavelength").getVar(wavelength.data());
-        }
+        const auto nc_grp { nc.getGroup("science_data") };
+        nc_grp.getVar("i").getVar(
+          { alt_beg, 0, 0 }, { n_images, n_act, n_wavelength }, spectra.data());
+        nc_grp.getVar("i_stdev").getVar({ alt_beg, 0, 0 },
+                                        { n_images, n_act, n_wavelength },
+                                        spectra_stdev.data());
+        nc_grp.getVar("wavelength").getVar(wavelength.data());
         auto wavelength_lbl {
             std::make_shared<std::vector<std::vector<double>>>(
               n_act, std::vector<double>(n_wavelength))
@@ -351,8 +334,7 @@ auto readL1(const std::string& filename,
         for (size_t i_act {}; i_act < n_act; ++i_act) {
             for (size_t i {}; i < n_wavelength; ++i) {
                 (*wavelength_lbl)[i_act][i] =
-                  (old_format ? wavelength[i]
-                              : wavelength[i_act * n_wavelength + i]);
+                  wavelength[i_act * n_wavelength + i];
             }
         }
         for (size_t i_alt {}; i_alt < n_images; ++i_alt) {
@@ -366,9 +348,7 @@ auto readL1(const std::string& filename,
                     const size_t idx { (i_alt * n_act + i_act) * n_wavelength
                                        + i };
                     l1.spectra[i_act].signal[i] = spectra[idx];
-                    if (!old_format) {
-                        l1.spectra[i_act].stdev[i] = spectra_stdev[idx];
-                    }
+                    l1.spectra[i_act].stdev[i] = spectra_stdev[idx];
                 }
             }
         }

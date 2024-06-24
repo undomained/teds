@@ -1,15 +1,10 @@
 # This source code is licensed under the 3-clause BSD license found in
 # the LICENSE file in the root directory of this project.
-# =============================================================================
-#     scene generation module for different E2E simulator profiles
-#     This source code is licensed under the 3-clause BSD license found in
-#     the LICENSE file in the root directory of this project.
-# =============================================================================
 
+from netCDF4 import Dataset
 import os
 import pickle
 import sys
-import netCDF4 as nc
 import numpy as np
 import yaml
 from tqdm import tqdm
@@ -36,7 +31,7 @@ def get_gm_data(filename):
     
     names = ['sza', 'saa', 'vza', 'vaa', 'lat', 'lon']
     
-    input = nc.Dataset(filename, mode='r')
+    input = Dataset(filename, mode='r')
     
     gm_data = Emptyclass()
 
@@ -51,19 +46,38 @@ def radsgm_output(filename_rad, rad_output):
     # write radiances
     nalt, nact, nlbl = rad_output['radiance'].shape
     # open file
-    output_rad = nc.Dataset(filename_rad, mode='w')
-    output_rad.title = 'Tango Carbon E2ES SGM radiometric scene'
-    output_rad.createDimension('bins_spectral', nlbl)     # spectral axis
-    output_rad.createDimension('bins_across_track', nact)     # across track axis
-    output_rad.createDimension('bins_along_track', nalt)     # along track axis
+    nc = Dataset(filename_rad, mode='w')
+    nc.title = 'Tango Carbon E2ES SGM radiometric scene'
+    nc.createDimension('wavelength', nlbl)     # spectral axis
+    nc.createDimension('across_track', nact)     # across track axis
+    nc.createDimension('along_track', nalt)     # along track axis
+    grp = nc.createGroup('science_data')
     # wavelength
-    _ = writevariablefromname(output_rad, 'wavelength', ('bins_spectral',), rad_output['wavelength_lbl'])
+    wavelength_lbl = np.zeros((nact, nlbl))
+    for i in range(nact):
+        wavelength_lbl[i, :] = rad_output['wavelength_lbl']
+    _ = writevariablefromname(grp,
+                              'wavelength',
+                              ('across_track', 'wavelength'),
+                              wavelength_lbl)
     # solar irradiance
-    _ = writevariablefromname(output_rad, 'solarirradiance', ('bins_spectral',), rad_output['solar irradiance'])
+    _ = writevariablefromname(grp, 'solarirradiance', ('wavelength',), rad_output['solar irradiance'])
     # radiance
-    _dims = ('bins_along_track', 'bins_across_track', 'bins_spectral')
-    _ = writevariablefromname(output_rad, 'radiance', _dims, rad_output['radiance'])
-    output_rad.close()
+    _dims = ('along_track', 'across_track', 'wavelength')
+
+    nc_var = grp.createVariable('i', 'f8', _dims, fill_value=-32767.0)
+    nc_var.long_name = "radiance line-by-line"
+    nc_var.units = "photons / (sr nm m2 s)"
+    nc_var.valid_min = 0.0
+    nc_var.valid_max = 1e+28
+    nc_var[:] = rad_output['radiance']
+    nc_var = grp.createVariable('i_stdev', 'f8', _dims, fill_value=-32767.0)
+    nc_var.long_name = "standard deviation of radiance"
+    nc_var.units = "photons / (sr nm m2 s)"
+    nc_var.valid_min = 0.0
+    nc_var.valid_max = 1e+28
+    nc_var[:] = 1.0
+    nc.close()
 
 def sgm_output_atm_ref(filename, atm, albedo, gm_data, gases):
 
@@ -72,14 +86,14 @@ def sgm_output_atm_ref(filename, atm, albedo, gm_data, gases):
     dim_alt,dim_act, dim_lay = atm.zlay.shape
     dim_lev = atm.zlev.shape[2]
     
-    output_atm = nc.Dataset(filename, mode='w')
+    output_atm = Dataset(filename, mode='w')
     output_atm.title = 'Tango Carbon E2ES SGM atmospheric scene'
-    output_atm.createDimension('bins_along_track', dim_alt)      # along track axis
-    output_atm.createDimension('bins_across_track', dim_act)     # across track axis
+    output_atm.createDimension('along_track', dim_alt)      # along track axis
+    output_atm.createDimension('across_track', dim_act)     # across track axis
     output_atm.createDimension('number_layers', dim_lay)         # layer axis
     output_atm.createDimension('number_levels', dim_lev)         # level axis
 
-    _dims = ('bins_along_track', 'bins_across_track', 'number_layers')
+    _dims = ('along_track', 'across_track', 'number_layers')
     # central layer height
     _ = writevariablefromname(output_atm, 'central_layer_height', _dims, atm.zlay)
     # columndensity_co2
@@ -89,14 +103,14 @@ def sgm_output_atm_ref(filename, atm, albedo, gm_data, gases):
     # columndensity_h2o
     _ = writevariablefromname(output_atm, 'subcol_density_h2o', _dims, atm.H2O)
     # level height
-    _dims = ('bins_along_track', 'bins_across_track', 'number_levels')
+    _dims = ('along_track', 'across_track', 'number_levels')
     _ = writevariablefromname(output_atm, 'levelheight', _dims, atm.zlev)
 
     xco2 = np.sum(atm.CO2,axis=2)/atm.air*1.e6  #[ppm]
     xch4 = np.sum(atm.CH4,axis=2)/atm.air*1.e9  #[ppb]
     xh2o = np.sum(atm.H2O,axis=2)/atm.air*1.e6  #[ppm]
 
-    _dims = ('bins_along_track', 'bins_across_track')
+    _dims = ('along_track', 'across_track')
     # albedo
     _ = writevariablefromname(output_atm, 'albedo', _dims, albedo)
     # column_co2
@@ -115,7 +129,7 @@ def sgm_output_atm_ref(filename, atm, albedo, gm_data, gases):
     
 def get_geosgm_data(filename):
 
-    input = nc.Dataset(filename, mode='r')
+    input = Dataset(filename, mode='r')
     
     names = ['col_air', 'dcol_ch4', 'dcol_co2', 'dcol_h2o', 'lat' , 'lon', 
              'XCH4', 'XCO2', 'XH2O', 'zlay', 'zlev','xpos', 'ypos']
@@ -222,10 +236,6 @@ def Carbon_radiation_scene_generation(config):
         # Read optics.prop dictionary from pickle file
         optics.prop = pickle.load(open(config['xsec_dump'], 'rb'))
 
-    #filename = './xsection.nc'
-    #output_optics(filename, atm_std, optics)
-    #sys.exit()
-    
     # solar irradiance spectrum
     sun = libRT.read_sun_spectrum_TSIS1HSRS(config['sun_reference'])
     rad_output['solar irradiance'] = np.interp(rad_output['wavelength_lbl'], sun['wl'], sun['phsm2nm'])
@@ -244,9 +254,7 @@ def Carbon_radiation_scene_generation(config):
             mu_vza = np.cos(np.deg2rad(gm_data.vza[ialt, iact]))
             surface.get_albedo_poly(alb)
             rad[ialt, iact, :] = libRT.transmission(
-                rad_output['solar irradiance'], optics, surface, mu_sza, mu_vza)  
-            
-                       
+                rad_output['solar irradiance'], optics, surface, mu_sza, mu_vza)
     rad_output['radiance'] = rad
 
     # =============================================================================

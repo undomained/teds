@@ -2,7 +2,7 @@ import sys, os
 import logging
 import numpy as np
 import math
-import lib.data_netcdf.data_netcdf as dn
+import teds.lib.data_netcdf.data_netcdf as dn
 
 def get_logger():
     """
@@ -38,29 +38,35 @@ def build_simple(logger, bin_file, nrows, ncols, row_binning, col_factor=1):
 
     # Create the binning tables for the different row binnings
     for row_factor in row_binning:
-        table_name = f"Table_0{row_factor}"
+        table_name = f"Table_{row_factor}"
         #create group
         bin_data.add(name=table_name, kind='group') 
 
-        # Add variable lineskip_arr, which depends on nrows (number of unbinned rows)
-        lineskip_arr = np.ones((nrows,), dtype=np.int8)
-        bin_data.add(name='lineskip_arr', dimensions=('row',), value=lineskip_arr, group=table_name, kind='variable')
+#        # Add variable lineskip_arr, which depends on nrows (number of unbinned rows)
+#        lineskip_arr = np.ones((nrows,), dtype=np.int8)
+#        bin_data.add(name='lineskip_arr', dimensions=('row',), value=lineskip_arr, group=table_name, kind='variable')
 
         n_binned_cols = math.floor(ncols/col_factor)
         n_binned_rows = math.floor(nrows/row_factor)
+        print(f"row_factor: {row_factor}: n_binned_cols: {n_binned_cols} and n_binned_rows: {n_binned_rows}")
 
         row_remainder = nrows % row_factor
         col_remainder = ncols % col_factor
         # Assume for now that all rows/cols remaining will be binned into 1 row/col
         row_factor_remaining = row_remainder
         col_factor_remaining = col_remainder
+        print(f"row_remainder: {row_remainder}, col_remainder: {col_remainder}")
 
         n_binned_rows_total = n_binned_rows
         n_binned_cols_total = n_binned_cols
+        print(f"FIRST n_binned_rows_total: {n_binned_rows_total}")
+        print(f"FIRST n_binned_cols_total: {n_binned_cols_total}")
         if row_remainder != 0:
             n_binned_rows_total += 1
         if col_remainder != 0:
             n_binned_cols_total += 1
+        print(f"NOW n_binned_rows_total: {n_binned_rows_total}")
+        print(f"NOW n_binned_cols_total: {n_binned_cols_total}")
 
         # create number of binned pixels dimension
         bins = n_binned_rows_total * n_binned_cols_total
@@ -70,9 +76,11 @@ def build_simple(logger, bin_file, nrows, ncols, row_binning, col_factor=1):
         # Note: SRON IM code kinda assumes no binning in spectral dimension since there is only one count_table table that
         # contains row_factor, i.e. binning on row direction
         count_table = np.ones((bins,), dtype=np.uint16)
-        count_table[0:n_binned_rows] = row_factor
-        count_table[n_binned_rows:] = row_factor_remaining
+        print(f" HIER n_binned_rows: {n_binned_rows} and row_factor: {row_factor}, row_remainder: {row_remainder}")
+        count_table[0:n_binned_rows*n_binned_cols] = row_factor
+        count_table[(n_binned_rows*n_binned_cols):] = row_factor_remaining
         bin_data.add(name='count_table', dimensions=('bins',), value=count_table, group=table_name, kind='variable')
+        print(f"row_factor: {row_factor} shape count_table: {count_table.shape} and count_table: {count_table}")
 
         # First create the first binned row pixel numbering.
         # Taking into account that also binning is possible in the col dimension
@@ -123,7 +131,7 @@ if __name__ == '__main__' and __package__ is None:
 
     build_logger = get_logger()
 
-    binning_table_file_name = "../data/no2/binning_table_no2.nc"
+    binning_table_file_name = "../data/no2/ckd/binning_table_no2.nc"
     # For now:
     nrows = 2870 
     ncols = 1681

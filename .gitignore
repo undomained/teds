@@ -20,7 +20,7 @@ teds/L1AL1B/tango_l1b/build/
 teds/L1AL1B/tango_l1b/manual/*
 teds/CKD/ckd_nitro.nc
 teds/CKD/ckd_generation/ckd_carbon.nc
-teds/CKD/ckd_generation/data_nitro
+teds/CKD/ckd_generation/data_external/ckd_stray.nc
 data
 
 doc/_build

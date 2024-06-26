@@ -5,12 +5,17 @@ Straylight kernel variables
 import numpy as np
 import h5py as h5
 from scipy.interpolate import CubicSpline
+import urllib.request
+import os
 
 def generate(ncc):
     cfg = ncc.cfg
-
     # Import data from carbon instrument
-    with h5.File(f"{cfg['paths']['dir_external']}ckd_stray.nc") as f:
+    straydatapath = f"{cfg['paths']['dir_external']}ckd_stray.nc"
+    straydatalink = "https://surfdrive.surf.nl/files/index.php/s/waqRfTI3NvJxIfo/download?path=%2Fdata&files=ckd_stray.nc"
+    if not os.path.isfile(straydatapath):
+        urllib.request.urlretrieve(straydatalink, straydatapath)
+    with h5.File(straydatapath) as f:
         kernel_rows = f['stray/kernel_rows'][:]
         kernel_cols = f['stray/kernel_cols'][:]
         kernel_fft_sizes = f['stray/kernel_fft_sizes'][:]
@@ -19,6 +24,8 @@ def generate(ncc):
         weights = f['stray/weights'][:]
         edges = f['stray/edges'][:]
     
+    print(len(kernels_fft))
+
     # reshape some variables for the time being
     C = cfg['dimensions']['detector_col']
     R = cfg['dimensions']['detector_row']
@@ -46,13 +53,13 @@ def generate(ncc):
 
     # Create rows
     attr = {'long_name': "number of rows in each kernel"}
-    ncc.create_var('kernel_rows', ['kernel'], kernel_rows, attr, 'u1')
+    ncc.create_var('kernel_rows', ['kernel'], kernel_rows, attr, 'i4')
     # Create cols
     attr = {'long_name': "number of columns in each kernel"}
-    ncc.create_var('kernel_cols', ['kernel'], kernel_cols, attr, 'u1')
+    ncc.create_var('kernel_cols', ['kernel'], kernel_cols, attr, 'i4')
     # Create fft_sizess
     attr = {'long_name': "sizes of kernel FFTs"}
-    ncc.create_var('kernel_fft_sizes', ['kernel'], kernel_fft_sizes, attr, 'u1')
+    ncc.create_var('kernel_fft_sizes', ['kernel'], kernel_fft_sizes, attr, 'i4')
     # Create ffts
     attr = {'long_name': 'Fourier transforms of the kernels', 'units':'1'}
     ncc.create_var('kernels_fft', ['kernel_fft_size'], kernels_fft, attr, 'f8')

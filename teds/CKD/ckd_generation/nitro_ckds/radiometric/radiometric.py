@@ -9,9 +9,8 @@ def generate(ncc):
     rcc = np.ones(ncc.get_shape(dims)) * cfg['rcc']
     attr = {
         'long_name': 'Radiometric calibration constant',
-        'comment' : 'Single value, will be replaced with wavelength dependend dispersion and transmission'
+        'comment' : 'Single value, will be replaced with \
+            wavelength dependend dispersion and transmission'
     }
     
     ncc.create_var_auto(dims, rcc, attr, 'f8')
-
-

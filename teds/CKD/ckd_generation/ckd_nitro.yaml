@@ -17,8 +17,8 @@
         single_double           : 1, 
 
         stray: {
-            kernel              : 10,  # kernel size
-            kernel_fft_sizes    : 1681,  # n_cols
+            kernel              : 21,  # kernel size
+            kernel_fft_size     : 19705600,  # n_cols
             edges_of_box        : 4,
         },
     },
@@ -53,5 +53,6 @@
     lbl_resolution: 0.05,           # nm, line by line spectrum resolution 
     rcc: 4222381848451.05,          # radiometric calibration constant
 }
+
 
 

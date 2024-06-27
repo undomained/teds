@@ -1,5 +1,6 @@
 algos:
     - ISRF
+    - Radiometric
     - Draw_On_Detector
 #    - Simple_Regrid
     - PRNU

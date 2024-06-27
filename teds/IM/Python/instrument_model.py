@@ -18,6 +18,7 @@ from teds.IM.Python.algos.algo_draw_on_detector import Draw_On_Detector
 from teds.IM.Python.algos.algo_simple_regrid import Simple_Regrid
 from teds.IM.Python.algos.algo_prnu import PRNU
 from teds.IM.Python.algos.algo_dark_current import Dark_Current
+from teds.IM.Python.algos.algo_dark_offset import Dark_Offset
 from teds.IM.Python.algos.algo_coadding import Coadding
 from teds.IM.Python.algos.algo_adc import ADC
 

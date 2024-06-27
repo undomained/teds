@@ -32,7 +32,7 @@ class Dark_Current(Algorithm):
 
         image = input_data.get_dataset('image', c_name='work')
         self._data = image
-        enabled = input_data.get_dataset('enabled', c_name='config', group='prnu')
+        enabled = input_data.get_dataset('enabled', c_name='config', group='dark')
         if not enabled:
             # Algorithm will not be run
             self._logger.info(f"Algorithm {self._name} will not ne run because enabled is set to {enabled} in configuration file")

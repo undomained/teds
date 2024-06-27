@@ -61,7 +61,7 @@ class PRNU(Algorithm):
         prnu_ckd = input_data.get_dataset('prnu', c_name='ckd', group='prnu', kind='variable')
         pixel_mask = input_data.get_dataset('pixel_mask', c_name='ckd', kind='variable')
         self._logger.debug(f"Execute code from {self._algo_name} class")
-        new_image = np.multiply(image,prnu_ckd, where=pixel_mask==1)
+        new_image = np.multiply(image,prnu_ckd, where=pixel_mask==0)
         self._data = new_image
 
         return

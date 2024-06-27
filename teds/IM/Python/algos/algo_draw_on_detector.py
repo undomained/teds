@@ -34,10 +34,11 @@ class Draw_On_Detector(Algorithm):
         n_act = input_data.get_dataset('across_track', c_name='ckd', kind='dimension')
         n_row = input_data.get_dataset('detector_row', c_name='ckd', kind='dimension')
         n_col = input_data.get_dataset('detector_column', c_name='ckd', kind='dimension')
-        row_indices = input_data.get_dataset('row_indices', c_name='ckd', group='swath', kind='variable')
+        row_indices = input_data.get_dataset('row_index', c_name='ckd', group='swath', kind='variable')
         # Note: is exected to be increasing
         if row_indices[-1,0] < row_indices[0,0]:
             # Need to reverse
+            # Maybe also need to reverse image???????????????
             row_indices = np.flip(row_indices,axis=0)
 
         det_ispat = np.arange(n_row)

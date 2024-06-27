@@ -13,10 +13,13 @@ from teds.IM.Python.input.input_yaml import Input_yaml
 from teds.IM.Python.input.input_netcdf import Input_netcdf
 
 from teds.IM.Python.algos.algo_isrf import ISRF
+from teds.IM.Python.algos.algo_radiometric import Radiometric
 from teds.IM.Python.algos.algo_draw_on_detector import Draw_On_Detector
 from teds.IM.Python.algos.algo_simple_regrid import Simple_Regrid
 from teds.IM.Python.algos.algo_prnu import PRNU
 from teds.IM.Python.algos.algo_dark_current import Dark_Current
+from teds.IM.Python.algos.algo_coadding import Coadding
+from teds.IM.Python.algos.algo_adc import ADC
 
 
 def get_input_data(logger, config):
@@ -36,6 +39,7 @@ def get_input_data(logger, config):
 
     # CKD
     ckd_file = config['io']['ckd_im']
+    print(f"HIER input CKD file: {ckd_file}")
     ckd_input = Input_netcdf(logger,ckd_file)
     ckd = ckd_input.read()
     #Note: ckd is an data_netcdf object
@@ -89,14 +93,15 @@ def initialize_output(logger, input_data, algo_list, dimensions, main_attributes
     # Check if draw_on_detector algo is in algo list:
     output.add(name='scanline', value=dimensions['dim_alt'], kind='dimension')
     if 'Draw_On_Detector' in algo_list:
-        # we have a detector image so detector dimensions can be used in output
+        # we have a detector image in the end so detector dimensions can be used in output
         output.add(name='row', value=dimensions['dim_spat'], kind='dimension')
         output.add(name='col', value=dimensions['dim_spec'], kind='dimension')
         output_data = np.zeros((dimensions['dim_alt'], dimensions['dim_spat'], dimensions['dim_spec']))
         output.add(name='measurement', value=output_data, dimensions=('scanline','row','col'), kind='variable')
-    elif 'ISRF' in algo_list:
+    elif ('ISRF' in algo_list) or ('Radiometric' in algo_list):
+        # Apparently no detector image in the end
         print(f"Creating ISRF dimensions for final output")
-        # detector columns combined with actrack dimension
+        # detector columns combined with accros_track dimension
         output.add(name='act', value=dimensions['dim_act'], kind='dimension')
         output.add(name='col', value=dimensions['dim_spec'], kind='dimension')
         output_data = np.zeros((dimensions['dim_alt'], dimensions['dim_act'], dimensions['dim_spec']))
@@ -114,7 +119,7 @@ def initialize_output(logger, input_data, algo_list, dimensions, main_attributes
     for algo_name in algo_list:
 
         # These are the inbetween output files
-        # Maybe add some switch if we want then or not.
+        # Maybe add some switch if we want them or not.
         algo_output = input_data.get_dataset('im_algo_output', c_name='config', group='io')
         algo_file = algo_output.format(algo_name=algo_name)
         output_algo = dn.DataNetCDF(logger, algo_file)
@@ -124,7 +129,7 @@ def initialize_output(logger, input_data, algo_list, dimensions, main_attributes
         # In principle output dimensions for ISRF is mixed
         # All others should be detector pixels 
         output_algo.add(name='scanline', value=dimensions['dim_alt'], kind='dimension') 
-        if algo_name == 'ISRF':
+        if (algo_name == 'ISRF') or (algo_name == 'Radiometric'):
             # output not yet on full detector dimensions
             output_algo.add(name='act', value=dimensions['dim_act'], kind='dimension') 
             output_algo.add(name='col', value=dimensions['dim_spec'], kind='dimension') 
@@ -140,7 +145,7 @@ def initialize_output(logger, input_data, algo_list, dimensions, main_attributes
             output_algo_data = np.zeros((dimensions['dim_alt'], dimensions['dim_spat'], dimensions['dim_spec']))
             output_algo.add(name='measurement', value=output_algo_data, dimensions=('scanline','row','col'), kind='variable')
 
-        # Maybe add group original to store the input data????
+        # Maybe add group original to store the input data for comparison purpose????
 
         output_datasets.add_container(algo_name,output_algo)
 

@@ -20,15 +20,18 @@ io:
     # Input IM:
     l1b_im: '../data/no2/sgm_radiance_wide.nc'
     # output of IM (and input for L1AL1B):
-    l1a: '../data/no2/l1a_cpp.nc'
+    l1a: '../data/no2/l1a_python_with_isrf.nc'
+#    l1a: '../data/no2/l1a_python.nc'
     # output of L1AL1B:
 #    l1b: '../data/no2/l1b.nc'
     l1b: '../data/no2/sgm_radiance_wide.nc'
     # CKD for L1AL1B
-    ckd: '../data/no2/ckd/ckd_nitro_MvH_updated.nc'
+#    ckd: '../data/no2/ckd/ckd_nitro_MvH_updated.nc'
+    ckd: '../data/no2/ckd/ckd_nitro.nc'
     # possibility to have different ckds for IM and L1B
     # L1B uses ckd. IM uses ckd_im
-    ckd_im: '../data/no2/ckd/ckd_nitro_MvH_updated.nc'
+#    ckd_im: '../data/no2/ckd/ckd_nitro_MvH_updated.nc'
+    ckd_im: '../data/no2/ckd/ckd_nitro.nc'
     # Define in between output files for IM
     # Base name:
     im_algo_output: '../data/no2/im_l1x_{algo_name}.nc'
@@ -139,8 +142,8 @@ detector:
     exposure_time:    0.021     # exposure time [sec]
     nr_coadditions:   2         # along track co-adding
 isrf:
-#    enabled: true      # apply spectral convolution (1) or not (0)
-    enabled: false      # apply spectral convolution (1) or not (0)
+    enabled: true      # apply spectral convolution (1) or not (0)
+#    enabled: false      # apply spectral convolution (1) or not (0)
     fwhm_gauss: 0.6    #full width half max [nm] (for carbon: 0.45 and for nitro 0.60)
 noise:
     enabled: false      # Add noise (1) or not (0)
@@ -157,8 +160,8 @@ stray:
 #    enabled: true      # apply straylight (1) or not (0)
     enabled: false     # apply straylight (1) or not (0)
 rad:
-#    enabled: true      # apply radiametric (1) or not ()
-    enabled: false     # apply radiametric (1) or not ()
+    enabled: true      # apply radiametric (1) or not ()
+#    enabled: false     # apply radiametric (1) or not ()
 #########################################################
 #
 # L1AL1B specific

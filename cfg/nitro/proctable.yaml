@@ -2,8 +2,9 @@ algos:
     - ISRF
     - Radiometric
     - Draw_On_Detector
-#    - Simple_Regrid
     - PRNU
     - Dark_Current
+    - Noise
+    - Dark_Offset
     - Coadding
     - ADC

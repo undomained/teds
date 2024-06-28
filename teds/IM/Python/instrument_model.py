@@ -18,10 +18,19 @@ from teds.IM.Python.algos.algo_draw_on_detector import Draw_On_Detector
 from teds.IM.Python.algos.algo_simple_regrid import Simple_Regrid
 from teds.IM.Python.algos.algo_prnu import PRNU
 from teds.IM.Python.algos.algo_dark_current import Dark_Current
+from teds.IM.Python.algos.algo_noise import Noise
 from teds.IM.Python.algos.algo_dark_offset import Dark_Offset
 from teds.IM.Python.algos.algo_coadding import Coadding
 from teds.IM.Python.algos.algo_adc import ADC
 
+def get_im_config(logger, config):
+    """
+        Get IM specific settings and move them one level up in config
+    """
+    im_settings = config['instrument_model']
+    for key, value in im_settings:
+        config[key] = value
+    return config
 
 def get_input_data(logger, config):
     """
@@ -40,7 +49,6 @@ def get_input_data(logger, config):
 
     # CKD
     ckd_file = config['io']['ckd_im']
-    print(f"HIER input CKD file: {ckd_file}")
     ckd_input = Input_netcdf(logger,ckd_file)
     ckd = ckd_input.read()
     #Note: ckd is an data_netcdf object
@@ -242,6 +250,8 @@ if __name__ == '__main__' :
     # Get configuration info
     cfgFile = sys.argv[1]
     config = Utils.getConfig(im_logger, cfgFile)
+
+    config = get_im_config(im_logger, config)
 
     # Get information (like git hash and config file name and version (if available) 
     # that will be added to the output file as attributes

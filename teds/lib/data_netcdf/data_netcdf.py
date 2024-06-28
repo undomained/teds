@@ -242,6 +242,8 @@ class DataNetCDF:
             variables = file_handle.variables
             self._variable_list = []
             for varname in variables:
+                if varname == 'configuration':
+                    continue 
                 var = Variable(self._logger, varname)
                 var.read(file_handle)
                 self._variable_list.append(var)

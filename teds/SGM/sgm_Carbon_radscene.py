@@ -51,7 +51,7 @@ def radsgm_output(filename_rad, rad_output):
     nc.createDimension('wavelength', nlbl)     # spectral axis
     nc.createDimension('across_track', nact)     # across track axis
     nc.createDimension('along_track', nalt)     # along track axis
-    grp = nc.createGroup('science_data')
+    grp = nc.createGroup('observation_data')
     # wavelength
     wavelength_lbl = np.zeros((nact, nlbl))
     for i in range(nact):

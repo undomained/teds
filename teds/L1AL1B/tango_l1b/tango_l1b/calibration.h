@@ -6,6 +6,8 @@
 
 #pragma once
 
+#include "constants.h"
+
 namespace tango {
 
 class BinningTable;
@@ -14,7 +16,11 @@ class L1;
 
 // If the data level is L1A then the detector images are yet to be
 // divided by the bin sizes of the binning table;
-auto binningTable(const BinningTable& binning_table, L1& l1) -> void;
+auto binningTable(const BinningTable& binning_table,
+                  const Unbin unbin,
+                  const int n_rows,
+                  const int n_cols,
+                  L1& l1) -> void;
 
 // Remove dark offset
 auto darkOffset(const CKD& ckd, const bool enabled, L1& l1) -> void;
@@ -23,6 +29,7 @@ auto darkOffset(const CKD& ckd, const bool enabled, L1& l1) -> void;
 auto noise(const CKD& ckd,
            const bool enabled,
            const BinningTable& binning_table,
+           const bool binned_detector_image,
            L1& l1) -> void;
 
 // Remove dark current. This is split from dark offset because noise
@@ -39,6 +46,7 @@ auto PRNU(const CKD& ckd, const bool enabled, L1& l1) -> void;
 auto strayLight(const CKD& ckd,
                 const BinningTable& binning_table,
                 const int n_van_cittert,
+                const bool binned_detector_image,
                 L1& l1) -> void;
 
 // Extract a set of spectra from one detector image

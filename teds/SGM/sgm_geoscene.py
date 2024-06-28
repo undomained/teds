@@ -98,7 +98,6 @@ def geosgm_output(filename, atm):
 
     # albedo
     for s2_albedo in atm.albedo:
-        print(s2_albedo.values)
         var_alb = writevariablefromname(
             output_atm,
             'albedo_' + s2_albedo.band_label,

@@ -100,7 +100,7 @@ auto drawOnDetector(const CKD& ckd, L1& l1) -> void
             x_values[i_act] = ckd.swath.row_indices[act_idx][i_wave];
             y_values[i_act] = l1.spectra[act_idx].signal[i_wave];
         }
-        CubicSpline spline { x_values, y_values };
+        const CubicSpline spline { x_values, y_values };
         for (int i_spat {}; i_spat < ckd.n_detector_rows; ++i_spat) {
             l1.image[i_spat * ckd.n_detector_cols + i_wave] =
               spline.eval(i_spat);

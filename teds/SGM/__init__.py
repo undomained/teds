@@ -4,7 +4,6 @@
 
 from teds.SGM.download_sentinel2_albedo import (  # noqa: F401
     download_sentinel2_albedo)
-from teds.SGM.sgm_geoscene import download_sentinel2_data  # noqa: F401
 from teds.SGM.sgm_Carbon_radscene import (  # noqa: F401
     Carbon_radiation_scene_generation)
 from teds.SGM.sgm_geoscene import geoscene_generation  # noqa: F401

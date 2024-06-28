@@ -55,6 +55,13 @@ public:
         { "image_end" },
         "last image to be processed (inclusive, counting starts at 0)",
     };
+    Setting<Unbin> unbinning {
+        { "unbinning" },
+        Unbin::none,
+        "If set, unbin the detector images instead of binning the CKD.\n"
+        "Allowed values: none (default), nearest (nearest neighbor), linear\n"
+        "(linear spline), cubic (cubic spline)."
+    };
 
     struct
     {

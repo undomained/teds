@@ -50,13 +50,15 @@ auto driver(const SettingsL1B& settings,
         settings.io.binning_table,
         static_cast<int>(l1_products.front().binning_table_id)
     };
-    binning_table.bin(ckd.pixel_mask);
-    binning_table.bin(ckd.dark.offset);
-    binning_table.bin(ckd.dark.current);
-    binning_table.bin(ckd.noise.g);
-    binning_table.bin(ckd.noise.n2);
-    binning_table.bin(ckd.prnu.prnu);
-    binning_table.binPixelIndices(ckd.swath.pix_indices);
+    if (settings.unbinning == Unbin::none) {
+        binning_table.bin(ckd.pixel_mask);
+        binning_table.bin(ckd.dark.offset);
+        binning_table.bin(ckd.dark.current);
+        binning_table.bin(ckd.noise.g);
+        binning_table.bin(ckd.noise.n2);
+        binning_table.bin(ckd.prnu.prnu);
+        binning_table.binPixelIndices(ckd.swath.pix_indices);
+    }
 
     // Run retrieval
     printHeading("Retrieval");
@@ -68,10 +70,14 @@ auto driver(const SettingsL1B& settings,
         // Initialize pixel mask with that from the CKD
         l1.pixel_mask = ckd.pixel_mask;
 
-        // Normalize by bin sizes
+        // Normalize by bin sizes and unbin detector image if requested
         if (l1.level == ProcLevel::l1a
-            && settings.cal_level >= ProcLevel::dark) {
-            binningTable(binning_table, l1);
+            && settings.cal_level >= ProcLevel::raw) {
+            binningTable(binning_table,
+                         settings.unbinning,
+                         ckd.n_detector_rows,
+                         ckd.n_detector_cols,
+                         l1);
         }
         // Dark offset
         if (l1.level < ProcLevel::dark
@@ -84,7 +90,13 @@ auto driver(const SettingsL1B& settings,
         if (l1.level < ProcLevel::noise
             && settings.cal_level >= ProcLevel::noise) {
             timers[static_cast<int>(ProcLevel::noise)].start();
-            noise(ckd, settings.noise.enabled, binning_table, l1);
+            // If the unbinning setting is none the the detector image
+            // is still binned.
+            noise(ckd,
+                  settings.noise.enabled,
+                  binning_table,
+                  settings.unbinning == Unbin::none,
+                  l1);
             timers[static_cast<int>(ProcLevel::noise)].stop();
         }
         // Dark current
@@ -112,8 +124,12 @@ auto driver(const SettingsL1B& settings,
         if (l1.level < ProcLevel::stray
             && settings.cal_level >= ProcLevel::stray) {
             timers[static_cast<int>(ProcLevel::stray)].start();
-            strayLight(
-              ckd, binning_table, settings.stray.van_cittert_steps, l1);
+            // Same comment about unbinning as for noise above
+            strayLight(ckd,
+                       binning_table,
+                       settings.stray.van_cittert_steps,
+                       settings.unbinning == Unbin::none,
+                       l1);
             timers[static_cast<int>(ProcLevel::stray)].stop();
         }
         // Swath

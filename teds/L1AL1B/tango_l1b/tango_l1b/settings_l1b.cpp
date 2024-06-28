@@ -15,6 +15,7 @@ auto SettingsL1B::scanKeys() -> void
     scan(reverse_wavelength);
     scan(image_start);
     scan(image_end);
+    scan(unbinning);
 
     scan(dark.enabled);
 

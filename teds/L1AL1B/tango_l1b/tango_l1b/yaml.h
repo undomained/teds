@@ -34,6 +34,12 @@ struct convert<tango::ProcLevel>
     static auto decode(const Node& node, tango::ProcLevel& rhs) -> bool;
 };
 
+template <>
+struct convert<tango::Unbin>
+{
+    static auto decode(const Node& node, tango::Unbin& rhs) -> bool;
+};
+
 } // namespace YAML
 
 namespace tango {
@@ -54,6 +60,8 @@ auto operator<<(YAML::Emitter& out, const std::optional<T> value)
 
 auto operator<<(YAML::Emitter& out, const ProcLevel proc_level)
   -> YAML::Emitter&;
+
+auto operator<<(YAML::Emitter& out, const Unbin unbin) -> YAML::Emitter&;
 
 // Extended Emitter to have a verbosity switch
 class Emitter : public YAML::Emitter

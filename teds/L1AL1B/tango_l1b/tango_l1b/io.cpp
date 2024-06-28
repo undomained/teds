@@ -320,7 +320,7 @@ auto readL1(const std::string& filename,
         std::vector<double> spectra(n_images * n_act * n_wavelength);
         std::vector<double> spectra_stdev(n_images * n_act * n_wavelength);
         std::vector<double> wavelength(n_act * n_wavelength);
-        const auto nc_grp { nc.getGroup("science_data") };
+        const auto nc_grp { nc.getGroup("observation_data") };
         nc_grp.getVar("i").getVar(
           { alt_beg, 0, 0 }, { n_images, n_act, n_wavelength }, spectra.data());
         nc_grp.getVar("i_stdev").getVar({ alt_beg, 0, 0 },
@@ -503,8 +503,10 @@ auto writeL1(const std::string& filename,
                                                n_across_track) };
         const auto nc_wavelength { nc.addDim("wavelength", n_wavelength) };
 
-        // Sensor bands
-        auto nc_grp { nc.addGroup("sensor_bands") };
+        // Observation data. The difference between L1B and lower
+        // levels is mostly in the data format - float vs double.
+        auto nc_grp { nc.addGroup("observation_data") };
+
         nc_var = nc_grp.addVar(
           "wavelength", netCDF::ncFloat, { nc_across_track, nc_wavelength });
         nc_var.putAtt("name", "radiance wavelengths");
@@ -521,9 +523,6 @@ auto writeL1(const std::string& filename,
         }
         nc_var.putVar(buf.data());
 
-        // Observation data. The difference between L1B and lower
-        // levels is mostly in the data format - float vs double.
-        nc_grp = nc.addGroup("observation_data");
         const auto flattenSignal { [&](auto& buf) {
             for (size_t i {}; i < n_images; ++i) {
                 for (size_t j {}; j < n_across_track; ++j) {

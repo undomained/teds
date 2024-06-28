@@ -149,16 +149,16 @@ auto CKD::genPixelIndices(const double spectrum_width) -> void
     // rows are determined by where exactly the edge of the spectrum
     // falls. All middle rows have the same constant weight (1 before
     // normalization).
-    for (int i_fov {}; i_fov < n_act; ++i_fov) {
+    for (int i_act {}; i_act < n_act; ++i_act) {
         for (int i {}; i < n_detector_cols; ++i) {
-            const double row_first_d { swath.row_indices[i_fov][i] + 0.5
+            const double row_first_d { swath.row_indices[i_act][i] + 0.5
                                        - spectrum_width_half };
-            const double row_last_d { swath.row_indices[i_fov][i] + 0.5
+            const double row_last_d { swath.row_indices[i_act][i] + 0.5
                                       + spectrum_width_half };
             const int row_first_i { static_cast<int>(row_first_d) };
             const int row_last_i { static_cast<int>(row_last_d) };
-            auto& indices { swath.pix_indices[i_fov] };
-            auto& weights { swath.weights[i_fov] };
+            auto& indices { swath.pix_indices[i_act] };
+            auto& weights { swath.weights[i_act] };
             indices[i * swath.n_indices] = row_first_i * n_detector_cols + i;
             indices[(i + 1) * swath.n_indices - 1] =
               row_last_i * n_detector_cols + i;

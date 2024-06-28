@@ -3,7 +3,10 @@ import argparse
 import logging
 import importlib
 import subprocess
+import yaml
+import numpy as np
 import teds.lib.lib_utils as Utils
+import lib.data_netcdf.data_netcdf as dn
 
 def cmdline(arguments):
     """             
@@ -54,21 +57,104 @@ def build(logger, config, step, cfg_path, attribute_dict):
         Utils.add_attributes_to_output(logger, config['sgm_rad_file'], attribute_dict)
         Utils.add_attributes_to_output(logger, config['sgm_atm_file'], attribute_dict)
 
+    
+
+    l1b_ckd = config['io']['ckd']
+    l1b_file = config['io']['l1b']
+    im_ckd = config['io']['ckd_im']
+    im_input = config['io']['l1b_im']
+
     if step == 'im' or step == 'all':
+        # IM and L1B have setttings in common, but need to be flexible and be able to use other ckd file
+        # or switch on/off other steps
+        # IM files are in io: ckd_im and l1b_im
+        # other settings are in key instrument_model
+        # need the info one level up in config yaml file. 
+        # write out temp yaml file
+
+        # Ensure we are using the IM CKD and l1b files (in IM it means the input file)
+        config['io']['l1b'] = im_input
+        config['io']['ckd'] = im_ckd
+        # Get the IM specific steps and move them one level up
+        im_config = config['instrument_model']
+        for key, value in im_config.items():
+            config[key] = value
+
+        # write config to temp yaml file with IM values filled in
+        im_config_file = f"{cfg_path}/im_config_temp.yaml"
+        with open(im_config_file,'w') as outfile:
+            yaml.dump(config, outfile)
+
         # Create cfg file to be used for IM executable
-        E2EModule = importlib.import_module("IM.create_im_configuration_file_nitro")
-        E2EModule.im_configuration(config)
+
+#        E2EModule = importlib.import_module("IM.create_im_configuration_file_nitro")
+#        E2EModule.im_configuration(config)
+#        subprocess.run(["IM/tango_ckd_model/build/ckdmodel", f"{cfg_path}/im_config.cfg"])
+#        subprocess.run(["IM/tango_im/build/tango_im.x", cfgFile])
+
         # Need to call C++
-        subprocess.run(["IM/tango_ckd_model/build/ckdmodel", f"{cfg_path}/im_config.cfg"])
-        Utils.add_attributes_to_output(logger, config['l1a_file'], attribute_dict)
+        subprocess.run(["IM/tango_im/build/tango_im.x", im_config_file])
+        # readin output file
+        l1a_file = config['io']['l1a']
+        l1a_data = dn.DataNetCDF(logger, l1a_file, mode='r')
+#        if config['cal_level'] == 'swath' or config['cal_level'] == 'rad':
+        if config['cal_level'] == 'rad':
+            print("Not detector image")
+        else:
+            # Get data
+            data = l1a_data.get('detector_image',  group='science_data', kind = 'variable')
+            # Get dimensions from ckd?
+            ckd_file = config['io']['ckd']
+            ckd_data = dn.DataNetCDF(logger, ckd_file, mode='r')
+            det_rows = ckd_data.get('detector_row', kind='dimension')
+            det_cols = ckd_data.get('detector_column', kind='dimension')
+    
+            l1a_data.add(name='detector_row', value=det_rows, kind='dimension')
+            l1a_data.add(name='detector_column', value=det_cols, kind='dimension')
+            l1a_data.add(name='along_track', value=data.shape[0], kind='dimension')
+    
+            # reshape data
+            data_reshaped = np.reshape(data, (data.shape[0], det_rows, det_cols))
+            print(f"Reshaped data shape : {data_reshaped.shape}")
+            print(f"Reshaped data image 1: {data_reshaped[1,:,:]}")
+            l1a_data.add(name='detector_image_3d', value=data_reshaped, group='science_data', dimensions=('along_track','detector_row','detector_column'), kind='variable')
+    
+            print("###################################################################")
+            print("###################################################################")
+            print(f"{l1a_data}")
+            print("###################################################################")
+            print("###################################################################")
+            # write to temp output file
+            l1a_data.write('l1a_cpp_temp.nc')
+
+        Utils.add_attributes_to_output(logger, config['io']['l1a'], attribute_dict)
+
 
     if step == 'l1al1b' or step == 'all':
-        # Create cfg file to be used for L1AL1B executable
-        E2EModule = importlib.import_module("L1AL1B.create_l1a1b_configuration_file_nitro")
-        E2EModule.l1al1b_configuration(config)
+#        # Create cfg file to be used for L1AL1B executable
+#        E2EModule = importlib.import_module("L1AL1B.create_l1a1b_configuration_file_nitro")
+#        E2EModule.l1al1b_configuration(config)
+#        # Need to call C++
+#        subprocess.run(["L1AL1B/tango_l1b/build/tango_l1b", f"{cfg_path}/l1al1b_config.cfg"])
+
+        # Ensure we are using the IM CKD and l1b files (in IM it means the input file)
+        config['io']['ckd'] = l1b_ckd
+        config['io']['l1b'] = l1b_file
+        # Get the L1B specific steps and move them one level up
+        im_config = config['l1b']
+        for key, value in im_config.items():
+            config[key] = value
+
+        # write config to temp yaml file with IM values filled in
+        l1b_config_file = f"{cfg_path}/l1b_config_temp.yaml"
+        with open(l1b_config_file,'w') as outfile:
+            yaml.dump(config, outfile)
+
         # Need to call C++
-        subprocess.run(["L1AL1B/tango_l1b/build/tango_l1b", f"{cfg_path}/l1al1b_config.cfg"])
-        Utils.add_attributes_to_output(logger, config['l1b_file'], attribute_dict)
+#        subprocess.run(["L1AL1B/tango_l1b/build/tango_l1b.x", cfgFile])
+        subprocess.run(["L1AL1B/tango_l1b/build/tango_l1b.x", l1b_config_file])
+
+        Utils.add_attributes_to_output(logger, config['io']['l1b'], attribute_dict)
 
     if step == 'l1l2' or step == 'all':
         E2EModule = importlib.import_module("L1L2.l1bl2_no2")

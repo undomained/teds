@@ -37,11 +37,14 @@ class Dark_Current(Algorithm):
             # Algorithm will not be run
             self._logger.info(f"Algorithm {self._name} will not ne run because enabled is set to {enabled} in configuration file")
             return
+
         dark_current = input_data.get_dataset('current', c_name='ckd', group='dark', kind='variable')
+        exposure_time = input_data.get_dataset('exposure_time', c_name='config', group='detector', kind='variable')
+
         pixel_mask = input_data.get_dataset('pixel_mask', c_name='ckd', kind='variable')
         new_image = copy.deepcopy(image)
         good_pixels = pixel_mask==0
-        new_image[good_pixels] += dark_current[good_pixels]
+        new_image[good_pixels] += exposure_time * dark_current[good_pixels]
         self._data = new_image
 
         return 

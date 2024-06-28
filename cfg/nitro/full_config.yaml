@@ -23,14 +23,11 @@ io:
     l1a: '../data/no2/l1a_python_with_isrf.nc'
 #    l1a: '../data/no2/l1a_python.nc'
     # output of L1AL1B:
-#    l1b: '../data/no2/l1b.nc'
-    l1b: '../data/no2/sgm_radiance_wide.nc'
+    l1b: '../data/no2/l1b_python.nc'
     # CKD for L1AL1B
-#    ckd: '../data/no2/ckd/ckd_nitro_MvH_updated.nc'
     ckd: '../data/no2/ckd/ckd_nitro.nc'
     # possibility to have different ckds for IM and L1B
     # L1B uses ckd. IM uses ckd_im
-#    ckd_im: '../data/no2/ckd/ckd_nitro_MvH_updated.nc'
     ckd_im: '../data/no2/ckd/ckd_nitro.nc'
     # Define in between output files for IM
     # Base name:
@@ -125,43 +122,43 @@ S2_albedo:
 # Configuration file for running the Instrument module
 #
 #########################################################
-IM_cfg_path:  '../cfg/nitro/'                                         #Where the .cfg file needed to run C++ code will be placed
-IM_log_path:  '../logs/IM/'                                         #Where the .log file produced by the C++ code will be placed
-# if output files of inbetween steps are needed define the steps for which output is required
-proctable:
-    file: '../cfg/nitro/proctable.yaml'
-    scenario: 'algos'
+#IM_cfg_path:  '../cfg/nitro/'                                         #Where the .cfg file needed to run C++ code will be placed
+#IM_log_path:  '../logs/IM/'                                         #Where the .log file produced by the C++ code will be placed
+## if output files of inbetween steps are needed define the steps for which output is required
 ############################
-instrument: 'nitro'
-processing_version: 0.000
-cal_level: 'l1a' # To indicate wether to uncalibrate the whole way (l1a) or to stop at a certain point ('prnu' -> uncalibrate until (NOT INCLUDING) prnu step)
-image_start: 0
-image_end: 100
-detector:
-    binning_table_id: 1         # across track binning
-    exposure_time:    0.021     # exposure time [sec]
-    nr_coadditions:   2         # along track co-adding
-isrf:
-    enabled: true      # apply spectral convolution (1) or not (0)
-#    enabled: false      # apply spectral convolution (1) or not (0)
-    fwhm_gauss: 0.6    #full width half max [nm] (for carbon: 0.45 and for nitro 0.60)
-noise:
-    enabled: false      # Add noise (1) or not (0)
-#    enabled: true      # Add noise (1) or not (0)
-    seed:    100       # Seed for noise generation
-dark:
-    enabled: true      # apply dark current and dark offset (1) or not (0)
-nonlin:
-#    enabled: true      # apply non linearity (1) or not (0)
-    enabled: false     # apply non linearity (1) or not (0)
-prnu:
-    enabled: true      # apply PRNU and QE (1) or not (0)
-stray:
-#    enabled: true      # apply straylight (1) or not (0)
-    enabled: false     # apply straylight (1) or not (0)
-rad:
-    enabled: true      # apply radiametric (1) or not ()
-#    enabled: false     # apply radiametric (1) or not ()
+instrument_model:
+    proctable:
+        file: '../cfg/nitro/proctable.yaml'
+        scenario: 'algos'
+    instrument: 'nitro'
+    processing_version: 0.000
+    cal_level: 'l1a' # To indicate wether to uncalibrate the whole way (l1a) or to stop at a certain point ('prnu' -> uncalibrate until (NOT INCLUDING) prnu step)
+    image_start: 0
+    image_end: 100
+    detector:
+        binning_table_id: 1         # across track binning
+        exposure_time:    0.021     # exposure time [sec]
+        nr_coadditions:   2         # along track co-adding
+    isrf:
+        enabled: true      # apply spectral convolution (true) or not (false)
+        fwhm_gauss: 0.6    #full width half max [nm] (for carbon: 0.45 and for nitro 0.60)
+    noise:
+    #    enabled: false      # Add noise (true) or not (false)
+        enabled: true      # Add noise (true) or not (false)
+        seed:    100       # Seed for noise generation
+    dark:
+        enabled: true      # apply dark current and dark offset (true) or not (false)
+    nonlin:
+    #    enabled: true      # apply non linearity (true) or not (false)
+        enabled: false     # apply non linearity (true) or not (false)
+    prnu:
+        enabled: true      # apply PRNU and QE (true) or not (false)
+    stray:
+    #    enabled: true      # apply straylight (true) or not (false)
+        enabled: false     # apply straylight (true) or not (false)
+    rad:
+        enabled: true      # apply radiametric (true) or not (false)
+    #    enabled: false     # apply radiametric (true) or not (false)
 #########################################################
 #
 # L1AL1B specific
@@ -169,22 +166,41 @@ rad:
 #
 #########################################################
 #
-#ckd_input_L1B: '../data/no2/ckd/ckd_nitro_MvH_updated.nc'
-L1AL1B_cfg_path:  '../cfg/nitro/'                                         #Where the .cfg file needed to run C++ code will be placed
-L1AL1B_log_path:  '../logs/L1AL1B/'                                       #Where the .log file produced by the C++ code will be placed
-L1AL1B_instrument_cal:  'tango'                                           #Which instrument calibration is to be used (spexone or tango)
+##ckd_input_L1B: '../data/no2/ckd/ckd_nitro_MvH_updated.nc'
+#L1AL1B_cfg_path:  '../cfg/nitro/'                                         #Where the .cfg file needed to run C++ code will be placed
+#L1AL1B_log_path:  '../logs/L1AL1B/'                                       #Where the .log file produced by the C++ code will be placed
+#L1AL1B_instrument_cal:  'tango'                                           #Which instrument calibration is to be used (spexone or tango)
 ############################
-settings_L1AL1B:
-    geolocation:  0       #calculate geolocation (0 no, 1 yes), currently only 0 possible
-    van_cittert_steps: 4  #van Citter iteration for stray light correction (0=no correction)
-    sw_dark:         1                                   #switch dark current (1 on, 0 off)
-#   When non lin has been added to CKD sw_nonlin can be set to 1
-    sw_nonlin:       0                                   #switch non-linearity (1 on, 0 off)
-    sw_prnu:         1                                   #switch pixel response non-uniformity (1 on, 0 off)
-#   When stray light has been added to CKD sw_stray can be set to 1
-    sw_stray:        0                                   #switch dark spectrometer stray light (1 on, 0 off)
-    sw_rad:          1                                   #switch radiometric calibration (1 on, 0 off)
-############################    
+l1b:
+#    noise:
+#    #    enabled: false      # Add noise (true) or not (false)
+#        enabled: true      # Add noise (true) or not (false)
+#        seed:    100       # Seed for noise generation
+    dark:
+        enabled: true      # apply dark current and dark offset corrections (true) or not (false)
+    nonlin:
+    #    enabled: true      # apply non linearity correction(true) or not (false)
+        enabled: false     # apply non linearity correction(true) or not (false)
+    prnu:
+        enabled: true      # apply PRNU and QE corrections (true) or not (false)
+    stray:
+    #    enabled: true      # apply straylight correction (true) or not (false)
+        enabled: false     # apply straylight correction (true) or not (false)
+    rad:
+        enabled: true      # apply radiometric correction (true) or not (false)
+    #    enabled: false     # apply radiometric correction (true) or not (false)
+    #
+#settings_L1AL1B:
+#    geolocation:  0       #calculate geolocation (0 no, 1 yes), currently only 0 possible
+#    van_cittert_steps: 4  #van Citter iteration for stray light correction (0=no correction)
+#    sw_dark:         1                                   #switch dark current (1 on, 0 off)
+##   When non lin has been added to CKD sw_nonlin can be set to 1
+#    sw_nonlin:       0                                   #switch non-linearity (1 on, 0 off)
+#    sw_prnu:         1                                   #switch pixel response non-uniformity (1 on, 0 off)
+##   When stray light has been added to CKD sw_stray can be set to 1
+#    sw_stray:        0                                   #switch dark spectrometer stray light (1 on, 0 off)
+#    sw_rad:          1                                   #switch radiometric calibration (1 on, 0 off)
+#############################    
 #########################################################
 #
 # L1L2 nitro 

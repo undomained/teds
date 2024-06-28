@@ -143,7 +143,7 @@ auto darkCurrent(const CKD& ckd, const bool enabled, L1& l1) -> void
     }
     for (int i {}; i < static_cast<int>(l1.image.size()); ++i) {
         if (!l1.pixel_mask[i]) {
-            l1.image[i] -= ckd.dark.current[i];
+            l1.image[i] -= ckd.dark.current[i] * l1.exposure_time;
         }
     }
     l1.level = ProcLevel::dark;

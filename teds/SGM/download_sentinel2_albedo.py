@@ -7,7 +7,6 @@ from geopandas import GeoDataFrame
 from pystac_client import Client
 from pystac.item import Item as PystacItem
 from netCDF4 import Dataset
-import logging
 import rioxarray
 import shapely
 from xarray import DataArray
@@ -15,6 +14,7 @@ from requests import get
 from typing import List
 from tqdm import tqdm
 from io import BytesIO
+from teds import log
 
 
 def generate_geometry(lat: List[float], lon: List[float]) -> List[PystacItem]:
@@ -75,18 +75,25 @@ def write_albedo_to_netcdf(albedo_file: str, albedos: List[DataArray]) -> None:
         nc_var.units = 'm'
         nc_var[:] = albedo.gsd
 
-        nc_var = nc_grp.createVariable('x', 'f8', ['x'])
+        nc_var = nc_grp.createVariable('x', 'f8', ['x'], fill_value=-32767)
         nc_var.long_name = 'easting'
         nc_var.units = 'm'
+        nc_var.valid_min = 0.0
+        nc_var.valid_max = 900e3
         nc_var[:] = albedo.x.values
 
-        nc_var = nc_grp.createVariable('y', 'f8', ['y'])
+        nc_var = nc_grp.createVariable('y', 'f8', ['y'], fill_value=-32767)
         nc_var.long_name = 'northing'
         nc_var.units = 'm'
+        nc_var.valid_min = 0.0
+        nc_var.valid_max = 10e6
         nc_var[:] = albedo.y.values
 
-        nc_var = nc_grp.createVariable('albedo', 'u2', ['x', 'y'])
+        nc_var = nc_grp.createVariable(
+            'albedo', 'u2', ['x', 'y'], fill_value=32767)
         nc_var.long_name = 'albedo'
+        nc_var.valid_min = 0
+        nc_var.valid_max = 10_000
         nc_var.set_auto_scale(False)
         nc_var.scale_factor = 1e-4
         nc_var[:] = albedo.values[0]
@@ -101,7 +108,7 @@ def download_sentinel2_albedo(config) -> None:
     # Extract the high resolution albedo map of selected wavelength bands
     albedos = []
     for band_label in config['sentinel2']['band_section']:
-        logging.info(f'Downloading Sentinel 2 albedo for band {band_label}')
+        log.info(f'Downloading Sentinel 2 albedo for band {band_label}')
         tiff_url = collection[-1].assets[band_label].href
         short_name = tiff_url.split('sentinel-s2-l2a-cogs/')[1]
         resp = get(tiff_url, stream=True)

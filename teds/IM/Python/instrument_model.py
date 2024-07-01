@@ -21,6 +21,7 @@ from teds.IM.Python.algos.algo_dark_current import Dark_Current
 from teds.IM.Python.algos.algo_noise import Noise
 from teds.IM.Python.algos.algo_dark_offset import Dark_Offset
 from teds.IM.Python.algos.algo_coadding import Coadding
+from teds.IM.Python.algos.algo_binning import Binning
 from teds.IM.Python.algos.algo_adc import ADC
 
 def get_im_config(logger, config):
@@ -28,7 +29,7 @@ def get_im_config(logger, config):
         Get IM specific settings and move them one level up in config
     """
     im_settings = config['instrument_model']
-    for key, value in im_settings:
+    for key, value in im_settings.items():
         config[key] = value
     return config
 
@@ -54,6 +55,13 @@ def get_input_data(logger, config):
     #Note: ckd is an data_netcdf object
     # It contains several groups and datasets
     input_data.add_container('ckd', ckd)
+
+    # Binning Tables
+    binning_file = config['io']['binning_table']
+    print(f"binning file: {binning_file}")
+    binning_tables = Input_netcdf(logger,binning_file)
+    binning_table_datasets = binning_tables.read()
+    input_data.add_container('binning', binning_table_datasets)
 
     input_file = config['sgm_rad_file']
     data_input = Input_netcdf(logger,input_file)
@@ -103,10 +111,21 @@ def initialize_output(logger, input_data, algo_list, dimensions, main_attributes
     output.add(name='scanline', value=dimensions['dim_alt'], kind='dimension')
     if 'Draw_On_Detector' in algo_list:
         # we have a detector image in the end so detector dimensions can be used in output
-        output.add(name='row', value=dimensions['dim_spat'], kind='dimension')
-        output.add(name='col', value=dimensions['dim_spec'], kind='dimension')
-        output_data = np.zeros((dimensions['dim_alt'], dimensions['dim_spat'], dimensions['dim_spec']))
-        output.add(name='measurement', value=output_data, dimensions=('scanline','row','col'), kind='variable')
+        # Check also for binning:
+        if 'Binning' in algo_list:
+            # Data possibly binned in row direction
+            # Find number of binned rows
+            output.add(name='row', value=dimensions['dim_binned_rows'], kind='dimension')
+            output.add(name='col', value=dimensions['dim_spec'], kind='dimension')
+            output_data = np.zeros((dimensions['dim_alt'], dimensions['dim_binned_rows'], dimensions['dim_spec']))
+            output.add(name='measurement', value=output_data, dimensions=('scanline','row','col'), kind='variable')
+        else:
+            # Data not yet binned
+            output.add(name='row', value=dimensions['dim_spat'], kind='dimension')
+            output.add(name='col', value=dimensions['dim_spec'], kind='dimension')
+            output_data = np.zeros((dimensions['dim_alt'], dimensions['dim_spat'], dimensions['dim_spec']))
+            output.add(name='measurement', value=output_data, dimensions=('scanline','row','col'), kind='variable')
+
     elif ('ISRF' in algo_list) or ('Radiometric' in algo_list):
         # Apparently no detector image in the end
         print(f"Creating ISRF dimensions for final output")
@@ -147,12 +166,21 @@ def initialize_output(logger, input_data, algo_list, dimensions, main_attributes
             output_algo_data = np.zeros((dimensions['dim_alt'], dimensions['dim_act'], dimensions['dim_spec']))
             output_algo.add(name='measurement', value=output_algo_data, dimensions=('scanline','act','col'), kind='variable')
         else:
-            output_algo.add(name='row', value=dimensions['dim_spat'], kind='dimension') 
-            output_algo.add(name='col', value=dimensions['dim_spec'], kind='dimension') 
-            # Create output dataset with zeros. For now named it measurement. Check what name of output dataset should be
-            # When running over images this dataset will be updated
-            output_algo_data = np.zeros((dimensions['dim_alt'], dimensions['dim_spat'], dimensions['dim_spec']))
-            output_algo.add(name='measurement', value=output_algo_data, dimensions=('scanline','row','col'), kind='variable')
+            # Check for binning:
+            if ('Binning' in algo_list) and ((algo_name == 'Binning') or (algo_name == 'ADC')):
+                output_algo.add(name='row', value=dimensions['dim_binned_rows'], kind='dimension') 
+                output_algo.add(name='col', value=dimensions['dim_spec'], kind='dimension') 
+                # Create output dataset with zeros. For now named it measurement. Check what name of output dataset should be
+                # When running over images this dataset will be updated
+                output_algo_data = np.zeros((dimensions['dim_alt'], dimensions['dim_binned_rows'], dimensions['dim_spec']))
+                output_algo.add(name='measurement', value=output_algo_data, dimensions=('scanline','row','col'), kind='variable')
+            else:
+                output_algo.add(name='row', value=dimensions['dim_spat'], kind='dimension') 
+                output_algo.add(name='col', value=dimensions['dim_spec'], kind='dimension') 
+                # Create output dataset with zeros. For now named it measurement. Check what name of output dataset should be
+                # When running over images this dataset will be updated
+                output_algo_data = np.zeros((dimensions['dim_alt'], dimensions['dim_spat'], dimensions['dim_spec']))
+                output_algo.add(name='measurement', value=output_algo_data, dimensions=('scanline','row','col'), kind='variable')
 
         # Maybe add group original to store the input data for comparison purpose????
 
@@ -186,8 +214,15 @@ def instrument_model(config, logger, main_attributes):
     dim_spat = input_data.get_dataset('detector_row', c_name='ckd', kind='dimension')
     dim_spec = input_data.get_dataset('detector_column', c_name='ckd', kind='dimension')
     dim_act = input_data.get_dataset('across_track', c_name='ckd', kind='dimension')
-    logger.info(f"Found dim_spec: {dim_spec} and dim_spat: {dim_spat} and dim_act: {dim_act}")
-    dimensions = {'dim_act':dim_act,'dim_spec': dim_spec, 'dim_spat': dim_spat, 'dim_alt': dim_alt}
+
+    # Find binned row dimension
+    bin_id = input_data.get_dataset('binning_table_id', c_name='config', group='detector', kind='variable')
+    table = f"Table_{bin_id}"
+    nr_binned_pixels = input_data.get_dataset('bins', c_name='binning', group=table, kind='dimension')
+    binned_rows = int(nr_binned_pixels/dim_spec)
+
+    logger.info(f"Found dim_spec: {dim_spec} and dim_spat: {dim_spat} and dim_act: {dim_act}, and binned_rows: {binned_rows}")
+    dimensions = {'dim_act':dim_act,'dim_spec': dim_spec, 'dim_spat': dim_spat, 'dim_alt': dim_alt, 'dim_binned_rows': binned_rows}
 
     # Get the output data into list of data containers
     output_datasets = initialize_output(logger, input_data, algo_list, dimensions, main_attributes)

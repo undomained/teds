@@ -95,14 +95,12 @@ auto driver(const SettingsIM& settings,
             timers[static_cast<int>(ProcLevel::l1b)].start();
             applyISRF(ckd, settings.isrf.enabled, settings.isrf.fwhm_gauss, l1);
             timers[static_cast<int>(ProcLevel::l1b)].stop();
-            spdlog::info("PERFORMED ISRF STEP");
         }
         // Radiometric
         if (l1.level >= ProcLevel::rad && settings.cal_level < ProcLevel::rad) {
             timers[static_cast<int>(ProcLevel::rad)].start();
             radiometric(ckd, settings.rad.enabled, l1);
             timers[static_cast<int>(ProcLevel::rad)].stop();
-            spdlog::info("PERFORMED Radiometric STEP");
         }
         // Swath (draw on detector)
         if (l1.level >= ProcLevel::swath
@@ -110,7 +108,6 @@ auto driver(const SettingsIM& settings,
             timers[static_cast<int>(ProcLevel::swath)].start();
             drawOnDetector(ckd, l1);
             timers[static_cast<int>(ProcLevel::swath)].stop();
-            spdlog::info("PERFORMED DrawOnDetector STEP");
         }
         // Stray light
         if (l1.level >= ProcLevel::stray
@@ -118,7 +115,6 @@ auto driver(const SettingsIM& settings,
             timers[static_cast<int>(ProcLevel::stray)].start();
             strayLight(ckd, settings.stray.enabled, l1);
             timers[static_cast<int>(ProcLevel::stray)].stop();
-            spdlog::info("PERFORMED Stray light STEP");
         }
         // PRNU and QE
         if (l1.level >= ProcLevel::prnu
@@ -126,7 +122,6 @@ auto driver(const SettingsIM& settings,
             timers[static_cast<int>(ProcLevel::prnu)].start();
             prnu(ckd, settings.prnu.enabled, l1);
             timers[static_cast<int>(ProcLevel::prnu)].stop();
-            spdlog::info("PERFORMED PRNU STEP");
         }
         // Nonlinearity
         if (l1.level >= ProcLevel::nonlin
@@ -136,7 +131,6 @@ auto driver(const SettingsIM& settings,
             // nonlinearity spline from the CKD.
             // Extra protection. Only do the inverseNonlinearity when non lin ckd actually exists
             if (ckd.nonlin.enabled){
-                spdlog::info("SHOULD NOT GET HERE!");
                 const LinearSpline nonlin_spline { inverseNonlinearity(settings.io.ckd) };
                 nonlinearity(ckd, settings.nonlin.enabled, nonlin_spline, l1);
             }
@@ -148,7 +142,6 @@ auto driver(const SettingsIM& settings,
             timers[static_cast<int>(ProcLevel::dark)].start();
             darkCurrent(ckd, settings.dark.enabled, l1);
             timers[static_cast<int>(ProcLevel::dark)].stop();
-            spdlog::info("PERFORMED Dark_Current STEP");
         }
         // Noise
         if (l1.level >= ProcLevel::noise
@@ -156,7 +149,6 @@ auto driver(const SettingsIM& settings,
             timers[static_cast<int>(ProcLevel::noise)].start();
             noise(ckd, settings.noise.enabled, settings.noise.seed, l1);
             timers[static_cast<int>(ProcLevel::noise)].stop();
-            spdlog::info("PERFORMED Noise STEP");
         }
         // Dark offset
         if (l1.level >= ProcLevel::dark
@@ -164,7 +156,6 @@ auto driver(const SettingsIM& settings,
             timers[static_cast<int>(ProcLevel::dark)].start();
             darkOffset(ckd, settings.dark.enabled, l1);
             timers[static_cast<int>(ProcLevel::dark)].stop();
-            spdlog::info("PERFORMED Dark_Offset STEP");
         }
         // Coaddition, binning, and ADC conversion
         if (l1.level >= ProcLevel::raw
@@ -172,7 +163,6 @@ auto driver(const SettingsIM& settings,
             timers[static_cast<int>(ProcLevel::l1a)].start();
             digitalToAnalog(binning_table, l1);
             timers[static_cast<int>(ProcLevel::l1a)].stop();
-            spdlog::info("PERFORMED Digital STEP");
         }
     }
     spdlog::info("Processing images 100.0%");

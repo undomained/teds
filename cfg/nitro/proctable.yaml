@@ -7,4 +7,5 @@ algos:
     - Noise
     - Dark_Offset
     - Coadding
+    - Binning
     - ADC

@@ -95,8 +95,16 @@ auto drawOnDetector(const CKD& ckd, L1& l1) -> void
     std::vector<double> x_values(ckd.n_act);
     std::vector<double> y_values(ckd.n_act);
     for (int i_wave {}; i_wave < ckd.n_detector_cols; ++i_wave) {
+        bool needReverse = false;
+        if (ckd.swath.row_indices[ckd.n_act - 1 ][i_wave] < ckd.swath.row_indices[0][i_wave]){
+            needReverse = true;
+        }
         for (int i_act {}; i_act < ckd.n_act; ++i_act) {
-            const int act_idx { static_cast<int>(ckd.n_act - 1 - i_act) };
+            const int act_idx { static_cast<int>(i_act) };
+            if (needReverse){
+                const int act_idx { static_cast<int>(ckd.n_act - 1 - i_act) };
+            }
+
             x_values[i_act] = ckd.swath.row_indices[act_idx][i_wave];
             y_values[i_act] = l1.spectra[act_idx].signal[i_wave];
         }
@@ -245,6 +253,9 @@ auto digitalToAnalog(const BinningTable& binning_table, L1& l1) -> void
     for (double& val : l1.image) {
         val *= l1.nr_coadditions;
     }
+    // Note: The next line of code seems to be taking the information of binning table into account,
+    // but at the end it divides by count_table (BF)
+    // That is why in netxt steps there is a loop where multiplication by binSize (BF) takes place
     binning_table.bin(l1.image);
     l1.image_i32.resize(binning_table.nBins());
     for (int i {}; i < binning_table.nBins(); ++i) {

@@ -82,8 +82,7 @@ def build(logger, config, step, cfg_path, attribute_dict):
         im_configuration['io']['ckd'] = im_ckd
         # Get the IM specific steps and move them one level up
         im_config = config['instrument_model']
-        for key, value in im_configuration.items():
-#            config[key] = value
+        for key, value in im_config.items():
             im_configuration[key] = value
 
         del im_configuration['instrument_model']
@@ -138,7 +137,7 @@ def build(logger, config, step, cfg_path, attribute_dict):
             data_reshaped = np.reshape(data, (data.shape[0], binned_rows, det_cols))
             print(f"Reshaped data shape : {data_reshaped.shape}")
             print(f"Reshaped data image 1: {data_reshaped[1,:,:]}")
-            if config['cal_level'] != 'l1a':
+            if im_configuration['cal_level'] != 'l1a':
                 l1a_data.add(name='detector_image_3d', value=data_reshaped, group='science_data', dimensions=('along_track','detector_row','detector_column'), kind='variable')
             else:
                 l1a_data.add(name='detector_image_3d', value=data_reshaped, group='science_data', dimensions=('along_track','binned_row','detector_column'), kind='variable')

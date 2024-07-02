@@ -113,7 +113,7 @@ auto driver(const SettingsL1B& settings,
             && settings.cal_level >= ProcLevel::stray) {
             timers[static_cast<int>(ProcLevel::stray)].start();
             strayLight(
-              ckd, binning_table, settings.stray.van_cittert_steps, l1);
+              ckd, settings.stray.enabled, binning_table, settings.stray.van_cittert_steps, l1);
             timers[static_cast<int>(ProcLevel::stray)].stop();
         }
         // Swath

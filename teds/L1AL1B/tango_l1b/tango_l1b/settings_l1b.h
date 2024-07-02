@@ -94,6 +94,11 @@ public:
 
     struct
     {
+        Setting<bool> enabled {
+            { "stray", "enabled" },
+            true,
+            "whether to include Straylight calibration",
+        };
         Setting<int> van_cittert_steps {
             { "stray", "van_cittert_steps" },
             3,

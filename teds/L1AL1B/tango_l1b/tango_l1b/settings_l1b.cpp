@@ -16,12 +16,15 @@ auto SettingsL1B::scanKeys() -> void
     scan(image_start);
     scan(image_end);
 
+    scan(nonlin.enabled);
+
     scan(dark.enabled);
 
     scan(noise.enabled);
 
     scan(prnu.enabled);
 
+    scan(stray.enabled);
     scan(stray.van_cittert_steps);
 
     scan(swath.enabled);

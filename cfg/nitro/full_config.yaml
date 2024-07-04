@@ -18,18 +18,24 @@ l2_file: '../data/no2/l2.nc'
 io: 
     binning_table: '../data/no2/ckd/binning_table_no2.nc'
     # Input IM:
+    # Note: in run_E2E.py this is renamed to l1b
     l1b_im: '../data/no2/sgm_radiance_wide.nc'
     # output of IM (and input for L1AL1B):
-    l1a: '../data/no2/l1a_python_with_isrf.nc'
-#    l1a: '../data/no2/l1a_python.nc'
+#    l1a: '../data/no2/l1a_python_with_isrf.nc'
+    l1a: '../data/no2/l1a_python.nc'
     # output of L1AL1B:
     l1b: '../data/no2/l1b_python.nc'
-    # CKD for L1AL1B
-    ckd: '../data/no2/ckd/ckd_nitro.nc'
+#####
     # possibility to have different ckds for IM and L1B
+    # CKD for L1AL1B
+#    ckd: '../data/no2/ckd/ckd_nitro.nc'
+    ckd: '../data/no2/ckd/ckd_nitro_updated.nc'
     # L1B uses ckd. IM uses ckd_im
-    ckd_im: '../data/no2/ckd/ckd_nitro.nc'
-    # Define in between output files for IM
+    # Note: in run_E2E.py this is renamed to ckd
+#    ckd_im: '../data/no2/ckd/ckd_nitro.nc'
+    ckd_im: '../data/no2/ckd/ckd_nitro_updated.nc'
+#####
+    # Define in between output files for IM (Python version)
     # Base name:
     im_algo_output: '../data/no2/im_l1x_{algo_name}.nc'
 #########################################################
@@ -122,9 +128,6 @@ S2_albedo:
 # Configuration file for running the Instrument module
 #
 #########################################################
-#IM_cfg_path:  '../cfg/nitro/'                                         #Where the .cfg file needed to run C++ code will be placed
-#IM_log_path:  '../logs/IM/'                                         #Where the .log file produced by the C++ code will be placed
-## if output files of inbetween steps are needed define the steps for which output is required
 ############################
 instrument_model:
     proctable:
@@ -137,6 +140,7 @@ instrument_model:
     image_end: 100
     detector:
         binning_table_id: 1         # across track binning
+#        binning_table_id: 2         # across track binning
         exposure_time:    0.021     # exposure time [sec]
         nr_coadditions:   2         # along track co-adding
     isrf:
@@ -165,41 +169,36 @@ instrument_model:
 # Configuration file for running the L1AL1B module 
 #
 #########################################################
-#
-##ckd_input_L1B: '../data/no2/ckd/ckd_nitro_MvH_updated.nc'
-#L1AL1B_cfg_path:  '../cfg/nitro/'                                         #Where the .cfg file needed to run C++ code will be placed
-#L1AL1B_log_path:  '../logs/L1AL1B/'                                       #Where the .log file produced by the C++ code will be placed
-#L1AL1B_instrument_cal:  'tango'                                           #Which instrument calibration is to be used (spexone or tango)
 ############################
 l1b:
-#    noise:
-#    #    enabled: false      # Add noise (true) or not (false)
-#        enabled: true      # Add noise (true) or not (false)
-#        seed:    100       # Seed for noise generation
+    instrument: 'nitro'
+    processing_version: 0.000
+    image_start: 0
+    image_end: 100
+    cal_level: 'l1b' # To indicate wether to calibrate the whole way (l1b) or to stop at a certain point ('prnu' -> calibrate until (NOT INCLUDING) prnu step)
+    detector:
+        binning_table_id: 1         # across track binning
+        exposure_time:    0.021     # exposure time [sec]
+        nr_coadditions:   2         # along track co-adding
+# What about geolocation??????
+    noise:
+        enabled: false      # apply noise calibration (true) or not (false)
+#        enabled: true      # apply noise calibration (true) or not (false)
     dark:
         enabled: true      # apply dark current and dark offset corrections (true) or not (false)
     nonlin:
-    #    enabled: true      # apply non linearity correction(true) or not (false)
+#        enabled: true      # apply non linearity correction(true) or not (false)
         enabled: false     # apply non linearity correction(true) or not (false)
     prnu:
         enabled: true      # apply PRNU and QE corrections (true) or not (false)
     stray:
-    #    enabled: true      # apply straylight correction (true) or not (false)
         enabled: false     # apply straylight correction (true) or not (false)
+        van_cittert_steps: 0  #van Citter iteration for stray light correction (0=no correction)
+#        enabled: true      # apply straylight correction (true) or not (false)
+#        van_cittert_steps: 4  #van Citter iteration for stray light correction (0=no correction)
     rad:
         enabled: true      # apply radiometric correction (true) or not (false)
-    #    enabled: false     # apply radiometric correction (true) or not (false)
-    #
-#settings_L1AL1B:
-#    geolocation:  0       #calculate geolocation (0 no, 1 yes), currently only 0 possible
-#    van_cittert_steps: 4  #van Citter iteration for stray light correction (0=no correction)
-#    sw_dark:         1                                   #switch dark current (1 on, 0 off)
-##   When non lin has been added to CKD sw_nonlin can be set to 1
-#    sw_nonlin:       0                                   #switch non-linearity (1 on, 0 off)
-#    sw_prnu:         1                                   #switch pixel response non-uniformity (1 on, 0 off)
-##   When stray light has been added to CKD sw_stray can be set to 1
-#    sw_stray:        0                                   #switch dark spectrometer stray light (1 on, 0 off)
-#    sw_rad:          1                                   #switch radiometric calibration (1 on, 0 off)
+#        enabled: false     # apply radiometric correction (true) or not (false)
 #############################    
 #########################################################
 #

@@ -387,11 +387,16 @@ auto writeL1(const std::string& filename,
     spdlog::info("Output data calibration level: {}", procLevelToString(level));
 
     // Global attributes
+    const std::string instrument {
+        YAML::Load(config)["instrument"].as<std::string>()
+    };
     nc.putAtt("Conventions", "CF-1.11");
     if (level == ProcLevel::l1b) {
-        nc.putAtt("title", "Tango Carbon level 1B data");
+//        nc.putAtt("title", "Tango Carbon level 1B data");
+        nc.putAtt("title", "Tango " + instrument + " level 1B data");
     } else {
-        nc.putAtt("title", "Tango Carbon level 1A data");
+//        nc.putAtt("title", "Tango Carbon level 1A data");
+        nc.putAtt("title", "Tango " + instrument + " level 1A data");
     }
     if (level == ProcLevel::l1a || level == ProcLevel::l1b) {
         nc.putAtt("processing_level", procLevelToString(level));
@@ -400,8 +405,11 @@ auto writeL1(const std::string& filename,
         nc.putAtt("l1x_level", netCDF::ncInt, static_cast<int>(level));
     }
     nc.putAtt("project", "TANGO");
-    nc.putAtt("instrument", "TANGO");
+//    nc.putAtt("instrument", "TANGO");
+//    Should read instrument from config file
+    nc.putAtt("instrument", instrument);
     nc.putAtt("product_name", filename);
+// update creator name??????
     nc.putAtt("creator_name", "SRON/Earth Science");
     nc.putAtt("creator_url", "https://www.sron.nl/missions-earth");
     nc.putAtt("date_created", getDateAndTime());
@@ -417,7 +425,6 @@ auto writeL1(const std::string& filename,
     const std::string processing_version {
         YAML::Load(config)["processing_version"].as<std::string>()
     };
-    nc.putAtt("processing_version", processing_version);
 
     // Compression will be enabled only for official products (L1A, L1B)
     constexpr int compression_level { 5 };

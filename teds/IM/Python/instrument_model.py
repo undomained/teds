@@ -91,102 +91,131 @@ def  add_main_attributes(out_data, attributes):
         out_data.add(name, value=value, kind='attribute')
     return
 
-def initialize_output(logger, input_data, algo_list, dimensions, main_attributes):
+def is_detector_image(algo_name):
     """
-        Initialize the output files.
+        Determine if th output are detector images or observation data
+    """
+    is_detector_image = False
+    # TODO. This is now hard coded. Need to do this differently
+    detector_image_algos = ['Draw_On_Detector', 'PRNU','Non_Linearity','Straylight', 'Dark_Current','Noise', 'Dark_Offset','Coadding','Binning','ADC']
+    if algo_name in detector_image_algos:
+        is_detector_image = True
+    return is_detector_image
+
+def create_detector_image_output(logger, nc_output, dimensions, is_binned=False, in_between=False):
+    """
+        Create detector image dimensions and dataset and attributes
+    """
+    # Detector image
+    nc_output.add(name='detector_image', value=dimensions['dim_alt'], kind='dimension')
+    nc_output.add(name='col', value=dimensions['dim_spec'], kind='dimension')
+    # Binned rows?
+    if is_binned:
+        # output is binned
+        nc_output.add(name='row', value=dimensions['dim_binned_rows'], kind='dimension')
+        output_data = np.zeros((dimensions['dim_alt'], dimensions['dim_binned_rows'], dimensions['dim_spec']))
+    else:
+        nc_output.add(name='row', value=dimensions['dim_spat'], kind='dimension')
+        output_data = np.zeros((dimensions['dim_alt'], dimensions['dim_spat'], dimensions['dim_spec']))
+
+    nc_output.add(name='science_data', kind='group')
+    nc_output.add(name='detector_image', value=output_data, dimensions=('detector_image','row','col'), group='science_data', kind='variable')
+
+    nc_output.add(name='name', value='detector_images', var='detector_image', group='science_data', kind='attribute')
+    nc_output.add(name='units', value='counts', var='i', group='science_data',kind='attribute')
+
+    if in_between:
+        nc_output.add(name='measurement', value=output_data, dimensions=('detector_image','row','col'), kind='variable')
+
+    # TODO need to add more attributes?
+    # TODO also add standard deviation data (detector_stdev)?
+
+    return
+
+def create_observation_data_output(logger, nc_output, dimensions, in_between=False):
+    """
+        Create observation data dimensions and dataset and attributes
+    """
+    # Observation data
+    nc_output.add(name='along_track', value=dimensions['dim_alt'], kind='dimension')
+    nc_output.add(name='across_track', value=dimensions['dim_act'], kind='dimension')
+    nc_output.add(name='wavelength', value=dimensions['dim_spec'], kind='dimension')
+    output_data = np.zeros((dimensions['dim_alt'], dimensions['dim_act'], dimensions['dim_spec']))
+
+    nc_output.add(name='observation_data', kind='group')
+    nc_output.add(name='i', value=output_data, dimensions=('along_track','across_track','wavelength'), group='observation_data', kind='variable')
+    nc_output.add(name='name', value='radiance', var='i', group='observation_data', kind='attribute')
+    nc_output.add(name='units', value='ph nm-1 s-1 sr-1 m-2', var='i', group='observation_data', kind='attribute')
+
+    if in_between:
+        nc_output.add(name='measurement', value=output_data, dimensions=('along_track','across_track','wavelength'), kind='variable')
+    # TODO add other attributes??????
+    # TODO need to add standard deviation data (i_stdev)?
+    # TODO Need to add group sensor_bands and wavelength data?
+
+    return
+
+
+def initialize_output(logger, kind, input_data, algo_list, dimensions, main_attributes):
+    """
+        Initialize the final output file.
         Add dimensions and output dataset
+        kind is l1a or l1b
     """
+
     output_datasets = Datasets(logger, 'output_data')
 
+# Final output file
     # Create and initialize the final output
-    output_file_name = input_data.get_dataset('l1a', c_name='config', group='io')
+    output_file_name = input_data.get_dataset(kind, c_name='config', group='io')
     output = dn.DataNetCDF(logger, output_file_name)
     add_main_attributes(output, main_attributes)
 
-    # Figure out which dimensions should be in the final output file
-    # If algo rithm Draw_On_Detector is in the algo_list, output id on detector pixels
-    # If ISRF in algo list it is mixed
-    # Is this check sufficient?
-    # Check if draw_on_detector algo is in algo list:
-    output.add(name='scanline', value=dimensions['dim_alt'], kind='dimension')
-    if 'Draw_On_Detector' in algo_list:
-        # we have a detector image in the end so detector dimensions can be used in output
-        # Check also for binning:
-        if 'Binning' in algo_list:
-            # Data possibly binned in row direction
-            # Find number of binned rows
-            output.add(name='row', value=dimensions['dim_binned_rows'], kind='dimension')
-            output.add(name='col', value=dimensions['dim_spec'], kind='dimension')
-            output_data = np.zeros((dimensions['dim_alt'], dimensions['dim_binned_rows'], dimensions['dim_spec']))
-            output.add(name='measurement', value=output_data, dimensions=('scanline','row','col'), kind='variable')
-        else:
-            # Data not yet binned
-            output.add(name='row', value=dimensions['dim_spat'], kind='dimension')
-            output.add(name='col', value=dimensions['dim_spec'], kind='dimension')
-            output_data = np.zeros((dimensions['dim_alt'], dimensions['dim_spat'], dimensions['dim_spec']))
-            output.add(name='measurement', value=output_data, dimensions=('scanline','row','col'), kind='variable')
+    # Check which is last algo in list
+    # This is indication of the data are detector images or spectra.
+    # It also indicates if output is integer and binned
+    last_algo = algo_list[-1]
+    if is_detector_image(last_algo):
 
-    elif ('ISRF' in algo_list) or ('Radiometric' in algo_list):
-        # Apparently no detector image in the end
-        print(f"Creating ISRF dimensions for final output")
-        # detector columns combined with accros_track dimension
-        output.add(name='act', value=dimensions['dim_act'], kind='dimension')
-        output.add(name='col', value=dimensions['dim_spec'], kind='dimension')
-        output_data = np.zeros((dimensions['dim_alt'], dimensions['dim_act'], dimensions['dim_spec']))
-        output.add(name='measurement', value=output_data, dimensions=('scanline','act','col'), kind='variable')
+        is_binned = False
+        if 'Binning' in algo_list:
+            is_binned = True
+        create_detector_image_output(logger, output, dimensions, is_binned=is_binned)
+
     else:
-        # ISRF AND Draw_On_Detector not in algo_list. Any other algos are on detector pixels. Can not be applied.
-        # Can not continue
-        error_message = " Both the ISRF and the Draw_On_Detector algos are not involved. All other algos run on detector pixels and can not be applied. Can not continue"
-        logger.error(error_message)
-        sys.exit(error_message)
+        create_observation_data_output(logger, output, dimensions)
 
     output_datasets.add_container('final',output)
 
-    # Now add output for different steps
+# Inbetween output
+
     for algo_name in algo_list:
 
         # These are the inbetween output files
         # Maybe add some switch if we want them or not.
-        algo_output = input_data.get_dataset('im_algo_output', c_name='config', group='io')
+#        algo_output = input_data.get_dataset('im_algo_output', c_name='config', group='io')
+        if kind == 'l1a':
+            algo_output = input_data.get_dataset('im_algo_output', c_name='config', group='io')
+        else:
+            algo_output = input_data.get_dataset('l1b_algo_output', c_name='config', group='io')
+
         algo_file = algo_output.format(algo_name=algo_name)
         output_algo = dn.DataNetCDF(logger, algo_file)
         add_main_attributes(output_algo, main_attributes)
 
-        # Add dimensions to the inbetween output files
-        # In principle output dimensions for ISRF is mixed
-        # All others should be detector pixels 
-        output_algo.add(name='scanline', value=dimensions['dim_alt'], kind='dimension') 
-        if (algo_name == 'ISRF') or (algo_name == 'Radiometric'):
-            # output not yet on full detector dimensions
-            output_algo.add(name='act', value=dimensions['dim_act'], kind='dimension') 
-            output_algo.add(name='col', value=dimensions['dim_spec'], kind='dimension') 
-            # Create output dataset with zeros. For now named it measurement. Check what name of output dataset should be
-            # When running over images this dataset will be updated
-            output_algo_data = np.zeros((dimensions['dim_alt'], dimensions['dim_act'], dimensions['dim_spec']))
-            output_algo.add(name='measurement', value=output_algo_data, dimensions=('scanline','act','col'), kind='variable')
-        else:
-            # Check for binning:
-            if ('Binning' in algo_list) and ((algo_name == 'Binning') or (algo_name == 'ADC')):
-                output_algo.add(name='row', value=dimensions['dim_binned_rows'], kind='dimension') 
-                output_algo.add(name='col', value=dimensions['dim_spec'], kind='dimension') 
-                # Create output dataset with zeros. For now named it measurement. Check what name of output dataset should be
-                # When running over images this dataset will be updated
-                output_algo_data = np.zeros((dimensions['dim_alt'], dimensions['dim_binned_rows'], dimensions['dim_spec']))
-                output_algo.add(name='measurement', value=output_algo_data, dimensions=('scanline','row','col'), kind='variable')
-            else:
-                output_algo.add(name='row', value=dimensions['dim_spat'], kind='dimension') 
-                output_algo.add(name='col', value=dimensions['dim_spec'], kind='dimension') 
-                # Create output dataset with zeros. For now named it measurement. Check what name of output dataset should be
-                # When running over images this dataset will be updated
-                output_algo_data = np.zeros((dimensions['dim_alt'], dimensions['dim_spat'], dimensions['dim_spec']))
-                output_algo.add(name='measurement', value=output_algo_data, dimensions=('scanline','row','col'), kind='variable')
+        if is_detector_image(algo_name):
+            is_binned = False
+            if algo_name in ['Binning','ADC']:
+                is_binned = True
+            create_detector_image_output(logger, output_algo, dimensions, is_binned=is_binned, in_between=True)
 
-        # Maybe add group original to store the input data for comparison purpose????
+        else:
+            create_observation_data_output(logger, output_algo, dimensions, in_between=True)
 
         output_datasets.add_container(algo_name,output_algo)
 
     return output_datasets
+
 
 def instrument_model(config, logger, main_attributes):
     """
@@ -208,7 +237,12 @@ def instrument_model(config, logger, main_attributes):
     radiance_data = input_data.get_dataset('radiance', c_name='measurement', kind='variable')
 
     #Note: this is the along track dimension
-    n_images = radiance_data.shape[0]
+#    n_images = radiance_data.shape[0]
+    # requested number of images:
+    image_start = config['instrument_model']['image_start']
+    image_end = config['instrument_model']['image_end']
+    # image_end is up and including
+    n_images = image_end+1 - image_start
 
     dim_alt = n_images
     dim_spat = input_data.get_dataset('detector_row', c_name='ckd', kind='dimension')
@@ -225,11 +259,13 @@ def instrument_model(config, logger, main_attributes):
     dimensions = {'dim_act':dim_act,'dim_spec': dim_spec, 'dim_spat': dim_spat, 'dim_alt': dim_alt, 'dim_binned_rows': binned_rows}
 
     # Get the output data into list of data containers
-    output_datasets = initialize_output(logger, input_data, algo_list, dimensions, main_attributes)
+    output_datasets = initialize_output(logger, 'l1a', input_data, algo_list, dimensions, main_attributes)
 
     # Loop over images
-    for img in range(n_images):
+#    for img in range(n_images):
+    for img in range(image_start, image_end+1):
 
+        print(f"Processing image: {img}")
         start_time_image = time.perf_counter()
 
         image = radiance_data[img,:,:]
@@ -266,10 +302,18 @@ def instrument_model(config, logger, main_attributes):
         end_time_image = time.perf_counter()
         logger.info(f"Processing image {img} took {(end_time_image - start_time_image):.6f}seconds")
 
-    # Get dataset from last algo
+        for algo_name in algo_list:
+            algo_dataset = output_datasets.get_dataset('measurement', c_name=algo_name, kind='variable')
+            if is_detector_image(algo_name):
+                output_datasets.update_dataset('detector_image', data=algo_dataset, c_name=algo_name, group='science_data')
+            else:
+                output_datasets.update_dataset('i', data=algo_dataset, c_name=algo_name, group='observation_data')
+
     final_dataset = output_datasets.get_dataset('measurement', c_name=algo_list[-1], kind='variable')
-    # update dataset from final container
-    output_datasets.update_dataset('measurement', data=this_dataset, c_name='final')
+    if is_detector_image(algo_list[-1]):
+        output_datasets.update_dataset('detector_image', data=final_dataset, c_name='final', group='science_data')
+    else:
+        output_datasets.update_dataset('i', data=final_dataset, c_name='final', group='observation_data')
 
     output_datasets.write()
     end_time_IM = time.perf_counter()

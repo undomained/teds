@@ -230,20 +230,22 @@ def gm_output(logger, config, vza, vaa, sza, saa, lat_grid, lon_grid):
     """
        Write gm oputput to filename (set in config file) as nc file.
     """
-
-    filename = config['gm_file']
+    
+    filename = config['io_files']['output_gm']
+    
+    print(filename)
     # Check if directory exists, otherwise create:
     out_dir = os.path.split(filename)[0]
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    title = config['gm_title']
+    title = 'geometry module output'
 
     nact = len(lat_grid[0,:])
     nalt = len(lat_grid[:,0])
     output = nc.Dataset(filename, mode='w')
-#    output.title = 'Tango Carbon E2ES GM output'
-    output.title = title
+    output.title = 'Tango Carbon E2ES GM output'
+#    output.title = title
     output.createDimension('bins_across_track', nact)    # across track axis
     output.createDimension('bins_along_track', nalt)     # along track axis
     # dimensions
@@ -256,6 +258,7 @@ def gm_output(logger, config, vza, vaa, sza, saa, lat_grid, lon_grid):
     _ = writevariablefromname(output, "longitude", dims, lon_grid)
     output.close()
 
+    
 def gm_output_via_object(logger, config, vza, vaa, sza, saa, lat_grid, lon_grid):
     """
        Write gm oputput to filename (set in config file) as nc file.

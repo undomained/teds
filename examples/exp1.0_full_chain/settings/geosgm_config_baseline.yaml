@@ -1,3 +1,9 @@
+kernel_parameter:               #parameter to configure the 2D blurring of the scene
+    type:    '2D Gaussian'      #type pf kernel, current version has only one option  
+    fwhm_x:  300                #FWHM in ACT direction
+    fwhm_y:  300                #FWHM in flight direction
+    size_factor: 2              #the size of the convolution kernel in units of fwhm
+        
 atmosphere:
     nlay: 30                    #number of atmospheric layers
     dzlay: 1000                 #geometrical thickness of the layers [m]
@@ -17,6 +23,16 @@ scale_gas:                  #only relevant for AFGL profiles
     xch4: 1800.             #ppb
     xh2o: 10000.            #ppm
 
-S2:
-    force_data_ret:   False               # flag to force Sentinel 2 calculation
+sentinel2:
     band_section: ['B02', 'B03', 'B11']   # use e.g. https://en.wikipedia.org/wiki/Sentinel-2 for band defintion
+    
+io_files:
+    input_gm: '/home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/gm/Tango_Carbon_gm_exp1.0.nc'
+    input_s2: '/media/jochen/SRON_Data/Sentinel2/S2_Jaenschwalde.nc'
+    input_afgl: '/home/jochen/TANGO_E2ES/EndtoEndProject/data/AFGL/prof.AFGL.US.std'
+    output_geo: '/home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/sgm/Tango_Carbon_sgm_atmosphere_exp1.0.nc'
+    meteo:                          #configure use of microHH plume simulation
+      dump: "tmp/microHH.pkl"
+      path_data: "/media/jochen/SRON_Data/microHH/Jaenschwalde/"
+      filesuffix: "src3_20180523_1100"  # sourcename_yyyymmdd_hhmm
+      gases: ["co2", "no2", "no"]

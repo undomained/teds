@@ -45,13 +45,13 @@ path_IM        = path_project  + 'end_to_end/teds/IM/'
 path_L1AL1B    = path_project  + 'end_to_end/teds/L1AL1B/'
 
 locations = Emptyclass()
-locations.__setattr__('gm', {})
-locations.gm['output']        = path_interface + 'gm/Tango_Carbon_gm_exp1.0.nc'
+#locations.__setattr__('gm', {})
+#locations.gm['output']        = path_interface + 'gm/Tango_Carbon_gm_exp1.0.nc'
 
 locations.__setattr__('sgm', {})
-locations.sgm['gm_input']     = path_interface + 'gm/Tango_Carbon_gm_exp1.0.nc'
-locations.sgm['S2_dump']      = path_tmp + 'Tango_Carbon_S2_exp1.0.npy'
-locations.sgm['afgl_input']   = path_afgl + 'prof.AFGL.US.std'
+#locations.sgm['gm_input']     = path_interface + 'gm/Tango_Carbon_gm_exp1.0.nc'
+#locations.sgm['S2_dump']      = path_tmp + 'Tango_Carbon_S2_exp1.0.npy'
+#locations.sgm['afgl_input']   = path_afgl + 'prof.AFGL.US.std'
 locations.sgm['xsec_dump']    = path_tmp + 'Tango_Carbon_xsec_exp1.0.pkl'
 locations.sgm['sun_reference']= path_sol_spec + 'hybrid_reference_spectrum_c2021-03-04_with_unc.nc'
 locations.sgm['rad_output']   = path_interface + 'sgm/Tango_Carbon_sgm_radiance_exp1.0.nc'
@@ -101,8 +101,8 @@ profile= 'orbit'   #needed to initialize gm and sgm consistently
 settings= {}
 settings['gm']           = False
 settings['sgm']          = False
-settings['geosgm']       = False
-settings['radsgm_Carbon']= True
+settings['geosgm']       = True
+settings['radsgm_Carbon']= False
 settings['im']           = False
 settings['l1al1b']       = False
 settings['l1bl2']        = False                                                                                                                                      
@@ -117,8 +117,7 @@ if __name__ == "__main__":
 
     if(settings['gm']):
 
-        config= yaml.safe_load(open('./settings/gm_config_baseline.yaml'))
-        gm_config = {**locations.gm, **config}
+        gm_config= yaml.safe_load(open('./settings/gm_config_baseline.yaml'))
         gm_config['profile'] = profile
         if(settings['save_yaml']):
             gm_yaml = './save_yaml/gm_config_exp1.0.yaml'
@@ -129,7 +128,6 @@ if __name__ == "__main__":
 
     if(settings['geosgm']):
         sgm_config= yaml.safe_load(open('./settings/geosgm_config_baseline.yaml'))
-        sgm_config = {**locations.sgm, **sgm_config}
         sgm_config['profile'] = profile
         geoscene_generation(sgm_config)
 

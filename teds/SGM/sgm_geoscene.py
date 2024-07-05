@@ -19,7 +19,7 @@ from xarray import DataArray
 from typing import List
 
 
-def read_sentinel2_albedo(filename: str) -> List[DataArray]:
+def get_sentinel2_albedo(filename: str) -> List[DataArray]:
     '''Read a list of Sentinel 2 albedos from a NetCDF file.
 
     '''
@@ -143,7 +143,7 @@ def geoscene_generation(config):
        Dict containing configuration parameters.
     """
     # first get the geometry data
-    gm_data = get_gm_data(config['gm_input'])
+    gm_data = get_gm_data(config['io_files']['input_gm'])
     nalt, nact = gm_data.sza.shape
 
     # =============================================================================
@@ -154,7 +154,7 @@ def geoscene_generation(config):
     # we assume the same standard atmosphere for all pixels of the granule
 
     atm_std = libATM.get_AFGL_atm_homogenous_distribution(
-        config['afgl_input'], nlay, dzlay, config['scale_gas']['xco2'],
+        config['io_files']['input_afgl'], nlay, dzlay, config['scale_gas']['xco2'],
         config['scale_gas']['xch4'], config['scale_gas']['xh2o'])
 
     # individual spectra and single swath
@@ -176,18 +176,37 @@ def geoscene_generation(config):
         meteodata = libATM.get_atmosphericdata_new(
             gm_data.lat, gm_data.lon, config['meteo'])
 
+        meteodata = libATM.get_atmosphericdata_new(gm_data.lat, gm_data.lon, config['io_files']['meteo'])
+
         # Get albedo on the microHH grid
-        s2_albedos = read_sentinel2_albedo(config['sentinel2']['albedo_file'])
-        s2_albedos = libSGM.get_sentinel2_albedo(
+        s2_albedos = get_sentinel2_albedo(config['io_files']['input_s2'])
+        
+        s2_albedos = libSGM.interp_sentinel2_albedo(
             s2_albedos,
             meteodata.lat,
             meteodata.lon,
-            config,
-            config['sentinel2']['albedo_file'],
+            config['kernel_parameter'],
             config['sentinel2']['band_section'])
+        
         meteodata.__setattr__("albedo", s2_albedos)
+        
+        # get albedo on the microhh grid
+#        file_exists = os.path.isfile(config['io_files']['input_s2'])
+#        
+#        print('file exists: ', file_exists)
+#        sys.exit()
+#        if (file_exists and (not config['S2']['force_data_ret'])):
+#            albedo = pickle.load(open(config['S2_dump'], 'rb'))
+#        else:
+#            albedo = libSGM.get_sentinel2_albedo_new(meteodata.lat, meteodata.lon, config['S2']['band_section'])
+#            pickle.dump(albedo, open(config['S2_dump'], 'wb')) # .pkl extension is added if not given
+#            
+#        meteodata.__setattr__("albedo", albedo)
+        
         atm = libATM.combine_meteo_standard_atm_new(meteodata, atm_std, config)
-    geosgm_output(config['geo_output'], atm)
+
+        geosgm_output(config['io_files']['output_geo'], atm)
+        
     print('=>sgm geoscene calculation finished successfully')
 
 

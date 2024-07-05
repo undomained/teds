@@ -11,12 +11,10 @@ from xarray import DataArray
 from .libNumTools import convolution_2d
 from typing import List
 
-
-def get_sentinel2_albedo(s2_albedos: List[DataArray],
+def interp_sentinel2_albedo(s2_albedos: List[DataArray],
                          lat,
                          lon,
-                         conf,
-                         albedo_file,
+                         kernel_para,
                          band) -> List[DataArray]:
 
     s2_albedos_regridded = []
@@ -26,12 +24,12 @@ def get_sentinel2_albedo(s2_albedos: List[DataArray],
         logging.info(f'Sentinel 2 band {s2_albedo.band_label}:')
         # Define the settings for the convolution
         conv_settings = {}
-        if (conf['kernel_parameter']['type'] == '2D Gaussian'):
-            fwhm_x = conf['kernel_parameter']['fwhm_x']
-            fwhm_y = conf['kernel_parameter']['fwhm_y']
-            fsize = conf['kernel_parameter']['size_factor']
+        if (kernel_para['type'] == '2D Gaussian'):
+            fwhm_x = kernel_para['fwhm_x']
+            fwhm_y = kernel_para['fwhm_y']
+            fsize = kernel_para['size_factor']
 
-            conv_settings['type'] = conf['kernel_parameter']['type']
+            conv_settings['type'] = kernel_para['type']
             conv_settings['1D kernel extension'] = int(
                 fsize * np.max([fwhm_x, fwhm_y]) / s2_albedo.gsd)
             # Convert all kernel parameter to units of sampling distance

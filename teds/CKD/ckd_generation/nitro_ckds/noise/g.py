@@ -7,7 +7,7 @@ import numpy as np
 
 def generate(ncc):
     cfg = ncc.cfg
-    dims = ['detector_row', 'detector_col']
+    dims = ['detector_row', 'detector_column']
     gain = cfg['noise_conversion_gain']
     g = np.ones(ncc.get_shape(dims)) * gain
     

@@ -9,7 +9,7 @@ from scipy.ndimage import gaussian_filter
 
 def generate(ncc):
     cfg = ncc.cfg
-    dims = ['detector_row', 'detector_col']
+    dims = ['detector_row', 'detector_column']
     prnu_budget = cfg['prnu'] # in %, from TANGO Nitro SNR budget (TNO)
     prnu_max = 1 + prnu_budget/100
     prnu_min = 1 - prnu_budget/100    

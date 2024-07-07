@@ -8,12 +8,12 @@ from scipy.interpolate import bisplrep, bisplev
 
 def generate(ncc):
     cfg = ncc.cfg
-    dims = ['across_track', 'detector_col']
+    dims = ['across_track', 'detector_column']
     row_ix, col_ix, act_2d, wl_2d = import_spectral_smile_from_excel(cfg)
     wave_spline = bisplrep(act_2d, col_ix, wl_2d)
     act = act_2d[:,0]
     act_new = np.linspace(np.min(act), np.max(act), cfg['dimensions']['across_track'])
-    cols = np.arange(0, cfg['dimensions']['detector_col'])
+    cols = np.arange(0, cfg['dimensions']['detector_column'])
     wavelength = bisplev(act_new, cols, wave_spline)
     
     ncc.create_var_auto(dims, wavelength, dtype = 'f8')
@@ -47,7 +47,7 @@ def import_spectral_smile_from_excel(cfg):
     
     # assume image is projected on center of detector
     row_ix += cfg['dimensions']['detector_row']/2
-    col_ix += cfg['dimensions']['detector_col']/2 
+    col_ix += cfg['dimensions']['detector_column']/2 
     
     act_2d = np.tile(act, (col_ix.shape[1],1)).T
     wl_2d  = np.tile(wavelengths, (col_ix.shape[0],1))

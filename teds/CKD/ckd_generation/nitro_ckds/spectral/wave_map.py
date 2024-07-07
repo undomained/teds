@@ -12,7 +12,7 @@ def generate(ncc):
     
     act = act_2d[:,0]
     wl = wl_2d[0,:]
-    dims = ['detector_row', 'detector_col']
+    dims = ['detector_row', 'detector_column']
     nrows, ncols = ncc.get_shape(dims)
     rows = np.arange(nrows)
     cols = np.arange(ncols)

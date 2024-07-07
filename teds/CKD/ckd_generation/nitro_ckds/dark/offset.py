@@ -12,6 +12,6 @@ def generate(ncc):
         'comment': 'Placeholder, no data available'
     }
     
-    dims = ['detector_row', 'detector_col']
+    dims = ['detector_row', 'detector_column']
     dark_offset = np.zeros(ncc.get_shape(dims))    
     ncc.create_var_auto(dims, dark_offset, attr, 'f8')

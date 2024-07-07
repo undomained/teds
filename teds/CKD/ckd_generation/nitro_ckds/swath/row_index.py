@@ -8,7 +8,7 @@ from teds.CKD.ckd_generation.nitro_ckds.spectral.wavelength import import_spectr
 
 def generate(ncc):
     cfg = ncc.cfg
-    dims = ['across_track', 'detector_col']
+    dims = ['across_track', 'detector_column']
 
     # import from external data excel
     row_ix, col_ix, act_2d, _ = import_spectral_smile_from_excel(cfg)
@@ -17,7 +17,7 @@ def generate(ncc):
     # make a 2d spline 
     los_spline = bisplrep(act_2d, col_ix, row_ix, kx = 3, ky = 3)
     act_new = np.linspace(np.min(act), np.max(act), cfg['dimensions']['across_track'])
-    cols = np.arange(0, cfg['dimensions']['detector_col'])
+    cols = np.arange(0, cfg['dimensions']['detector_column'])
     row_indices = bisplev(act_new, cols, los_spline)
 
     

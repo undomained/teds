@@ -27,7 +27,7 @@ def generate(ncc):
     print(len(kernels_fft))
 
     # reshape some variables for the time being
-    C = cfg['dimensions']['detector_col']
+    C = cfg['dimensions']['detector_column']
     R = cfg['dimensions']['detector_row']
     col_new = np.arange(C)/C
     row_new = np.arange(R)/R
@@ -64,7 +64,7 @@ def generate(ncc):
     attr = {'long_name': 'Fourier transforms of the kernels', 'units':'1'}
     ncc.create_var('kernels_fft', ['kernel_fft_size'], kernels_fft, attr, 'f8')
     # create eta
-    dims_img = ['detector_row', 'detector_col']
+    dims_img = ['detector_row', 'detector_column']
     eta_attr = {'long_name': 'internal scattering factor'}
     ncc.create_var('eta', dims_img, eta_new, eta_attr, 'f8')
     # create weights

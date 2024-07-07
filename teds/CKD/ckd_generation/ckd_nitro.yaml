@@ -10,7 +10,7 @@
     # Dimensions
     dimensions: {
         detector_row : 2870,  # n_rows
-        detector_col : 1681,  # n_cols
+        detector_column : 1681,  # n_cols
         across_track : 100,
         vector       : 3,
         number_of_views         : 1,

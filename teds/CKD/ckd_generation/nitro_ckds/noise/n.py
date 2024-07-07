@@ -7,7 +7,7 @@ import numpy as np
 
 def generate(ncc):
     cfg = ncc.cfg
-    dims = ['detector_row', 'detector_col']
+    dims = ['detector_row', 'detector_column']
     attr = {
         'long_name': 'read noise',
         'description' :  'noise model: sigma = sqrt(g*signal + n^2)', 

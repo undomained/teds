@@ -4,7 +4,7 @@ Detector Pixel Mask
 import numpy as np
 
 def generate(ncc):
-    dims = ['detector_row', 'detector_col']
+    dims = ['detector_row', 'detector_column']
     mask = np.zeros(ncc.get_shape(dims))
 
     attr = {

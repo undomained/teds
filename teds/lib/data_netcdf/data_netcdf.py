@@ -216,6 +216,8 @@ class DataNetCDF:
                 self._logger.debug(f"...{dim}...")
                 dim.write(file_handle)
             for var in self._variable_list:
+                self._logger.debug("writing variables...")
+                self._logger.debug(f"...{var}...")
                 var.write(file_handle)
             for group in self._group_list:
                 self._logger.debug("writing groups...")

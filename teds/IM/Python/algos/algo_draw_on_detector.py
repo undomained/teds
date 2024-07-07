@@ -49,7 +49,7 @@ class Draw_On_Detector(Algorithm):
         for i_spec in range(n_col):
             x = row_indices[:,i_spec]
             y = image[:,i_spec]
-            cs = CubicSpline(x,y)
+            cs = CubicSpline(x,y, bc_type='natural')
             xs = det_ispat
             detector_data[:,i_spec] = cs(xs)
 

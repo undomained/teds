@@ -83,6 +83,7 @@ def ifdoe_run(logger, cfg):
     
     # A.4  Setup loop bounds
 
+    # TODO rad_file did not exist in full_config.yaml. SHOULD it be cfg['io']['sgm_rad'] ?????
     scanN,pxlN,spectralN = libDOAS.getDimensionsRad(cfg['rad_file'])
 
     if 'alt' in cfg:
@@ -108,7 +109,7 @@ def ifdoe_run(logger, cfg):
 
     # read geometry
 
-    geo = libDOAS.readGeometry(cfg['gm_file'])
+    geo = libDOAS.readGeometry(cfg['io']['gm'])
 
     # B)  Solar spectrum
     # ------------------
@@ -116,6 +117,7 @@ def ifdoe_run(logger, cfg):
 
     # B.1  Read spectrum & error
     if cfg['irr_from_sgm']:
+        # TODO: irr_file does not exist in full_config.yaml. what should this be?
         irrWvl, irr, irrError, irrFlag = libDOAS.ReadIrrSGM(cfg['irr_file'], pxlN)
     else:
         # TODO: not implemented yet
@@ -586,10 +588,10 @@ def ifdoe_run(logger, cfg):
     # H)  Finishing up
 
     # write results to output file
-    libDOAS.writeOutput(cfg['l2_file'],cfg,parameterNames,results,geo)
+    libDOAS.writeOutput(cfg['io']['l2'],cfg,parameterNames,results,geo)
 
 
-    logger.info(f"Output witten to {cfg['l2_file']}")
+    logger.info(f"Output witten to {cfg['io']['l2']}")
 
 
     logger.info(f'IFDOE calculation finished in {np.round(time.time()-startTime,1)} s')
@@ -602,17 +604,17 @@ def amf_run(logger,cfg):
 
     startTime = time.time()
 
-    logger.info(f"Reading DOAS results from L2 file: {cfg['l2_file']}")
-    doas = libAMF.read_doas(cfg['l2_file'])
+    logger.info(f"Reading DOAS results from L2 file: {cfg['io']['l2']}")
+    doas = libAMF.read_doas(cfg['io']['l2'])
 
-    logger.info(f"Reading atm file: {cfg['sgm_atm_file']}")
-    atm = libAMF.read_atm(cfg['sgm_atm_file'])
+    logger.info(f"Reading atm file: {cfg['io']['sgm_atm']}")
+    atm = libAMF.read_atm(cfg['io']['sgm_atm'])
 
     logger.info('Calculating AMF')
     amf_results = libAMF.get_amf(cfg['amf'], doas, atm)
 
 
-    logger.info(f"Writing AMF results to: {cfg['l2_file']}")
+    logger.info(f"Writing AMF results to: {cfg['io']['l2']}")
     libAMF.write_amf(cfg,amf_results)
 
     logger.info(f'AMF calculation finished in {np.round(time.time()-startTime,1)} s')
@@ -627,19 +629,19 @@ def l1bl2_no2(logger,cfg):
     # use irradiance file from SGM. optional convolving
     if cfg['doas']['irr_from_sgm']:
         if cfg['doas']['convolve_irr']:
-            convolved_irr_file = conv_irr(cfg['sgm_rad_file'],cfg['isrf']['fwhm'])
+            convolved_irr_file = conv_irr(cfg['io']['sgm_rad'],cfg['isrf']['fwhm'])
             cfg['doas']['irr_file'] = convolved_irr_file
         else:
-            cfg['doas']['irr_file'] = cfg['sgm_rad_file']
+            cfg['doas']['irr_file'] = cfg['io']['sgm_rad']
     
     # optionally use radiance from SGM
     if cfg['doas']['rad_from_sgm']:
-        cfg['doas']['rad_file'] = cfg['sgm_rad_file']
+        cfg['doas']['rad_file'] = cfg['io']['sgm_rad']
     else:
-        cfg['doas']['rad_file'] = cfg['l1b_file']
+        cfg['doas']['rad_file'] = cfg['io']['l1b']
 
-    cfg['doas']['l2_file'] = cfg['l2_file']
-    cfg['doas']['gm_file'] = cfg['gm_file']            
+    cfg['doas']['l2_file'] = cfg['io']['l2']
+    cfg['doas']['gm_file'] = cfg['io']['gm']            
 
 
     # Python parallises internally with numpy, for single thread optimum is 4 numpy threads

@@ -55,7 +55,8 @@ class Datasets:
 
         data_container = container.get_container()
         if container.get_type() == 'DataNetCDF':
-            ds = data_container.get(ds_name, group=group, kind=kind)
+#            ds = data_container.get(ds_name, group=group, kind=kind)
+            ds = data_container.find(ds_name, group=group, kind=kind)
             #Note: ds is still a Variable object
             return ds
         else:
@@ -86,7 +87,7 @@ class Datasets:
         ds = self.find_dataset(ds_name, c_name, group=group, kind=kind)
         if ds is not None:
             if (type(ds).__name__ == 'Variable') or (type(ds).__name__ == 'Dimension'):
-                dataset = ds.get_value(value)
+                dataset = ds.get_value()
             else:
                 dataset = ds
         else:

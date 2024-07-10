@@ -81,10 +81,14 @@ def get_main_attributes(config, config_attributes_name='E2E_configuration'):
         attribute_dict['cfg_file'] = config['header']['file_name']
         attribute_dict['cfg_version'] = config['header']['version']
         attribute_dict['cfg_path'] = config['header']['path']
-        config.pop('header')
-#    attribute_dict['E2E_configuration'] = str(config)
+#        config.pop('header')
     attribute_dict[config_attributes_name] = str(config)
-    #TODO: Add other information that might be handy to have in the attributes of the netCDF output file.
+    if 'scenario' in config:
+        scenario_settings = config['scenario']
+        attribute_dict['scenario_title'] = scenario_settings['title']
+        attribute_dict['scenario_description'] = scenario_settings['description']
+        attribute_dict['scenario_subdir'] = scenario_settings['subdir']
+        attribute_dict['scenario_steps'] = scenario_settings['steps']
 
     return attribute_dict
 
@@ -95,7 +99,7 @@ def add_attributes_to_output(logger, output_file, attribute_dict):
 
     out_data = dn.DataNetCDF(logger, output_file, mode='r')
     for name, value in attribute_dict.items():
-        out_data.add(name, value=value, kind='attribute')
+        out_data.add(name, value=str(value), kind='attribute')
     out_data.write()
     return
 

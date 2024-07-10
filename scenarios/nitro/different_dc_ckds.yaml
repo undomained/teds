@@ -1,0 +1,11 @@
+title: 'Different dark current CKDs'
+description: 'Generate data using dark current data for specific temperature Tg and process data using dark current for specific temperature Ta'
+scenario_dir: 'different_dark_current_ckds'
+steps: ['im','l1al1b','l2']
+scenario_config:
+    io:
+        ckd_im: "../data/no2/ckd/scenarios/ckd_nitro_Tg.nc"
+        ckd: "../data/no2/ckd/scenarios/ckd_nitro_Ta.nc"
+        l1a: "l1a_cpp_different_dc.nc"
+        l1b: "l1b_cpp_different_dc.nc"
+        l2: "l2_cpp_different_dc.nc"

@@ -42,6 +42,7 @@ def reshape_output(logger, output_key, config):
         This makes viewing difficult.
         Read in the data and reshape to 3D in case of detector level
     """
+    temp_output_file = None
     # readin output file
     output_file = config['io'][output_key]
     output_data = dn.DataNetCDF(logger, output_file, mode='r')
@@ -52,10 +53,10 @@ def reshape_output(logger, output_key, config):
     # TODO: check if this works for both L1B and IM and possible in between steps
     if config['cal_level'] == 'rad':
         print("Not detector image. No need to reshape and create temporary output file")
-        return
+        return temp_output_file
     elif config['cal_level'] == 'l1b':
         print("Not detector image. No need to reshape and create temporary output file")
-        return
+        return temp_output_file
     else:
         # Get data
         data = output_data.get('detector_image',  group='science_data', kind = 'variable')
@@ -114,59 +115,128 @@ def reshape_output(logger, output_key, config):
         print("###################################################################")
         print("###################################################################")
         # write to temp output file
-        temp_output = f"{output_file[:-3]}_temp.nc"
-        print(f"temp_output: {temp_output}")
-        output_data.write(temp_output)
+        temp_output_file = f"{output_file[:-3]}_temp.nc"
+        print(f"temp_output: {temp_output_file}")
+        output_data.write(temp_output_file)
 
-    return
+    return temp_output_file
 
-def create_im_and_l1b_specific_config_file(logger, configuration, specific_key):
+def get_file_name(config, step):
     """
-        A lot of settings for IM and L1B are the same.
-        For some scenarios it is needed to be able to use different CKD file
-        and different settings.
-        For this purpose two keys(dicts) are defined: instrument_model and l1b
-        Check which one is needed and move the settings one level up in the configuration.
-        To avoid confusion remove the twe keys from config
-        Write out to temporary config yaml file
+        Determine output/input file path.
+        When it is a nominal run it is just base_path
+        When it concerns a scenarion and a step is required to be rerun 
+        for this scenario it is base_path/scenarios/scenario_subdir
     """
+    file_path = ''
+    base_path = config['io']['base_dir']
+    scenario_dir = ''
+    if 'scenario' in config:
+        scenario_dir = os.path.join('scenarios',config['scenario']['subdir'])
+    output_path = os.path.join(base_path,scenario_dir)
+    if not os.path.exists(output_path):
+        os.makedirs(output_path)
 
-    # Copy the original configuration
-    spec_configuration = configuration.copy()
-
-    l1b_ckd = configuration['io']['ckd']
-    l1b_file = configuration['io']['l1b']
-    im_ckd = configuration['io']['ckd_im']
-    im_input = configuration['io']['l1b_im']
-
-    if specific_key == 'instrument_model':
-        # Ensure we are using the IM CKD and l1b files (in IM it means the input file)
-        spec_configuration['io']['ckd'] = im_ckd
-        spec_configuration['io']['l1b'] = im_input
-    elif specific_key == 'l1b':
-        # Ensure we are using the L1B CKD and l1b files (in L1B it means the output file)
-        spec_configuration['io']['ckd'] = l1b_ckd
-        spec_configuration['io']['l1b'] = l1b_file
+    if ('scenario' in config) and (step in config['scenario']['steps']):
+        file_path = output_path
     else:
-        error_msg = f"Specific key {specific_key} not understood. Exiting"
+        file_path = base_path
+       
+    return file_path 
+
+def get_specific_config(logger, orig_config, kind):
+    """
+        Obtain module specific configuration from full configuration
+    """
+    if kind not in orig_config:
+        error_msg = f"Unknown module {kind}. Unable to fetch corresponding config. Exiting!"
         logger.error(error_msg)
         sys.exit(error_msg)
 
-    # Get the L1B or IM specific settings and move them one level up in configuration
-    spec_config = configuration[specific_key]
-    for key, value in spec_config.items():
-        spec_configuration[key] = value
+    # Get the module specific settings
+    specific_config = orig_config[kind]
+    # Get the header
+    specific_config['header'] = orig_config['header']
+    # Get the module IO settings
+    specific_config['io'] = {}
 
-    # avoid confusion and delete IM and L1B specific settings from config file
-    del spec_configuration['instrument_model']
-    del spec_configuration['l1b']
+    if kind == 'GM':
+        # Combine path and file name
+        output_path = get_file_name(orig_config, 'gm')
+        specific_config['io']['gm'] = os.path.join(output_path, orig_config['io']['gm'])
 
-    # write config to temp yaml file with IM or L1B values filled in
-    spec_config_file = f"{cfg_path}/{specific_key}_config_temp.yaml"
-    with open(spec_config_file,'w') as outfile:
-        yaml.dump(spec_configuration, outfile)
+    elif kind == 'SGM':
+        # Combine path and file name
+        output_path = get_file_name(orig_config, 'sgm')
+        specific_config['io']['sgm_rad'] = os.path.join(output_path, orig_config['io']['sgm_rad'])
+        specific_config['io']['sgm_atm'] = os.path.join(output_path, orig_config['io']['sgm_atm'])
 
-    return spec_configuration, spec_config_file
+    elif kind == 'L1L2':
+        # Combine path and file name
+        output_path = get_file_name(orig_config, 'l1l2')
+        specific_config['io']['l2'] = os.path.join(output_path, orig_config['io']['l2'])
+
+        output_path = get_file_name(orig_config, 'gm')
+        specific_config['io']['gm'] = os.path.join(output_path, orig_config['io']['gm'])
+
+        output_path = get_file_name(orig_config, 'sgm')
+        specific_config['io']['sgm_atm'] = os.path.join(output_path, orig_config['io']['sgm_atm'])
+        specific_config['io']['sgm_rad'] = os.path.join(output_path, orig_config['io']['sgm_rad'])
+
+        output_path = get_file_name(orig_config, 'l1al1b')
+        specific_config['io']['l1b'] = os.path.join(output_path, orig_config['io']['l1b'])
+
+    elif kind == 'L1AL1B':
+
+        # Output to L1B
+        output_path = get_file_name(orig_config, 'l1al1b')
+        specific_config['io']['l1b'] = os.path.join(output_path, orig_config['io']['l1b'])
+
+        # Input to L1B
+        output_path = get_file_name(orig_config, 'im')
+        specific_config['io']['l1a'] = os.path.join(output_path, orig_config['io']['l1a'])
+
+        specific_config['io']['binning_table'] = orig_config['io']['binning_table']
+        specific_config['io']['ckd'] = orig_config['io']['ckd']
+
+    elif kind == 'IM':
+        specific_config['io']['binning_table'] = orig_config['io']['binning_table']
+        specific_config['io']['ckd'] = orig_config['io']['ckd_im']
+
+        # Output to IM
+        output_path = get_file_name(orig_config, 'im')
+        specific_config['io']['l1a'] = os.path.join(output_path, orig_config['io']['l1a'])
+
+        # Input to IM
+        output_path = get_file_name(orig_config, 'sgm')
+        specific_config['io']['l1b'] = os.path.join(output_path, orig_config['io']['l1b_im'])
+
+    elif kind == 'PAM':
+        output_path = get_file_name(orig_config, 'sgm')
+        specific_config['io']['sgm_atm'] = os.path.join(output_path, orig_config['io']['sgm_atm'])
+
+        output_path = get_file_name(orig_config, 'l1l2')
+        specific_config['io']['l2'] = os.path.join(output_path, orig_config['io']['l2'])
+
+    else:
+        error_msg = f"Unknown module kind {kind}. Unable to fetch corresponding IO config. Exiting!"
+        logger.error(error_msg)
+        sys.exit(error_msg)
+
+    return specific_config
+
+def add_module_specific_attributes(logger, config, attribute_dict, step):
+    """
+        Add the module specific settings to the attribute_dict
+    """
+    new_attribute_dict = attribute_dict.copy()
+
+    for key, value in config.items():
+        new_key = f"{step}_{key}"
+        new_attribute_dict[new_key] = value
+
+    return new_attribute_dict
+
 
 def build(logger, config, step, cfg_path, attribute_dict):
     """
@@ -183,25 +253,29 @@ def build(logger, config, step, cfg_path, attribute_dict):
 
     if step == 'gm' or step == 'all':
 
+        gm_config = get_specific_config(logger, configuration, 'GM')
+        attribute_dict = add_module_specific_attributes(logger, gm_config, attribute_dict, 'gm')
         E2EModule = importlib.import_module("GM.gm")
-        E2EModule.geometry_module(config, logger=logger)
+        E2EModule.geometry_module(gm_config, logger=logger)
         # add attributes to the output file
-        Utils.add_attributes_to_output(logger, config['gm_file'], attribute_dict)
+        Utils.add_attributes_to_output(logger, gm_config['io']['gm'], attribute_dict)
 
     if step == 'sgm' or step == 'all':
+        sgm_config = get_specific_config(logger, configuration, 'SGM')
+        attribute_dict = add_module_specific_attributes(logger, sgm_config, attribute_dict, 'sgm')
         E2EModule = importlib.import_module("SGM.sgm_no2")
-        E2EModule.scene_generation_module_nitro(logger,config)
-        Utils.add_attributes_to_output(logger, config['sgm_rad_file'], attribute_dict)
-        Utils.add_attributes_to_output(logger, config['sgm_atm_file'], attribute_dict)
+        E2EModule.scene_generation_module_nitro(logger,sgm_config)
+        Utils.add_attributes_to_output(logger, sgm_config['sgm_rad'], attribute_dict)
+        Utils.add_attributes_to_output(logger, sgm_config['sgm_atm'], attribute_dict)
 
     if step == 'im' or step == 'all':
 
-        # A lot of settings are shared between IM and L1B
-        # For some scenarios it is needed to define them differently for IM and L1B
-        # Therefore, two specific keys in config file. 
-        # Move the settings corresponding to the instrument_model key one level up
-        # in config file and write temp config out to file
-        im_configuration, im_config_file = create_im_and_l1b_specific_config_file(logger, configuration, 'instrument_model')
+        im_config = get_specific_config(logger, configuration, 'IM')
+        attribute_dict = add_module_specific_attributes(logger, im_config, attribute_dict, 'im')
+        # write config to temp yaml file with IM values filled in
+        im_config_file = f"{cfg_path}/im_config_temp.yaml"
+        with open(im_config_file,'w') as outfile:
+            yaml.dump(im_config, outfile)
 
         # Need to call C++ using the IM specific config_file
         subprocess.run(["IM/tango_im/build/tango_im.x", im_config_file])
@@ -209,19 +283,22 @@ def build(logger, config, step, cfg_path, attribute_dict):
         # output dataset is 2D. In case of detector image (in case of some inbetween steps 
         # and of the final output) the second dimension is detector_pixels which is too large to view. 
         # Need to reshape to 3D to be able to make sense of this.
-        reshape_output(logger, 'l1a', im_configuration)
+        temp_output_file = reshape_output(logger, 'l1a', im_config)
 
-        Utils.add_attributes_to_output(logger, im_configuration['io']['l1a'], attribute_dict)
+        # Add attributes to output file
+        if temp_output_file is not None:
+            Utils.add_attributes_to_output(logger, temp_output_file, attribute_dict)
+        Utils.add_attributes_to_output(logger, im_config['io']['l1a'], attribute_dict)
 
 
     if step == 'l1al1b' or step == 'all':
 
-        # A lot of settings are shared between IM and L1B
-        # For some scenarios it is needed to define them differently for IM and L1B
-        # Therefore, two specific keys in config file. 
-        # Move the settings corresponding to the l1b key one level up 
-        # in config file and write temp config out to file
-        l1b_configuration, l1b_config_file = create_im_and_l1b_specific_config_file(logger, configuration, 'l1b')
+        l1b_config = get_specific_config(logger, configuration, 'L1AL1B')
+        attribute_dict = add_module_specific_attributes(logger, l1b_config, attribute_dict, 'l1al1b')
+        # write config to temp yaml file with L1B values filled in
+        l1b_config_file = f"{cfg_path}/l1b_config_temp.yaml"
+        with open(l1b_config_file,'w') as outfile:
+            yaml.dump(l1b_config, outfile)
 
         # Need to call C++ with L1B specific config file
         subprocess.run(["L1AL1B/tango_l1b/build/tango_l1b.x", l1b_config_file])
@@ -229,19 +306,25 @@ def build(logger, config, step, cfg_path, attribute_dict):
         # output dataset is 2D. In case of detector image (in case of inbetween step)
         # the second dimension is detector_pixels which is too large to view. 
         # Need to reshape to 3D to be able to make sense of this.
-        reshape_output(logger, 'l1b', l1b_configuration)
+        temp_output_file = reshape_output(logger, 'l1b', l1b_config)
 
         # Add attributes to output file
-        Utils.add_attributes_to_output(logger, l1b_configuration['io']['l1b'], attribute_dict)
+        if temp_output_file is not None:
+            Utils.add_attributes_to_output(logger, temp_output_file, attribute_dict)
+        Utils.add_attributes_to_output(logger, l1b_config['io']['l1b'], attribute_dict)
 
     if step == 'l1l2' or step == 'all':
+        l2_config = get_specific_config(logger, configuration, 'L1L2')
+        attribute_dict = add_module_specific_attributes(logger, l2_config, attribute_dict, 'l1l2')
         E2EModule = importlib.import_module("L1L2.l1bl2_no2")
-        E2EModule.l1bl2_no2(logger, config)
-        Utils.add_attributes_to_output(logger, config['l2_file'], attribute_dict)
+        E2EModule.l1bl2_no2(logger, l2_config)
+        Utils.add_attributes_to_output(logger, l2_config['l2'], attribute_dict)
 
     if step == 'pam' or step == 'all':
+        pam_config = get_specific_config(logger, configuration, 'PAM')
+        attribute_dict = add_module_specific_attributes(logger, pam_config, attribute_dict, 'pam')
         E2EModule = importlib.import_module("PAM.pam")
-        E2EModule.pam_nitro(logger, config)
+        E2EModule.pam_nitro(logger, pam_config)
 
 if __name__ == "__main__":
 

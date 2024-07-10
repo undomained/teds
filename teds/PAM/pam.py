@@ -151,12 +151,14 @@ def pam_nitro(logger,cfg):
 
     # read SGM atm and L2 file
 
-    sgm = read_file(cfg['sgm_atm_file'])
-    l2  = read_file(cfg['l2_file'])
+    sgm = read_file(cfg['io']['sgm_atm'])
+    l2  = read_file(cfg['io']['l2'])
 
-    plotvars = cfg['pam']['plot_list']
+#    plotvars = cfg['pam']['plot_list']
+    plotvars = cfg['plot_list']
 
-    logger.info(f"Saving figures to: {cfg['pam']['figure_dir']}")
+#    logger.info(f"Saving figures to: {cfg['pam']['figure_dir']}")
+    logger.info(f"Saving figures to: {cfg['figure_dir']}")
 
     # loop over plotting vars
 
@@ -169,16 +171,20 @@ def pam_nitro(logger,cfg):
         sgm_var = sgm[plotvar['sgm_name']]
 
         # map of SGM var
-        plot_map(sgm['lat'],sgm['lon'],sgm_var, f'SGM {varname}', cfg['pam']['figure_dir'])
+#        plot_map(sgm['lat'],sgm['lon'],sgm_var, f'SGM {varname}', cfg['pam']['figure_dir'])
+        plot_map(sgm['lat'],sgm['lon'],sgm_var, f'SGM {varname}', cfg['figure_dir'])
 
         # map of L2 var
-        plot_map(l2['lat'],l2['lon'],l2_var, f'L2 {varname}', cfg['pam']['figure_dir'])
+#        plot_map(l2['lat'],l2['lon'],l2_var, f'L2 {varname}', cfg['pam']['figure_dir'])
+        plot_map(l2['lat'],l2['lon'],l2_var, f'L2 {varname}', cfg['figure_dir'])
         
         # diff map (L2 - SGM)
-        plot_map_diff(l2['lat'],l2['lon'],l2_var,sgm_var, varname, f'(L2 - SGM) {varname}', cfg['pam']['figure_dir'])
+#        plot_map_diff(l2['lat'],l2['lon'],l2_var,sgm_var, varname, f'(L2 - SGM) {varname}', cfg['pam']['figure_dir'])
+        plot_map_diff(l2['lat'],l2['lon'],l2_var,sgm_var, varname, f'(L2 - SGM) {varname}', cfg['figure_dir'])
 
         # scatter plot SGM vs L2 var
-        plot_scatter(sgm_var,l2_var,varname,f'SGM {varname}',f'L2 {varname}', cfg['pam']['figure_dir'])
+#        plot_scatter(sgm_var,l2_var,varname,f'SGM {varname}',f'L2 {varname}', cfg['pam']['figure_dir'])
+        plot_scatter(sgm_var,l2_var,varname,f'SGM {varname}',f'L2 {varname}', cfg['figure_dir'])
 
     logger.info(f'Finished PAM')
 

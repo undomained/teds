@@ -632,16 +632,36 @@ def sgm_output_radio(config, rad_output):
     # output_rad.config = str(config)
     output_rad.processing_date = datetime.datetime.now().strftime('%Y%m%dT%H%M%S')
 
-    output_rad.createDimension('bins_spectral', nlbl)     # spectral axis
-    output_rad.createDimension('bins_across_track', nact)     # across track axis
-    output_rad.createDimension('bins_along_track', nalt)     # along track axis
+    dims = ('wavelength', 'across_track', 'along_track')
+
+    output_rad.createDimension(dims[0], nlbl)     # spectral axis
+    output_rad.createDimension(dims[1], nact)     # across track axis
+    output_rad.createDimension(dims[2], nalt)     # along track axis
+
+    grp = nc.createGroup('science_data')
+
     # wavelength
-    _ = writevariablefromname(output_rad, 'wavelength', ('bins_spectral',), rad_output['wavelength_lbl'])
+    _ = writevariablefromname(grp, 'wavelength', ('wavelength',), rad_output['wavelength_lbl'])
     # solar irradiance
-    _ = writevariablefromname(output_rad, 'solarirradiance', ('bins_spectral',), rad_output['solar_irradiance'])
+    _ = writevariablefromname(grp, 'solarirradiance', ('wavelength',), rad_output['solar_irradiance'])
+    
+    
     # radiance
-    dims = ('bins_along_track', 'bins_across_track', 'bins_spectral')
-    _ = writevariablefromname(output_rad, 'radiance_sgm', dims, rad_output['radiance'])
+    nc_var = grp.createVariable('i', 'f8', dims, fill_value=-32767.0)
+    nc_var.long_name = "radiance line-by-line"
+    nc_var.units = "photons / (sr nm m2 s)"
+    nc_var.valid_min = 0.0
+    nc_var.valid_max = 1e+28
+    nc_var[:] = rad_output['radiance']
+
+    # radiance std
+    nc_var = grp.createVariable('i_stdev', 'f8', dims, fill_value=-32767.0)
+    nc_var.long_name = "standard deviation of radiance"
+    nc_var.units = "photons / (sr nm m2 s)"
+    nc_var.valid_min = 0.0
+    nc_var.valid_max = 1e+28
+    nc_var[:] = 1.0 # TODO: dummy value
+
     output_rad.close()
 
 
@@ -671,17 +691,17 @@ def sgm_output_atm(config, atm, albedo, microhh_data, mode='raw'):
 
 
 
-    output_atm.createDimension('bins_along_track', nalt)      # along track axis
-    output_atm.createDimension('bins_across_track', nact)     # across track axis
+    output_atm.createDimension('along_track', nalt)      # along track axis
+    output_atm.createDimension('across_track', nact)     # across track axis
     output_atm.createDimension('number_layers', nlay)         # layer axis
     output_atm.createDimension('number_levels', nlev)         # level axis
     output_atm.createDimension('location', 3)                 # source coordiantes
     output_atm.createDimension('emission', 1)                 # emission strength
 
     # add variables
-    dims_layer = ('bins_along_track', 'bins_across_track', 'number_layers')
-    dims_level = ('bins_along_track', 'bins_across_track', 'number_levels')
-    dims_2d = ('bins_along_track', 'bins_across_track')
+    dims_layer = ('along_track', 'across_track', 'number_layers')
+    dims_level = ('along_track', 'across_track', 'number_levels')
+    dims_2d = ('along_track', 'across_track')
 
     _ = writevariablefromname(output_atm, 'latitude', dims_2d, atm.lat)
     _ = writevariablefromname(output_atm, 'longitude', dims_2d, atm.lon)
@@ -722,8 +742,8 @@ def sgm_output_atm(config, atm, albedo, microhh_data, mode='raw'):
             _ = writevariablefromname(output_atm, emi.removesuffix('_in_kgps'), 'emission' , microhh_data.__getattribute__(emi))
 
         # xpos and ypos       
-        _ = writevariablefromname(output_atm, 'xpos', 'bins_across_track', microhh_data.x_new)
-        _ = writevariablefromname(output_atm, 'ypos', 'bins_along_track', microhh_data.y_new)
+        _ = writevariablefromname(output_atm, 'xpos', 'across_track', microhh_data.x_new)
+        _ = writevariablefromname(output_atm, 'ypos', 'along_track', microhh_data.y_new)
         # # level height
         # _ = writevariablefromname(output_atm, 'levelheight', dims_level, atm.zlev)
         # # central layer height

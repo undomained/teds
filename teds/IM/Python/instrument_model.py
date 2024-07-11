@@ -6,6 +6,8 @@ import numpy as np
 import teds.lib.lib_utils as Utils
 import teds.lib.data_netcdf.data_netcdf as dn
 
+from teds.run_E2E import get_specific_config, add_module_specific_attributes
+
 from teds.IM.Python.datasets import Datasets
 from teds.IM.Python.algos.algo_wavemap import Wavemap
 
@@ -28,7 +30,7 @@ def get_im_config(logger, config):
     """
         Get IM specific settings and move them one level up in config
     """
-    im_settings = config['instrument_model']
+    im_settings = config['IM']
     for key, value in im_settings.items():
         config[key] = value
     return config
@@ -49,7 +51,7 @@ def get_input_data(logger, config):
     input_data.add_container('proctable', proctable)
 
     # CKD
-    ckd_file = config['io']['ckd_im']
+    ckd_file = config['io']['ckd']
     ckd_input = Input_netcdf(logger,ckd_file)
     ckd = ckd_input.read()
     #Note: ckd is an data_netcdf object
@@ -63,7 +65,8 @@ def get_input_data(logger, config):
     binning_table_datasets = binning_tables.read()
     input_data.add_container('binning', binning_table_datasets)
 
-    input_file = config['sgm_rad_file']
+#    input_file = config['io']['sgm_rad']
+    input_file = config['io']['l1b']
     data_input = Input_netcdf(logger,input_file)
     #Note: data_input is an data_netcdf object
     # It contains several groups and datasets
@@ -88,7 +91,7 @@ def  add_main_attributes(out_data, attributes):
         Add attributes to output file
     """
     for name, value in attributes.items():
-        out_data.add(name, value=value, kind='attribute')
+        out_data.add(name, value=str(value), kind='attribute')
     return
 
 def is_detector_image(algo_name):
@@ -102,7 +105,7 @@ def is_detector_image(algo_name):
         is_detector_image = True
     return is_detector_image
 
-def create_detector_image_output(logger, nc_output, dimensions, is_binned=False, in_between=False):
+def create_detector_image_output(logger, nc_output, dimensions, image_attribute_data, is_binned=False, in_between=False):
     """
         Create detector image dimensions and dataset and attributes
     """
@@ -127,12 +130,18 @@ def create_detector_image_output(logger, nc_output, dimensions, is_binned=False,
     if in_between:
         nc_output.add(name='measurement', value=output_data, dimensions=('detector_image','row','col'), kind='variable')
 
+    nc_output.add(name='image_attributes', kind='group')
+    nc_output.add(name='binning_table', value=image_attribute_data['binning_data'], dimensions=('detector_image'), group='image_attributes', kind='variable')
+    nc_output.add(name='exposure_time', value=image_attribute_data['expt_data'], dimensions=('detector_image'), group='image_attributes', kind='variable')
+    nc_output.add(name='nr_coadditions', value=image_attribute_data['coadd_data'], dimensions=('detector_image'), group='image_attributes', kind='variable')
+    nc_output.add(name='image_time', value=image_attribute_data['image_time_data'], dimensions=('detector_image'), group='image_attributes', kind='variable')
+
     # TODO need to add more attributes?
     # TODO also add standard deviation data (detector_stdev)?
 
     return
 
-def create_observation_data_output(logger, nc_output, dimensions, in_between=False):
+def create_observation_data_output(logger, nc_output, dimensions, image_attribute_data, in_between=False):
     """
         Create observation data dimensions and dataset and attributes
     """
@@ -149,6 +158,12 @@ def create_observation_data_output(logger, nc_output, dimensions, in_between=Fal
 
     if in_between:
         nc_output.add(name='measurement', value=output_data, dimensions=('along_track','across_track','wavelength'), kind='variable')
+
+    nc_output.add(name='image_attributes', kind='group')
+    nc_output.add(name='binning_table', value=image_attribute_data['binning_data'], dimensions=('along_track'), group='image_attributes', kind='variable')
+    nc_output.add(name='exposure_time', value=image_attribute_data['expt_data'], dimensions=('along_track'), group='image_attributes', kind='variable')
+    nc_output.add(name='nr_coadditions', value=image_attribute_data['coadd_data'], dimensions=('along_track'), group='image_attributes', kind='variable')
+    nc_output.add(name='image_time', value=image_attribute_data['image_time_data'], dimensions=('along_track'), group='image_attributes', kind='variable')
     # TODO add other attributes??????
     # TODO need to add standard deviation data (i_stdev)?
     # TODO Need to add group sensor_bands and wavelength data?
@@ -171,6 +186,18 @@ def initialize_output(logger, kind, input_data, algo_list, dimensions, main_attr
     output = dn.DataNetCDF(logger, output_file_name)
     add_main_attributes(output, main_attributes)
 
+    # Output file also needs image_time, binning_table (=id) nr_coadditions, exposure_time
+    # all as fct of image_nr
+    n_images = dimensions['dim_alt']
+    nr_coads = input_data.get_dataset('nr_coadditions', c_name='config', group='detector')
+    expt = input_data.get_dataset('exposure_time', c_name='config', group='detector')
+    binning = input_data.get_dataset('binning_table_id', c_name='config', group='detector')
+    image_attribute_data = {}
+    image_attribute_data['binning_data'] = binning* np.ones((n_images,))
+    image_attribute_data['expt_data'] = expt* np.ones((n_images,))
+    image_attribute_data['coadd_data'] = nr_coads* np.ones((n_images,))
+    image_attribute_data['image_time_data'] = np.zeros((n_images,))
+
     # Check which is last algo in list
     # This is indication of the data are detector images or spectra.
     # It also indicates if output is integer and binned
@@ -180,10 +207,10 @@ def initialize_output(logger, kind, input_data, algo_list, dimensions, main_attr
         is_binned = False
         if 'Binning' in algo_list:
             is_binned = True
-        create_detector_image_output(logger, output, dimensions, is_binned=is_binned)
+        create_detector_image_output(logger, output, dimensions, image_attribute_data, is_binned=is_binned)
 
     else:
-        create_observation_data_output(logger, output, dimensions)
+        create_observation_data_output(logger, output, dimensions, image_attribute_data)
 
     output_datasets.add_container('final',output)
 
@@ -207,10 +234,10 @@ def initialize_output(logger, kind, input_data, algo_list, dimensions, main_attr
             is_binned = False
             if algo_name in ['Binning','ADC']:
                 is_binned = True
-            create_detector_image_output(logger, output_algo, dimensions, is_binned=is_binned, in_between=True)
+            create_detector_image_output(logger, output_algo, dimensions, image_attribute_data, is_binned=is_binned, in_between=True)
 
         else:
-            create_observation_data_output(logger, output_algo, dimensions, in_between=True)
+            create_observation_data_output(logger, output_algo, dimensions, image_attribute_data, in_between=True)
 
         output_datasets.add_container(algo_name,output_algo)
 
@@ -229,8 +256,8 @@ def instrument_model(config, logger, main_attributes):
     input_data = get_input_data(logger, config)
 
     # Get the list of algorithms from proctable file
-    scenario = input_data.get_dataset('scenario', c_name='config', group='proctable')
-    algo_list = input_data.get_dataset(scenario, c_name='proctable')
+    algo_list_input = input_data.get_dataset('algo_list', c_name='config', group='proctable')
+    algo_list = input_data.get_dataset(algo_list_input, c_name='proctable')
     logger.info(f"NOW algo_list: {algo_list}")
 
     # Get the input data. Note: possibly this needs to be updated when SGM is updated.
@@ -239,8 +266,8 @@ def instrument_model(config, logger, main_attributes):
     #Note: this is the along track dimension
 #    n_images = radiance_data.shape[0]
     # requested number of images:
-    image_start = config['instrument_model']['image_start']
-    image_end = config['instrument_model']['image_end']
+    image_start = config['image_start']
+    image_end = config['image_end']
     # image_end is up and including
     n_images = image_end+1 - image_start
 
@@ -335,9 +362,12 @@ if __name__ == '__main__' :
     # Get information (like git hash and config file name and version (if available) 
     # that will be added to the output file as attributes
     main_attribute_dict = Utils.get_main_attributes(config, config_attributes_name='IM_configuration')
+
     # Also get some other attributes?
+    im_config = get_specific_config(im_logger, config, 'IM')
+    attribute_dict = add_module_specific_attributes(im_logger, im_config, main_attribute_dict, 'im')
 
     # Get started
-    instrument_model(config, im_logger, main_attribute_dict)
+    instrument_model(im_config, im_logger, attribute_dict)
 
 

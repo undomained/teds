@@ -188,6 +188,9 @@ def get_specific_config(logger, orig_config, kind):
         output_path = get_file_name(orig_config, 'l1al1b')
         specific_config['io']['l1b'] = os.path.join(output_path, orig_config['io']['l1b'])
 
+        # Also need acces to isrf which is a IM configuration parameter
+        specific_config['isrf'] = orig_config['IM']['isrf']
+
     elif kind == 'L1AL1B':
 
         # Output to L1B

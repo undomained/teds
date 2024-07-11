@@ -629,7 +629,7 @@ def l1bl2_no2(logger,cfg):
     # use irradiance file from SGM. optional convolving
     if cfg['doas']['irr_from_sgm']:
         if cfg['doas']['convolve_irr']:
-            convolved_irr_file = conv_irr(cfg['io']['sgm_rad'],cfg['isrf']['fwhm'])
+            convolved_irr_file = conv_irr(cfg['io']['sgm_rad'],cfg['isrf']['fwhm_gauss'])
             cfg['doas']['irr_file'] = convolved_irr_file
         else:
             cfg['doas']['irr_file'] = cfg['io']['sgm_rad']

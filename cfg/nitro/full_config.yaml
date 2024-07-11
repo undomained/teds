@@ -13,6 +13,7 @@ io:
     gm: 'geometry.nc'
 ## SGM IO
     sgm_rad: 'sgm_radiance.nc'
+#    sgm_rad: 'sgm_radiance_wide.nc'
     sgm_atm_raw: 'sgm_atmosphere_raw.nc'
     sgm_atm: 'sgm_atmosphere.nc'
 ## L2 IO
@@ -22,10 +23,11 @@ io:
     # Input IM:
     # Note: in run_E2E.py this is renamed to l1b
     l1b_im: 'sgm_radiance.nc'
+#    l1b_im: 'sgm_radiance_wide.nc'
     # output of IM (and input for L1AL1B):
     l1a: 'l1a.nc'
     # output of L1AL1B:
-    l1b: 'l1a.nc'
+    l1b: 'l1b.nc'
 #####
     # possibility to have different ckds for IM and L1B
     # CKD for L1AL1B
@@ -132,9 +134,10 @@ SGM:
 #########################################################
 ############################
 IM:
+    do_python: false
     proctable:
         file: '../cfg/nitro/proctable.yaml'
-        scenario: 'algos'
+        algo_list: 'algos'
     instrument: 'nitro'
     processing_version: 0.000
     cal_level: 'l1a' # To indicate wether to uncalibrate the whole way (l1a) or to stop at a certain point ('prnu' -> uncalibrate until (NOT INCLUDING) prnu step)

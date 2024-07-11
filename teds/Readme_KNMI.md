@@ -67,6 +67,12 @@ For instance running only geometry step.
 #### Running the full simulation:  
 `python run_E2E.py ../cfg/nitro/full_config.yaml all`
 
+#### Running the Python IM version
+Update the config file and in the IM chapter set `do_python` to true.
+`python run_E2E.py ../cfg/nitro/full_config.yaml im`
+Output file is found in data/no2 directory and named `<l1a_name>_python.nc`, where `<l1a_name>` is defined in the configuration file.
+The output of the inbetween steps can also be found as `im_l1x_<algo>.nc`.
+
 ### Output and input
 Output files of the different steps is written in dorectory `data/no2` (or someother directory. you can change the location by updating the yaml file).  
 The output file(s) of one step can be input files to the next step.  
@@ -74,6 +80,24 @@ There are also input files that are not produced by the different steps of the E
 * `ckd.nc`
 * `binning_tables.nc`
 They can be found in `data/no2/ckd` directory (or some other directory. you can change the location by updating the yaml file).
+
+### Running scenarios
+When investigating effects of for instance changing temperature it is required to run a non nominal scenario.
+First it is required to create a scenario file.
+- In de main directory go to directory scenarios/nitro
+- create a scenario yaml file: `vim <scenario_name>.yaml`
+- Add the following information
+  - title. Title for this scenario
+  - description. Description for this scenario
+  - `scenario_dir`. Sub directory in base output directory (data/no2) where the scenario output files can be found.
+  - steps. The steps that need to be rerun. For instance, if the scenario is running with different CKD files for 
+    IM and L1B than there is no need to rerun GM and SGM. The nominal GM and SGM output files can be used.
+    But from IM onwards all steps need to be rerun.
+  - `scenario_config`. This holds all config settings that need to be different wrt nominal configuration. For instance ckd and `ckd_im`
+    Structure needs to be the same as in nominal configuration file.
+- in the teds directory create and run the new scenario: `python create_scenarios.py <nominal_config_file> <scenario_file>`, 
+  where `<nominal_config_file>` is probably `cfg/nitro/full_config.py` and `<scenario_file>` is the scenario yaml file that is in directory `scenarios/nitro`
+- output data is found in directory `data/no2/scenarios/<scenario_dir>`
 
 ### Creation of input files that come from outside the E2E processor (like ckd and binning table)
 #### Creating binning table

@@ -9,7 +9,7 @@ import numpy as np
 import yaml
 from tqdm import tqdm
 
-from ..lib import libNumTools, libRT, libSURF
+from ..lib import libNumTools, libRT, libSURF, libATM
 from ..lib.libWrite import writevariablefromname
 from ..lib.libNumTools import TransformCoords
 
@@ -51,33 +51,28 @@ def radsgm_output(filename_rad, rad_output):
     nc.createDimension('wavelength', nlbl)     # spectral axis
     nc.createDimension('across_track', nact)     # across track axis
     nc.createDimension('along_track', nalt)     # along track axis
-    grp = nc.createGroup('observation_data')
+
     # wavelength
     wavelength_lbl = np.zeros((nact, nlbl))
     for i in range(nact):
         wavelength_lbl[i, :] = rad_output['wavelength_lbl']
-    _ = writevariablefromname(grp,
-                              'wavelength',
-                              ('across_track', 'wavelength'),
-                              wavelength_lbl)
+    _ = writevariablefromname(nc,
+                              "wavelength",
+                              ('wavelength'),
+                              rad_output['wavelength_lbl'])
     # solar irradiance
-    _ = writevariablefromname(grp, 'solarirradiance', ('wavelength',), rad_output['solar irradiance'])
+    _ = writevariablefromname(nc, 
+                              "solarirradiance", 
+                              ('wavelength'), 
+                              rad_output['solar irradiance'])
     # radiance
-    _dims = ('along_track', 'across_track', 'wavelength')
 
-    nc_var = grp.createVariable('i', 'f8', _dims, fill_value=-32767.0)
-    nc_var.long_name = "radiance line-by-line"
-    nc_var.units = "photons / (sr nm m2 s)"
-    nc_var.valid_min = 0.0
-    nc_var.valid_max = 1e+28
-    nc_var[:] = rad_output['radiance']
-    nc_var = grp.createVariable('i_stdev', 'f8', _dims, fill_value=-32767.0)
-    nc_var.long_name = "standard deviation of radiance"
-    nc_var.units = "photons / (sr nm m2 s)"
-    nc_var.valid_min = 0.0
-    nc_var.valid_max = 1e+28
-    nc_var[:] = 1.0
-    nc.close()
+    _ = writevariablefromname(nc, 
+                              'radiance_sgm', 
+                              ('along_track', 'across_track', 'wavelength'), 
+                              rad_output['radiance'])
+
+    return
 
 def sgm_output_atm_ref(filename, atm, albedo, gm_data, gases):
 
@@ -180,11 +175,11 @@ def Carbon_radiation_scene_generation(config):
        Dict containing configuration parameters.
     """
     #get the geometry data
-    gm_data = get_gm_data(config['gm_input'])
+    gm_data = get_gm_data(config['io_files']['input_gm'])
     nalt, nact = gm_data.sza.shape
     
     #get data 
-    atm_org = get_geosgm_data(config['geo_output'])
+    atm_org = get_geosgm_data(config['io_files']['input_sgm_geo'])
     
     #convolution with instrument spatial response
     atm_conv = libNumTools.convolvedata(atm_org, config)
@@ -198,46 +193,57 @@ def Carbon_radiation_scene_generation(config):
     #interpolate convolved data to gm grid
     albedo, atm = libNumTools.interpolate_data_regular(atm_conv, gm_data, config["conv_gases"])
 
-    #store sgm data for which RTM is done
-    sgm_output_atm_ref(config['geo_output_ref'], atm, albedo, gm_data, config["conv_gases"])
+    #store sgm data that are used for RT simulations
+    sgm_output_atm_ref(config['io_files']['output_geo_ref'], atm, albedo, gm_data, config["conv_gases"])
 
-    # =============================================================================
-    #  Radiative transfer simulations
-    # =============================================================================
-
-    print('radiative transfer simuation...')
-    # define line-by-line wavelength grid
+    # Internal lbl spectral grid
+    wave_start = config['spec_settings']['wave_start']
+    wave_end   = config['spec_settings']['wave_end']
+    dwave_lbl  = config['spec_settings']['dwave']
     rad_output = {}
-    rad_output['wavelength_lbl'] = np.arange(config['spec_settings']['wave_start'], config['spec_settings']['wave_end'],
-                                             config['spec_settings']['dwave'])  # nm
-
-    nwav = len(rad_output['wavelength_lbl'])
-    # generate optics object for one representative model atmosphere of the domain
-
-    nalt_ref = np.int0(nalt/2 - 0.5)
-    nact_ref = np.int0(nact/2 - 0.5)
-    atm_ref  = extract_atm(atm,nalt_ref,nact_ref)
+    rad_output['wavelength_lbl'] = np.arange(wave_start, wave_end, dwave_lbl)  # nm
+    nwav = rad_output['wavelength_lbl'].size
     
-    optics = libRT.optic_abs_prop(rad_output['wavelength_lbl'], atm_ref.zlay)
-
     # Download molecular absorption parameter
-    iso_ids = [('CH4', 32), ('H2O', 1), ('CO2', 7)]  # see hapi manual  sec 6.6
-    molec = libRT.molecular_data(rad_output['wavelength_lbl'])
+    
+    # get reference model atmosphere for wehich we calculate X sections
+    # Vertical layering
+    nlay = config['atmosphere']['nlay']
+    dzlay = config['atmosphere']['dzlay']
+    psurf = config['atmosphere']['psurf']
+    nlev = nlay + 1  # number of levels
 
-    # If pickle file exists read from file
+    zlay = (np.arange(nlay-1, -1, -1)+0.5)*dzlay  # altitude of layer midpoint
+    zlev = np.arange(nlev-1, -1, -1)*dzlay  # altitude of layer interfaces = levels
+
     # os.path.exists(xsec_file) or conf['xsec_forced']
-    if ((not os.path.exists(config['xsec_dump'])) or config['xsec_forced']):
-        molec.get_data_HITRAN(config['hapi_path'], iso_ids)
+    if ((not os.path.exists(config['io_files']['dump_xsec'])) or config['xsec_forced']):
+        
+        iso_ids = [('CH4', 32), ('H2O', 1), ('CO2', 7)]  # see hapi manual  sec 6.6
+        molec = libRT.molecular_data(rad_output['wavelength_lbl'])
+
+        molec.get_data_HITRAN(config['io_files']['input_hapi'], iso_ids)
+
+        atm_ref = libATM.atmosphere_data(zlay, zlev, psurf)
+        atm_ref.get_data_AFGL(config['io_files']['input_afgl'])
+
+        # Init class with optics.prop dictionary
+        optics = libRT.optic_abs_prop(rad_output['wavelength_lbl'], zlay)
         # Molecular absorption optical properties
         optics.cal_molec_xsec(molec, atm_ref)
         # Dump optics.prop dictionary into temporary pkl file
-        pickle.dump(optics.prop, open(config['xsec_dump'], 'wb'))
+        pickle.dump(optics.prop, open(config['io_files']['dump_xsec'], 'wb'))
+
     else:
+        
+        # Init class with optics.prop dictionary
+        optics = libRT.optic_abs_prop(rad_output['wavelength_lbl'], zlay)
+
         # Read optics.prop dictionary from pickle file
-        optics.prop = pickle.load(open(config['xsec_dump'], 'rb'))
+        optics.prop = pickle.load(open(config['io_files']['dump_xsec'], 'rb'))
 
     # solar irradiance spectrum
-    sun = libRT.read_sun_spectrum_TSIS1HSRS(config['sun_reference'])
+    sun = libRT.read_sun_spectrum_TSIS1HSRS(config['io_files']['input_sun_reference'])
     rad_output['solar irradiance'] = np.interp(rad_output['wavelength_lbl'], sun['wl'], sun['phsm2nm'])
 
     # Calculate surface data
@@ -261,7 +267,7 @@ def Carbon_radiation_scene_generation(config):
     # sgm output to radiometric file
     # =============================================================================
 
-    radsgm_output(config['rad_output'], rad_output)
+    radsgm_output(config['io_files']['output_rad'], rad_output)
 
     print('=>Carbon radsgm calculation finished successfully')
     return

@@ -196,7 +196,17 @@ def get_specific_config(logger, orig_config, kind):
 
         # Input to L1B
         output_path = get_file_name(orig_config, 'im')
-        specific_config['io']['l1a'] = os.path.join(output_path, orig_config['io']['l1a'])
+        l1a_file_name = orig_config['io']['l1a']
+
+#        specific_config['io']['l1a'] = os.path.join(output_path, orig_config['io']['l1a'])
+
+        # Note: if IM was run using the python code, the l1a python output needs to be readin
+        do_python = orig_config['IM']['do_python']
+        if do_python:
+            l1a_file_name_python = f"{l1a_file_name[0:-4]}_python.nc"
+            specific_config['io']['l1a'] = os.path.join(output_path, l1a_file_name_python)
+        else:
+            specific_config['io']['l1a'] = os.path.join(output_path, l1a_file_name)
 
         specific_config['io']['binning_table'] = orig_config['io']['binning_table']
         specific_config['io']['ckd'] = orig_config['io']['ckd']
@@ -205,9 +215,18 @@ def get_specific_config(logger, orig_config, kind):
         specific_config['io']['binning_table'] = orig_config['io']['binning_table']
         specific_config['io']['ckd'] = orig_config['io']['ckd_im']
 
-        # Output to IM
+        do_python = specific_config['do_python']
+        # Output of IM
         output_path = get_file_name(orig_config, 'im')
-        specific_config['io']['l1a'] = os.path.join(output_path, orig_config['io']['l1a'])
+        l1a_file_name = orig_config['io']['l1a']
+        if do_python:
+            l1a_file_name_python = f"{l1a_file_name[0:-3]}_python.nc"
+            print(f"l1a python file name: {l1a_file_name_python}")
+            specific_config['io']['l1a'] = os.path.join(output_path, l1a_file_name_python)
+            specific_config['io']['im_algo_output'] = os.path.join(output_path, orig_config['io']['im_algo_output'])
+        else:
+#            specific_config['io']['l1a'] = os.path.join(output_path, orig_config['io']['l1a'])
+            specific_config['io']['l1a'] = os.path.join(output_path, l1a_file_name)
 
         # Input to IM
         output_path = get_file_name(orig_config, 'sgm')
@@ -280,19 +299,25 @@ def build(logger, config, step, cfg_path, attribute_dict):
         with open(im_config_file,'w') as outfile:
             yaml.dump(im_config, outfile)
 
-        # Need to call C++ using the IM specific config_file
-        subprocess.run(["IM/tango_im/build/tango_im.x", im_config_file])
+        if not im_config['do_python']:
+            # Run C++ IM code
+            # Need to call C++ using the IM specific config_file
+            subprocess.run(["IM/tango_im/build/tango_im.x", im_config_file])
 
-        # output dataset is 2D. In case of detector image (in case of some inbetween steps 
-        # and of the final output) the second dimension is detector_pixels which is too large to view. 
-        # Need to reshape to 3D to be able to make sense of this.
-        temp_output_file = reshape_output(logger, 'l1a', im_config)
+            # output dataset is 2D. In case of detector image (in case of some inbetween steps 
+            # and of the final output) the second dimension is detector_pixels which is too large to view. 
+            # Need to reshape to 3D to be able to make sense of this.
+            temp_output_file = reshape_output(logger, 'l1a', im_config)
 
-        # Add attributes to output file
-        if temp_output_file is not None:
-            Utils.add_attributes_to_output(logger, temp_output_file, attribute_dict)
-        Utils.add_attributes_to_output(logger, im_config['io']['l1a'], attribute_dict)
-
+            # Add attributes to output file
+            if temp_output_file is not None:
+                Utils.add_attributes_to_output(logger, temp_output_file, attribute_dict)
+            Utils.add_attributes_to_output(logger, im_config['io']['l1a'], attribute_dict)
+        else:
+            # run Python code
+            E2EModule = importlib.import_module("IM.Python.instrument_model")
+            E2EModule.instrument_model(im_config, logger, attribute_dict)
+            # No need to reshape because Python output is already 3D
 
     if step == 'l1al1b' or step == 'all':
 

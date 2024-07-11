@@ -812,27 +812,36 @@ def combine_meteo_standard_atm_new(meteo, atm_std, config):
     
     nalt, nact = meteo.lat.shape
     nlay = atm_std.zlay.size
+    nlev = atm_std.zlev.size
+
 
     atm = Emptyclass()
     
-    names_3d = ["dcol_"+x for x in gases_all] + ['zlay', 'zlev']
+    names_3d_lay = ["dcol_"+x for x in gases_all] + ['dcol_air','zlay','tlay']
+    names_3d_lev = ['zlev','tlev']
     names_2d = ['col_air','lat' , 'lon', 'psurf']+["X"+x for x in gases_all]
 
-    for name in names_3d:
+    for name in names_3d_lay:
         atm.__setattr__(name, np.zeros([nalt,nact,nlay]))
+    for name in names_3d_lev:
+        atm.__setattr__(name, np.zeros([nalt,nact,nlev]))
     for name in names_2d:
         atm.__setattr__(name, np.zeros([nalt,nact]))
-    atm.__setattr__('zlev', np.zeros([nalt,nact,nlay+1]))
 
     #take fields from afgl
     for klay in range(nlay):
         atm.zlay[:,:,klay] = atm_std.zlay[klay]
         atm.zlev[:,:,klay] = atm_std.zlev[klay]
+        atm.dcol_air[:,:,klay] = atm_std.air[klay]
+        atm.tlay[:,:,klay] = atm_std.tlay[klay]
+
+    for klev in range(nlev):
+        atm.zlev[:,:,klev] = atm_std.zlev[klev]
+        atm.tlev[:,:,klev] = atm_std.tlev[klev]
+
     for name in gases_afgl:
         for klay in range(nlay):
             atm.__getattribute__('dcol_'+name)[:,:,klay] = atm_std.__getattribute__(name.upper())[klay]
-
-    atm.zlev[:,:,nlay] = atm_std.zlev[nlay]
 
     atm.col_air[:,:]= np.sum(atm_std.air[:])
     atm.psurf[:,:]  = np.sum(atm_std.psurf)

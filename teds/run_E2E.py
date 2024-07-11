@@ -169,7 +169,9 @@ def get_specific_config(logger, orig_config, kind):
         # Combine path and file name
         output_path = get_file_name(orig_config, 'sgm')
         specific_config['io']['sgm_rad'] = os.path.join(output_path, orig_config['io']['sgm_rad'])
+        specific_config['io']['sgm_atm_raw'] = os.path.join(output_path, orig_config['io']['sgm_atm_raw'])
         specific_config['io']['sgm_atm'] = os.path.join(output_path, orig_config['io']['sgm_atm'])
+        specific_config['io']['gm'] = os.path.join(output_path, orig_config['io']['gm'])
 
     elif kind == 'L1L2':
         # Combine path and file name
@@ -265,8 +267,9 @@ def build(logger, config, step, cfg_path, attribute_dict):
         attribute_dict = add_module_specific_attributes(logger, sgm_config, attribute_dict, 'sgm')
         E2EModule = importlib.import_module("SGM.sgm_no2")
         E2EModule.scene_generation_module_nitro(logger,sgm_config)
-        Utils.add_attributes_to_output(logger, sgm_config['sgm_rad'], attribute_dict)
-        Utils.add_attributes_to_output(logger, sgm_config['sgm_atm'], attribute_dict)
+        Utils.add_attributes_to_output(logger, sgm_config['io']['sgm_rad'], attribute_dict)
+        Utils.add_attributes_to_output(logger, sgm_config['io']['sgm_atm'], attribute_dict)
+        Utils.add_attributes_to_output(logger, sgm_config['io']['sgm_atm_raw'], attribute_dict)
 
     if step == 'im' or step == 'all':
 

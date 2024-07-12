@@ -891,14 +891,6 @@ def scene_generation_module_nitro(logging, config):
     # 5) convolve and regrid atmosphere to instrument grid
     # =============================================================================================
 
-    # >>>>>>> updated until here
-    #
-    # TODO:
-    # 1) convolution and regridding - DONE
-    # 2) update convert_atm_profiles. Calculate at levels. Re-calculate total columns. DONE
-    # 3) write atm file for rtm input - DONE
-    # 4) compare raw and convolved. check unit!! TODO
-
     # only convolve + interpolate when microHH is used
     # otherwise source grid is already interpolated to instrument grid
     if config['atm']['microHH']['use']:

@@ -44,3 +44,6 @@ sensors:
     pitch: 0.0
     roll: 0.0
     yaw: 0.0
+
+io_files:
+    output_gm: '/home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/gm/Tango_Carbon_gm_exp1.0.nc'

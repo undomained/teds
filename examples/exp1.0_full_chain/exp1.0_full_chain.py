@@ -18,6 +18,7 @@ from teds.SGM.sgm_Carbon_radscene import Carbon_radiation_scene_generation
 from teds.SGM.create_sgm_yaml_file import create_sgm_config_file
 from teds.IM.create_im_configuration_file import im_configuration
 from teds.L1AL1B.create_l1a1b_configuration_file import l1al1b_configuration
+from teds.SIML1B.siml1b import simplified_instrument_model_and_l1b_processor
 from teds.L1L2.l1bl2 import level1b_to_level2_processor
 from teds.L1L2.create_l2_yaml_file import create_l1bl2_config_file
 from teds.L1L2.sl2 import simplified_level2
@@ -48,16 +49,6 @@ locations = Emptyclass()
 #locations.__setattr__('gm', {})
 #locations.gm['output']        = path_interface + 'gm/Tango_Carbon_gm_exp1.0.nc'
 
-locations.__setattr__('sgm', {})
-#locations.sgm['gm_input']     = path_interface + 'gm/Tango_Carbon_gm_exp1.0.nc'
-#locations.sgm['S2_dump']      = path_tmp + 'Tango_Carbon_S2_exp1.0.npy'
-#locations.sgm['afgl_input']   = path_afgl + 'prof.AFGL.US.std'
-locations.sgm['xsec_dump']    = path_tmp + 'Tango_Carbon_xsec_exp1.0.pkl'
-locations.sgm['sun_reference']= path_sol_spec + 'hybrid_reference_spectrum_c2021-03-04_with_unc.nc'
-locations.sgm['rad_output']   = path_interface + 'sgm/Tango_Carbon_sgm_radiance_exp1.0.nc'
-locations.sgm['geo_output_ref'] = path_interface + 'sgm/Tango_Carbon_sgm_atmosphere_ref_exp1.0.nc'
-locations.sgm['geo_output']   = path_interface + 'sgm/Tango_Carbon_sgm_atmosphere_exp1.0.nc'
-locations.sgm['hapi_path']    = path_harpi
 
 locations.__setattr__('im', {})
 locations.im['ckd_input']     = path_interface + 'ckd/OWL640S_low-gain_radiation_ckd_dose0.0_21kernel.nc'
@@ -100,12 +91,12 @@ profile= 'orbit'   #needed to initialize gm and sgm consistently
 
 settings= {}
 settings['gm']           = False
-settings['sgm']          = False
-settings['geosgm']       = True
+settings['geosgm']       = False
 settings['radsgm_Carbon']= False
 settings['im']           = False
 settings['l1al1b']       = False
-settings['l1bl2']        = False                                                                                                                                      
+settings['siml1b']       = False
+settings['l1bl2']        = True                                                                                                                                   
 settings['save_yaml']    = False
 settings['sl2']          = False
 settings['l2l4']         = False
@@ -134,7 +125,6 @@ if __name__ == "__main__":
     if(settings['radsgm_Carbon']):
 
         sgm_config= yaml.safe_load(open('./settings/radsgm_config_baseline.yaml'))
-        sgm_config = {**locations.sgm, **sgm_config}
         sgm_config['profile'] = profile
         Carbon_radiation_scene_generation(sgm_config)
 
@@ -160,18 +150,18 @@ if __name__ == "__main__":
         cmd_str= '../../teds/L1AL1B/tango_l1b/build/tango_l1b l1al1b_config.cfg'
         subprocess.run(cmd_str, shell=True, cwd=path_L1AL1B)
 
+    # ======= The simplified IM and L1B model ======================
+    if(settings['siml1b']):
+
+        siml1b_config= yaml.safe_load(open('./settings/siml1b_config_baseline.yaml'))        
+        siml1b_config['profile'] = profile
+        simplified_instrument_model_and_l1b_processor(siml1b_config)
+
     # ======= L1 to L2 processor ===================================
     if(settings['l1bl2']):
         # choose baseline L1BL2 config
 
         l1bl2_config= yaml.safe_load(open('./settings/l1bl2_config_baseline.yaml'))
-        l1bl2_config['retrieval_init']['sw_pixel_mask']= False
-        l1bl2_config['isrf_settings']['type']= 'Gaussian'  # type of ISRF, currently only Gaussian or generalized_normal
-        l1bl2_config['isrf_settings']['fwhm']=  0.45  # fwhm  [nm]
-        l1bl2_config = {**locations.l1bl2, **l1bl2_config}
-        if(settings['save_yaml']):
-            l1bl2_yaml = './save_yaml/l1bl2_config.yaml'
-            create_l1bl2_config_file(l1bl2_yaml, l1bl2_config)
         level1b_to_level2_processor(l1bl2_config)
 
     # ======= simplifed L1 to L2 processor ===================================

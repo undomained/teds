@@ -91,15 +91,13 @@ def sim_output(filename, gm_data, l1b_output):
 
 #   main program ##############################################################
 
-
 def simplified_instrument_model_and_l1b_processor(config):
 
     
     # get geometry data
 
-    gm_data = get_gm_data(config['gm_input'])
+    gm_data = get_gm_data(config['io_files']['input_gm'])
 
-    # target wavelengths grid
     l1b_output = {}
     l1b_output['wavelength'] = np.arange(config['spec_settings']['wave_start'],
                                          config['spec_settings']['wave_end'],
@@ -115,10 +113,10 @@ def simplified_instrument_model_and_l1b_processor(config):
 
     # get line-by-line spectral grid and define some pointers
 
-    sgm_data = get_sgm_rad_data(config['sgm_input'], ialt=0)
+    sgm_data = get_sgm_rad_data(config['io_files']['input_sgm'], ialt=0)
     wave_lbl = sgm_data['wavelength line-by-line']
     wave = l1b_output['wavelength']
-
+    
     # define isrf function
     
     isrf_convolution = libNumTools.get_isrf(wave, wave_lbl, config['isrf_settings'])
@@ -126,7 +124,7 @@ def simplified_instrument_model_and_l1b_processor(config):
     for ialt in tqdm(range(nalt)):
 
         # get lbl data from sgm file for scan line ialt
-        sgm_data = get_sgm_rad_data(config['sgm_input'], ialt)
+        sgm_data = get_sgm_rad_data(config['io_files']['input_sgm'], ialt)
 
         for iact in range(nact):
             spectrum_lbl = np.array(sgm_data['radiance line-by-line'][iact, :])
@@ -157,7 +155,7 @@ def simplified_instrument_model_and_l1b_processor(config):
     l1b_output['radiance_mask'] = np.zeros(nwav, dtype=bool)
     # output to netcdf file
 
-    sim_output(config['l1b_output'], gm_data, l1b_output)
+    sim_output(config['io_files']['output_l1b'], gm_data, l1b_output)
 
     print('=>siml1b calculation finished successfully')
     return

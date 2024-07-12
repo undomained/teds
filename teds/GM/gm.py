@@ -231,7 +231,7 @@ def gm_output(logger, config, vza, vaa, sza, saa, lat_grid, lon_grid):
        Write gm oputput to filename (set in config file) as nc file.
     """
 
-    filename = config['gm_file']
+    filename = config['io']['gm']
     # Check if directory exists, otherwise create:
     out_dir = os.path.split(filename)[0]
     if not os.path.exists(out_dir):
@@ -262,7 +262,7 @@ def gm_output_via_object(logger, config, vza, vaa, sza, saa, lat_grid, lon_grid)
        Using the data_netCDF class
     """
 
-    filename = config['gm_file']
+    filename = config['io']['gm']
     # Check if directory exists, otherwise create:
     out_dir = os.path.split(filename)[0]
     if not os.path.exists(out_dir):

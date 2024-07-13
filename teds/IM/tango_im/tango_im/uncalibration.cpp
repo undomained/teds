@@ -18,6 +18,7 @@ auto applyISRF(const CKD& ckd,
                const double fwhm_gauss,
                L1& l1) -> void
 {
+    l1.level = ProcLevel::l1b;
     // If this process is disabled then linearly interpolate the
     // line-by-line spectra onto the CKD wavelength grids. We cannot
     // simply return like the other processes.
@@ -71,7 +72,6 @@ auto applyISRF(const CKD& ckd,
         }
         l1.spectra[i_act].signal = std::move(signal_conv);
     }
-    l1.level = ProcLevel::rad;
 }
 
 auto radiometric(const CKD& ckd, const bool enabled, L1& l1) -> void

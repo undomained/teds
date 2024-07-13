@@ -32,16 +32,20 @@ def get_l1b(l1b_filename):
     nc_l1b = nc.Dataset(l1b_filename, mode='r')
         
     l1b_data = {}
-    
-    l1b_data['wavelength'] = deepcopy(nc_l1b['OBSERVATION_DATA/wavelength'][:])
-    l1b_data['radiance'] = deepcopy(nc_l1b['OBSERVATION_DATA/radiance'][:])
-    l1b_data['noise'] = deepcopy(nc_l1b['OBSERVATION_DATA/radiance_noise'][:])
-    l1b_data['sza'] = deepcopy(nc_l1b['GEOLOCATION_DATA/sza'][:])
-    l1b_data['saa'] = deepcopy(nc_l1b['GEOLOCATION_DATA/saa'][:])
-    l1b_data['vza'] = deepcopy(nc_l1b['GEOLOCATION_DATA/vza'][:])
-    l1b_data['vaa'] = deepcopy(nc_l1b['GEOLOCATION_DATA/vaa'][:])
-    l1b_data['latitude'] = deepcopy(nc_l1b['GEOLOCATION_DATA/lat'][:])
-    l1b_data['longitude'] = deepcopy(nc_l1b['GEOLOCATION_DATA/lon'][:])
+    l1b_data['wavelength'] = deepcopy(nc_l1b['observation_data/wavelength'][:])
+    l1b_data['radiance'] = deepcopy(nc_l1b['observation_data/radiance'][:])
+    l1b_data['noise'] = deepcopy(nc_l1b['observation_data/radiance_stdev'][:])
+    l1b_data['sza'] = deepcopy(nc_l1b['geolocation_data/solar_zenith'][:])
+    l1b_data['saa'] = deepcopy(nc_l1b['geolocation_data/solar_azimuth'][:])
+    l1b_data['vza'] = deepcopy(nc_l1b['geolocation_data/sensor_zenith'][:])
+    l1b_data['vaa'] = deepcopy(nc_l1b['geolocation_data/sensor_azimuth'][:])
+    l1b_data['latitude'] = deepcopy(nc_l1b['geolocation_data/latitude'][:])
+    l1b_data['longitude'] = deepcopy(nc_l1b['geolocation_data/longitude'][:])
+    # Extract mask
+    nc_var = nc_l1b['observation_data/radiance']
+    l1b_data['mask'] = ~nc_var[:].mask
+    if not nc_var[:].mask.shape:
+        l1b_data['mask'] = np.full(nc_var[:].shape, True)
     return (l1b_data)
 
 def get_sgm_atm(filen_sgm_atm):
@@ -314,23 +318,8 @@ def level1b_to_level2_processor(config, sw_diag_output = False):
     # get sgm geo data
     surf_sgm, atm_sgm = get_sgm_atm(config['io_files']['input_sgm'])
 
-    # get pixel mask
-    # if (config['retrieval_init']['sw_pixel_mask']):
-#        print('take pixel mask')get_AFGL_atm_homogenous_distribution
-#        mask = np.load(config['pixel_mask_input'])
-# 
-    # else:
-        # nact = l1b['radiance'][0, :, 0].size
-        # nwave = l1b['radiance'][0, 0, :].size
-        # mask = np.full((nact, nwave), True)
-
-    #mask on radiance nan values
-    mask = np.logical_not(np.isnan(l1b['radiance']))
-
-    # fig = plt.figure(figsize=(10, 8), dpi=100)
-    # radiance = l1b['radiance'][0, :,:]
-    # masked_data = np.ma.masked_where( np.invert(mask).data, radiance)
-    # plt.imshow(masked_data, vmin = 1.E16,vmax = 4.E16, cmap = 'viridis', aspect = 4)
+    # mask on radiance nan values
+    mask = l1b['mask']
 
     # Internal lbl spectral grid
     wave_start = config['spec_settings']['wavestart']

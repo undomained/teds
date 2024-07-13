@@ -48,6 +48,7 @@ def radsgm_output(filename_rad, rad_output):
     # open file
     nc = Dataset(filename_rad, mode='w')
     nc.title = 'Tango Carbon E2ES SGM radiometric scene'
+    nc.product_type = 'SGM'
     nc.createDimension('wavelength', nlbl)     # spectral axis
     nc.createDimension('across_track', nact)     # across track axis
     nc.createDimension('along_track', nalt)     # along track axis

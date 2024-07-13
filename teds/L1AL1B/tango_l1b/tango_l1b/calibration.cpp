@@ -286,7 +286,7 @@ auto radiometric(const CKD& ckd, const bool enabled, L1& l1) -> void
     for (int i_act {}; i_act < ckd.n_act; ++i_act) {
         l1.spectra[i_act].calibrate(ckd, l1.exposure_time, i_act);
     }
-    // rad is the same as l1b
+    // Radiometric calibration is the last step to get to L1B
     l1.level = ProcLevel::l1b;
 }
 

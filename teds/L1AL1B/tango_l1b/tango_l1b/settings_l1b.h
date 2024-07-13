@@ -38,7 +38,7 @@ public:
         { "cal_level" },
         ProcLevel::l1b,
         "If given, the last calibration step to be executed. Allowed values:\n"
-        "dark, noise, nonlin, prnu, stray, swath, rad.",
+        "offset, noise, current, nonlin, prnu, stray, swath, l1b.",
     };
     Setting<bool> reverse_wavelength {
         { "reverse_wavelength" },
@@ -146,6 +146,9 @@ public:
         Setting<std::string> l1b { { "io", "l1b" },
                                    {},
                                    "L1B product (output)" };
+        Setting<std::string> geometry { { "io", "geometry" },
+                                        {},
+                                        "geometry file (input)" };
     } io;
 
     SettingsL1B() = default;

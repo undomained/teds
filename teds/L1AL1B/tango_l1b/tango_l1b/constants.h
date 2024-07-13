@@ -34,9 +34,8 @@ enum class ProcLevel
     prnu,
     stray,
     swath,
-    wave,
-    rad,
-    l1b,
+    l1b, // Radiometrically calibrated
+    sgm, // Unconvolved line-by-line spectra from the scene generation module
     n_levels,
 };
 

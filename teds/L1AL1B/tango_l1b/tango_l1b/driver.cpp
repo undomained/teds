@@ -140,10 +140,10 @@ auto driver(const SettingsL1B& settings,
             timers[static_cast<int>(ProcLevel::swath)].stop();
         }
         // Radiometric
-        if (l1.level < ProcLevel::rad && settings.cal_level >= ProcLevel::rad) {
-            timers[static_cast<int>(ProcLevel::rad)].start();
+        if (l1.level < ProcLevel::l1b && settings.cal_level >= ProcLevel::l1b) {
+            timers[static_cast<int>(ProcLevel::l1b)].start();
             radiometric(ckd, settings.rad.enabled, l1);
-            timers[static_cast<int>(ProcLevel::rad)].stop();
+            timers[static_cast<int>(ProcLevel::l1b)].stop();
         }
         if (settings.reverse_wavelength) {
             for (auto& spectrum : l1.spectra) {
@@ -161,6 +161,9 @@ auto driver(const SettingsL1B& settings,
     // For writing to output, store the CKD wavelength grid in L1
     l1_products.front().wavelength =
       std::make_shared<std::vector<std::vector<double>>>(ckd.wave.wavelength);
+
+    // Placeholder until we have geolocation
+    copyGeometry(settings.io.geometry, settings.image_start, l1_products);
 
     // Write output
     timers.back().start();
@@ -183,7 +186,7 @@ auto driver(const SettingsL1B& settings,
     spdlog::info("               Swath: {:8.3f} s",
                  timers[static_cast<int>(ProcLevel::swath)].time());
     spdlog::info("         Radiometric: {:8.3f} s",
-                 timers[static_cast<int>(ProcLevel::rad)].time());
+                 timers[static_cast<int>(ProcLevel::l1b)].time());
     spdlog::info("      Writing output: {:8.3f} s", timers.back().time());
 
     printHeading("Success");

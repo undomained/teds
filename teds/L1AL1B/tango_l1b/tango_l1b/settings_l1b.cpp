@@ -33,6 +33,7 @@ auto SettingsL1B::scanKeys() -> void
     scan(io.ckd);
     scan(io.binning_table);
     scan(io.l1a);
+    scan(io.geometry);
     scan(io.l1b);
 }
 
@@ -42,6 +43,7 @@ auto SettingsL1B::checkParameters() -> void
     checkPresenceOfFile(io.ckd, true);
     checkPresenceOfFile(io.binning_table, true);
     checkPresenceOfFile(io.l1a, true);
+    checkPresenceOfFile(io.geometry, true);
 
     checkFileWritable(io.l1b);
 }

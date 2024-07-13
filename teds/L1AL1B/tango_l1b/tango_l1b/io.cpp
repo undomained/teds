@@ -143,17 +143,25 @@ auto printPercentage(const int iteration,
       std::min(100.0, 1e2 * iteration / static_cast<double>(work_size)));
 }
 
-auto checkPresenceOfFile(const std::string& filename, const bool required)
-  -> void
+auto checkPresenceOfFile(const Setting<std::string>& setting,
+                         const bool required) -> void
 {
-    if (!required && filename.empty()) {
+    if (!required && setting.empty()) {
         return;
     }
     try {
-        std::ifstream file { filename };
+        std::ifstream file { setting };
         file.exceptions(std::ifstream::failbit);
     } catch (const std::ifstream::failure& e) {
-        const std::string msg { "\nCould not open file: " + filename };
+        if (setting.empty()) {
+            std::string yaml_keys_str {};
+            for (const auto& yaml_key : setting.yaml_keys) {
+                yaml_keys_str += '[' + yaml_key + ']';
+            }
+            const std::string msg { "missing " + yaml_keys_str };
+            throw std::runtime_error { msg };
+        }
+        const std::string msg { "\nCould not open file: " + setting };
         throw std::ifstream::failure { e.what() + msg, e.code() };
     }
 }
@@ -199,12 +207,10 @@ auto splitString(const std::string& list, const char delimiter)
         return "stray light";
     case ProcLevel::swath:
         return "swath";
-    case ProcLevel::wave:
-        return "spectral";
-    case ProcLevel::rad:
-        return "radiometric";
     case ProcLevel::l1b:
         return "L1B";
+    case ProcLevel::sgm:
+        return "SGM";
     case ProcLevel::n_levels:
     default:
         throw std::invalid_argument { "invalid process identifier" };
@@ -219,18 +225,20 @@ auto readL1(const std::string& filename,
     const netCDF::NcFile nc { filename, netCDF::NcFile::read };
 
     // Determine data level
-    std::string processing_level_str {};
+    std::string product_type_str {};
     try {
-        nc.getAtt("processing_level").getValues(processing_level_str);
+        nc.getAtt("product_type").getValues(product_type_str);
     } catch (const netCDF::exceptions::NcBadId&) {
-        processing_level_str = "L1B";
+        product_type_str = "L1B";
     }
     ProcLevel level {};
-    if (processing_level_str == "L1A") {
+    if (product_type_str == "L1A") {
         level = ProcLevel::l1a;
-    } else if (processing_level_str == "L1B") {
+    } else if (product_type_str == "L1B") {
         level = ProcLevel::l1b;
-    } else if (processing_level_str == "L1X") {
+    } else if (product_type_str == "SGM") {
+        level = ProcLevel::sgm;
+    } else if (product_type_str == "L1X") {
         ProcLevel l1x_level {};
         nc.getAtt("l1x_level").getValues(&l1x_level);
         level = l1x_level;
@@ -320,13 +328,28 @@ auto readL1(const std::string& filename,
         std::vector<double> spectra(n_images * n_act * n_wavelength);
         std::vector<double> spectra_stdev(n_images * n_act * n_wavelength);
         std::vector<double> wavelength(n_act * n_wavelength);
-        const auto nc_grp { nc.getGroup("observation_data") };
-        nc_grp.getVar("i").getVar(
-          { alt_beg, 0, 0 }, { n_images, n_act, n_wavelength }, spectra.data());
-        nc_grp.getVar("i_stdev").getVar({ alt_beg, 0, 0 },
-                                        { n_images, n_act, n_wavelength },
-                                        spectra_stdev.data());
-        nc_grp.getVar("wavelength").getVar(wavelength.data());
+        if (level == ProcLevel::sgm) {
+            nc.getVar("radiance")
+              .getVar({ alt_beg, 0, 0 },
+                      { n_images, n_act, n_wavelength },
+                      spectra.data());
+            std::ranges::fill(spectra_stdev, 1.0);
+            nc.getVar("wavelength").getVar(wavelength.data());
+            for (size_t i_act { 1 }; i_act < n_act; ++i_act) {
+                std::copy(wavelength.begin(),
+                          wavelength.begin() + n_wavelength,
+                          wavelength.begin() + i_act * n_wavelength);
+            }
+        } else {
+            const auto nc_grp { nc.getGroup("observation_data") };
+            nc_grp.getVar("radiance").getVar({ alt_beg, 0, 0 },
+                                      { n_images, n_act, n_wavelength },
+                                      spectra.data());
+            nc_grp.getVar("radiance_stdev").getVar({ alt_beg, 0, 0 },
+                                            { n_images, n_act, n_wavelength },
+                                            spectra_stdev.data());
+            nc_grp.getVar("wavelength").getVar(wavelength.data());
+        }
         auto wavelength_lbl {
             std::make_shared<std::vector<std::vector<double>>>(
               n_act, std::vector<double>(n_wavelength))
@@ -374,9 +397,9 @@ auto writeL1(const std::string& filename,
         nc.putAtt("title", "Tango Carbon level 1A data");
     }
     if (level == ProcLevel::l1a || level == ProcLevel::l1b) {
-        nc.putAtt("processing_level", procLevelToString(level));
+        nc.putAtt("product_type", procLevelToString(level));
     } else {
-        nc.putAtt("processing_level", "L1X");
+        nc.putAtt("product_type", "L1X");
         nc.putAtt("l1x_level", netCDF::ncInt, static_cast<int>(level));
     }
     nc.putAtt("project", "TANGO");
@@ -418,7 +441,7 @@ auto writeL1(const std::string& filename,
     if (level < ProcLevel::l1b) {
         auto nc_grp { nc.addGroup("image_attributes") };
         nc_var = nc_grp.addVar("image_time", netCDF::ncDouble, { nc_images });
-        nc_var.putAtt("name", "image time");
+        nc_var.putAtt("long_name", "image time");
         nc_var.putAtt("_FillValue", netCDF::ncDouble, fill::d);
         nc_var.putAtt("units", "seconds since 2022-03-21");
         nc_var.putAtt("valid_min", netCDF::ncDouble, 0.0);
@@ -428,19 +451,19 @@ auto writeL1(const std::string& filename,
         nc_var.putVar(buf.data());
 
         nc_var = nc_grp.addVar("binning_table", netCDF::ncByte, { nc_images });
-        nc_var.putAtt("name", "binning table");
+        nc_var.putAtt("long_name", "binning table");
         buf.assign(n_images, l1_products.front().binning_table_id);
         nc_var.putVar(buf.data());
 
         nc_var =
           nc_grp.addVar("nr_coadditions", netCDF::ncUshort, { nc_images });
-        nc_var.putAtt("name", "number of coadditions");
+        nc_var.putAtt("long_name", "number of coadditions");
         buf.assign(n_images, l1_products.front().nr_coadditions);
         nc_var.putVar(buf.data());
 
         nc_var =
           nc_grp.addVar("exposure_time", netCDF::ncDouble, { nc_images });
-        nc_var.putAtt("name", "exposure time");
+        nc_var.putAtt("long_name", "exposure time");
         buf.assign(n_images, l1_products.front().exposure_time);
         nc_var.putVar(buf.data());
     }
@@ -457,7 +480,7 @@ auto writeL1(const std::string& filename,
         if (level == ProcLevel::l1a) {
             nc_var =
               nc_grp.addVar("detector_image", netCDF::ncInt, nc_detector_shape);
-            nc_var.putAtt("name", "detector images");
+            nc_var.putAtt("long_name", "detector images");
             nc_var.putAtt("_FillValue", netCDF::ncInt, fill::i);
             nc_var.putAtt("units", "counts");
             nc_var.putAtt("valid_min", netCDF::ncInt, 0);
@@ -475,7 +498,7 @@ auto writeL1(const std::string& filename,
         } else {
             nc_var = nc_grp.addVar(
               "detector_image", netCDF::ncDouble, nc_detector_shape);
-            nc_var.putAtt("name", "detector images");
+            nc_var.putAtt("long_name", "detector images");
             nc_var.putAtt("units", "counts");
             nc_var.putAtt("valid_min", netCDF::ncDouble, -1e100);
             nc_var.putAtt("valid_max", netCDF::ncDouble, 1e100);
@@ -488,7 +511,7 @@ auto writeL1(const std::string& filename,
             nc_var.putVar(buf.data());
             nc_var = nc_grp.addVar(
               "detector_stdev", netCDF::ncDouble, nc_detector_shape);
-            nc_var.putAtt("name", "standard deviation of detector bin");
+            nc_var.putAtt("long_name", "standard deviation of detector bin");
             nc_var.putAtt("units", "counts");
             nc_var.putAtt("valid_min", netCDF::ncDouble, 0.0);
             nc_var.putAtt("valid_max", netCDF::ncDouble, 1e100);
@@ -509,7 +532,7 @@ auto writeL1(const std::string& filename,
 
         nc_var = nc_grp.addVar(
           "wavelength", netCDF::ncFloat, { nc_across_track, nc_wavelength });
-        nc_var.putAtt("name", "radiance wavelengths");
+        nc_var.putAtt("long_name", "radiance wavelengths");
         nc_var.putAtt("_FillValue", netCDF::ncFloat, fill::f);
         nc_var.putAtt("valid_min", netCDF::ncFloat, 0.0f);
         nc_var.putAtt("valid_max", netCDF::ncFloat, 999.0f);
@@ -547,10 +570,10 @@ auto writeL1(const std::string& filename,
         } };
         if (level == ProcLevel::l1b) {
             nc_var =
-              nc_grp.addVar("i",
+              nc_grp.addVar("radiance",
                             netCDF::ncFloat,
                             { nc_images, nc_across_track, nc_wavelength });
-            nc_var.putAtt("name", "radiance");
+            nc_var.putAtt("long_name", "radiance");
             nc_var.putAtt("_FillValue", netCDF::ncFloat, fill::f);
             nc_var.putAtt("units", "ph nm-1 s-1 sr-1 m-2");
             nc_var.putAtt("valid_min", netCDF::ncFloat, 0.0f);
@@ -559,10 +582,10 @@ auto writeL1(const std::string& filename,
             flattenSignal(buf);
             nc_var.putVar(buf.data());
             nc_var =
-              nc_grp.addVar("i_stdev",
+              nc_grp.addVar("radiance_stdev",
                             netCDF::ncFloat,
                             { nc_images, nc_across_track, nc_wavelength });
-            nc_var.putAtt("name", "standard deviation of radiance in bin ");
+            nc_var.putAtt("long_name", "standard deviation of radiance in bin ");
             nc_var.putAtt("_FillValue", netCDF::ncFloat, fill::f);
             nc_var.putAtt("units", "ph nm-1 s-1 sr-1 m-2");
             nc_var.putAtt("valid_min", netCDF::ncFloat, 0.0f);
@@ -571,10 +594,10 @@ auto writeL1(const std::string& filename,
             nc_var.putVar(buf.data());
         } else {
             nc_var =
-              nc_grp.addVar("i",
+              nc_grp.addVar("radiance",
                             netCDF::ncDouble,
                             { nc_images, nc_across_track, nc_wavelength });
-            nc_var.putAtt("name", "radiance");
+            nc_var.putAtt("long_name", "radiance");
             nc_var.putAtt("_FillValue", netCDF::ncDouble, fill::f);
             nc_var.putAtt("units", "ph nm-1 s-1 sr-1 m-2");
             nc_var.putAtt("valid_min", netCDF::ncDouble, -1e20);
@@ -583,10 +606,11 @@ auto writeL1(const std::string& filename,
             flattenSignal(buf);
             nc_var.putVar(buf.data());
             nc_var =
-              nc_grp.addVar("i_stdev",
+              nc_grp.addVar("radiance_stdev",
                             netCDF::ncDouble,
                             { nc_images, nc_across_track, nc_wavelength });
-            nc_var.putAtt("name", "standard deviation of radiance in bin ");
+            nc_var.putAtt("long_name",
+                          "standard deviation of radiance in bin ");
             nc_var.putAtt("_FillValue", netCDF::ncDouble, fill::f);
             nc_var.putAtt("units", "ph nm-1 s-1 sr-1 m-2");
             nc_var.putAtt("valid_min", netCDF::ncDouble, -1e20);
@@ -594,6 +618,127 @@ auto writeL1(const std::string& filename,
             flattenStdev(buf);
             nc_var.putVar(buf.data());
         }
+        // Geolocation
+        const std::vector<netCDF::NcDim> geometry_shape { nc_images,
+                                                          nc_across_track };
+        std::vector<float> lat(n_images * n_across_track);
+        std::vector<float> lon(n_images * n_across_track);
+        std::vector<float> height(n_images * n_across_track);
+        std::vector<float> vza(n_images * n_across_track);
+        std::vector<float> vaa(n_images * n_across_track);
+        std::vector<float> sza(n_images * n_across_track);
+        std::vector<float> saa(n_images * n_across_track);
+        for (int i_alt {}; i_alt < n_images; ++i_alt) {
+            const auto copy { [i_alt](const std::vector<float>& in,
+                                      std::vector<float>& out) {
+                std::copy(
+                  in.cbegin(), in.cend(), out.begin() + i_alt * in.size());
+            } };
+            copy(l1_products[i_alt].geo.lat, lat);
+            copy(l1_products[i_alt].geo.lon, lon);
+            copy(l1_products[i_alt].geo.height, height);
+            copy(l1_products[i_alt].geo.vza, vza);
+            copy(l1_products[i_alt].geo.vaa, vaa);
+            copy(l1_products[i_alt].geo.sza, sza);
+            copy(l1_products[i_alt].geo.saa, saa);
+        }
+
+        nc_grp = nc.addGroup("geolocation_data");
+
+        nc_var = nc_grp.addVar("latitude", netCDF::ncFloat, geometry_shape);
+        nc_var.putAtt("long_name", "latitude at bin locations");
+        nc_var.putAtt("_FillValue", netCDF::ncFloat, fill::f);
+        nc_var.putAtt("valid_min", netCDF::ncFloat, -90.0f);
+        nc_var.putAtt("valid_max", netCDF::ncFloat, 90.0f);
+        nc_var.putAtt("units", "degrees_north");
+        nc_var.putVar(lat.data());
+
+        nc_var = nc_grp.addVar("longitude", netCDF::ncFloat, geometry_shape);
+        nc_var.putAtt("long_name", "longitude at bin locations");
+        nc_var.putAtt("_FillValue", netCDF::ncFloat, fill::f);
+        nc_var.putAtt("valid_min", netCDF::ncFloat, -180.0f);
+        nc_var.putAtt("valid_max", netCDF::ncFloat, 180.0f);
+        nc_var.putAtt("units", "degrees_east");
+        nc_var.putVar(lon.data());
+
+        nc_var = nc_grp.addVar("height", netCDF::ncFloat, geometry_shape);
+        nc_var.putAtt("long_name", "height at bin locations");
+        nc_var.putAtt("_FillValue", netCDF::ncFloat, fill::f);
+        nc_var.putAtt("valid_min", netCDF::ncFloat, -1000.0f);
+        nc_var.putAtt("valid_max", netCDF::ncFloat, 10000.0f);
+        nc_var.putAtt("units", "m");
+        nc_var.putVar(height.data());
+
+        nc_var =
+          nc_grp.addVar("sensor_zenith", netCDF::ncFloat, geometry_shape);
+        nc_var.putAtt("long_name", "sensor zenith angle at bin locations");
+        nc_var.putAtt("_FillValue", netCDF::ncFloat, fill::f);
+        nc_var.putAtt("valid_min", netCDF::ncFloat, -90.0f);
+        nc_var.putAtt("valid_max", netCDF::ncFloat, 90.0f);
+        nc_var.putAtt("units", "degrees");
+        nc_var.putVar(vza.data());
+
+        nc_var =
+          nc_grp.addVar("sensor_azimuth", netCDF::ncFloat, geometry_shape);
+        nc_var.putAtt("long_name", "sensor azimuth angle at bin locations");
+        nc_var.putAtt("_FillValue", netCDF::ncFloat, fill::f);
+        nc_var.putAtt("valid_min", netCDF::ncFloat, -180.0f);
+        nc_var.putAtt("valid_max", netCDF::ncFloat, 180.0f);
+        nc_var.putAtt("units", "degrees");
+        nc_var.putVar(vaa.data());
+
+        nc_var = nc_grp.addVar("solar_zenith", netCDF::ncFloat, geometry_shape);
+        nc_var.putAtt("long_name", "solar zenith angle at bin locations");
+        nc_var.putAtt("_FillValue", netCDF::ncFloat, fill::f);
+        nc_var.putAtt("valid_min", netCDF::ncFloat, -90.0f);
+        nc_var.putAtt("valid_max", netCDF::ncFloat, 90.0f);
+        nc_var.putAtt("units", "degrees");
+        nc_var.putVar(sza.data());
+
+        nc_var =
+          nc_grp.addVar("solar_azimuth", netCDF::ncFloat, geometry_shape);
+        nc_var.putAtt("long_name", "solar azimuth angle at bin locations");
+        nc_var.putAtt("_FillValue", netCDF::ncFloat, fill::f);
+        nc_var.putAtt("valid_min", netCDF::ncFloat, -180.0f);
+        nc_var.putAtt("valid_max", netCDF::ncFloat, 180.0f);
+        nc_var.putAtt("units", "degrees");
+        nc_var.putVar(saa.data());
+    }
+}
+
+auto copyGeometry(const std::string& filename,
+                  const int i_alt_start,
+                  std::vector<L1>& l1_products) -> void
+{
+    const netCDF::NcFile nc_geo { filename, netCDF::NcFile::read };
+    const auto n_alt { nc_geo.getDim("along_track").getSize() };
+    const auto n_act { nc_geo.getDim("across_track").getSize() };
+    std::vector<double> lat(n_alt * n_act);
+    std::vector<double> lon(n_alt * n_act);
+    std::vector<double> vza(n_alt * n_act);
+    std::vector<double> vaa(n_alt * n_act);
+    std::vector<double> sza(n_alt * n_act);
+    std::vector<double> saa(n_alt * n_act);
+    nc_geo.getVar("lat").getVar(lat.data());
+    nc_geo.getVar("lon").getVar(lon.data());
+    nc_geo.getVar("vza").getVar(vza.data());
+    nc_geo.getVar("vaa").getVar(vaa.data());
+    nc_geo.getVar("sza").getVar(sza.data());
+    nc_geo.getVar("saa").getVar(saa.data());
+    for (int i_alt {}; i_alt < static_cast<int>(l1_products.size()); ++i_alt) {
+        const auto copy { [i_alt_start, i_alt, n_act](
+                            const std::vector<double>& in,
+                            std::vector<float>& out) {
+            out = { in.begin() + (i_alt_start + i_alt) * n_act,
+                    in.begin() + (i_alt_start + i_alt + 1) * n_act };
+        } };
+        copy(lat, l1_products[i_alt].geo.lat);
+        copy(lon, l1_products[i_alt].geo.lon);
+        copy(vza, l1_products[i_alt].geo.vza);
+        copy(vaa, l1_products[i_alt].geo.vaa);
+        copy(sza, l1_products[i_alt].geo.sza);
+        copy(saa, l1_products[i_alt].geo.saa);
+        l1_products[i_alt].geo.height = std::vector<float>(n_act, 0.0);
     }
 }
 

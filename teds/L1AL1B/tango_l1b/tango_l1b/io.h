@@ -9,6 +9,7 @@
 #pragma once
 
 #include "constants.h"
+#include "setting.h"
 
 #include <spdlog/pattern_formatter.h>
 
@@ -62,8 +63,8 @@ auto printPercentage(const int iteration,
 
 // Check if filename exists. If required == true and filename is an
 // empty string raise an error, otherwise return without checking.
-auto checkPresenceOfFile(const std::string& filename, const bool required)
-  -> void;
+auto checkPresenceOfFile(const Setting<std::string>& setting,
+                         const bool required) -> void;
 
 // Check if destination is writable
 auto checkFileWritable(const std::string& filename) -> void;
@@ -92,5 +93,12 @@ auto writeL1(const std::string& filename,
              const std::vector<L1>& l1_products,
              const int argc = 0,
              const char* const argv[] = nullptr) -> void;
+
+// Copy geolocation data from the geometry file directly to the L1B
+// product. This is a placeholder function until geolocation is
+// properly implemented.
+auto copyGeometry(const std::string& filename,
+                  const int i_alt_start,
+                  std::vector<L1>& l1_products) -> void;
 
 } // namespace tango

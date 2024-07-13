@@ -246,10 +246,10 @@ def gm_output(logger, config, vza, vaa, sza, saa, lat_grid, lon_grid):
     output = nc.Dataset(filename, mode='w')
     output.title = 'Tango Carbon E2ES GM output'
 #    output.title = title
-    output.createDimension('bins_across_track', nact)    # across track axis
-    output.createDimension('bins_along_track', nalt)     # along track axis
+    output.createDimension('across_track', nact)    # across track axis
+    output.createDimension('along_track', nalt)     # along track axis
     # dimensions
-    dims = ('bins_along_track', 'bins_across_track')
+    dims = ('along_track', 'across_track')
     _ = writevariablefromname(output, "solarzenithangle", dims, sza)
     _ = writevariablefromname(output, "solarazimuthangle", dims, saa)
     _ = writevariablefromname(output, "viewingzenithangle", dims, vza)

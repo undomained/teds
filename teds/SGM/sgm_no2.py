@@ -647,7 +647,7 @@ def sgm_output_radio(config, rad_output):
     _ = writevariablefromname(grp, 'solarirradiance', ('wavelength',), rad_output['solar_irradiance'])
     
     # radiance
-    _ = writevariablefromname(nc, 'radiance_sgm', dims, rad_output['radiance'])
+    _ = writevariablefromname(grp, 'radiance_sgm', dims, rad_output['radiance'])
     
     output_rad.close()
 

@@ -195,7 +195,17 @@ def get_specific_config(logger, orig_config, kind):
 
         # Output to L1B
         output_path = get_file_name(orig_config, 'l1al1b')
-        specific_config['io']['l1b'] = os.path.join(output_path, orig_config['io']['l1b'])
+        l1b_file_name = orig_config['io']['l1b']
+
+        do_python = specific_config['do_python']
+        if do_python:
+            l1b_file_name_python = f"{l1b_file_name[0:-3]}_python.nc"
+            specific_config['io']['l1b'] = os.path.join(output_path, l1b_file_name_python)
+            specific_config['io']['l1b_algo_output'] = os.path.join(output_path, orig_config['io']['l1b_algo_output'])
+        else:
+            specific_config['io']['l1a'] = os.path.join(output_path, l1b_file_name)
+
+#        specific_config['io']['l1b'] = os.path.join(output_path, orig_config['io']['l1b'])
 
         # Input to L1B
         output_path = get_file_name(orig_config, 'im')
@@ -206,7 +216,7 @@ def get_specific_config(logger, orig_config, kind):
         # Note: if IM was run using the python code, the l1a python output needs to be readin
         do_python = orig_config['IM']['do_python']
         if do_python:
-            l1a_file_name_python = f"{l1a_file_name[0:-4]}_python.nc"
+            l1a_file_name_python = f"{l1a_file_name[0:-3]}_python.nc"
             specific_config['io']['l1a'] = os.path.join(output_path, l1a_file_name_python)
         else:
             specific_config['io']['l1a'] = os.path.join(output_path, l1a_file_name)

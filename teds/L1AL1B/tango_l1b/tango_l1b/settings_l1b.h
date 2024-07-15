@@ -38,7 +38,7 @@ public:
         { "cal_level" },
         ProcLevel::l1b,
         "If given, the last calibration step to be executed. Allowed values:\n"
-        "dark, noise, nonlin, prnu, stray, swath, rad.",
+        "offset, noise, current, nonlin, prnu, stray, swath, l1b.",
     };
     Setting<bool> reverse_wavelength {
         { "reverse_wavelength" },
@@ -54,6 +54,13 @@ public:
     Setting<std::optional<int>> image_end {
         { "image_end" },
         "last image to be processed (inclusive, counting starts at 0)",
+    };
+    Setting<Unbin> unbinning {
+        { "unbinning" },
+        Unbin::none,
+        "If set, unbin the detector images instead of binning the CKD.\n"
+        "Allowed values: none (default), nearest (nearest neighbor), linear\n"
+        "(linear spline), cubic (cubic spline)."
     };
 
     struct
@@ -144,6 +151,9 @@ public:
         Setting<std::string> l1b { { "io", "l1b" },
                                    {},
                                    "L1B product (output)" };
+        Setting<std::string> geometry { { "io", "geometry" },
+                                        {},
+                                        "geometry file (input)" };
     } io;
 
     SettingsL1B() = default;

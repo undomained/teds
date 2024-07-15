@@ -32,7 +32,7 @@ auto driver(const SettingsL1B& settings,
                     settings.io.binning_table);
 
     // Read in the CKD
-    printHeading("CKD");
+    printHeading("Reading CKD and input data");
     CKD ckd(settings.io.ckd, settings.swath.spectrum_width);
 
     // Initialize L1 products by reading all L1A data (everything is
@@ -50,13 +50,15 @@ auto driver(const SettingsL1B& settings,
         settings.io.binning_table,
         static_cast<int>(l1_products.front().binning_table_id)
     };
-    binning_table.bin(ckd.pixel_mask);
-    binning_table.bin(ckd.dark.offset);
-    binning_table.bin(ckd.dark.current);
-    binning_table.bin(ckd.noise.g);
-    binning_table.bin(ckd.noise.n2);
-    binning_table.bin(ckd.prnu.prnu);
-    binning_table.binPixelIndices(ckd.swath.pix_indices);
+    if (settings.unbinning == Unbin::none) {
+        binning_table.bin(ckd.pixel_mask);
+        binning_table.bin(ckd.dark.offset);
+        binning_table.bin(ckd.dark.current);
+        binning_table.bin(ckd.noise.g);
+        binning_table.bin(ckd.noise.n2);
+        binning_table.bin(ckd.prnu.prnu);
+        binning_table.binPixelIndices(ckd.swath.pix_indices);
+    }
 
     // Run retrieval
     printHeading("Retrieval");
@@ -68,10 +70,14 @@ auto driver(const SettingsL1B& settings,
         // Initialize pixel mask with that from the CKD
         l1.pixel_mask = ckd.pixel_mask;
 
-        // Normalize by bin sizes
+        // Normalize by bin sizes and unbin detector image if requested
         if (l1.level == ProcLevel::l1a
-            && settings.cal_level >= ProcLevel::dark) {
-            binningTable(binning_table, l1);
+            && settings.cal_level >= ProcLevel::raw) {
+            binningTable(binning_table,
+                         settings.unbinning,
+                         ckd.n_detector_rows,
+                         ckd.n_detector_cols,
+                         l1);
         }
         // Dark offset
         if (l1.level < ProcLevel::dark
@@ -84,7 +90,13 @@ auto driver(const SettingsL1B& settings,
         if (l1.level < ProcLevel::noise
             && settings.cal_level >= ProcLevel::noise) {
             timers[static_cast<int>(ProcLevel::noise)].start();
-            noise(ckd, settings.noise.enabled, binning_table, l1);
+            // If the unbinning setting is none the the detector image
+            // is still binned.
+            noise(ckd,
+                  settings.noise.enabled,
+                  binning_table,
+                  settings.unbinning == Unbin::none,
+                  l1);
             timers[static_cast<int>(ProcLevel::noise)].stop();
         }
         // Dark current
@@ -112,8 +124,12 @@ auto driver(const SettingsL1B& settings,
         if (l1.level < ProcLevel::stray
             && settings.cal_level >= ProcLevel::stray) {
             timers[static_cast<int>(ProcLevel::stray)].start();
-            strayLight(
-              ckd, settings.stray.enabled, binning_table, settings.stray.van_cittert_steps, l1);
+            // Same comment about unbinning as for noise above
+            strayLight(ckd,
+                       binning_table,
+                       settings.stray.van_cittert_steps,
+                       settings.unbinning == Unbin::none,
+                       l1);
             timers[static_cast<int>(ProcLevel::stray)].stop();
         }
         // Swath
@@ -124,10 +140,10 @@ auto driver(const SettingsL1B& settings,
             timers[static_cast<int>(ProcLevel::swath)].stop();
         }
         // Radiometric
-        if (l1.level < ProcLevel::rad && settings.cal_level >= ProcLevel::rad) {
-            timers[static_cast<int>(ProcLevel::rad)].start();
+        if (l1.level < ProcLevel::l1b && settings.cal_level >= ProcLevel::l1b) {
+            timers[static_cast<int>(ProcLevel::l1b)].start();
             radiometric(ckd, settings.rad.enabled, l1);
-            timers[static_cast<int>(ProcLevel::rad)].stop();
+            timers[static_cast<int>(ProcLevel::l1b)].stop();
         }
         if (settings.reverse_wavelength) {
             for (auto& spectrum : l1.spectra) {
@@ -145,6 +161,9 @@ auto driver(const SettingsL1B& settings,
     // For writing to output, store the CKD wavelength grid in L1
     l1_products.front().wavelength =
       std::make_shared<std::vector<std::vector<double>>>(ckd.wave.wavelength);
+
+    // Placeholder until we have geolocation
+    copyGeometry(settings.io.geometry, settings.image_start, l1_products);
 
     // Write output
     timers.back().start();
@@ -167,7 +186,7 @@ auto driver(const SettingsL1B& settings,
     spdlog::info("               Swath: {:8.3f} s",
                  timers[static_cast<int>(ProcLevel::swath)].time());
     spdlog::info("         Radiometric: {:8.3f} s",
-                 timers[static_cast<int>(ProcLevel::rad)].time());
+                 timers[static_cast<int>(ProcLevel::l1b)].time());
     spdlog::info("      Writing output: {:8.3f} s", timers.back().time());
 
     printHeading("Success");

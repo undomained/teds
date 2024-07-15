@@ -18,6 +18,7 @@ auto applyISRF(const CKD& ckd,
                const double fwhm_gauss,
                L1& l1) -> void
 {
+    l1.level = ProcLevel::l1b;
     // If this process is disabled then linearly interpolate the
     // line-by-line spectra onto the CKD wavelength grids. We cannot
     // simply return like the other processes.
@@ -71,7 +72,6 @@ auto applyISRF(const CKD& ckd,
         }
         l1.spectra[i_act].signal = std::move(signal_conv);
     }
-    l1.level = ProcLevel::rad;
 }
 
 auto radiometric(const CKD& ckd, const bool enabled, L1& l1) -> void
@@ -108,7 +108,7 @@ auto drawOnDetector(const CKD& ckd, L1& l1) -> void
             x_values[i_act] = ckd.swath.row_indices[act_idx][i_wave];
             y_values[i_act] = l1.spectra[act_idx].signal[i_wave];
         }
-        CubicSpline spline { x_values, y_values };
+        const CubicSpline spline { x_values, y_values };
         for (int i_spat {}; i_spat < ckd.n_detector_rows; ++i_spat) {
             l1.image[i_spat * ckd.n_detector_cols + i_wave] =
               spline.eval(i_spat);

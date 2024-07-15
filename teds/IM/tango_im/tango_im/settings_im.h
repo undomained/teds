@@ -152,7 +152,7 @@ public:
             { "io", "binning_table" },
             {},
             "Path to a NetCDF file containing binning tables and count arrays\n"
-            "Which ones to use is determined by the L1A fiel\n"
+            "Which ones to use is determined by the L1A file variable\n"
             "/image_attributes/binning_table"
         };
         Setting<std::string> l1b { { "io", "l1b" }, {}, "L1B product (input)" };

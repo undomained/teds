@@ -34,10 +34,21 @@ enum class ProcLevel
     prnu,
     stray,
     swath,
-    wave,
-    rad,
-    l1b,
+    l1b, // Radiometrically calibrated
+    sgm, // Unconvolved line-by-line spectra from the scene generation module
     n_levels,
+};
+
+// Unbinning modes for detector images when calibrating. If none then
+// the detector image is not unbinned (except for stray light) and
+// instead the CKD is binned and applied to binned images.
+enum class Unbin
+{
+    none,
+    nearest, // Nearest neighbor
+    linear,  // Linear spline
+    cubic,   // Cubic spline
+    n_types,
 };
 
 // Namespace for whenever we deal with rectangles and need to identify

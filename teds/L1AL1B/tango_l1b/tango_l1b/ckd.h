@@ -34,8 +34,7 @@ public:
     // Number of L1B spectra (spatial samples across track)
     int n_act {};
 
-    // The initial bad pixel mask. It may be updated by different
-    // calibration steps.
+    // Bad pixel mask
     std::vector<bool> pixel_mask {};
 
     // Dark

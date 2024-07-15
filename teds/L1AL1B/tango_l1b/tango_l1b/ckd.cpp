@@ -39,6 +39,7 @@ CKD::CKD(const std::string& filename, const double spectrum_width)
         pixel_mask[i] = static_cast<bool>(pixel_mask_u8[i]);
     }
     if (const netCDF::NcGroup grp { nc.getGroup("dark") }; !grp.isNull()) {
+        spdlog::info("Reading dark CKD");
         dark.enabled = true;
         dark.offset.resize(npix);
         dark.current.resize(npix);
@@ -46,6 +47,7 @@ CKD::CKD(const std::string& filename, const double spectrum_width)
         grp.getVar("current").getVar(dark.current.data());
     }
     if (const netCDF::NcGroup grp { nc.getGroup("noise") }; !grp.isNull()) {
+        spdlog::info("Reading noise CKD");
         noise.enabled = true;
         noise.g.resize(npix);
         noise.n2.resize(npix);
@@ -57,6 +59,7 @@ CKD::CKD(const std::string& filename, const double spectrum_width)
     }
     if (const netCDF::NcGroup grp { nc.getGroup("nonlinearity") };
         !grp.isNull()) {
+        spdlog::info("Reading nonlinearity CKD");
         nonlin.enabled = true;
         const auto n_knots { grp.getDim("knots").getSize() };
         std::vector<double> knots(n_knots);
@@ -66,11 +69,13 @@ CKD::CKD(const std::string& filename, const double spectrum_width)
         nonlin.spline = { knots, y };
     }
     if (const netCDF::NcGroup grp { nc.getGroup("prnu") }; !grp.isNull()) {
+        spdlog::info("Reading dark CKD");
         prnu.enabled = true;
         prnu.prnu.resize(npix);
         grp.getVar("prnu").getVar(prnu.prnu.data());
     }
     if (const netCDF::NcGroup grp { nc.getGroup("stray") }; !grp.isNull()) {
+        spdlog::info("Reading stray light CKD");
         stray.enabled = true;
         stray.n_kernels = static_cast<int>(grp.getDim("kernel").getSize());
         stray.kernel_rows.resize(stray.n_kernels);
@@ -107,6 +112,7 @@ CKD::CKD(const std::string& filename, const double spectrum_width)
         grp.getVar("edges").getVar(stray.edges.data());
     }
     if (const netCDF::NcGroup grp { nc.getGroup("swath") }; !grp.isNull()) {
+        spdlog::info("Reading swath CKD");
         swath.enabled = true;
         swath.row_indices.resize(n_act, std::vector<double>(n_detector_cols));
 
@@ -114,12 +120,14 @@ CKD::CKD(const std::string& filename, const double spectrum_width)
         genPixelIndices(spectrum_width);
     }
     if (const netCDF::NcGroup grp { nc.getGroup("spectral") }; !grp.isNull()) {
+        spdlog::info("Reading spectral CKD");
         wave.enabled = true;
         wave.wavelength.resize(n_act, std::vector<double>(n_detector_cols));
         getAndReshape(grp.getVar("wavelength"), wave.wavelength);
     }
     if (const netCDF::NcGroup grp { nc.getGroup("radiometric") };
         !grp.isNull()) {
+        spdlog::info("Reading radiometric CKD");
         rad.enabled = true;
         rad.rad.resize(n_act, std::vector<double>(n_detector_cols));
         getAndReshape(grp.getVar("radiometric"), rad.rad);
@@ -141,16 +149,16 @@ auto CKD::genPixelIndices(const double spectrum_width) -> void
     // rows are determined by where exactly the edge of the spectrum
     // falls. All middle rows have the same constant weight (1 before
     // normalization).
-    for (int i_fov {}; i_fov < n_act; ++i_fov) {
+    for (int i_act {}; i_act < n_act; ++i_act) {
         for (int i {}; i < n_detector_cols; ++i) {
-            const double row_first_d { swath.row_indices[i_fov][i] + 0.5
+            const double row_first_d { swath.row_indices[i_act][i] + 0.5
                                        - spectrum_width_half };
-            const double row_last_d { swath.row_indices[i_fov][i] + 0.5
+            const double row_last_d { swath.row_indices[i_act][i] + 0.5
                                       + spectrum_width_half };
             const int row_first_i { static_cast<int>(row_first_d) };
             const int row_last_i { static_cast<int>(row_last_d) };
-            auto& indices { swath.pix_indices[i_fov] };
-            auto& weights { swath.weights[i_fov] };
+            auto& indices { swath.pix_indices[i_act] };
+            auto& weights { swath.weights[i_act] };
             indices[i * swath.n_indices] = row_first_i * n_detector_cols + i;
             indices[(i + 1) * swath.n_indices - 1] =
               row_last_i * n_detector_cols + i;

@@ -13,11 +13,13 @@ from copy import deepcopy
 import netCDF4 as nc
 import yaml
 
-from lib import libNumTools
-from lib import libRT
-from lib import libATM
-from lib import libINV
-from lib.libWrite import writevariablefromname
+from teds.lib import libNumTools
+from teds.lib import libRT
+from teds.lib import libATM
+from teds.lib import libINV
+from teds.lib.libWrite import writevariablefromname
+
+
 import matplotlib.pyplot as plt
 
 class Emptyclass:
@@ -25,30 +27,32 @@ class Emptyclass:
     
     pass
 
-def get_l1b(filename):
+def get_l1b(l1b_filename):
     # getting l1b data from file
-    input = nc.Dataset(filename, mode='r')
+    nc_l1b = nc.Dataset(l1b_filename, mode='r')
+        
     l1b_data = {}
-    l1b_data['sza'] = deepcopy(input['GEOLOCATION_DATA']['sza'][:])
-    l1b_data['saa'] = deepcopy(input['GEOLOCATION_DATA']['saa'][:])
-    l1b_data['vza'] = deepcopy(input['GEOLOCATION_DATA']['vza'][:])
-    l1b_data['vaa'] = deepcopy(input['GEOLOCATION_DATA']['vaa'][:])
-    l1b_data['latitude'] = deepcopy(input['GEOLOCATION_DATA']['lat'][:])
-    l1b_data['longitude'] = deepcopy(input['GEOLOCATION_DATA']['lon'][:])
-    l1b_data['wavelength'] = deepcopy(input['OBSERVATION_DATA']['wavelength'][:])
-    l1b_data['radiance'] = deepcopy(input['OBSERVATION_DATA']['radiance'][:])
-#    l1b_data['radmask'] = deepcopy(input['OBSERVATION_DATA']['radiance_mask'][:])
-    l1b_data['noise'] = deepcopy(input['OBSERVATION_DATA']['radiance_noise'][:])
-    
-    input.close()
+    l1b_data['wavelength'] = deepcopy(nc_l1b['observation_data/wavelength'][:])
+    l1b_data['radiance'] = deepcopy(nc_l1b['observation_data/radiance'][:])
+    l1b_data['noise'] = deepcopy(nc_l1b['observation_data/radiance_stdev'][:])
+    l1b_data['sza'] = deepcopy(nc_l1b['geolocation_data/solar_zenith'][:])
+    l1b_data['saa'] = deepcopy(nc_l1b['geolocation_data/solar_azimuth'][:])
+    l1b_data['vza'] = deepcopy(nc_l1b['geolocation_data/sensor_zenith'][:])
+    l1b_data['vaa'] = deepcopy(nc_l1b['geolocation_data/sensor_azimuth'][:])
+    l1b_data['latitude'] = deepcopy(nc_l1b['geolocation_data/latitude'][:])
+    l1b_data['longitude'] = deepcopy(nc_l1b['geolocation_data/longitude'][:])
+    # Extract mask
+    nc_var = nc_l1b['observation_data/radiance']
+    l1b_data['mask'] = ~nc_var[:].mask
+    if not nc_var[:].mask.shape:
+        l1b_data['mask'] = np.full(nc_var[:].shape, True)
     return (l1b_data)
-
 
 def get_sgm_atm(filen_sgm_atm):
     data = nc.Dataset(filen_sgm_atm, mode='r')
     atm_sgm = {}
     surf_sgm = {}
-    surf_sgm['albedo'] = deepcopy(data['albedo'][:])
+    surf_sgm['albedo'] = deepcopy(data['albedo B11'][:])
     atm_sgm['zlay'] = deepcopy(data['zlay'][:])
     atm_sgm['zlev'] = deepcopy(data['zlev'][:])
     atm_sgm['dcol_co2'] = deepcopy(data['dcol_co2'][:])
@@ -309,28 +313,13 @@ def level1b_to_level2_processor(config, sw_diag_output = False):
     # get the l1b files
 
     print('level 1B to 2 proessor ...')
-    l1b = get_l1b(config['l1b_input'])
+    l1b = get_l1b(config['io_files']['input_l1b'])
 
     # get sgm geo data
-    surf_sgm, atm_sgm = get_sgm_atm(config['sgm_input'])
+    surf_sgm, atm_sgm = get_sgm_atm(config['io_files']['input_sgm'])
 
-    # get pixel mask
-    # if (config['retrieval_init']['sw_pixel_mask']):
-#        print('take pixel mask')get_AFGL_atm_homogenous_distribution
-#        mask = np.load(config['pixel_mask_input'])
-# 
-    # else:
-        # nact = l1b['radiance'][0, :, 0].size
-        # nwave = l1b['radiance'][0, 0, :].size
-        # mask = np.full((nact, nwave), True)
-
-    #mask on radiance nan values
-    mask = np.logical_not(np.isnan(l1b['radiance']))
-
-    # fig = plt.figure(figsize=(10, 8), dpi=100)
-    # radiance = l1b['radiance'][0, :,:]
-    # masked_data = np.ma.masked_where( np.invert(mask).data, radiance)
-    # plt.imshow(masked_data, vmin = 1.E16,vmax = 4.E16, cmap = 'viridis', aspect = 4)
+    # mask on radiance nan values
+    mask = l1b['mask']
 
     # Internal lbl spectral grid
     wave_start = config['spec_settings']['wavestart']
@@ -351,35 +340,35 @@ def level1b_to_level2_processor(config, sw_diag_output = False):
     # model atmosphere
 
     atm = libATM.atmosphere_data(zlay, zlev, psurf)
-    atm.get_data_AFGL(config['afgl_input'])
+    atm.get_data_AFGL(config['io_files']['input_afgl'])
 
     # XCO2 = np.sum(atm.CO2)/np.sum(atm.air)
     # XCH4 = np.sum(atm.CH4)/np.sum(atm.air)
     # XH2O = np.sum(atm.H2O)/np.sum(atm.air)
     # print(XCO2*1.E6, XCH4*1.E9, XH2O*1E6)
 
-    sun = libRT.read_sun_spectrum_TSIS1HSRS(config['sun_reference'])
+    sun = libRT.read_sun_spectrum_TSIS1HSRS(config['io_files']['input_sun_reference'])
     sun_lbl = libRT.interpolate_sun(sun, wave_lbl)
 
     # Download molecular absorption parameter
     iso_ids = [('CH4', 32), ('H2O', 1), ('CO2', 7)]  # see hapi manual  sec 6.6
     molec = libRT.molecular_data(wave_lbl)
-    molec.get_data_HITRAN(config['hapi_path'], iso_ids)
+    molec.get_data_HITRAN(config['io_files']['input_hapi'], iso_ids)
 
     # Calculate optical properties
     # If pickle file exists read from file
-    if ((not os.path.exists(config['xsec_dump'])) or config['xsec_forced']):
+    if ((not os.path.exists(config['io_files']['dump_xsec'])) or config['xsec_forced']):
         # Init class with optics.prop dictionary
         optics = libRT.optic_abs_prop(wave_lbl, zlay)
         # Molecular absorption optical properties
         optics.cal_molec_xsec(molec, atm)
         # Dump optics.prop dictionary into temporary pkl file
-        pkl.dump(optics.prop, open(config['xsec_dump'], 'wb'))
+        pkl.dump(optics.prop, open(config['io_files']['dump_xsec'], 'wb'))
     else:
         # Init class with optics.prop dictionary
         optics = libRT.optic_abs_prop(wave_lbl, zlay)
         # Read optics.prop dictionary from pickle file
-        optics.prop = pkl.load(open(config['xsec_dump'], 'rb'))
+        optics.prop = pkl.load(open(config['io_files']['dump_xsec'], 'rb'))
 
     optics.set_opt_depth_species(atm, ['molec_01', 'molec_32', 'molec_07'])
 
@@ -525,10 +514,10 @@ def level1b_to_level2_processor(config, sw_diag_output = False):
             # XCO2_true[iact] = np.sum(atm_sgm['dcol_co2'][ialt, iact, :])/np.sum(atm.air)*1.E6
 
     # output to netcdf file
-    level2_output(config['l2_output'], l2product, retrieval_init, l1b, config['retrieval_init'])
+    level2_output(config['io_files']['output_l2'], l2product, retrieval_init, l1b, config['retrieval_init'])
 
-    if(sw_diag_output):
-        level2_diags_output(config['l2_diag'], l2product, measurement)
+#    if(sw_diag_output):
+#        level2_diags_output(config['l2_diag'], l2product, measurement)
 
     print('=> l1bl2 finished successfully')
 

@@ -8,7 +8,7 @@ atmosphere:
     nlay: 30                    #number of atmospheric layers
     dzlay: 1000                 #geometrical thickness of the layers [m]
         
-only_afgl: False
+only_afgl: True
 
 lat_lon_src: [51.83472, 14.46277]                   #latitude, longitude coordinates 
 
@@ -23,6 +23,18 @@ spec_settings:              #settings for line-by-line spectra
     wave_end:   1685        #nm
     dwave:      0.002       #nm
     
+scale_gas:                  #only relevant for AFGL profiles 
+    xco2: 410.              #ppm
+    xch4: 1800.             #ppb
+    xh2o: 10000.            #ppm
+
 xsec_forced: False          #flag to force new cross section calculation
 s2_forced:   False          #flag to force Sentinel 2 calculation
-meteo_forced: False         #flag to force microHH data processing
+meteo_forced: True          #flag to force microHH data processing
+sw_geo_output_raw: True     #flag to get unconvolved raw atmospheric data
+
+io_files:
+    input_gm:
+    
+
+conv_gases: ['co2','ch4','h2o']

@@ -5,6 +5,7 @@
 
 #include "binning_table.h"
 #include "ckd.h"
+#include "cubic_spline.h"
 #include "fourier.h"
 #include "l1.h"
 
@@ -12,14 +13,89 @@
 
 namespace tango {
 
-auto binningTable(const BinningTable& binning_table, L1& l1) -> void
+// Smooth over bad values. This is necessary for algorithms such as
+// stray light correction which use all pixels.
+static auto fillHoles(const std::vector<bool>& pixel_mask,
+                      std::vector<double>& image) -> void
 {
-    for (int i {}; i < static_cast<int>(l1.image.size()); ++i) {
-        if (!l1.pixel_mask[i]) {
-            l1.image[i] /= binning_table.binSize(i);
+    const int i_last { static_cast<int>(image.size() - 1) };
+    for (int i {}; i < static_cast<int>(image.size()); ++i) {
+        if (pixel_mask[i]) {
+            // Unless we are at either end of the image array or one
+            // or both of the neighboring pixels are bad, take the
+            // average of the neighboring values.
+            int n_good {};
+            image[i] = 0.0;
+            if (i > 0 && !pixel_mask[i - 1]) {
+                image[i] += image[i - 1];
+                ++n_good;
+            }
+            if (i < i_last && !pixel_mask[i + 1]) {
+                image[i] += image[i + 1];
+                ++n_good;
+            }
+            image[i] /= std::max(1, n_good);
         }
     }
+}
+
+auto binningTable(const BinningTable& binning_table,
+                  const Unbin unbin,
+                  const int n_rows,
+                  const int n_cols,
+                  L1& l1) -> void
+{
+    auto pixel_mask { l1.pixel_mask };
+    binning_table.bin(pixel_mask);
+    for (int i {}; i < static_cast<int>(l1.image.size()); ++i) {
+        // if (!pixel_mask[i]) {
+            l1.image[i] /= binning_table.binSize(i);
+        // }
+    }
     l1.level = ProcLevel::raw;
+    if (unbin == Unbin::none) {
+        return;
+    }
+    // This algorithm assumes no binning across columns
+    std::vector<double> row_indices {};
+    for (int i_row {}; i_row < n_rows;) {
+        const int bin_size { binning_table.binSize(
+          binning_table.binIndex(i_row * n_cols)) };
+        row_indices.push_back(i_row + 0.5 * bin_size - 0.5);
+        i_row += bin_size;
+    }
+    const int n_rows_binned { static_cast<int>(row_indices.size()) };
+    std::vector<double> row_values(n_rows_binned);
+    std::vector<double> image_unbinned(n_rows * n_cols);
+    if (unbin == Unbin::nearest) {
+        binning_table.unbin(l1.image, image_unbinned);
+    } else {
+        fillHoles(pixel_mask, l1.image);
+        for (int i_col {}; i_col < n_cols; ++i_col) {
+            for (int i_row {}; i_row < n_rows_binned; ++i_row) {
+                row_values[i_row] = l1.image[i_row * n_cols + i_col];
+            }
+            if (unbin == Unbin::linear) {
+                const LinearSpline spline { row_indices, row_values };
+                for (int i_row {}; i_row < n_rows; ++i_row) {
+                    image_unbinned[i_row * n_cols + i_col] =
+                      spline.eval(static_cast<double>(i_row));
+                }
+            } else if (unbin == Unbin::cubic) {
+                const CubicSpline spline { row_indices, row_values };
+                for (int i_row {}; i_row < n_rows; ++i_row) {
+                    image_unbinned[i_row * n_cols + i_col] =
+                      spline.eval(static_cast<double>(i_row));
+                }
+            }
+        }
+    }
+    l1.image = std::move(image_unbinned);
+    l1.stdev.resize(l1.image.size());
+    // Image dimensions have changed and this should be reflected in
+    // the binning_table NetCDF attribute in case such a product is
+    // produced.
+    l1.binning_table_id = 0;
 }
 
 auto darkOffset(const CKD& ckd, const bool enabled, L1& l1) -> void
@@ -37,6 +113,7 @@ auto darkOffset(const CKD& ckd, const bool enabled, L1& l1) -> void
 auto noise(const CKD& ckd,
            const bool enabled,
            const BinningTable& binning_table,
+           const bool binned_detector_image,
            L1& l1) -> void
 {
     if (!enabled) {
@@ -50,12 +127,13 @@ auto noise(const CKD& ckd,
         const double var { ckd.noise.g[i] * l1.image[i] + ckd.noise.n2[i] };
         if (var <= 0.0) {
             l1.pixel_mask[i] = true;
-        } else {
+        } else if (binned_detector_image) {
             l1.stdev[i] =
               std::sqrt(var / (l1.nr_coadditions * binning_table.binSize(i)));
+        } else {
+            l1.stdev[i] = std::sqrt(var / l1.nr_coadditions);
         }
     }
-    l1.level = ProcLevel::noise;
 }
 
 auto darkCurrent(const CKD& ckd, const bool enabled, L1& l1) -> void
@@ -65,7 +143,7 @@ auto darkCurrent(const CKD& ckd, const bool enabled, L1& l1) -> void
     }
     for (int i {}; i < static_cast<int>(l1.image.size()); ++i) {
         if (!l1.pixel_mask[i]) {
-            l1.image[i] -= ckd.dark.current[i];
+            l1.image[i] -= ckd.dark.current[i] * l1.exposure_time;
         }
     }
     l1.level = ProcLevel::dark;
@@ -99,39 +177,11 @@ auto PRNU(const CKD& ckd, const bool enabled, L1& l1) -> void
     l1.level = ProcLevel::prnu;
 }
 
-// Smooth over bad values. This is necessary for algorithms such as
-// stray light correction which use all pixels.
-static auto fillHoles(const std::vector<bool>& pixel_mask,
-                      std::vector<double>& image) -> void
-{
-    for (int i {}; i < static_cast<int>(image.size()); ++i) {
-        if (pixel_mask[i]) {
-            // Unless we are at either end of the image array, take
-            // the average of the neighboring values.
-            if (i == 0) {
-                image.front() = image[1];
-            } else if (i == static_cast<int>(image.size() - 1)) {
-                image.back() = image[static_cast<int>(image.size()) - 2];
-            } else {
-                image[i] = (image[i - 1] + image[i + 1]) / 2;
-            }
-            // If there are two or more bad pixels side by side we
-            // could still end up with a bad value after
-            // averaging. Then we just set it to zero. To test it we
-            // use a large value that is close to the NetCDF float
-            // fill value.
-            constexpr double bad_value { 1e30 };
-            if (std::isnan(image[i]) || std::abs(image[i]) > bad_value) {
-                image[i] = 0.0;
-            }
-        }
-    }
-}
-
 auto strayLight(const CKD& ckd,
                 const bool enabled,
                 const BinningTable& binning_table,
                 const int n_van_cittert,
+                const bool binned_detector_image,
                 L1& l1) -> void
 {
 //    if (n_van_cittert == 0) {
@@ -144,7 +194,11 @@ auto strayLight(const CKD& ckd,
     fillHoles(l1.pixel_mask, l1.image);
     // Unbin the image using the stray light binning table
     std::vector<double> image_unbin(ckd.npix);
-    binning_table.unbin(l1.image, image_unbin);
+    if (binned_detector_image) {
+        binning_table.unbin(l1.image, image_unbin);
+    } else {
+        image_unbin = std::move(l1.image);
+    }
     // "Ideal" image, i.e. the one without stray light
     std::vector<double> image_ideal { image_unbin };
     // Part of the unbinned detector image
@@ -209,7 +263,11 @@ auto strayLight(const CKD& ckd,
               (image_unbin[i] - conv_result[i]) / (1 - ckd.stray.eta[i]);
         }
     }
-    binning_table.bin(image_ideal, l1.image);
+    if (binned_detector_image) {
+        binning_table.bin(image_ideal, l1.image);
+    } else {
+        l1.image = std::move(image_ideal);
+    }
     l1.level = ProcLevel::stray;
 }
 
@@ -233,7 +291,7 @@ auto radiometric(const CKD& ckd, const bool enabled, L1& l1) -> void
     for (int i_act {}; i_act < ckd.n_act; ++i_act) {
         l1.spectra[i_act].calibrate(ckd, l1.exposure_time, i_act);
     }
-    // rad is the same as l1b
+    // Radiometric calibration is the last step to get to L1B
     l1.level = ProcLevel::l1b;
 }
 

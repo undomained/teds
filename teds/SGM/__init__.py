@@ -1,2 +1,9 @@
-# -*- coding: utf-8 -*-
+# This source code is licensed under the 3-clause BSD license found in
+# the LICENSE file in the root directory of this project.
+'''Functions for using SGM.'''
 
+from teds.SGM.download_sentinel2_albedo import (  # noqa: F401
+    download_sentinel2_albedo)
+from teds.SGM.sgm_Carbon_radscene import (  # noqa: F401
+    Carbon_radiation_scene_generation)
+from teds.SGM.sgm_geoscene import geoscene_generation  # noqa: F401

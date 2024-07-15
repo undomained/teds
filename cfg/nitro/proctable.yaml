@@ -1,4 +1,4 @@
-algos:
+algos_im:
     - ISRF
     - Radiometric
     - Draw_On_Detector
@@ -9,3 +9,8 @@ algos:
     - Coadding
     - Binning
     - ADC
+algos_l1b:
+    - Dark_Offset
+    - Noise
+    - Dark_Current
+    - PRNU

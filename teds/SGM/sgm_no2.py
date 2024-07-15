@@ -627,41 +627,28 @@ def sgm_output_radio(config, rad_output):
     # write radiances
     nalt, nact, nlbl = rad_output['radiance'].shape
     # open file
-    output_rad = nc.Dataset(config['io']['sgm_rad_file'], mode='w')
+    output_rad = nc.Dataset(config['io']['sgm_rad'], mode='w')
     output_rad.title = 'Tango E2ES SGM radiometric scene'
     # output_rad.config = str(config)
     output_rad.processing_date = datetime.datetime.now().strftime('%Y%m%dT%H%M%S')
+    output_rad.product_type = 'SGM'
 
-    dims = ('wavelength', 'across_track', 'along_track')
+    dims = ('along_track', 'across_track', 'wavelength')
 
-    output_rad.createDimension(dims[0], nlbl)     # spectral axis
+    output_rad.createDimension(dims[0], nalt)     # along track axis
     output_rad.createDimension(dims[1], nact)     # across track axis
-    output_rad.createDimension(dims[2], nalt)     # along track axis
+    output_rad.createDimension(dims[2], nlbl)     # spectral axis
 
-    grp = nc.createGroup('science_data')
+    grp = output_rad.createGroup('science_data')
 
     # wavelength
     _ = writevariablefromname(grp, 'wavelength', ('wavelength',), rad_output['wavelength_lbl'])
     # solar irradiance
     _ = writevariablefromname(grp, 'solarirradiance', ('wavelength',), rad_output['solar_irradiance'])
     
-    
     # radiance
-    nc_var = grp.createVariable('i', 'f8', dims, fill_value=-32767.0)
-    nc_var.long_name = "radiance line-by-line"
-    nc_var.units = "photons / (sr nm m2 s)"
-    nc_var.valid_min = 0.0
-    nc_var.valid_max = 1e+28
-    nc_var[:] = rad_output['radiance']
-
-    # radiance std
-    nc_var = grp.createVariable('i_stdev', 'f8', dims, fill_value=-32767.0)
-    nc_var.long_name = "standard deviation of radiance"
-    nc_var.units = "photons / (sr nm m2 s)"
-    nc_var.valid_min = 0.0
-    nc_var.valid_max = 1e+28
-    nc_var[:] = 1.0 # TODO: dummy value
-
+    _ = writevariablefromname(nc, 'radiance_sgm', dims, rad_output['radiance'])
+    
     output_rad.close()
 
 
@@ -977,7 +964,7 @@ def scene_generation_module_nitro(logging, config):
     # =============================================================================================
     # 7) sgm output to radiometric file
     # =============================================================================================
-    logging.info(f"Writing scene radiance to: {config['io']['sgm_rad_file']}")
+    logging.info(f"Writing scene radiance to: {config['io']['sgm_rad']}")
 
     sgm_output_radio(config, dis_output)
 

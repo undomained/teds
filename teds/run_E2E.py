@@ -203,7 +203,7 @@ def get_specific_config(logger, orig_config, kind):
             specific_config['io']['l1b'] = os.path.join(output_path, l1b_file_name_python)
             specific_config['io']['l1b_algo_output'] = os.path.join(output_path, orig_config['io']['l1b_algo_output'])
         else:
-            specific_config['io']['l1a'] = os.path.join(output_path, l1b_file_name)
+            specific_config['io']['l1b'] = os.path.join(output_path, l1b_file_name)
 
 #        specific_config['io']['l1b'] = os.path.join(output_path, orig_config['io']['l1b'])
 

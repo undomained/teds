@@ -41,6 +41,9 @@ io:
     # Define in between output files for IM (Python version)
     # Base name:
     im_algo_output: 'im_l1x_{algo_name}.nc'
+    # Define in between output files for L1B (Python version)
+    # Base name:
+    l1b_algo_output: 'l1b_l1x_{algo_name}.nc'
 #########################################################
 #
 # GM 
@@ -135,14 +138,16 @@ SGM:
 ############################
 IM:
     do_python: false
+#    do_python: true
     proctable:
         file: '../cfg/nitro/proctable.yaml'
-        algo_list: 'algos'
+        algo_list: 'algos_im'
     instrument: 'nitro'
     processing_version: 0.000
     cal_level: 'l1a' # To indicate wether to uncalibrate the whole way (l1a) or to stop at a certain point ('prnu' -> uncalibrate until (NOT INCLUDING) prnu step)
     image_start: 0
-    image_end: 100
+#    image_end: 105
+    image_end: 2
     detector:
         binning_table_id: 1         # across track binning
 #        binning_table_id: 2         # across track binning
@@ -176,10 +181,16 @@ IM:
 #########################################################
 ############################
 L1AL1B:
+    do_python: false
+#    do_python: true
+    proctable:
+        file: '../cfg/nitro/proctable.yaml'
+        algo_list: 'algos_l1b'
     instrument: 'nitro'
     processing_version: 0.000
     image_start: 0
-    image_end: 100
+#    image_end: 105
+    image_end: 2
     cal_level: 'l1b' # To indicate wether to calibrate the whole way (l1b) or to stop at a certain point ('prnu' -> calibrate until (NOT INCLUDING) prnu step)
     detector:
         binning_table_id: 1         # across track binning

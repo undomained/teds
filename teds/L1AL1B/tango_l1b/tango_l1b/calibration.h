@@ -44,6 +44,7 @@ auto PRNU(const CKD& ckd, const bool enabled, L1& l1) -> void;
 
 // Correct for stray light
 auto strayLight(const CKD& ckd,
+                const bool enabled,
                 const BinningTable& binning_table,
                 const int n_van_cittert,
                 const bool binned_detector_image,

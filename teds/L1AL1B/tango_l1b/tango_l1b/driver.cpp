@@ -126,6 +126,7 @@ auto driver(const SettingsL1B& settings,
             timers[static_cast<int>(ProcLevel::stray)].start();
             // Same comment about unbinning as for noise above
             strayLight(ckd,
+                       settings.stray.enabled,
                        binning_table,
                        settings.stray.van_cittert_steps,
                        settings.unbinning == Unbin::none,

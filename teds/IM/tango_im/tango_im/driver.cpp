@@ -66,9 +66,6 @@ auto driver(const SettingsIM& settings,
     // Read in the CKD
     printHeading("Reading CKD and input data");
     const CKD ckd { settings.io.ckd };
-    // For undoing nonlinearity calibration we need the inverse of the
-    // nonlinearity spline from the CKD.
-    const LinearSpline nonlin_spline { inverseNonlinearity(settings.io.ckd) };
 
     // Initialize the binning table
     const BinningTable binning_table { ckd.n_detector_rows,
@@ -130,7 +127,13 @@ auto driver(const SettingsIM& settings,
         if (l1.level >= ProcLevel::nonlin
             && settings.cal_level < ProcLevel::nonlin) {
             timers[static_cast<int>(ProcLevel::nonlin)].start();
-            nonlinearity(ckd, settings.nonlin.enabled, nonlin_spline, l1);
+            // For undoing nonlinearity calibration we need the inverse of the
+            // nonlinearity spline from the CKD.
+            // Extra protection. Only do the inverseNonlinearity when non lin ckd actually exists
+            if (ckd.nonlin.enabled){
+                const LinearSpline nonlin_spline { inverseNonlinearity(settings.io.ckd) };
+                nonlinearity(ckd, settings.nonlin.enabled, nonlin_spline, l1);
+            }
             timers[static_cast<int>(ProcLevel::nonlin)].stop();
         }
         // Dark current

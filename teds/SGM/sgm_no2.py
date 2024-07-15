@@ -639,15 +639,15 @@ def sgm_output_radio(config, rad_output):
     output_rad.createDimension(dims[1], nact)     # across track axis
     output_rad.createDimension(dims[2], nlbl)     # spectral axis
 
-    grp = output_rad.createGroup('science_data')
+    # grp = output_rad.createGroup('science_data')
 
     # wavelength
-    _ = writevariablefromname(grp, 'wavelength', ('wavelength',), rad_output['wavelength_lbl'])
+    _ = writevariablefromname(output_rad, 'wavelength', ('wavelength',), rad_output['wavelength_lbl'])
     # solar irradiance
-    _ = writevariablefromname(grp, 'solarirradiance', ('wavelength',), rad_output['solar_irradiance'])
+    _ = writevariablefromname(output_rad, 'solarirradiance', ('wavelength',), rad_output['solar_irradiance'])
     
     # radiance
-    _ = writevariablefromname(grp, 'radiance_sgm', dims, rad_output['radiance'])
+    _ = writevariablefromname(output_rad, 'radiance_sgm', dims, rad_output['radiance'])
     
     output_rad.close()
 

@@ -79,7 +79,13 @@ auto BinningTable::binPixelIndices(
     // unbinned image to a binned image.
     for (auto& pix_indices_act : pix_indices) {
         for (auto& index : pix_indices_act) {
-            index = bin_indices[index];
+            if (index < 0){
+                index = 0;
+            } else if (index >= bin_indices.size()){
+                index = bin_indices[bin_indices.size()-1];
+            } else {
+                index = bin_indices[index];
+            }
         }
     }
 }

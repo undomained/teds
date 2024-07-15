@@ -1655,9 +1655,9 @@ def getDimensionsRad(radFile):
 
     with nc.Dataset(radFile) as src:
 
-        scanN = src.dimensions['bins_along_track'].size
-        pxlN = src.dimensions['bins_across_track'].size
-        spectralN = src.dimensions['bins_spectral'].size
+        scanN = src.dimensions['along_track'].size
+        pxlN = src.dimensions['across_track'].size
+        spectralN = src.dimensions['wavelength'].size
 
     return scanN,pxlN, spectralN
 
@@ -1714,15 +1714,17 @@ def ReadRad(f, iscan):
     Read radiance from L1B file. file is already open for thread safety
     '''
 
-    rad = f['OBSERVATION_DATA/radiance'][iscan,:,:] # [alt, act, spectral_bins] - "photons/(sr nm m2 s)
-    radFlag = f['OBSERVATION_DATA/radiance_mask'][iscan,:,:] # [alt, act, spectral_bins] -  0 = good, 1 = bad
-    radError = f['OBSERVATION_DATA/radiance_noise'][iscan,:,:] # [alt, act, spectral_bins] - 
+    rad = f['observation_data/radiance'][iscan,:,:] # [alt, act, spectral_bins] - "photons/(sr nm m2 s)
+    # radFlag = f['observation_data/radiance_mask'][iscan,:,:] # [alt, act, spectral_bins] -  0 = good, 1 = bad
+    radError = f['observation_data/radiance_stdev'][iscan,:,:] # [alt, act, spectral_bins] - 
 
-    radWvl = f['OBSERVATION_DATA/wavelength'][:,:] # [act, spectral_bins] - nm
+    radWvl = f['observation_data/wavelength'][:,:] # [act, spectral_bins] - nm
 
     # photons to mol
     rad /= constants.NA
     radError /= constants.NA
+
+    radFlag = np.zeros(rad.shape) # TODO: placeholder
 
     return radWvl, rad, radError, radFlag
 

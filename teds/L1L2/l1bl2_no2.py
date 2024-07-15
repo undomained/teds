@@ -32,11 +32,11 @@ def conv_irr(sgm_rad_file, fwhm):
     with nc.Dataset(file_out, mode='w') as output_conv_irr:
         output_conv_irr.processing_date = datetime.datetime.now().strftime('%Y%m%dT%H%M%S')
         output_conv_irr.comment = f'Convolved irradiance with Gaussian FWHM {fwhm} nm'
-        output_conv_irr.createDimension('bins_spectral', len(irr))     # spectral axis
+        output_conv_irr.createDimension('wavelength', len(irr))     # spectral axis
         # wavelength
-        _ = writevariablefromname(output_conv_irr, 'wavelength', ('bins_spectral',), wvl)
+        _ = writevariablefromname(output_conv_irr, 'wavelength', ('wavelength',), wvl)
         # solar irradiance
-        _ = writevariablefromname(output_conv_irr, 'solarirradiance', ('bins_spectral',), convolved_irr)
+        _ = writevariablefromname(output_conv_irr, 'solarirradiance', ('wavelength',), convolved_irr)
 
     return file_out
 
@@ -83,8 +83,7 @@ def ifdoe_run(logger, cfg):
     
     # A.4  Setup loop bounds
 
-    # TODO rad_file did not exist in full_config.yaml. SHOULD it be cfg['io']['sgm_rad'] ?????
-    scanN,pxlN,spectralN = libDOAS.getDimensionsRad(cfg['rad_file'])
+    scanN,pxlN,spectralN = libDOAS.getDimensionsRad(cfg['io']['sgm_rad'])
 
     if 'alt' in cfg:
         scanBeg = cfg['alt']['start']
@@ -117,8 +116,7 @@ def ifdoe_run(logger, cfg):
 
     # B.1  Read spectrum & error
     if cfg['irr_from_sgm']:
-        # TODO: irr_file does not exist in full_config.yaml. what should this be?
-        irrWvl, irr, irrError, irrFlag = libDOAS.ReadIrrSGM(cfg['irr_file'], pxlN)
+        irrWvl, irr, irrError, irrFlag = libDOAS.ReadIrrSGM(cfg['io']['sgm_irr'], pxlN)
     else:
         # TODO: not implemented yet
         sys.exit()
@@ -202,8 +200,14 @@ def ifdoe_run(logger, cfg):
         results['R_model'] = np.full((scanN,pxlN,spectralN),np.nan)
         results['R_res'] = np.full((scanN,pxlN,spectralN),np.nan)
 
+    # optionally use radiance from SGM
+    if cfg['rad_from_sgm']:
+        rad_file = cfg['io']['sgm_rad']
+    else:
+        rad_file = cfg['io']['l1b']
+
     # open file before threading, to ensure thread safety
-    ncRad = nc.Dataset(cfg['rad_file'])
+    ncRad = nc.Dataset(rad_file)
 
     logger.info('=== Starting radiance calibration and DOAS')
 
@@ -611,8 +615,7 @@ def amf_run(logger,cfg):
     atm = libAMF.read_atm(cfg['io']['sgm_atm'])
 
     logger.info('Calculating AMF')
-    amf_results = libAMF.get_amf(cfg['amf'], doas, atm)
-
+    amf_results = libAMF.get_amf(logger, cfg['amf'], doas, atm)
 
     logger.info(f"Writing AMF results to: {cfg['io']['l2']}")
     libAMF.write_amf(cfg,amf_results)
@@ -630,20 +633,10 @@ def l1bl2_no2(logger,cfg):
     if cfg['doas']['irr_from_sgm']:
         if cfg['doas']['convolve_irr']:
             convolved_irr_file = conv_irr(cfg['io']['sgm_rad'],cfg['isrf']['fwhm_gauss'])
-            cfg['doas']['irr_file'] = convolved_irr_file
+            cfg['io']['sgm_irr'] = convolved_irr_file
         else:
-            cfg['doas']['irr_file'] = cfg['io']['sgm_rad']
+            cfg['io']['sgm_irr'] = cfg['io']['sgm_rad']
     
-    # optionally use radiance from SGM
-    if cfg['doas']['rad_from_sgm']:
-        cfg['doas']['rad_file'] = cfg['io']['sgm_rad']
-    else:
-        cfg['doas']['rad_file'] = cfg['io']['l1b']
-
-    cfg['doas']['l2_file'] = cfg['io']['l2']
-    cfg['doas']['gm_file'] = cfg['io']['gm']            
-
-
     # Python parallises internally with numpy, for single thread optimum is 4 numpy threads
     # for multi-threading use only 1 numpy thread, otherwise slow-down
 
@@ -652,8 +645,12 @@ def l1bl2_no2(logger,cfg):
     else:
         numpy_cpu = 1
 
+    # add io dict to doas dict
+    cfg_doas = dict(cfg['doas'])
+    cfg_doas['io'] = dict(cfg['io'])
+
     with threadpool_limits(limits=numpy_cpu, user_api='blas'):
-        doas_results = ifdoe_run(logger, cfg['doas'])
+        doas_results = ifdoe_run(logger, cfg_doas)
                         
     amf_results = amf_run(logger, cfg)
 

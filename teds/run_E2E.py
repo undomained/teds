@@ -214,6 +214,9 @@ def get_specific_config(logger, orig_config, kind):
         specific_config['io']['binning_table'] = orig_config['io']['binning_table']
         specific_config['io']['ckd'] = orig_config['io']['ckd']
 
+        output_path = get_file_name(orig_config, 'gm')
+        specific_config['io']['geometry'] = os.path.join(output_path, orig_config['io']['gm'])
+
     elif kind == 'IM':
         specific_config['io']['binning_table'] = orig_config['io']['binning_table']
         specific_config['io']['ckd'] = orig_config['io']['ckd_im']

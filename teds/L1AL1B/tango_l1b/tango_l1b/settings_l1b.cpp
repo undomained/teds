@@ -21,8 +21,12 @@ auto SettingsL1B::scanKeys() -> void
 
     scan(noise.enabled);
 
+    scan(nonlin.enabled);
+
+
     scan(prnu.enabled);
 
+    scan(stray.enabled);
     scan(stray.van_cittert_steps);
 
     scan(swath.enabled);

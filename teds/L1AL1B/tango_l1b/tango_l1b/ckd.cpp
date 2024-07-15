@@ -5,6 +5,7 @@
 
 #include <cstdint>
 #include <netcdf>
+#include <spdlog/spdlog.h>
 
 namespace tango {
 
@@ -115,7 +116,6 @@ CKD::CKD(const std::string& filename, const double spectrum_width)
         spdlog::info("Reading swath CKD");
         swath.enabled = true;
         swath.row_indices.resize(n_act, std::vector<double>(n_detector_cols));
-
         getAndReshape(grp.getVar("row_index"), swath.row_indices);
         genPixelIndices(spectrum_width);
     }

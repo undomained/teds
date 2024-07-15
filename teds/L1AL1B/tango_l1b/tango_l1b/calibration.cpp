@@ -178,17 +178,12 @@ auto PRNU(const CKD& ckd, const bool enabled, L1& l1) -> void
 }
 
 auto strayLight(const CKD& ckd,
-                const bool enabled,
                 const BinningTable& binning_table,
                 const int n_van_cittert,
                 const bool binned_detector_image,
                 L1& l1) -> void
 {
-//    if (n_van_cittert == 0) {
-//        return;
-//    }
-//  Better check enabled and not rely on n_van_citter to be set to zero
-    if (!enabled) {
+    if (n_van_cittert == 0) {
         return;
     }
     fillHoles(l1.pixel_mask, l1.image);

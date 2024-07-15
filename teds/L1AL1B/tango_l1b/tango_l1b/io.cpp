@@ -428,6 +428,7 @@ auto writeL1(const std::string& filename,
     const std::string processing_version {
         YAML::Load(config)["processing_version"].as<std::string>()
     };
+    nc.putAtt("processing_version", processing_version);
 
     // Compression will be enabled only for official products (L1A, L1B)
     constexpr int compression_level { 5 };

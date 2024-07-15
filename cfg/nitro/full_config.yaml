@@ -72,7 +72,7 @@ GM:
         pitch: 0.0
         roll: 0.0
         yaw: 0.0
-    gm_title: 'Tango Nitro E2ES GM output'
+    # gm_title: 'Tango E2ES GM output'
 #########################################################
 #
 # SGM nitro 

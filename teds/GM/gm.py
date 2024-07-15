@@ -230,24 +230,26 @@ def gm_output(logger, config, vza, vaa, sza, saa, lat_grid, lon_grid):
     """
        Write gm oputput to filename (set in config file) as nc file.
     """
-
+    
     filename = config['io']['gm']
+    
+    print(filename)
     # Check if directory exists, otherwise create:
     out_dir = os.path.split(filename)[0]
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    title = config['gm_title']
+    # title = 'geometry module output'
 
     nact = len(lat_grid[0,:])
     nalt = len(lat_grid[:,0])
     output = nc.Dataset(filename, mode='w')
-#    output.title = 'Tango Carbon E2ES GM output'
-    output.title = title
-    output.createDimension('bins_across_track', nact)    # across track axis
-    output.createDimension('bins_along_track', nalt)     # along track axis
+    output.title = 'Tango E2ES GM output'
+    # output.title = config['gm_title']
+    output.createDimension('across_track', nact)    # across track axis
+    output.createDimension('along_track', nalt)     # along track axis
     # dimensions
-    dims = ('bins_along_track', 'bins_across_track')
+    dims = ('along_track', 'across_track')
     _ = writevariablefromname(output, "solarzenithangle", dims, sza)
     _ = writevariablefromname(output, "solarazimuthangle", dims, saa)
     _ = writevariablefromname(output, "viewingzenithangle", dims, vza)
@@ -256,13 +258,14 @@ def gm_output(logger, config, vza, vaa, sza, saa, lat_grid, lon_grid):
     _ = writevariablefromname(output, "longitude", dims, lon_grid)
     output.close()
 
+    
 def gm_output_via_object(logger, config, vza, vaa, sza, saa, lat_grid, lon_grid):
     """
        Write gm oputput to filename (set in config file) as nc file.
        Using the data_netCDF class
     """
 
-    filename = config['io']['gm']
+    filename = config['gm']
     # Check if directory exists, otherwise create:
     out_dir = os.path.split(filename)[0]
     if not os.path.exists(out_dir):

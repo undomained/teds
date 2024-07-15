@@ -1,6 +1,5 @@
 import sys
 import numpy as np
-import logging
 import tqdm
 import time
 
@@ -36,7 +35,7 @@ def read_doas(file_doas):
 
     return doas
 
-def get_amf(cfg, doas, atm):
+def get_amf(logger, cfg, doas, atm):
     # -----------------------------------------------------------------
     # Calculate NO2 AMF using AMF LUT NN
     # -----------------------------------------------------------------
@@ -61,8 +60,8 @@ def get_amf(cfg, doas, atm):
     for idx,idy in iterlist:
 
         if np.ma.is_masked(doas['no2_scd'][idx,idy]):
-            logging.info(f'Skipping pixel {idx},{idy}: NaN in doas input')
-            return
+            logger.info(f'Skipping pixel {idx},{idy}: NaN in doas input')
+            continue
 
         start_time_pixel = time.time()
 
@@ -120,7 +119,7 @@ def get_amf(cfg, doas, atm):
 
         results['no2_averaging_kernel'][idx,idy,:] = boxamf_clear * cl  / results['amf_total'][idx,idy]
 
-        # logging.info('Processed pixel alt {}/{} act {}/{} in {}s'.format(idx,doas['lat'].shape[0],idy,doas['lat'].shape[1],np.round((time.time() - start_time_pixel),2) ))
+        # logger.info('Processed pixel alt {}/{} act {}/{} in {}s'.format(idx,doas['lat'].shape[0],idy,doas['lat'].shape[1],np.round((time.time() - start_time_pixel),2) ))
 
     return results
 
@@ -248,7 +247,7 @@ def write_amf(cfg,amf):
     for var in ['no2_total_vcd','no2_total_scd']:
         amf[var] = molm2_to_moleccm2(amf[var])
 
-    with nc.Dataset(cfg['l2_file'], 'a') as dst:
+    with nc.Dataset(cfg['io']['l2'], 'a') as dst:
 
         # dst.amf_config = str(cfg)
 

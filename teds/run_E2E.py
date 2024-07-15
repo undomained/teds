@@ -340,19 +340,19 @@ def build(logger, config, step, cfg_path, attribute_dict):
         # output dataset is 2D. In case of detector image (in case of inbetween step)
         # the second dimension is detector_pixels which is too large to view. 
         # Need to reshape to 3D to be able to make sense of this.
-        temp_output_file = reshape_output(logger, 'l1b', l1b_config)
+        # temp_output_file = reshape_output(logger, 'l1b', l1b_config)
 
         # Add attributes to output file
-        if temp_output_file is not None:
-            Utils.add_attributes_to_output(logger, temp_output_file, attribute_dict)
-        Utils.add_attributes_to_output(logger, l1b_config['io']['l1b'], attribute_dict)
+        # if temp_output_file is not None:
+            # Utils.add_attributes_to_output(logger, temp_output_file, attribute_dict)
+        # Utils.add_attributes_to_output(logger, l1b_config['io']['l1b'], attribute_dict)
 
     if step == 'l1l2' or step == 'all':
         l2_config = get_specific_config(logger, configuration, 'L1L2')
         attribute_dict = add_module_specific_attributes(logger, l2_config, attribute_dict, 'l1l2')
         E2EModule = importlib.import_module("L1L2.l1bl2_no2")
         E2EModule.l1bl2_no2(logger, l2_config)
-        Utils.add_attributes_to_output(logger, l2_config['l2'], attribute_dict)
+        Utils.add_attributes_to_output(logger, l2_config['io']['l2'], attribute_dict)
 
     if step == 'pam' or step == 'all':
         pam_config = get_specific_config(logger, configuration, 'PAM')

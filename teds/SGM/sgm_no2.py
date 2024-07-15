@@ -695,8 +695,8 @@ def sgm_output_atm(config, atm, albedo, microhh_data, mode='raw'):
     _ = writevariablefromname(output_atm, 'pressure_levels', dims_level, atm.plev)
     _ = writevariablefromname(output_atm, 'pressure_layers', dims_layer, atm.play)
 
-    if hasattr(atm, 't'):
-        _ = writevariablefromname(output_atm, 'temperature', dims_layer, atm.t)
+    if hasattr(atm, 'tlay'):
+        _ = writevariablefromname(output_atm, 'temperature', dims_layer, atm.tlay)
 
     if mode == 'raw':
         bands = [x.removesuffix('_albedo') for x in albedo.__dict__.keys() if '_albedo' in x]
@@ -899,11 +899,12 @@ def scene_generation_module_nitro(logging, config):
         # recalculate total columns
         atm = recalc_total_column(atm, config)
 
-        # write atm to file
 
+        # write atm to file
         logging.info(f"Writing convolved scene atmosphere: {config['io']['sgm_atm']}")
         sgm_output_atm(config, atm, albedo, microhh_data, mode = 'convolved')
 
+    breakpoint()
 
     # =============================================================================================
     # 6) radiative transfer simulations with DISAMAR

@@ -14,3 +14,5 @@ algos_l1b:
     - Noise
     - Dark_Current
     - PRNU
+    - Swath
+    - Radiometric

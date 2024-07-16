@@ -18,6 +18,7 @@ class Algorithm:
         self._logger = logger
         self._algo_name = algo_name
         self._data = None
+        self._stdev = None
         self._logger.debug("INIT ALGO_BASE")
 
     def __str__(self):
@@ -46,4 +47,10 @@ class Algorithm:
             Usually called after the algorithm has been run to obtained the updated data
         """
         return self._data
+    def get_stdev(self):
+        """
+            Retreive the standard deviationdata.
+            Usually called after the algorithm has been run to obtained the updated standard deviation data
+        """
+        return self._stdev
 

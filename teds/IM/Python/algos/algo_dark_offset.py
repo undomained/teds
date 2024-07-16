@@ -13,6 +13,7 @@ class Dark_Offset(Algorithm):
         self._logger = logger
         self._algo_name = algo_name
         self._data = None
+        self._stdev = None
 
 
     def check_input(self, input_data):
@@ -22,16 +23,20 @@ class Dark_Offset(Algorithm):
         self._logger.debug(f"Check INPUT from {self._algo_name} class")
         # TODO: What would be a usefull check?
 
-    def execute(self, input_data):
+    def execute(self, input_data, kind='IM'):
         """
-            Add dark offset to the data.
+            kind IM: Add dark offset to the data.
+            kind L1B: Subtract dark offset from the data.
             Only if enabled.
             Only for good pixels
         """
         self._logger.debug(f"Execute code from {self._algo_name} class")
 
         image = input_data.get_dataset('image', c_name='work')
+        stdev = input_data.get_dataset('stdev', c_name='work')
         self._data = image
+        if stdev is not None:
+            self._stdev = stdev
         enabled = input_data.get_dataset('enabled', c_name='config', group='dark')
         if not enabled:
             # Algorithm will not be run
@@ -39,9 +44,15 @@ class Dark_Offset(Algorithm):
             return
         dark_offset = input_data.get_dataset('offset', c_name='ckd', group='dark', kind='variable')
         pixel_mask = input_data.get_dataset('pixel_mask', c_name='ckd', kind='variable')
+        print(f"image: {image}")
+        print(f"dark_offset: {dark_offset}")
+        print(f"pixel_mask: {pixel_mask}")
         new_image = copy.deepcopy(image)
         good_pixels = pixel_mask==0
-        new_image[good_pixels] += dark_offset[good_pixels]
+        if kind == 'IM':
+            new_image[good_pixels] += dark_offset[good_pixels]
+        else:
+            new_image[good_pixels] -= dark_offset[good_pixels]
         self._data = new_image
 
         return 

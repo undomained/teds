@@ -12,6 +12,7 @@ class PRNU(Algorithm):
         self._logger = logger
         self._algo_name = algo_name
         self._data = None
+        self._stdev = None
 
 
     def check_input(self, input_data):
@@ -44,7 +45,7 @@ class PRNU(Algorithm):
             sys.exit(error_message)
         return
 
-    def execute(self, input_data):
+    def execute(self, input_data, kind='IM'):
         """
             Perform the correction.
             Only if enabled.
@@ -52,7 +53,10 @@ class PRNU(Algorithm):
         """
 
         image = input_data.get_dataset('image', c_name='work')
+        stdev = input_data.get_dataset('stdev', c_name='work')
         self._data = image
+        if stdev is not None:
+            self._stdev = stdev
         enabled = input_data.get_dataset('enabled', c_name='config', group='prnu')
         if not enabled:
             # Algorithm will not be run
@@ -61,7 +65,12 @@ class PRNU(Algorithm):
         prnu_ckd = input_data.get_dataset('prnu', c_name='ckd', group='prnu', kind='variable')
         pixel_mask = input_data.get_dataset('pixel_mask', c_name='ckd', kind='variable')
         self._logger.debug(f"Execute code from {self._algo_name} class")
-        new_image = np.multiply(image,prnu_ckd, where=pixel_mask==0)
+        if kind == 'IM':
+            new_image = np.multiply(image,prnu_ckd, where=pixel_mask==0)
+        else:
+            new_image = np.divide(image,prnu_ckd, where=pixel_mask==0)
+            new_stdev = np.divide(stdev,prnu_ckd, where=pixel_mask==0)
+            self._stdev = new_stdev
         self._data = new_image
 
         return

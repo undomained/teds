@@ -14,6 +14,7 @@ class Radiometric(Algorithm):
         self._logger = logger
         self._algo_name = algo_name
         self._data = None
+        self._stdev = None
 
     def check_input(self, input_data):
         """
@@ -22,22 +23,29 @@ class Radiometric(Algorithm):
         self._logger.debug(f"Check INPUT from {self._algo_name} class")
         # TODO: What would be a usefull check?
 
-    def execute(self, input_data):
+    def execute(self, input_data, kind='IM'):
         """
             Execute the algorithm
         """
 
         image = input_data.get_dataset('image', c_name='work')
+        stdev = input_data.get_dataset('stdev', c_name='work')
         self._data = image
+        self._stdev = stdev
 
         radiometric = input_data.get_dataset('radiometric', c_name='ckd', group='radiometric', kind='variable')
 
         exposure_time = input_data.get_dataset('exposure_time', c_name='config', group='detector', kind='variable')
 
         factor = (1.0/(exposure_time)) * radiometric
-        new_image = np.divide(image,factor)
+        if kind == 'IM':
+            new_image = np.divide(image,factor)
+        else:
+            new_image = np.multiply(image,factor)
+            new_stdev = np.multiply(stdev,factor)
 
         self._data = new_image
+        self._stdev = new_stdev
 
         return
 

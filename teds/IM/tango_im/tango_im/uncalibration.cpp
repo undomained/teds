@@ -95,11 +95,14 @@ auto drawOnDetector(const CKD& ckd, L1& l1) -> void
     std::vector<double> x_values(ckd.n_act);
     std::vector<double> y_values(ckd.n_act);
     for (int i_wave {}; i_wave < ckd.n_detector_cols; ++i_wave) {
+        bool needReverse = false;
+        if (ckd.swath.row_indices[ckd.n_act - 1 ][i_wave] < ckd.swath.row_indices[0][i_wave]){
+            needReverse = true;
+        }
         for (int i_act {}; i_act < ckd.n_act; ++i_act) {
-            int act_idx = i_act ;
-            const bool need_reverse = {ckd.swath.row_indices[ckd.n_act-1][i_wave] < ckd.swath.row_indices[0][i_wave]};
-            if (need_reverse){
-                int act_idx { static_cast<int>(ckd.n_act - 1 - i_act) };
+            const int act_idx { static_cast<int>(i_act) };
+            if (needReverse){
+                const int act_idx { static_cast<int>(ckd.n_act - 1 - i_act) };
             }
             x_values[i_act] = ckd.swath.row_indices[act_idx][i_wave];
             y_values[i_act] = l1.spectra[act_idx].signal[i_wave];

@@ -43,9 +43,9 @@ class Radiometric(Algorithm):
         else:
             new_image = np.multiply(image,factor)
             new_stdev = np.multiply(stdev,factor)
+            self._stdev = new_stdev
 
         self._data = new_image
-        self._stdev = new_stdev
 
         return
 

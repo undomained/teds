@@ -14,7 +14,7 @@ class Binning(Algorithm):
         self._data = None
 
 
-    def check_input(self, data, input_data):
+    def check_input(self, input_data):
         """
             Check on input data.
         """

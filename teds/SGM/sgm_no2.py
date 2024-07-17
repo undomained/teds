@@ -904,8 +904,6 @@ def scene_generation_module_nitro(logging, config):
         logging.info(f"Writing convolved scene atmosphere: {config['io']['sgm_atm']}")
         sgm_output_atm(config, atm, albedo, microhh_data, mode = 'convolved')
 
-    breakpoint()
-
     # =============================================================================================
     # 6) radiative transfer simulations with DISAMAR
     # =============================================================================================

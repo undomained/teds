@@ -361,6 +361,8 @@ def interpolate_data_regular_nitro(indata, gm_data, config):
             fa = RegularGridInterpolator((indata.ypos, indata.xpos), conv_gas[:, :, iz], 
                                          bounds_error=False, fill_value=gasmin)
             interpdata[:, :, iz] = fa((gm_data['ypos'], gm_data['xpos']))
+        # do not allow negative values
+        interpdata = interpdata.clip(min=0)
         outdata.__setattr__('dcol_'+gas, interpdata)
 
         interpdata = np.zeros([dim_alt, dim_act, dim_lay])
@@ -370,6 +372,8 @@ def interpolate_data_regular_nitro(indata, gm_data, config):
             fa = RegularGridInterpolator((indata.ypos, indata.xpos), ppmv_gas[:, :, iz], 
                                          bounds_error=False, fill_value=gasmin)
             interpdata[:, :, iz] = fa((gm_data['ypos'], gm_data['xpos']))
+        # do not allow negative values
+        interpdata = interpdata.clip(min=0)
         outdata.__setattr__('ppmv_'+gas, interpdata)
 
     if config['atm']['type'] == 'afgl':
@@ -401,6 +405,8 @@ def interpolate_data_regular_nitro(indata, gm_data, config):
                 fa = RegularGridInterpolator((indata.ypos, indata.xpos), vardata[:, :, iz], 
                                             bounds_error=False, fill_value=varmin)
                 interpdata[:, :, iz] = fa((gm_data['ypos'], gm_data['xpos']))
+            # do not allow negative values
+            interpdata = interpdata.clip(min=0)
             outdata.__setattr__(var, interpdata)
      
     return albedo, outdata
@@ -481,6 +487,10 @@ def convert_atm_profiles(atm, cfg):
             profiles['no2'][:,:,-1] = 6.2958549E-09
         if 'o3' in cfg['atm']['gases']:
             profiles['o3'][:,:,-1] = 7.4831730E-01
+
+    # do not allow negative or zero values
+    for key in profiles:
+        profiles[key] = profiles[key].clip(min=1.0e-10)
 
     return profiles
 
@@ -576,10 +586,10 @@ def run_disamar(filename,disamar_exe):
     dis_cfg = libRT_no2.RT_configuration(filename=filename)
     output_filename = filename.replace('.in', '.h5')
 
-    RT = libRT_no2.rt_run(cfg=dis_cfg, disamar=disamar_exe, output=output_filename, quiet=True, debug=False)
 
     try:
-        starttime = time.time()
+        RT = libRT_no2.rt_run(cfg=dis_cfg, disamar=disamar_exe, output=output_filename, quiet=True, debug=False)
+        # starttime = time.time()
         RT()
         # logging.info(f'finished: {filename} in {np.round(time.time()-starttime,1)} s')
         return 0
@@ -947,7 +957,7 @@ def scene_generation_module_nitro(logging, config):
         # stat = pool.starmap(run_disamar, zip(dis_cfg_filenames, repeat(config['rtm']['disamar_exe'])),chunksize=1)
         stat = pool.starmap(run_disamar, tqdm.tqdm(zip(dis_cfg_filenames, repeat(config['rtm']['disamar_exe'])),total=len(dis_cfg_filenames)),chunksize=1)
 
-    if sum(stat) > 0:
+    if sum(stat) != 0:
         logging.error('Error in at least one RT calculation run with DISAMAR')
 
     # read disamar output

@@ -8,7 +8,9 @@ import teds.lib.data_netcdf.data_netcdf as dn
 
 def get_logger():
     """
-       Gets or creates a logger
+       Initialise logger with name 'E2E'.
+       Logger can be obtained in other modules with:
+            logger = logging.getLogger('E2E')
     """
 
     log_level = logging.INFO
@@ -16,7 +18,7 @@ def get_logger():
     log_formatter = logging.Formatter(log_format)
     date_format = '%d/%m/%Y %H:%M:%S'
 
-    logger = logging.getLogger(__name__)
+    logger = logging.getLogger('E2E')
     logger.setLevel(log_level)
 
     c_handler = logging.StreamHandler(sys.stdout)

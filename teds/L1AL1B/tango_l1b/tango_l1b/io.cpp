@@ -515,7 +515,11 @@ auto writeL1(const std::string& filename,
             nc_var.putAtt("units", "counts");
             nc_var.putAtt("valid_min", netCDF::ncDouble, 0.0);
             nc_var.putAtt("valid_max", netCDF::ncDouble, 1e100);
-            std::ranges::fill(buf, 1.0);
+            for (size_t i {}; i < n_images; ++i) {
+                for (size_t j {}; j < n_bins; ++j) {
+                    buf[i * n_bins + j] = l1_products[i].stdev[j];
+                }
+            }
             nc_var.putVar(buf.data());
         }
     } else {

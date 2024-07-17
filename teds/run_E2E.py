@@ -54,6 +54,9 @@ def reshape_output(logger, output_key, config):
     if config['cal_level'] == 'rad':
         print("Not detector image. No need to reshape and create temporary output file")
         return temp_output_file
+    elif output_key=='l1b' and config['cal_level'] == 'swath':
+        print("Not detector image. No need to reshape and create temporary output file")
+        return temp_output_file
     elif config['cal_level'] == 'l1b':
         print("Not detector image. No need to reshape and create temporary output file")
         return temp_output_file
@@ -344,18 +347,24 @@ def build(logger, config, step, cfg_path, attribute_dict):
         with open(l1b_config_file,'w') as outfile:
             yaml.dump(l1b_config, outfile)
 
-        # Need to call C++ with L1B specific config file
-        subprocess.run(["L1AL1B/tango_l1b/build/tango_l1b.x", l1b_config_file])
+        if not l1b_config['do_python']:
 
-        # output dataset is 2D. In case of detector image (in case of inbetween step)
-        # the second dimension is detector_pixels which is too large to view. 
-        # Need to reshape to 3D to be able to make sense of this.
-        # temp_output_file = reshape_output(logger, 'l1b', l1b_config)
+            # Need to call C++ with L1B specific config file
+            subprocess.run(["L1AL1B/tango_l1b/build/tango_l1b.x", l1b_config_file])
 
-        # Add attributes to output file
-        # if temp_output_file is not None:
-            # Utils.add_attributes_to_output(logger, temp_output_file, attribute_dict)
-        # Utils.add_attributes_to_output(logger, l1b_config['io']['l1b'], attribute_dict)
+            # output dataset is 2D. In case of detector image (in case of inbetween step)
+            # the second dimension is detector_pixels which is too large to view. 
+            # Need to reshape to 3D to be able to make sense of this.
+            temp_output_file = reshape_output(logger, 'l1b', l1b_config)
+
+            # Add attributes to output file
+            # if temp_output_file is not None:
+                # Utils.add_attributes_to_output(logger, temp_output_file, attribute_dict)
+            # Utils.add_attributes_to_output(logger, l1b_config['io']['l1b'], attribute_dict)
+        else:
+            # run Python code
+            E2EModule = importlib.import_module("L1AL1B.Python.l1b_processor")
+            E2EModule.l1b_processor(l1b_config, logger, attribute_dict)
 
     if step == 'l1l2' or step == 'all':
         l2_config = get_specific_config(logger, configuration, 'L1L2')

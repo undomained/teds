@@ -192,10 +192,6 @@ L1AL1B:
 #    image_end: 105
     image_end: 2
     cal_level: 'l1b' # To indicate wether to calibrate the whole way (l1b) or to stop at a certain point ('prnu' -> calibrate until (NOT INCLUDING) prnu step)
-    detector:
-        binning_table_id: 1         # across track binning
-        exposure_time:    0.021     # exposure time [sec]
-        nr_coadditions:   2         # along track co-adding
 # What about geolocation??????
     noise:
 #        enabled: false      # apply noise calibration (true) or not (false)

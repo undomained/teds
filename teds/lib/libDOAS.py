@@ -10,6 +10,7 @@ import math
 import datetime
 
 from teds.lib import constants
+from lib.libWrite import writevariablefromname
 
 logger = logging.getLogger('E2E')
 class OptimalEstimationException(Exception):
@@ -1805,13 +1806,12 @@ def writeOutput(l2_file,IFDOEconfig,parameterNames,results,geo):
     alt_dim = dst.createDimension('scanline', geo['lat'].shape[0])
     act_dim = dst.createDimension('ground_pixel', geo['lat'].shape[1])
 
-    # coord_string = "lat lon"
-
-    general_vars = ['lat','lon','sza','vza','saa','vaa']
-    for var in general_vars:
-        var_nc = dst.createVariable(var, float, ('scanline','ground_pixel'), fill_value=9.96921E36)
-        # var_nc.coordinates = coord_string
-        var_nc[:,:] = geo[var]
+    _ = writevariablefromname(dst, 'latitude', ('scanline','ground_pixel'), geo['lat'])
+    _ = writevariablefromname(dst, 'longitude', ('scanline','ground_pixel'), geo['lon'])
+    _ = writevariablefromname(dst, 'solarzenithangle', ('scanline','ground_pixel'), geo['sza'])
+    _ = writevariablefromname(dst, 'viewingzenithangle', ('scanline','ground_pixel'), geo['vza'])
+    _ = writevariablefromname(dst, 'solarazimuthangle', ('scanline','ground_pixel'), geo['saa'])
+    _ = writevariablefromname(dst, 'viewingazimuthangle', ('scanline','ground_pixel'), geo['vaa'])
 
 
     group = ''

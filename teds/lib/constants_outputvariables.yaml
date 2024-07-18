@@ -779,3 +779,23 @@ albedo_B12:
   valid_min: 0.0
   valid_max: 1.0
   FillValue: -32767
+
+no2_total_amf:
+  name: no2 total amf
+  long_name: 'NO2 total air-mass factor'
+  units: '-'
+
+no2_averaging_kernel:
+  name: no2 averaging kernel
+  long_name: 'NO2 averaging kernel'
+  units: '-'
+
+no2_total_vcd:
+  name: no2 total vcd
+  long_name: 'NO2 total vertical column density'
+  units: 'molec./cm2'
+
+no2_total_scd:
+  name: no2 total scd
+  long_name: 'NO2 total slant column density'
+  units: 'molec./cm2'

@@ -7,6 +7,7 @@ import netCDF4 as nc
 from scipy import interpolate
 
 from teds.lib import constants
+from lib.libWrite import writevariablefromname
 
 logger = logging.getLogger('E2E')
 
@@ -44,7 +45,7 @@ def get_amf(cfg, doas, atm):
     results = {}
 
     # create output fields
-    dictnames = ['amf_total','no2_total_vcd','no2_total_scd']
+    dictnames = ['no2_total_amf','no2_total_vcd','no2_total_scd']
 
     for name in dictnames:
         results[name] = np.ma.masked_all_like(doas['lat'])
@@ -109,16 +110,16 @@ def get_amf(cfg, doas, atm):
         results['no2_total_scd'][idx,idy] = doas['no2_scd'][idx,idy]
 
         # calculate total amf
-        results['amf_total'][idx,idy] = np.sum(boxamf_clear*no2_profile*cl) / np.sum(no2_profile)
+        results['no2_total_amf'][idx,idy] = np.sum(boxamf_clear*no2_profile*cl) / np.sum(no2_profile)
 
         # calculate scd total by dividing by total amf
-        results['no2_total_vcd'][idx,idy] = results['no2_total_scd'][idx,idy] / results['amf_total'][idx,idy]
+        results['no2_total_vcd'][idx,idy] = results['no2_total_scd'][idx,idy] / results['no2_total_amf'][idx,idy]
 
         # results['tropopause_layer_index'][idx,idy] = tropopause_layer_index
 
         # averaging kernel:  ak =  box_amf * temperature_correction / total_amf
 
-        results['no2_averaging_kernel'][idx,idy,:] = boxamf_clear * cl  / results['amf_total'][idx,idy]
+        results['no2_averaging_kernel'][idx,idy,:] = boxamf_clear * cl  / results['no2_total_amf'][idx,idy]
 
         # logger.info('Processed pixel alt {}/{} act {}/{} in {}s'.format(idx,doas['lat'].shape[0],idy,doas['lat'].shape[1],np.round((time.time() - start_time_pixel),2) ))
 
@@ -227,7 +228,7 @@ def predict_NN(input_vector, NN):
     # check
     if 'layer_4' not in NN:
         logger.error('All NNs should have 4 layers')
-        sys.exit()
+        raise
     
     # apply NN
     layer1 = leakyrelu(np.dot(input_vector_norm,NN['layer_1']['kernel']) + NN['layer_1']['bias'])
@@ -250,45 +251,17 @@ def write_amf(cfg,amf):
 
     with nc.Dataset(cfg['io']['l2'], 'a') as dst:
 
-        # dst.amf_config = str(cfg)
-
-        group = 'amf'
-        if group not in dst.groups.keys():
-            newgroup = dst.createGroup(group)
-
-            p_dim = dst[group].createDimension('pressure_layer', amf['pressure_layer'].shape[-1])
         
-        # coord_string = "lat lon"
-
-
-        def write_field(dictname,fieldname,units=None):
-
-            if fieldname in dst[group].variables.keys():
-                dst[group][fieldname][:] = amf[dictname]
-            
-            else:
-
-                if amf[dictname].ndim == 2:
-                    var = dst[group].createVariable(fieldname, float, ('scanline','ground_pixel'), fill_value=9.96921E36)
-                    # var.coordinates = coord_string
-                    var[:,:] =   amf[dictname]
-
-                elif amf[dictname].ndim == 3:
-                    var = dst[group].createVariable(fieldname, float, ('scanline','ground_pixel','pressure_layer'), fill_value=9.96921E36)
-                    var[:,:,:] =  amf[dictname]
-
-                if units:
-                    var.units = units
-                else:
-                    var.units = '-'
-
-            return
-
-        write_field('amf_total','amf_total')
-        write_field('no2_averaging_kernel','no2_averaging_kernel')
-        write_field('pressure_layer','pressure_layer', units='hPa')
-        write_field('no2_total_vcd','no2_total_vcd', units='molec./cm2')
-        write_field('no2_total_scd','no2_total_scd', units='molec./cm2')
+        dim_2d = ('scanline','ground_pixel')
+        dim_3d = ('scanline','ground_pixel','pressure_layers')
+        
+        p_dim = dst.createDimension(dim_3d[-1], amf['pressure_layer'].shape[-1])
+        
+        _ = writevariablefromname(dst, 'pressure_layers',       dim_3d,     amf['pressure_layer'])
+        _ = writevariablefromname(dst, 'no2_averaging_kernel',  dim_3d,     amf['no2_averaging_kernel'])
+        _ = writevariablefromname(dst, 'no2_total_amf',         dim_2d,     amf['no2_total_amf'])
+        _ = writevariablefromname(dst, 'no2_total_vcd',         dim_2d,     amf['no2_total_vcd'])
+        _ = writevariablefromname(dst, 'no2_total_scd',         dim_2d,     amf['no2_total_scd'])
 
     return
 

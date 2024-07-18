@@ -108,9 +108,9 @@ def ifdoe_run(cfg):
     results['errorFlag'] = np.full((scanN,pxlN),np.nan)
 
 
-    # read geometry
+    # read geometry from L1B
 
-    geo = libDOAS.readGeometry(cfg['io']['gm'])
+    geo = libDOAS.readGeometry(cfg['io']['l1b'])
 
     # B)  Solar spectrum
     # ------------------

@@ -11,6 +11,8 @@ import cartopy.crs as crs
 import matplotlib as mpl
 from scipy.stats import linregress
 
+logger = logging.getLogger('E2E')
+
 def read_file(file):
     # read in netcdf file, return as dict
     # descends into groups (only 1 level) as saves vars to root of dict
@@ -144,7 +146,7 @@ def plot_scatter(var1,var2,var_name,var1_name,var2_name,save_location):
     return
 
 
-def pam_nitro(logger,cfg):
+def pam_nitro(cfg):
 
 
     logger.info(f"Started PAM")

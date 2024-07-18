@@ -10,7 +10,9 @@ import math
 import datetime
 
 from teds.lib import constants
+from lib.libWrite import writevariablefromname
 
+logger = logging.getLogger('E2E')
 class OptimalEstimationException(Exception):
     pass
 
@@ -1405,13 +1407,13 @@ def irrCal(irr,irrError,irrWvl,cfg,IFDOERefSpec,groundPixel,verboseLevel):
         lambdaCentre = irrCalConfig['fit_window'][0] + (irrCalConfig['fit_window'][1]-irrCalConfig['fit_window'][0])/2
         lambdaStar = 2*(irrWvl - (lambdaCentre) ) / (irrCalConfig['fit_window'][1] - irrCalConfig['fit_window'][0])
         irrWvlCal = irrWvl + irrCalWs + irrCalWq*lambdaStar
-        logging.debug(('irr cal. (ws, ws_sigma, wq, wq_sigma): ',irrCalWs,irrCalWsSigma,irrCalWq,irrCalWqSigma))
+        logger.debug(('irr cal. (ws, ws_sigma, wq, wq_sigma): ',irrCalWs,irrCalWsSigma,irrCalWq,irrCalWqSigma))
         return irrWvlCal, irrCalWs, irrCalWsSigma, irrCalWq, irrCalWqSigma, irrCalChiSquare, irrCalConverged
 
 
     else:
         irrWvlCal = irrWvl + irrCalWs
-        logging.debug(('irr cal. (ws, ws_sigma): ',irrCalWs,irrCalWsSigma))
+        logger.debug(('irr cal. (ws, ws_sigma): ',irrCalWs,irrCalWsSigma))
         return irrWvlCal, irrCalWs, irrCalWsSigma, np.nan, np.nan, irrCalChiSquare, irrCalConverged
 
 
@@ -1511,13 +1513,13 @@ def radCal(rad,radError,radWvl,cfg,IFDOERefSpec,groundPixel,verboseLevel):
         lambdaCentre = radCalConfig['fit_window'][0] + (radCalConfig['fit_window'][1]-radCalConfig['fit_window'][0])/2
         lambdaStar = 2*(radWvl - (lambdaCentre) ) / (radCalConfig['fit_window'][1] - radCalConfig['fit_window'][0])
         radWvlCal = radWvl + radCalWs + radCalWq*lambdaStar
-        logging.debug(('rad cal. (ws, ws_sigma, wq, wq_sigma): ',radCalWs,radCalWsSigma,radCalWq,radCalWqSigma))
+        logger.debug(('rad cal. (ws, ws_sigma, wq, wq_sigma): ',radCalWs,radCalWsSigma,radCalWq,radCalWqSigma))
         return radWvlCal, radCalWs, radCalWsSigma, radCalWq, radCalWqSigma, radCalChiSquare, radCalConverged
 
 
     else:
         radWvlCal = radWvl + radCalWs
-        logging.debug(('rad cal. (ws, ws_sigma): ',radCalWs,radCalWsSigma))
+        logger.debug(('rad cal. (ws, ws_sigma): ',radCalWs,radCalWsSigma))
         return radWvlCal, radCalWs, radCalWsSigma, np.nan, np.nan, radCalChiSquare, radCalConverged
 
 
@@ -1547,7 +1549,7 @@ def IFDOEparameters(cfg):
     for ipoly in range(0,cfg['intensity_coefs'],1):
         parameterNames.append('C'+str(ipoly))
 
-    logging.info('Parameter names: %s' % parameterNames )
+    logger.info('Parameter names: %s' % parameterNames )
     
     return parameterNames
 
@@ -1804,13 +1806,12 @@ def writeOutput(l2_file,IFDOEconfig,parameterNames,results,geo):
     alt_dim = dst.createDimension('scanline', geo['lat'].shape[0])
     act_dim = dst.createDimension('ground_pixel', geo['lat'].shape[1])
 
-    # coord_string = "lat lon"
-
-    general_vars = ['lat','lon','sza','vza','saa','vaa']
-    for var in general_vars:
-        var_nc = dst.createVariable(var, float, ('scanline','ground_pixel'), fill_value=9.96921E36)
-        # var_nc.coordinates = coord_string
-        var_nc[:,:] = geo[var]
+    _ = writevariablefromname(dst, 'latitude', ('scanline','ground_pixel'), geo['lat'])
+    _ = writevariablefromname(dst, 'longitude', ('scanline','ground_pixel'), geo['lon'])
+    _ = writevariablefromname(dst, 'solarzenithangle', ('scanline','ground_pixel'), geo['sza'])
+    _ = writevariablefromname(dst, 'viewingzenithangle', ('scanline','ground_pixel'), geo['vza'])
+    _ = writevariablefromname(dst, 'solarazimuthangle', ('scanline','ground_pixel'), geo['saa'])
+    _ = writevariablefromname(dst, 'viewingazimuthangle', ('scanline','ground_pixel'), geo['vaa'])
 
 
     group = ''
@@ -1999,11 +2000,21 @@ def writeOutput(l2_file,IFDOEconfig,parameterNames,results,geo):
     
     return
 
-def readGeometry(gm_file):
+def readGeometry(rad_file):
+    # Read geometry from L1B
+
     geo = {}
 
-    with nc.Dataset(gm_file) as f:
-        for key in f.variables.keys():
-            geo[key] = f[key][:]
+    vardict = { 'vza':'sensor_zenith',
+                'sza':'solar_zenith',
+                'vaa':'sensor_azimuth',
+                'saa':'solar_azimuth',
+                'lat':'latitude',
+                'lon':'longitude',
+                'height':'height'}
+    
+    with nc.Dataset(rad_file) as f:
+        for key in vardict:
+            geo[key] = f['geolocation_data/'+vardict[key]][:]
 
     return geo

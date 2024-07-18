@@ -304,7 +304,7 @@ def build(logger, config, step, cfg_path, attribute_dict):
         sgm_config = get_specific_config(logger, configuration, 'SGM')
         attribute_dict = add_module_specific_attributes(logger, sgm_config, attribute_dict, 'sgm')
         E2EModule = importlib.import_module("SGM.sgm_no2")
-        E2EModule.scene_generation_module_nitro(logger,sgm_config)
+        E2EModule.scene_generation_module_nitro(sgm_config)
         Utils.add_attributes_to_output(logger, sgm_config['io']['sgm_rad'], attribute_dict)
         Utils.add_attributes_to_output(logger, sgm_config['io']['sgm_atm'], attribute_dict)
         Utils.add_attributes_to_output(logger, sgm_config['io']['sgm_atm_raw'], attribute_dict)
@@ -370,14 +370,14 @@ def build(logger, config, step, cfg_path, attribute_dict):
         l2_config = get_specific_config(logger, configuration, 'L1L2')
         attribute_dict = add_module_specific_attributes(logger, l2_config, attribute_dict, 'l1l2')
         E2EModule = importlib.import_module("L1L2.l1bl2_no2")
-        E2EModule.l1bl2_no2(logger, l2_config)
-        Utils.add_attributes_to_output(logger, l2_config['io']['l2'], attribute_dict)
+        E2EModule.l1bl2_no2(l2_config)
+        # Utils.add_attributes_to_output(logger, l2_config['io']['l2'], attribute_dict)
 
     if step == 'pam' or step == 'all':
         pam_config = get_specific_config(logger, configuration, 'PAM')
         attribute_dict = add_module_specific_attributes(logger, pam_config, attribute_dict, 'pam')
         E2EModule = importlib.import_module("PAM.pam")
-        E2EModule.pam_nitro(logger, pam_config)
+        E2EModule.pam_nitro(pam_config)
 
 if __name__ == "__main__":
 

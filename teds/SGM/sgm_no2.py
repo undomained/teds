@@ -26,6 +26,7 @@ from scipy.interpolate import RegularGridInterpolator
 from lib import libATM, libSGM, libRT_no2, libNumTools, constants
 from lib.libWrite import writevariablefromname
 
+logger = logging.getLogger('E2E')
 
 class Emptyclass:
     """Empty class. Data container."""
@@ -83,9 +84,6 @@ def get_dem(fname, lat, lon, radius: int = 3):
 
 def time_units_in_seconds(time_units):
 
-    logger = logging.getLogger()
-
-
     tu = time_units.split(' ')[0]
     
     if tu == 'seconds':
@@ -102,7 +100,6 @@ def time_units_in_seconds(time_units):
 
 def get_cams_profiles( cfg, time, lats, lons):
 
-    logger = logging.getLogger()
 
     mmr_to_ppmv = {}
     mmr_to_ppmv['no2'] =  28.9644 / 46.0055 * 1e6
@@ -340,7 +337,7 @@ def interpolate_data_regular_nitro(indata, gm_data, config):
     outdata: Class
         Meteo data on gm grid
     """
-    logging.debug('Interpolating data to GM mesh...')
+    logger.debug('Interpolating data to GM mesh...')
     outdata = Emptyclass()
     outdata.__setattr__("lat", gm_data['lat'])
     outdata.__setattr__("lon", gm_data['lon'])
@@ -361,6 +358,8 @@ def interpolate_data_regular_nitro(indata, gm_data, config):
             fa = RegularGridInterpolator((indata.ypos, indata.xpos), conv_gas[:, :, iz], 
                                          bounds_error=False, fill_value=gasmin)
             interpdata[:, :, iz] = fa((gm_data['ypos'], gm_data['xpos']))
+        # do not allow negative values
+        interpdata = interpdata.clip(min=0)
         outdata.__setattr__('dcol_'+gas, interpdata)
 
         interpdata = np.zeros([dim_alt, dim_act, dim_lay])
@@ -370,6 +369,8 @@ def interpolate_data_regular_nitro(indata, gm_data, config):
             fa = RegularGridInterpolator((indata.ypos, indata.xpos), ppmv_gas[:, :, iz], 
                                          bounds_error=False, fill_value=gasmin)
             interpdata[:, :, iz] = fa((gm_data['ypos'], gm_data['xpos']))
+        # do not allow negative values
+        interpdata = interpdata.clip(min=0)
         outdata.__setattr__('ppmv_'+gas, interpdata)
 
     if config['atm']['type'] == 'afgl':
@@ -401,6 +402,8 @@ def interpolate_data_regular_nitro(indata, gm_data, config):
                 fa = RegularGridInterpolator((indata.ypos, indata.xpos), vardata[:, :, iz], 
                                             bounds_error=False, fill_value=varmin)
                 interpdata[:, :, iz] = fa((gm_data['ypos'], gm_data['xpos']))
+            # do not allow negative values
+            interpdata = interpdata.clip(min=0)
             outdata.__setattr__(var, interpdata)
      
     return albedo, outdata
@@ -482,6 +485,10 @@ def convert_atm_profiles(atm, cfg):
         if 'o3' in cfg['atm']['gases']:
             profiles['o3'][:,:,-1] = 7.4831730E-01
 
+    # do not allow negative or zero values
+    for key in profiles:
+        profiles[key] = profiles[key].clip(min=1.0e-10)
+
     return profiles
 
 
@@ -492,7 +499,6 @@ def set_disamar_cfg_sim(cfg, dis_cfg, ground_points, profiles, albedo, i_t, i_x)
     # Modify the disamar input file for simulation of spectra
     # all instruments modification off, no slit, high resolution
 
-    logger = logging.getLogger()
 
     # GENERAL
 
@@ -576,21 +582,19 @@ def run_disamar(filename,disamar_exe):
     dis_cfg = libRT_no2.RT_configuration(filename=filename)
     output_filename = filename.replace('.in', '.h5')
 
-    RT = libRT_no2.rt_run(cfg=dis_cfg, disamar=disamar_exe, output=output_filename, quiet=True, debug=False)
 
     try:
+        RT = libRT_no2.rt_run(cfg=dis_cfg, disamar=disamar_exe, output=output_filename, quiet=True, debug=False)
         starttime = time.time()
         RT()
-        # logging.info(f'finished: {filename} in {np.round(time.time()-starttime,1)} s')
+        logger.debug(f'finished: {filename} in {np.round(time.time()-starttime,1)} s')
         return 0
     except:
-        # logging.error(f'failed: {filename}')
+        logger.error(f'failed: {filename}')
         return -1
 
 
 def read_disamar_output(gm_data,tmp_dir):
-
-    logger = logging.getLogger()
 
     nalt, nact = gm_data['lat'].shape
 
@@ -741,13 +745,14 @@ def sgm_output_atm(config, atm, albedo, microhh_data, mode='raw'):
     return
 
 
-def scene_generation_module_nitro(logging, config):
+def scene_generation_module_nitro(config):
     """
     Scene generation algorithm for NO2
 
     Note: for now only works for profile: orbit
     """
-    logging.info('Starting SGM calculation')
+
+    logger.info('Starting SGM calculation')
 
     start_time = time.time()
 
@@ -757,21 +762,21 @@ def scene_generation_module_nitro(logging, config):
 
     gm_data = get_gm_data(config['io']['gm'])
     nalt, nact = gm_data['sza'].shape
-    logging.info(f"Pixels along track: {nalt} ; Pixels across track: {nact}")
+    logger.info(f"Pixels along track: {nalt} ; Pixels across track: {nact}")
 
     # =============================================================================================
     # 2) get microHH data
     # =============================================================================================
     if config['atm']['microHH']['use']:
         if ((not os.path.exists(config['atm']['microHH']['dump'])) or config['atm']['microHH']['forced']):
-            logging.info(f"Loading microHH data: {config['atm']['microHH']['path_data']}")
+            logger.info(f"Loading microHH data: {config['atm']['microHH']['path_data']}")
 
             microhh_data = libATM.get_atmosphericdata_new(gm_data['lat'], gm_data['lon'], config['atm']['microHH'])
             
             # Dump microHH dictionary into temporary pkl file
             pickle.dump(microhh_data.__dict__, open(config['atm']['microHH']['dump'], 'wb'))
         else:
-            logging.info(f"Loading microHH data from dump file: {config['atm']['microHH']['dump']}")
+            logger.info(f"Loading microHH data from dump file: {config['atm']['microHH']['dump']}")
             # Read microHH from pickle file
             microhh_data = Dict2Class(pickle.load(open(config['atm']['microHH']['dump'], 'rb')))
         lat = microhh_data.lat
@@ -789,10 +794,10 @@ def scene_generation_module_nitro(logging, config):
 
     file_exists = os.path.isfile(config['S2_albedo']['dump'])
     if (file_exists and (not config['S2_albedo']['forced'])):
-        logging.info(f"Loading S2 data from dump file: {config['S2_albedo']['dump']}")
+        logger.info(f"Loading S2 data from dump file: {config['S2_albedo']['dump']}")
         albedo = pickle.load(open(config['S2_albedo']['dump'], 'rb'))
     else:
-        logging.info(f"Downloading S2 data for band: {config['S2_albedo']['band']}")
+        logger.info(f"Downloading S2 data for band: {config['S2_albedo']['band']}")
                 
         albedo = libSGM.get_sentinel2_albedo_new(lat, lon, [config['S2_albedo']['band']])
 
@@ -813,7 +818,7 @@ def scene_generation_module_nitro(logging, config):
 
         case 'afgl':
 
-            logging.info(f"Loading afgl atmosphere: {config['atm']['afgl']['path']}")
+            logger.info(f"Loading afgl atmosphere: {config['atm']['afgl']['path']}")
 
             # 4A) get a model atm from AFGL files
 
@@ -844,7 +849,7 @@ def scene_generation_module_nitro(logging, config):
             
         case 'cams':
 
-            logging.info(f"Loading CAMS atmosphere: {config['atm']['cams']['path']}")
+            logger.info(f"Loading CAMS atmosphere: {config['atm']['cams']['path']}")
 
             # 4B) get atm from CAMS
 
@@ -853,14 +858,14 @@ def scene_generation_module_nitro(logging, config):
             atm = Dict2Class(atm)
             if config['atm']['dem']['use']:
 
-                logging.info(f"Loading DEM: {config['atm']['dem']['path']}")
+                logger.info(f"Loading DEM: {config['atm']['dem']['path']}")
                 # correct surface pressure with DEM
                 atm.zsfc = get_dem(config['atm']['dem']['path'], lat, lon)
                 atm.psfc = atm.psl * np.exp( -1 * atm.zsfc / 8000.) # use 8 km scale height
 
             if config['atm']['microHH']['use']:
 
-                logging.info(f"Merging CAMS and microHH atmosphere")
+                logger.info(f"Merging CAMS and microHH atmosphere")
 
                 microhh_data = elevation_to_pressure(microhh_data,atm.psfc)
 
@@ -870,7 +875,7 @@ def scene_generation_module_nitro(logging, config):
             atm = mixingratio_to_column(config,atm)
 
 
-    logging.info(f"Writing raw scene atmosphere: {config['io']['sgm_atm_raw']}")
+    logger.info(f"Writing raw scene atmosphere: {config['io']['sgm_atm_raw']}")
         
     sgm_output_atm(config, atm, albedo, microhh_data, mode = 'raw')
 
@@ -881,7 +886,7 @@ def scene_generation_module_nitro(logging, config):
     # only convolve + interpolate when microHH is used
     # otherwise source grid is already interpolated to instrument grid
     if config['atm']['microHH']['use']:
-        logging.info('Convolving SGM atmosphere with instrument spatial response function')
+        logger.info('Convolving SGM atmosphere with instrument spatial response function')
 
         #convolution of albeod and microHH data with instrument spatial response
         atm = convolvedata_nitro(atm, albedo.B01_albedo, microhh_data, config)
@@ -901,17 +906,17 @@ def scene_generation_module_nitro(logging, config):
 
 
         # write atm to file
-        logging.info(f"Writing convolved scene atmosphere: {config['io']['sgm_atm']}")
+        logger.info(f"Writing convolved scene atmosphere: {config['io']['sgm_atm']}")
         sgm_output_atm(config, atm, albedo, microhh_data, mode = 'convolved')
 
     # =============================================================================================
     # 6) radiative transfer simulations with DISAMAR
     # =============================================================================================
 
-    logging.info('Radiative transfer simulation')
+    logger.info('Radiative transfer simulation')
 
     # generate the disamar config files and tmp dirs
-    logging.info('Creating config files DISAMAR')
+    logger.info('Creating config files DISAMAR')
 
     # convert atm profiles to disamar format
     dis_profiles = convert_atm_profiles(atm, config)
@@ -919,14 +924,14 @@ def scene_generation_module_nitro(logging, config):
     if os.path.isfile(config['rtm']['disamar_cfg_template']):
         dis_cfg = libRT_no2.RT_configuration(filename=config['rtm']['disamar_cfg_template'])
     else:
-        logging.error(f"File {config['rtm']['disamar_cfg_template']} not found")
+        logger.error(f"File {config['rtm']['disamar_cfg_template']} not found")
 
     dis_cfg_filenames=[]
 
     timestamp = datetime.datetime.now().strftime('%Y%m%dT%H%M%S')
     tmp_dir = '{}/{}'.format( config['rtm']['tmp_dir'], timestamp)
     if not os.path.isdir(tmp_dir):
-        logging.info(f'Creating tmp directory DISAMAR: {tmp_dir}')
+        logger.info(f'Creating tmp directory DISAMAR: {tmp_dir}')
 
         os.makedirs(tmp_dir, exist_ok=True)
 
@@ -941,33 +946,33 @@ def scene_generation_module_nitro(logging, config):
     
 
     # run disamar in parallel
-    logging.info('Running DISAMAR')
+    logger.info('Running DISAMAR')
 
     with multiprocessing.Pool(config['rtm']['n_threads']) as pool:
         # stat = pool.starmap(run_disamar, zip(dis_cfg_filenames, repeat(config['rtm']['disamar_exe'])),chunksize=1)
         stat = pool.starmap(run_disamar, tqdm.tqdm(zip(dis_cfg_filenames, repeat(config['rtm']['disamar_exe'])),total=len(dis_cfg_filenames)),chunksize=1)
 
-    if sum(stat) > 0:
-        logging.error('Error in at least one RT calculation run with DISAMAR')
+    if sum(stat) != 0:
+        logger.error('Error in at least one RT calculation run with DISAMAR')
 
     # read disamar output
-    logging.info('Reading DISAMAR output')
+    logger.info('Reading DISAMAR output')
 
     dis_output = read_disamar_output(gm_data, tmp_dir)
 
     # cleanup
     if config['rtm']['cleanup']:
-        logging.info('Cleaning up tmp directory DISAMAR')
+        logger.info('Cleaning up tmp directory DISAMAR')
         shutil.rmtree(tmp_dir)
 
     # =============================================================================================
     # 7) sgm output to radiometric file
     # =============================================================================================
-    logging.info(f"Writing scene radiance to: {config['io']['sgm_rad']}")
+    logger.info(f"Writing scene radiance to: {config['io']['sgm_rad']}")
 
     sgm_output_radio(config, dis_output)
 
-    logging.info(f'SGM calculation finished in {np.round(time.time()-start_time,1)} s')
+    logger.info(f'SGM calculation finished in {np.round(time.time()-start_time,1)} s')
     return
 
 
@@ -1007,5 +1012,5 @@ if __name__ == '__main__':
 
     logging.info(f'Reading config file: {sys.argv[1]}')
     config = yaml.safe_load(open(sys.argv[1]))
-    scene_generation_module_nitro(logging,config)
+    scene_generation_module_nitro(config)
 

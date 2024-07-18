@@ -24,6 +24,8 @@ auto SettingsIM::scanKeys() -> void
 
     scan(dark.enabled);
 
+    scan(nonlin.enabled);
+
     scan(noise.enabled);
     scan(noise.seed);
 

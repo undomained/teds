@@ -15,6 +15,8 @@ import datetime
 from teds.lib import libDOAS, libAMF
 from teds.lib.libWrite import writevariablefromname
 
+logger = logging.getLogger('E2E')
+
 def conv_irr(sgm_rad_file, fwhm):
     # convolve irradiance with Gaussian ISRF
     with nc.Dataset(sgm_rad_file) as f:
@@ -41,7 +43,7 @@ def conv_irr(sgm_rad_file, fwhm):
     return file_out
 
 
-def ifdoe_run(logger, cfg):
+def ifdoe_run(cfg):
     '''
      Routine which contains the IFDOE processing chain, i.e
      the main sections.
@@ -106,9 +108,9 @@ def ifdoe_run(logger, cfg):
     results['errorFlag'] = np.full((scanN,pxlN),np.nan)
 
 
-    # read geometry
+    # read geometry from L1B
 
-    geo = libDOAS.readGeometry(cfg['io']['gm'])
+    geo = libDOAS.readGeometry(cfg['io']['l1b'])
 
     # B)  Solar spectrum
     # ------------------
@@ -604,7 +606,7 @@ def ifdoe_run(logger, cfg):
     return results
 
 
-def amf_run(logger,cfg):
+def amf_run(cfg):
 
     startTime = time.time()
 
@@ -615,7 +617,7 @@ def amf_run(logger,cfg):
     atm = libAMF.read_atm(cfg['io']['sgm_atm'])
 
     logger.info('Calculating AMF')
-    amf_results = libAMF.get_amf(logger, cfg['amf'], doas, atm)
+    amf_results = libAMF.get_amf(cfg['amf'], doas, atm)
 
     logger.info(f"Writing AMF results to: {cfg['io']['l2']}")
     libAMF.write_amf(cfg,amf_results)
@@ -625,7 +627,7 @@ def amf_run(logger,cfg):
     return amf_results
 
 
-def l1bl2_no2(logger,cfg):
+def l1bl2_no2(cfg):
 
     startTime = time.time()
 
@@ -650,9 +652,9 @@ def l1bl2_no2(logger,cfg):
     cfg_doas['io'] = dict(cfg['io'])
 
     with threadpool_limits(limits=numpy_cpu, user_api='blas'):
-        doas_results = ifdoe_run(logger, cfg_doas)
+        doas_results = ifdoe_run(cfg_doas)
                         
-    amf_results = amf_run(logger, cfg)
+    amf_results = amf_run(cfg)
 
     logger.info(f'L1L2 calculation finished in {np.round(time.time()-startTime,1)} s')
 
@@ -710,8 +712,8 @@ if __name__ == '__main__':
     with threadpool_limits(limits=numpy_cpu, user_api='blas'):
 
         if cfg['doas']['run']:
-            doas_results = ifdoe_run(logger, cfg)
+            doas_results = ifdoe_run(cfg)
                         
         if cfg['amf']['run']:
-            amf_results = amf_run(logger,cfg)
+            amf_results = amf_run(cfg)
 

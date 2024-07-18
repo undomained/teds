@@ -2,12 +2,13 @@ import sys
 import numpy as np
 import tqdm
 import time
-
+import logging
 import netCDF4 as nc
 from scipy import interpolate
 
 from teds.lib import constants
 
+logger = logging.getLogger('E2E')
 
 def read_atm(file_atm):
 
@@ -35,7 +36,7 @@ def read_doas(file_doas):
 
     return doas
 
-def get_amf(logger, cfg, doas, atm):
+def get_amf(cfg, doas, atm):
     # -----------------------------------------------------------------
     # Calculate NO2 AMF using AMF LUT NN
     # -----------------------------------------------------------------
@@ -225,7 +226,7 @@ def predict_NN(input_vector, NN):
 
     # check
     if 'layer_4' not in NN:
-        logging.error('All NNs should have 4 layers')
+        logger.error('All NNs should have 4 layers')
         sys.exit()
     
     # apply NN

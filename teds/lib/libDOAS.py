@@ -11,6 +11,7 @@ import datetime
 
 from teds.lib import constants
 
+logger = logging.getLogger('E2E')
 class OptimalEstimationException(Exception):
     pass
 
@@ -1405,13 +1406,13 @@ def irrCal(irr,irrError,irrWvl,cfg,IFDOERefSpec,groundPixel,verboseLevel):
         lambdaCentre = irrCalConfig['fit_window'][0] + (irrCalConfig['fit_window'][1]-irrCalConfig['fit_window'][0])/2
         lambdaStar = 2*(irrWvl - (lambdaCentre) ) / (irrCalConfig['fit_window'][1] - irrCalConfig['fit_window'][0])
         irrWvlCal = irrWvl + irrCalWs + irrCalWq*lambdaStar
-        logging.debug(('irr cal. (ws, ws_sigma, wq, wq_sigma): ',irrCalWs,irrCalWsSigma,irrCalWq,irrCalWqSigma))
+        logger.debug(('irr cal. (ws, ws_sigma, wq, wq_sigma): ',irrCalWs,irrCalWsSigma,irrCalWq,irrCalWqSigma))
         return irrWvlCal, irrCalWs, irrCalWsSigma, irrCalWq, irrCalWqSigma, irrCalChiSquare, irrCalConverged
 
 
     else:
         irrWvlCal = irrWvl + irrCalWs
-        logging.debug(('irr cal. (ws, ws_sigma): ',irrCalWs,irrCalWsSigma))
+        logger.debug(('irr cal. (ws, ws_sigma): ',irrCalWs,irrCalWsSigma))
         return irrWvlCal, irrCalWs, irrCalWsSigma, np.nan, np.nan, irrCalChiSquare, irrCalConverged
 
 
@@ -1511,13 +1512,13 @@ def radCal(rad,radError,radWvl,cfg,IFDOERefSpec,groundPixel,verboseLevel):
         lambdaCentre = radCalConfig['fit_window'][0] + (radCalConfig['fit_window'][1]-radCalConfig['fit_window'][0])/2
         lambdaStar = 2*(radWvl - (lambdaCentre) ) / (radCalConfig['fit_window'][1] - radCalConfig['fit_window'][0])
         radWvlCal = radWvl + radCalWs + radCalWq*lambdaStar
-        logging.debug(('rad cal. (ws, ws_sigma, wq, wq_sigma): ',radCalWs,radCalWsSigma,radCalWq,radCalWqSigma))
+        logger.debug(('rad cal. (ws, ws_sigma, wq, wq_sigma): ',radCalWs,radCalWsSigma,radCalWq,radCalWqSigma))
         return radWvlCal, radCalWs, radCalWsSigma, radCalWq, radCalWqSigma, radCalChiSquare, radCalConverged
 
 
     else:
         radWvlCal = radWvl + radCalWs
-        logging.debug(('rad cal. (ws, ws_sigma): ',radCalWs,radCalWsSigma))
+        logger.debug(('rad cal. (ws, ws_sigma): ',radCalWs,radCalWsSigma))
         return radWvlCal, radCalWs, radCalWsSigma, np.nan, np.nan, radCalChiSquare, radCalConverged
 
 
@@ -1547,7 +1548,7 @@ def IFDOEparameters(cfg):
     for ipoly in range(0,cfg['intensity_coefs'],1):
         parameterNames.append('C'+str(ipoly))
 
-    logging.info('Parameter names: %s' % parameterNames )
+    logger.info('Parameter names: %s' % parameterNames )
     
     return parameterNames
 

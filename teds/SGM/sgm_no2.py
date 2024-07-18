@@ -587,7 +587,7 @@ def run_disamar(filename,disamar_exe):
         RT = libRT_no2.rt_run(cfg=dis_cfg, disamar=disamar_exe, output=output_filename, quiet=True, debug=False)
         starttime = time.time()
         RT()
-        logger.info(f'finished: {filename} in {np.round(time.time()-starttime,1)} s')
+        logger.debug(f'finished: {filename} in {np.round(time.time()-starttime,1)} s')
         return 0
     except:
         logger.error(f'failed: {filename}')

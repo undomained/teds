@@ -368,7 +368,7 @@ def build(logger, config, step, cfg_path, attribute_dict):
         pam_config = get_specific_config(logger, configuration, 'PAM')
         attribute_dict = add_module_specific_attributes(logger, pam_config, attribute_dict, 'pam')
         E2EModule = importlib.import_module("PAM.pam")
-        E2EModule.pam_nitro(logger, pam_config)
+        E2EModule.pam_nitro(pam_config)
 
 if __name__ == "__main__":
 

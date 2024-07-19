@@ -2,6 +2,7 @@ import os, sys
 import logging
 import yaml
 import subprocess
+import netCDF4 as nc
 
 from teds.IM.Python.input.input_yaml import Input_yaml
 import teds.lib.data_netcdf.data_netcdf as dn
@@ -99,9 +100,13 @@ def add_attributes_to_output(logger, output_file, attribute_dict):
         Add attributes to the output file
     """
 
-    out_data = dn.DataNetCDF(logger, output_file, mode='r')
-    for name, value in attribute_dict.items():
-        out_data.add(name, value=str(value), kind='attribute')
-    out_data.write()
-    return
+    # out_data = dn.DataNetCDF(logger, output_file, mode='r')
+    # for name, value in attribute_dict.items():
+    #     out_data.add(name, value=str(value), kind='attribute')
+    # out_data.write()
+    # return
 
+    with nc.Dataset(output_file, 'a') as file:
+        for name, value in attribute_dict.items():
+            setattr(file, name, str(value))
+    return

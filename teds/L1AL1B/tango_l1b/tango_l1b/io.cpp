@@ -68,8 +68,8 @@ auto initLogging(const bool set_debug_level) -> void
     }
 }
 
-auto printHeading(const std::string& heading, const bool incl_empty_line)
-  -> void
+auto printHeading(const std::string& heading,
+                  const bool incl_empty_line) -> void
 {
     if (incl_empty_line) {
         spdlog::get("plain")->info("");
@@ -176,8 +176,8 @@ auto checkFileWritable(const std::string& filename) -> void
     }
 }
 
-auto splitString(const std::string& list, const char delimiter)
-  -> std::vector<std::string>
+auto splitString(const std::string& list,
+                 const char delimiter) -> std::vector<std::string>
 {
     std::stringstream ss { list };
     std::string name {};
@@ -342,12 +342,14 @@ auto readL1(const std::string& filename,
             }
         } else {
             const auto nc_grp { nc.getGroup("observation_data") };
-            nc_grp.getVar("radiance").getVar({ alt_beg, 0, 0 },
-                                      { n_images, n_act, n_wavelength },
-                                      spectra.data());
-            nc_grp.getVar("radiance_stdev").getVar({ alt_beg, 0, 0 },
-                                            { n_images, n_act, n_wavelength },
-                                            spectra_stdev.data());
+            nc_grp.getVar("radiance")
+              .getVar({ alt_beg, 0, 0 },
+                      { n_images, n_act, n_wavelength },
+                      spectra.data());
+            nc_grp.getVar("radiance_stdev")
+              .getVar({ alt_beg, 0, 0 },
+                      { n_images, n_act, n_wavelength },
+                      spectra_stdev.data());
             nc_grp.getVar("wavelength").getVar(wavelength.data());
         }
         auto wavelength_lbl {

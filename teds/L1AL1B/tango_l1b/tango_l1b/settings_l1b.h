@@ -142,10 +142,19 @@ public:
             "Which ones to use is determined by the L1A fiel\n"
             "/image_attributes/binning_table"
         };
-        Setting<std::string> l1a { { "io", "l1a" }, {}, "L1A product (input)" };
-        Setting<std::string> l1b { { "io", "l1b" },
-                                   {},
-                                   "L1B product (output)" };
+        Setting<std::string> l1a {
+            { "io", "l1a" },
+            {},
+            "L1A product (input). If cal_level, while running the instrument\n"
+            "model, was set to anything other than l1a then this is actually\n"
+            "not an L1A but a higher level product."
+        };
+        Setting<std::string> l1b {
+            { "io", "l1b" },
+            {},
+            "L1B product (output). If cal_level is set to anything other than\n"
+            "l1b then this is not an L1B but a lower level product."
+        };
         Setting<std::string> geometry { { "io", "geometry" },
                                         {},
                                         "geometry file (input)" };

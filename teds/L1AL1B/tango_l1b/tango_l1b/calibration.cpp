@@ -46,11 +46,13 @@ auto binningTable(const BinningTable& binning_table,
                   L1& l1) -> void
 {
     auto pixel_mask { l1.pixel_mask };
-    binning_table.bin(pixel_mask);
+    if (unbin != Unbin::none) {
+        binning_table.bin(pixel_mask);
+    }
     for (int i {}; i < static_cast<int>(l1.image.size()); ++i) {
-        // if (!pixel_mask[i]) {
+        if (!pixel_mask[i]) {
             l1.image[i] /= binning_table.binSize(i);
-        // }
+        }
     }
     l1.level = ProcLevel::raw;
     if (unbin == Unbin::none) {

@@ -610,20 +610,28 @@ def amf_run(cfg):
 
     startTime = time.time()
 
+    if 'alt' in cfg:
+        slice_alt = slice(cfg['alt']['start'],cfg['alt']['stop']+1)
+    else:
+        slice_alt = slice(0,None)
+    if 'act' in cfg:
+        slice_act = slice(cfg['act']['start'],cfg['act']['stop']+1)
+    else:
+        slice_act = slice(0,None)
+
     logger.info(f"Reading DOAS results from L2 file: {cfg['io']['l2']}")
-    doas = libAMF.read_doas(cfg['io']['l2'])
+    doas = libAMF.read_doas(cfg['io']['l2'], slice_alt, slice_act)
 
     logger.info(f"Reading atm file: {cfg['io']['sgm_atm']}")
-    atm = libAMF.read_atm(cfg['io']['sgm_atm'])
+    atm = libAMF.read_atm(cfg['io']['sgm_atm'], slice_alt, slice_act)
 
     logger.info('Calculating AMF')
-    amf_results = libAMF.get_amf(cfg['amf'], doas, atm)
+    amf_results = libAMF.get_amf(cfg, doas, atm)
 
     logger.info(f"Writing AMF results to: {cfg['io']['l2']}")
-    libAMF.write_amf(cfg,amf_results)
+    libAMF.write_amf(cfg, amf_results, slice_alt, slice_act)
 
     logger.info(f'AMF calculation finished in {np.round(time.time()-startTime,1)} s')
-
     return amf_results
 
 
@@ -632,8 +640,8 @@ def l1bl2_no2(cfg):
     startTime = time.time()
 
     # use irradiance file from SGM. optional convolving
-    if cfg['doas']['irr_from_sgm']:
-        if cfg['doas']['convolve_irr']:
+    if cfg['irr_from_sgm']:
+        if cfg['convolve_irr']:
             convolved_irr_file = conv_irr(cfg['io']['sgm_rad'],cfg['isrf']['fwhm_gauss'])
             cfg['io']['sgm_irr'] = convolved_irr_file
         else:
@@ -642,17 +650,13 @@ def l1bl2_no2(cfg):
     # Python parallises internally with numpy, for single thread optimum is 4 numpy threads
     # for multi-threading use only 1 numpy thread, otherwise slow-down
 
-    if cfg['doas']['threads'] == 1:
+    if cfg['threads'] == 1:
         numpy_cpu = 4
     else:
         numpy_cpu = 1
 
-    # add io dict to doas dict
-    cfg_doas = dict(cfg['doas'])
-    cfg_doas['io'] = dict(cfg['io'])
-
     with threadpool_limits(limits=numpy_cpu, user_api='blas'):
-        doas_results = ifdoe_run(cfg_doas)
+        doas_results = ifdoe_run(cfg)
                         
     amf_results = amf_run(cfg)
 

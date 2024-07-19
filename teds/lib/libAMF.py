@@ -9,29 +9,29 @@ from lib.libWrite import writevariablefromname
 
 logger = logging.getLogger('E2E')
 
-def read_atm(file_atm):
+def read_atm(file_atm, slice_alt, slice_act):
 
     atm = {}
 
     with nc.Dataset(file_atm) as f:
         for key in f.variables.keys():
-            atm[key] = f[key][:]
+            atm[key] = f[key][slice_alt,slice_act]
 
     return atm
 
 
-def read_doas(file_doas):
+def read_doas(file_doas, slice_alt, slice_act):
 
     doas = {}
 
     with nc.Dataset(file_doas) as f:
-        doas['no2_scd'] = f['doas/no2/nitrogendioxide_slant_column_density'][:]
-        doas['lat'] = f['lat'][:]
-        doas['lon'] = f['lon'][:]
-        doas['sza'] = f['sza'][:]
-        doas['vza'] = f['vza'][:]
-        doas['saa'] = f['saa'][:]
-        doas['vaa'] = f['vaa'][:]
+        doas['no2_scd'] = f['doas/no2/nitrogendioxide_slant_column_density'][slice_alt,slice_act]
+        doas['lat'] = f['lat'][slice_alt,slice_act]
+        doas['lon'] = f['lon'][slice_alt,slice_act]
+        doas['sza'] = f['sza'][slice_alt,slice_act]
+        doas['vza'] = f['vza'][slice_alt,slice_act]
+        doas['saa'] = f['saa'][slice_alt,slice_act]
+        doas['vaa'] = f['vaa'][slice_alt,slice_act]
 
     return doas
 
@@ -50,7 +50,7 @@ def get_amf(cfg, doas, atm):
         results[name] = np.ma.masked_all_like(doas['lat'])
 
     results['no2_averaging_kernel'] = np.ma.masked_all_like(atm['temperature'])
-    results['pressure_layer'] = atm['pressure_layers'][:,:,::-1]
+    results['pressure_layers'] = atm['pressure_layers'][:,:,::-1] # hPa
 
     # load NN
     amf_clear_NN = read_NN('LUT_AMF_clear', cfg['LUT_NN_file'])
@@ -60,7 +60,7 @@ def get_amf(cfg, doas, atm):
     mu0 = np.cos(np.deg2rad(doas['sza']))
     dphi	= np.abs( 180.0 - np.abs(doas['vaa']-doas['saa'])) # RAA [deg]
 
-    pressure_levels_midpoint = atm['pressure_layers'][:,:,::-1] # hPa
+    pressure_levels_midpoint = results['pressure_layers']
     surface_pressure = atm['pressure_levels'][:,:,-1] # hPa
 
     no2_profile =  atm['dcol_no2'][:,:,::-1] /constants.NA * 1e4 # [molec/cm2] to [mol/m2]
@@ -138,7 +138,7 @@ def get_amf_iter(cfg, doas, atm):
         results[name] = np.ma.masked_all_like(doas['lat'])
 
     results['no2_averaging_kernel'] = np.ma.masked_all_like(atm['temperature'])
-    results['pressure_layer'] = atm['pressure_layers'][:,:,::-1]
+    results['pressure_layers'] = atm['pressure_layers'][idx,idy,::-1] # hPa
 
     # load NN
     amf_clear_NN = read_NN('LUT_AMF_clear', cfg['LUT_NN_file'])
@@ -156,7 +156,7 @@ def get_amf_iter(cfg, doas, atm):
         mu0 = np.cos(np.deg2rad(doas['sza'][idx,idy]))
         dphi	= np.abs( 180.0 - np.abs(doas['vaa'][idx,idy]-doas['saa'][idx,idy])) # RAA [deg]
 
-        pressure_levels_midpoint = atm['pressure_layers'][idx,idy,::-1] # hPa
+        pressure_levels_midpoint = results['pressure_layers']
         surface_pressure = atm['pressure_levels'][idx,idy,-1] # hPa
 
         no2_profile =  atm['dcol_no2'][idx,idy,::-1] /constants.NA * 1e4 # [molec/cm2] to [mol/m2]
@@ -341,29 +341,41 @@ def predict_NN_vector(input_vector, NN):
     return output[:,:,:,0]
 
 
-def write_amf(cfg,amf):
+def write_amf(cfg, amf, slice_alt, slice_act):
 
     # convert units
     def molm2_to_moleccm2(var):
         var = var *constants.NA / 1e4 #  [mol/m2] to [molec/cm2]
         return var
     
+    def write_out(var):
+
+        if amf[var].ndim == 2:
+            dim = ('scanline','ground_pixel')
+            out = np.ma.masked_all_like(dst['lat'])
+            out[slice_alt,slice_act] = amf[var]
+        elif amf[var].ndim == 3:
+            dim = ('scanline','ground_pixel','pressure_layers')
+            out = np.ma.masked_all(dst['lat'].shape+(amf[var].shape[-1],))
+            out[slice_alt,slice_act,:] = amf[var]
+        else:
+            logging.error('{var} has {var.ndim} dimensions, not recognised.')
+
+        _ = writevariablefromname(dst, var, dim, out)
+        
+        return
+    
     for var in ['no2_total_vcd','no2_total_scd']:
         amf[var] = molm2_to_moleccm2(amf[var])
 
+    varlist = ['pressure_layers', 'no2_averaging_kernel', 'no2_total_amf', 'no2_total_vcd', 'no2_total_scd' ]
+
     with nc.Dataset(cfg['io']['l2'], 'a') as dst:
 
-        
-        dim_2d = ('scanline','ground_pixel')
-        dim_3d = ('scanline','ground_pixel','pressure_layers')
-        
-        p_dim = dst.createDimension(dim_3d[-1], amf['pressure_layer'].shape[-1])
-        
-        _ = writevariablefromname(dst, 'pressure_layers',       dim_3d,     amf['pressure_layer'])
-        _ = writevariablefromname(dst, 'no2_averaging_kernel',  dim_3d,     amf['no2_averaging_kernel'])
-        _ = writevariablefromname(dst, 'no2_total_amf',         dim_2d,     amf['no2_total_amf'])
-        _ = writevariablefromname(dst, 'no2_total_vcd',         dim_2d,     amf['no2_total_vcd'])
-        _ = writevariablefromname(dst, 'no2_total_scd',         dim_2d,     amf['no2_total_scd'])
+        p_dim = dst.createDimension('pressure_layers', amf['pressure_layers'].shape[-1])
+
+        for var in varlist:
+            write_out(var)
 
     return
 

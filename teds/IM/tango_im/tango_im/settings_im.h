@@ -155,10 +155,20 @@ public:
             "Which ones to use is determined by the L1A file variable\n"
             "/image_attributes/binning_table"
         };
-        Setting<std::string> l1b { { "io", "l1b" }, {}, "L1B product (input)" };
-        Setting<std::string> l1a { { "io", "l1a" },
-                                   {},
-                                   "L1A product (output)" };
+        Setting<std::string> sgm {
+            { "io", "sgm" },
+            {},
+            "Radiation scene from the scene generation module (SGM input).\n"
+            "One can also use an L1B or a lower level product. The instrument\n"
+            "then skips some of the first processin steps."
+        };
+        Setting<std::string> l1a {
+            { "io", "l1a" },
+            {},
+            "L1A product (output). If cal_level was set to anything other\n"
+            "than l1a then this is actually not an L1A but a higher level\n"
+            "product."
+        };
     } io;
 
     SettingsIM() = default;

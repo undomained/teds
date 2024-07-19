@@ -26,8 +26,9 @@ public:
                  const std::vector<bool>& pixel_mask,
                  const int i_act) -> void;
     // Radiometrically calibrate
-    auto calibrate(const CKD& ckd, const double exposure_time, const int i_act)
-      -> void;
+    auto calibrate(const CKD& ckd,
+                   const double exposure_time,
+                   const int i_act) -> void;
 };
 
 } // namespace tango

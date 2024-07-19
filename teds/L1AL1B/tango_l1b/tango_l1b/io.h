@@ -97,8 +97,9 @@ auto writeL1(const std::string& filename,
 // Copy geolocation data from the geometry file directly to the L1B
 // product. This is a placeholder function until geolocation is
 // properly implemented.
-auto copyGeometry(const std::string& filename,
-                  const int i_alt_start,
+auto copyGeometry(const std::string& l1a_filename,
+                  const std::string& geo_filename,
+                  int i_alt_start,
                   std::vector<L1>& l1_products) -> void;
 
 } // namespace tango

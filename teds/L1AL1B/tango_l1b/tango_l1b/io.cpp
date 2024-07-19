@@ -589,7 +589,8 @@ auto writeL1(const std::string& filename,
               nc_grp.addVar("radiance_stdev",
                             netCDF::ncFloat,
                             { nc_images, nc_across_track, nc_wavelength });
-            nc_var.putAtt("long_name", "standard deviation of radiance in bin ");
+            nc_var.putAtt("long_name",
+                          "standard deviation of radiance in bin ");
             nc_var.putAtt("_FillValue", netCDF::ncFloat, fill::f);
             nc_var.putAtt("units", "ph nm-1 s-1 sr-1 m-2");
             nc_var.putAtt("valid_min", netCDF::ncFloat, 0.0f);
@@ -710,11 +711,24 @@ auto writeL1(const std::string& filename,
     }
 }
 
-auto copyGeometry(const std::string& filename,
-                  const int i_alt_start,
+// Fetch the image_start value that was used in the instrument model
+static auto getIMImageStart(const std::string& l1a_filename) -> int
+{
+    char* buf[10'000];
+    netCDF::NcFile { l1a_filename, netCDF::NcFile::read }
+      .getVar("configuration")
+      .getVar(buf);
+    YAML::Node config = YAML::Load(*buf);
+    return config["image_start"].as<int>();
+}
+
+auto copyGeometry(const std::string& l1a_filename,
+                  const std::string& geo_filename,
+                  int i_alt_start,
                   std::vector<L1>& l1_products) -> void
 {
-    const netCDF::NcFile nc_geo { filename, netCDF::NcFile::read };
+    const netCDF::NcFile nc_geo { geo_filename, netCDF::NcFile::read };
+    const netCDF::NcGroup nc { nc_geo.getGroup("/") };
     const auto n_alt { nc_geo.getDim("along_track").getSize() };
     const auto n_act { nc_geo.getDim("across_track").getSize() };
     std::vector<double> lat(n_alt * n_act);
@@ -729,6 +743,7 @@ auto copyGeometry(const std::string& filename,
     nc_geo.getVar("vaa").getVar(vaa.data());
     nc_geo.getVar("sza").getVar(sza.data());
     nc_geo.getVar("saa").getVar(saa.data());
+    i_alt_start += getIMImageStart(l1a_filename);
     for (int i_alt {}; i_alt < static_cast<int>(l1_products.size()); ++i_alt) {
         const auto copy { [i_alt_start, i_alt, n_act](
                             const std::vector<double>& in,

@@ -1,10 +1,8 @@
 import sys
 import numpy as np
 import tqdm
-import time
 import logging
 import netCDF4 as nc
-from scipy import interpolate
 
 from teds.lib import constants
 from lib.libWrite import writevariablefromname
@@ -39,9 +37,98 @@ def read_doas(file_doas):
 
 def get_amf(cfg, doas, atm):
     # -----------------------------------------------------------------
-    # Calculate NO2 AMF using AMF LUT NN
+    # - Calculate NO2 AMF using AMF LUT NN
+    # - Vectorised
+    # - Clear-sky only for now
     # -----------------------------------------------------------------
-    # 
+    # create output fields
+
+    results = {}
+    dictnames = ['no2_total_amf','no2_total_vcd','no2_total_scd']
+
+    for name in dictnames:
+        results[name] = np.ma.masked_all_like(doas['lat'])
+
+    results['no2_averaging_kernel'] = np.ma.masked_all_like(atm['temperature'])
+    results['pressure_layer'] = atm['pressure_layers'][:,:,::-1]
+
+    # load NN
+    amf_clear_NN = read_NN('LUT_AMF_clear', cfg['LUT_NN_file'])
+
+    # convert input
+    mu = np.cos(np.deg2rad(doas['vza']))
+    mu0 = np.cos(np.deg2rad(doas['sza']))
+    dphi	= np.abs( 180.0 - np.abs(doas['vaa']-doas['saa'])) # RAA [deg]
+
+    pressure_levels_midpoint = atm['pressure_layers'][:,:,::-1] # hPa
+    surface_pressure = atm['pressure_levels'][:,:,-1] # hPa
+
+    no2_profile =  atm['dcol_no2'][:,:,::-1] /constants.NA * 1e4 # [molec/cm2] to [mol/m2]
+
+    # get temperature correction
+    f_tcorr = get_tcorr(atm['temperature'][:,:,::-1])
+
+    # calculate tropopause layer index
+    # tropopause_layer_index = get_tropopause(atm['temperature'][iscan,ipxl,:])
+
+    # NN LUT 
+    wvl_no2_amf = 437.5 # nm
+    wvl = np.ones_like(doas['lat'])*wvl_no2_amf
+
+    point_clear =  np.array([wvl, surface_pressure, atm['albedo'], mu0, mu, dphi, np.zeros_like(doas['lat']) ])
+
+    point_clear = np.tile(point_clear[...,np.newaxis],pressure_levels_midpoint.shape[-1])
+    point_clear[-1,:,:,:] = pressure_levels_midpoint
+    
+    # try calculating amf vectorised, otherwise loop over pixels
+    try:
+        boxamf_clear= predict_NN_vector(point_clear, amf_clear_NN)
+    except MemoryError as e:
+        logging.error(e)
+        logging.error('Not enough memory for vectorised approach, falling back to pixel by pixel approach')
+        boxamf_clear = np.ma.masked_all_like(pressure_levels_midpoint)
+        iterlist = tqdm.tqdm(np.ndindex(doas['lat'].shape), total=doas['lat'].size)
+        for idx,idy in iterlist:
+            for idz in range(pressure_levels_midpoint.shape[-1]):
+                boxamf_clear[idx,idy,idz]= predict_NN(point_clear[:,idx,idy,idz], amf_clear_NN)
+
+    # multiply with amf geo
+    amf_geo = 1/mu + 1/mu0
+    boxamf_clear*= amf_geo[...,np.newaxis]
+
+    boxamf_clear[boxamf_clear<0.0] = 0.0
+
+    # troposphere only profile:
+    # no2_profile_trop = np.copy(no2_profile)
+    # no2_profile_trop[(tropopause_layer_index+1):] = 0
+
+    # stratosphere only profile:
+    # no2_profile_strat = np.copy(no2_profile)
+    # no2_profile_strat[:(tropopause_layer_index+1)] = 0
+
+    results['no2_total_scd'] = doas['no2_scd']
+
+    # calculate total amf
+    results['no2_total_amf']= np.sum(boxamf_clear*no2_profile*f_tcorr, axis=-1) / np.sum(no2_profile, axis=-1)
+
+    # calculate scd total by dividing by total amf
+    results['no2_total_vcd']= results['no2_total_scd'] / results['no2_total_amf']
+
+    # results_scan['tropopause_layer_index'][iscan,ipxl] = tropopause_layer_index
+
+    # averaging kernel:  ak =  box_amf * temperature_correction / total_amf
+    results['no2_averaging_kernel'] = boxamf_clear * f_tcorr  / results['no2_total_amf'][...,np.newaxis]
+
+    return results
+
+
+def get_amf_iter(cfg, doas, atm):
+    # -----------------------------------------------------------------
+    # Calculate NO2 AMF using AMF LUT NN
+    # iterate over pixels
+    # no clear-sky
+    # -----------------------------------------------------------------
+
     results = {}
 
     # create output fields
@@ -65,9 +152,6 @@ def get_amf(cfg, doas, atm):
             logger.info(f'Skipping pixel {idx},{idy}: NaN in doas input')
             continue
 
-        start_time_pixel = time.time()
-
-
         mu = np.cos(np.deg2rad(doas['vza'][idx,idy]))
         mu0 = np.cos(np.deg2rad(doas['sza'][idx,idy]))
         dphi	= np.abs( 180.0 - np.abs(doas['vaa'][idx,idy]-doas['saa'][idx,idy])) # RAA [deg]
@@ -78,7 +162,7 @@ def get_amf(cfg, doas, atm):
         no2_profile =  atm['dcol_no2'][idx,idy,::-1] /constants.NA * 1e4 # [molec/cm2] to [mol/m2]
 
         # get temperature correction
-        cl = get_cl(atm['temperature'][idx,idy,::-1])
+        cl = get_tcorr(atm['temperature'][idx,idy,::-1])
 
         # calculate tropopause layer index
         # tropopause_layer_index = get_tropopause(atm['temperature'][idx,idy,:])
@@ -122,11 +206,9 @@ def get_amf(cfg, doas, atm):
         results['no2_averaging_kernel'][idx,idy,:] = boxamf_clear * cl  / results['no2_total_amf'][idx,idy]
 
         # logger.info('Processed pixel alt {}/{} act {}/{} in {}s'.format(idx,doas['lat'].shape[0],idy,doas['lat'].shape[1],np.round((time.time() - start_time_pixel),2) ))
-
     return results
 
-
-def get_cl(t):
+def get_tcorr(t):
     # --------------------------
     # Calculate temperature correction factor (see tropomi atbd)
     # ---------------------------
@@ -134,10 +216,9 @@ def get_cl(t):
     # temperature correction factor
     t_sigma = 220 #[K] no2 cross-section spectrum temperature
 
-    cl = 1 - 0.00316* (t - t_sigma) + 3.39E-6*(t - t_sigma)**2
+    f_tcorr = 1 - 0.00316* (t - t_sigma) + 3.39E-6*(t - t_sigma)**2
 
-    return cl
-
+    return f_tcorr
 
 def get_tropopause(temperature, geometric_layer_height):
     # --------------------------
@@ -203,6 +284,11 @@ def read_NN(parameter, NN_file):
     return dict_out
 
 
+def leakyrelu(x,alpha=0.01):
+    # leaky relu function
+    # https://keras.io/api/layers/activation_layers/leaky_relu/
+        return np.where(x >=0 , x, x * alpha)   
+
 def predict_NN(input_vector, NN):
     '''
     Normalize input vector and apply NN model.
@@ -215,20 +301,14 @@ def predict_NN(input_vector, NN):
     - Output variable. Specified in NN file.
     '''
 
-    # normalize input
-    norm = NN['normalization_input'][()]
-    input_vector_norm = (input_vector - norm[:,0]) / (norm[:,1] - norm[:,0])
-
-
-    # leaky relu function
-    # https://keras.io/api/layers/activation_layers/leaky_relu/
-    def leakyrelu(x,alpha=0.01):
-        return np.where(x >=0 , x, x * alpha)   
-
     # check
     if 'layer_4' not in NN:
         logger.error('All NNs should have 4 layers')
         raise
+    
+    # normalize input
+    norm = NN['normalization_input'][()]
+    input_vector_norm = (input_vector - norm[:,0]) / (norm[:,1] - norm[:,0])
     
     # apply NN
     layer1 = leakyrelu(np.dot(input_vector_norm,NN['layer_1']['kernel']) + NN['layer_1']['bias'])
@@ -237,6 +317,28 @@ def predict_NN(input_vector, NN):
     output= np.dot(layer3,NN['layer_4']['kernel']) + NN['layer_4']['bias'] # output layer uses linear activation function
 
     return output[0]
+
+def predict_NN_vector(input_vector, NN):
+
+    # check
+    if 'layer_4' not in NN:
+        logger.error('All NNs should have 4 layers')
+        raise
+
+    # normalize input
+    norm = NN['normalization_input'][()]
+
+    input_vector_norm = (input_vector - norm[:,0,np.newaxis,np.newaxis,np.newaxis]) / (norm[:,1,np.newaxis,np.newaxis, np.newaxis] - norm[:,0,np.newaxis,np.newaxis,np.newaxis])
+
+    input_vector_norm = np.moveaxis(input_vector_norm, 0, -1)
+
+    # optimize='optimal'
+    layer1 = leakyrelu( np.einsum('ijkl,lm->ijkm',input_vector_norm,NN['layer_1']['kernel']) + NN['layer_1']['bias'][np.newaxis,np.newaxis,np.newaxis,...] )
+    layer2 = leakyrelu( np.einsum('ijkl,lm->ijkm',layer1,NN['layer_2']['kernel']) + NN['layer_2']['bias'][np.newaxis,np.newaxis,np.newaxis,...] )
+    layer3 = leakyrelu( np.einsum('ijkl,lm->ijkm',layer2,NN['layer_3']['kernel']) + NN['layer_3']['bias'][np.newaxis,np.newaxis,np.newaxis,...] )
+    output = np.einsum('ijkl,lm->ijkm',layer3,NN['layer_4']['kernel']) + NN['layer_4']['bias'][np.newaxis,np.newaxis,np.newaxis,...]
+
+    return output[:,:,:,0]
 
 
 def write_amf(cfg,amf):

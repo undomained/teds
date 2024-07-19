@@ -173,23 +173,26 @@ def get_specific_config(logger, orig_config, kind):
         specific_config['io']['sgm_atm'] = os.path.join(output_path, orig_config['io']['sgm_atm'])
         specific_config['io']['gm'] = os.path.join(output_path, orig_config['io']['gm'])
 
-    elif kind == 'L1L2':
-        # Combine path and file name
-        output_path = get_file_name(orig_config, 'l1l2')
-        specific_config['io']['l2'] = os.path.join(output_path, orig_config['io']['l2'])
+    elif kind == 'IM':
+        specific_config['io']['binning_table'] = orig_config['io']['binning_table']
+        specific_config['io']['ckd'] = orig_config['io']['ckd_im']
 
-        output_path = get_file_name(orig_config, 'gm')
-        specific_config['io']['gm'] = os.path.join(output_path, orig_config['io']['gm'])
+        do_python = specific_config['do_python']
+        # Output of IM
+        output_path = get_file_name(orig_config, 'im')
+        l1a_file_name = orig_config['io']['l1a']
+        if do_python:
+            l1a_file_name_python = f"{l1a_file_name[0:-3]}_python.nc"
+            print(f"l1a python file name: {l1a_file_name_python}")
+            specific_config['io']['l1a'] = os.path.join(output_path, l1a_file_name_python)
+            specific_config['io']['im_algo_output'] = os.path.join(output_path, orig_config['io']['im_algo_output'])
+        else:
+#            specific_config['io']['l1a'] = os.path.join(output_path, orig_config['io']['l1a'])
+            specific_config['io']['l1a'] = os.path.join(output_path, l1a_file_name)
 
+        # Input to IM
         output_path = get_file_name(orig_config, 'sgm')
-        specific_config['io']['sgm_atm'] = os.path.join(output_path, orig_config['io']['sgm_atm'])
-        specific_config['io']['sgm_rad'] = os.path.join(output_path, orig_config['io']['sgm_rad'])
-
-        output_path = get_file_name(orig_config, 'l1al1b')
-        specific_config['io']['l1b'] = os.path.join(output_path, orig_config['io']['l1b'])
-
-        # Also need acces to isrf which is a IM configuration parameter
-        specific_config['isrf'] = orig_config['IM']['isrf']
+        specific_config['io']['sgm'] = os.path.join(output_path, orig_config['io']['sgm_rad'])
 
     elif kind == 'L1AL1B':
 
@@ -227,26 +230,23 @@ def get_specific_config(logger, orig_config, kind):
         output_path = get_file_name(orig_config, 'gm')
         specific_config['io']['geometry'] = os.path.join(output_path, orig_config['io']['gm'])
 
-    elif kind == 'IM':
-        specific_config['io']['binning_table'] = orig_config['io']['binning_table']
-        specific_config['io']['ckd'] = orig_config['io']['ckd_im']
+    elif kind == 'L1L2':
+        # Combine path and file name
+        output_path = get_file_name(orig_config, 'l1l2')
+        specific_config['io']['l2'] = os.path.join(output_path, orig_config['io']['l2'])
 
-        do_python = specific_config['do_python']
-        # Output of IM
-        output_path = get_file_name(orig_config, 'im')
-        l1a_file_name = orig_config['io']['l1a']
-        if do_python:
-            l1a_file_name_python = f"{l1a_file_name[0:-3]}_python.nc"
-            print(f"l1a python file name: {l1a_file_name_python}")
-            specific_config['io']['l1a'] = os.path.join(output_path, l1a_file_name_python)
-            specific_config['io']['im_algo_output'] = os.path.join(output_path, orig_config['io']['im_algo_output'])
-        else:
-#            specific_config['io']['l1a'] = os.path.join(output_path, orig_config['io']['l1a'])
-            specific_config['io']['l1a'] = os.path.join(output_path, l1a_file_name)
+        output_path = get_file_name(orig_config, 'gm')
+        specific_config['io']['gm'] = os.path.join(output_path, orig_config['io']['gm'])
 
-        # Input to IM
         output_path = get_file_name(orig_config, 'sgm')
-        specific_config['io']['l1b'] = os.path.join(output_path, orig_config['io']['l1b_im'])
+        specific_config['io']['sgm_atm'] = os.path.join(output_path, orig_config['io']['sgm_atm'])
+        specific_config['io']['sgm_rad'] = os.path.join(output_path, orig_config['io']['sgm_rad'])
+
+        output_path = get_file_name(orig_config, 'l1al1b')
+        specific_config['io']['l1b'] = os.path.join(output_path, orig_config['io']['l1b'])
+
+        # Also need acces to isrf which is a IM configuration parameter
+        specific_config['isrf'] = orig_config['IM']['isrf']
 
     elif kind == 'PAM':
         output_path = get_file_name(orig_config, 'sgm')
@@ -326,9 +326,9 @@ def build(logger, config, step, cfg_path, attribute_dict):
             temp_output_file = reshape_output(logger, 'l1a', im_config)
 
             # Add attributes to output file
-            if temp_output_file is not None:
-                Utils.add_attributes_to_output(logger, temp_output_file, attribute_dict)
-            Utils.add_attributes_to_output(logger, im_config['io']['l1a'], attribute_dict)
+            # if temp_output_file is not None:
+                # Utils.add_attributes_to_output(logger, temp_output_file, attribute_dict)
+            # Utils.add_attributes_to_output(logger, im_config['io']['l1a'], attribute_dict)
         else:
             # run Python code
             E2EModule = importlib.import_module("IM.Python.instrument_model")

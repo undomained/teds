@@ -12,18 +12,12 @@ io:
 ##GM IO
     gm: 'geometry.nc'
 ## SGM IO
+    # output of SGM (sgm_rad is input for IM)
     sgm_rad: 'sgm_radiance.nc'
-#    sgm_rad: 'sgm_radiance_wide.nc'
     sgm_atm_raw: 'sgm_atmosphere_raw.nc'
     sgm_atm: 'sgm_atmosphere.nc'
-## L2 IO
-    l2: 'l2.nc'
 ## IM & L1B IO
     binning_table: '../data/no2/ckd/binning_table_no2.nc'
-    # Input IM:
-    # Note: in run_E2E.py this is renamed to l1b
-    l1b_im: 'sgm_radiance.nc'
-#    l1b_im: 'sgm_radiance_wide.nc'
     # output of IM (and input for L1AL1B):
     l1a: 'l1a.nc'
     # output of L1AL1B:
@@ -32,11 +26,9 @@ io:
     # possibility to have different ckds for IM and L1B
     # CKD for L1AL1B
     ckd: '../data/no2/ckd/ckd_nitro.nc'
-#    ckd: '../data/no2/ckd/ckd_nitro_updated.nc'
     # L1B uses ckd. IM uses ckd_im
     # Note: in run_E2E.py this is renamed to ckd
     ckd_im: '../data/no2/ckd/ckd_nitro.nc'
-#    ckd_im: '../data/no2/ckd/ckd_nitro_updated.nc'
 #####
     # Define in between output files for IM (Python version)
     # Base name:
@@ -44,6 +36,8 @@ io:
     # Define in between output files for L1B (Python version)
     # Base name:
     l1b_algo_output: 'l1b_l1x_{algo_name}.nc'
+## L2 IO
+    l2: 'l2.nc'
 #########################################################
 #
 # GM 

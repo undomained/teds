@@ -104,19 +104,25 @@ SGM:
         dem:                       # correct surface pressure using tropomi dem (3k radius), only for CAMS
             use: True
             path: '../data/no2/dem.nc'
+        cloud:                  # HG scattering clouds
+            use: True
+            cloud_optical_thickness: 10.0
+            cloud_bottom_pressure: 900 # hPa
+            cloud_top_pressure: 800 # hPa
+
     
     rtm:   # disamar (RTM) settings
         tmp_dir:    '../data/no2/tmp/'
         disamar_cfg_template: '../cfg/nitro/disamar_config_sim.in_template'
         disamar_exe: '../data/no2/disamar/Disamar_old.exe'
         dismas_sim: True
-        dismas_fwhm: 0.05       #nm
+        dismas_fwhm: 0.05           #nm
         n_threads: 16
-        wave_start: 395         #nm
-        wave_end:   502         #nm
-        dwave:      0.05        #nm
-        cleanup: True           # rm disamartmp directory when finished
-        o2o2: True              # add o2-o2 absorption
+        wave_start: 395             #nm
+        wave_end:   502             #nm
+        dwave:      0.05            #nm
+        cleanup: True               # rm disamartmp directory when finished
+        o2o2: True                  # add o2-o2 absorption
     
     S2_albedo:
         band: B01

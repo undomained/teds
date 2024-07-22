@@ -277,6 +277,16 @@ def combine_mhh_cams( mhh_data, atm, species=['no2', 'co2', 'no']):
 
     return atm
 
+def add_clouds(cfg, atm):
+    # Add cloud parameters to atm
+    # for now all pixels have the same specified cloud
+
+    atm.cot = np.ones_like(atm.lat)*cfg['atm']['cloud']['cloud_optical_thickness']
+    atm.cbp = np.ones_like(atm.lat)*cfg['atm']['cloud']['cloud_bottom_pressure']
+    atm.ctp = np.ones_like(atm.lat)*cfg['atm']['cloud']['cloud_top_pressure']
+
+    return atm
+
 
 def convolvedata_nitro(atm, albedo, microhh, config):
 
@@ -421,21 +431,21 @@ def recalc_total_column(atm, config):
     return atm
 
 
-def convert_atm_profiles(atm, cfg):
-    # convert atmospheric profiles for usage in disamar
+def convert_atm_to_disamar(atm, cfg):
+    # convert atmospheric profiles and parameters for usage in disamar
 
     extrapolate_to_surface = True
 
-    profiles = {}
+    atm_disamar = {}
         
     nalt, nact, nlev =  atm.plev.shape
 
     variables = cfg['atm']['gases'].copy()
     variables.extend(['t','p'])
     for var in variables:
-        profiles[var] = np.zeros((nalt, nact, nlev))
+        atm_disamar[var] = np.zeros((nalt, nact, nlev))
 
-    profiles['p'] = atm.plev[:,:,::-1] # levels, hPa, surface --> TOA
+    atm_disamar['p'] = atm.plev[:,:,::-1] # levels, hPa, surface --> TOA
 
     # gases
     for gas in cfg['atm']['gases']:
@@ -449,14 +459,14 @@ def convert_atm_profiles(atm, cfg):
                 if extrapolate_to_surface:
                     # extrapolation
                     interp_gas = RegularGridInterpolator(np.reshape(np.log(atm.play[idx,idy,:].T),(1,len(atm.play[idx,idy,:]))), gas_ppmv[idx,idy,:], method='linear',bounds_error=False, fill_value=None)
-                    profiles[gas][idx, idy, :] = interp_gas(np.log(atm.plev[idx,idy,:]))[::-1]
+                    atm_disamar[gas][idx, idy, :] = interp_gas(np.log(atm.plev[idx,idy,:]))[::-1]
                 else:
                     # no extrapolation, edge value is repeated
-                    profiles[gas][idx, idy, :] = np.interp( np.log(atm.plev[idx,idy,:]), np.log(atm.play[idx,idy,:]), gas_ppmv[idx,idy,:] )[::-1] # strictly increasing
+                    atm_disamar[gas][idx, idy, :] = np.interp( np.log(atm.plev[idx,idy,:]), np.log(atm.play[idx,idy,:]), gas_ppmv[idx,idy,:] )[::-1] # strictly increasing
     
     # temperature
     if cfg['atm']['type'] == 'afgl':
-        profiles['t'] = atm.tlev[:,:,::-1] # levels,  K , surface --> TOA
+        atm_disamar['t'] = atm.tlev[:,:,::-1] # levels,  K , surface --> TOA
 
     elif cfg['atm']['type'] == 'cams':
         tlay = atm.__getattribute__('tlay')   # layers, K, TOA --> TOA
@@ -465,29 +475,29 @@ def convert_atm_profiles(atm, cfg):
                 if extrapolate_to_surface:
                     # extrapolation
                     interp_gas = RegularGridInterpolator(np.reshape(np.log(atm.play[idx,idy,:].T),(1,len(atm.play[idx,idy,:]))), tlay[idx,idy,:], method='linear',bounds_error=False, fill_value=None)
-                    profiles['t'][idx, idy, :] = interp_gas(np.log(atm.plev[idx,idy,:]))[::-1]
+                    atm_disamar['t'][idx, idy, :] = interp_gas(np.log(atm.plev[idx,idy,:]))[::-1]
                 else:
                     # no extrapolation, edge value is repeated
-                    profiles['t'][idx, idy, :] = np.interp( np.log(atm.plev[idx,idy,:]), np.log(atm.play[idx,idy,:]), tlay[idx,idy,:] )[::-1] # strictly increasing
+                    atm_disamar['t'][idx, idy, :] = np.interp( np.log(atm.plev[idx,idy,:]), np.log(atm.play[idx,idy,:]), tlay[idx,idy,:] )[::-1] # strictly increasing
 
         # omit TOA layer CAMS, pressure is 0, disamar does not like it
-        profiles['p'] = profiles['p'][:,:,:-1]
-        profiles['t'] = profiles['t'][:,:,:-1]
+        atm_disamar['p'] = atm_disamar['p'][:,:,:-1]
+        atm_disamar['t'] = atm_disamar['t'][:,:,:-1]
         for gas in cfg['atm']['gases']:
-            profiles[gas] = profiles[gas][:,:,:-1]
+            atm_disamar[gas] = atm_disamar[gas][:,:,:-1]
 
     # set last layer of profiles to TOA, otherwise disamar does not like it
-    if (profiles['p'][:,:,-1] > 0.3 ).any():
-        profiles['p'][:,:,-1] = 0.3
-        profiles['t'][:,:,-1] = 250.0
+    if (atm_disamar['p'][:,:,-1] > 0.3 ).any():
+        atm_disamar['p'][:,:,-1] = 0.3
+        atm_disamar['t'][:,:,-1] = 250.0
         if 'no2' in cfg['atm']['gases']:
-            profiles['no2'][:,:,-1] = 6.2958549E-09
+            atm_disamar['no2'][:,:,-1] = 6.2958549E-09
         if 'o3' in cfg['atm']['gases']:
-            profiles['o3'][:,:,-1] = 7.4831730E-01
+            atm_disamar['o3'][:,:,-1] = 7.4831730E-01
 
     # do not allow negative or zero values
-    for key in profiles:
-        profiles[key] = profiles[key].clip(min=1.0e-10)
+    for key in atm_disamar:
+        atm_disamar[key] = atm_disamar[key].clip(min=1.0e-10)
 
     # O2-O2
     # note that for a collision complex the parent gas has to be specified here, 
@@ -498,14 +508,20 @@ def convert_atm_profiles(atm, cfg):
     o2_mixing_ratio =  20.94600E+04
     if cfg['rtm']['o2o2']:
         cfg['atm']['gases'].append('o2-o2')
-        profiles['o2-o2'] = np.ones_like(profiles['p'])*o2_mixing_ratio
+        atm_disamar['o2-o2'] = np.ones_like(atm_disamar['p'])*o2_mixing_ratio
+
+    if cfg['atm']['cloud']['use']:
+        atm_disamar['cloud_fraction'] = np.ones((atm_disamar['p'].shape[:2]))
+        atm_disamar['cloud_optical_thickness'] = atm.cot.copy()
+        atm_disamar['cloud_top_pressure'] = atm.ctp.copy()
+        atm_disamar['cloud_bottom_pressure'] = atm.cbp.copy()
 
 
-    return profiles
+    return atm_disamar
 
 
 
-def set_disamar_cfg_sim(cfg, dis_cfg, ground_points, profiles, albedo, i_t, i_x):
+def set_disamar_cfg_sim(cfg, dis_cfg, ground_points, atm_disamar, albedo, i_t, i_x):
 
     # adapted from Pepijn's E2E
     # Modify the disamar input file for simulation of spectra
@@ -555,14 +571,14 @@ def set_disamar_cfg_sim(cfg, dis_cfg, ground_points, profiles, albedo, i_t, i_x)
     # Profiles
     # PT profile
     pt_sim = dis_cfg['PRESSURE_TEMPERATURE', 'PT_sim', 'PT']
-    pt_sim.set_rawvalue(np.asarray([profiles['p'][i_t,i_x,:], profiles['t'][i_t,i_x,:]]).T)
+    pt_sim.set_rawvalue(np.asarray([atm_disamar['p'][i_t,i_x,:], atm_disamar['t'][i_t,i_x,:]]).T)
     pt_retr = dis_cfg['PRESSURE_TEMPERATURE', 'PT_retr', 'PT']
-    pt_retr.set_rawvalue(np.asarray([profiles['p'][i_t,i_x,:], profiles['t'][i_t,i_x,:], np.ones(profiles['p'][i_t,i_x,:].shape, dtype=float)]).T)
+    pt_retr.set_rawvalue(np.asarray([atm_disamar['p'][i_t,i_x,:], atm_disamar['t'][i_t,i_x,:], np.ones(atm_disamar['p'][i_t,i_x,:].shape, dtype=float)]).T)
 
     # gas profiles
     for gas in cfg['atm']['gases']:
-        gas_vmr = np.asarray([profiles['p'][i_t,i_x,:], profiles[gas][i_t,i_x,:]]).T
-        gas_vmr_error = np.asarray([profiles['p'][i_t,i_x,:], profiles[gas][i_t,i_x,:], np.ones(profiles['p'][i_t,i_x,:].shape, dtype=float) * 20.]).T
+        gas_vmr = np.asarray([atm_disamar['p'][i_t,i_x,:], atm_disamar[gas][i_t,i_x,:]]).T
+        gas_vmr_error = np.asarray([atm_disamar['p'][i_t,i_x,:], atm_disamar[gas][i_t,i_x,:], np.ones(atm_disamar['p'][i_t,i_x,:].shape, dtype=float) * 20.]).T
         dis_cfg[gas.upper(), 'profile', 'P_vmr_ppmv_sim'].set_rawvalue(gas_vmr)
         dis_cfg[gas.upper(), 'profile', 'P_vmr_ppmv_error_percent_retr'].set_rawvalue(gas_vmr_error)
         
@@ -581,9 +597,25 @@ def set_disamar_cfg_sim(cfg, dis_cfg, ground_points, profiles, albedo, i_t, i_x)
     dis_cfg['SURFACE', 'wavelDependentSim', 'wavelSurfAlbedo'].setvalue(albedo_wvl)
     dis_cfg['SURFACE', 'wavelDependentSim', 'surfAlbedo'].setvalue(albedo[i_t,i_x])
 
-    dis_cfg['SURFACE','pressure', 'surfPressureSim'].setvalue(profiles['p'][i_t,i_x, 0])
-    dis_cfg['SURFACE','pressure', 'surfPressureRetr'].setvalue(profiles['p'][i_t,i_x, 0])
+    dis_cfg['SURFACE','pressure', 'surfPressureSim'].setvalue(atm_disamar['p'][i_t,i_x, 0])
+    dis_cfg['SURFACE','pressure', 'surfPressureRetr'].setvalue(atm_disamar['p'][i_t,i_x, 0])
 
+
+    # clouds (HG scattering)
+    if atm_disamar['cloud_fraction'][i_t,i_x] > 0.0:
+
+        # cloud fraction
+        dis_cfg['CLOUD_AEROSOL_FRACTION','wavelIndependentSim', 'fraction'].setvalue( atm_disamar['cloud_fraction'][i_t,i_x] )
+        
+        # cloud optical thickness
+        dis_cfg['CLOUD','HGscatteringSim', 'opticalThickness'].setvalue( [ 2.0 , atm_disamar['cloud_optical_thickness'][i_t,i_x] ] )
+
+        # cloud bottom and top pressures
+        dis_cfg['ATMOSPHERIC_INTERVALS','interval_top_pressures', 'topPressureSim'].setvalue( [ atm_disamar['cloud_bottom_pressure'][i_t,i_x], atm_disamar['cloud_top_pressure'][i_t,i_x], 0.30] )
+
+        # radiative transfer settings for optically thick cloud
+        dis_cfg['RADIATIVE_TRANSFER','numDivPointsAlt', 'numDivPointsAltSim'].setvalue( [8, int(np.ceil(1.5*atm_disamar['cloud_optical_thickness'][i_t,i_x])), 32] )
+        dis_cfg['RADIATIVE_TRANSFER','RTM_Sim_Retr', 'useAddingSim'].setvalue(1)
 
     return dis_cfg
 
@@ -928,6 +960,10 @@ def scene_generation_module_nitro(config):
         logger.info(f"Writing convolved scene atmosphere: {config['io']['sgm_atm']}")
         sgm_output_atm(config, atm, albedo, microhh_data, mode = 'convolved')
 
+    # test with adding clouds
+    if config['atm']['cloud']['use']:
+        atm = add_clouds(config,atm)
+        
     # =============================================================================================
     # 6) radiative transfer simulations with DISAMAR
     # =============================================================================================
@@ -938,7 +974,7 @@ def scene_generation_module_nitro(config):
     logger.info('Creating config files DISAMAR')
 
     # convert atm profiles to disamar format
-    dis_profiles = convert_atm_profiles(atm, config)
+    atm_disamar = convert_atm_to_disamar(atm, config)
 
 
     timestamp = datetime.datetime.now().strftime('%Y%m%dT%H%M%S')
@@ -962,7 +998,7 @@ def scene_generation_module_nitro(config):
     for ialt in range(nalt):
         for iact in range(nact):
 
-            dis_cfg = set_disamar_cfg_sim(config, dis_cfg, gm_data, dis_profiles, albedo, ialt, iact)
+            dis_cfg = set_disamar_cfg_sim(config, dis_cfg, gm_data, atm_disamar, albedo, ialt, iact)
 
             filename = f'{tmp_dir}/alt{ialt:04d}_act{iact:03d}.in'
             dis_cfg.write(filename=filename)

@@ -712,15 +712,32 @@ APvariance                         0.0001
 SECTION CLOUD
 
 subsection cloudType
-cloudTypeSim     LambWavelIndep       ( choose between HGscattering, MieScattering, Lambertian, LambWavelIndep, or none)
-cloudTypeRetr    LambWavelIndep       ( choose between HGscattering, MieScattering, Lambertian, LambWavelIndep, or none)
+cloudTypeSim     HGscattering       ( choose between HGscattering, MieScattering, Lambertian, LambWavelIndep, or none)
+cloudTypeRetr    none               ( choose between HGscattering, MieScattering, Lambertian, LambWavelIndep, or none)
 
-subsection LambWavelIndepSim      (used when cloudTypeSim is LambWavelIndep)
-cloudAlbedo       0.80            (Lambertian cloud albedo; cloud is located at top fit interval)
+subsection HGscatteringSim     ( repeat for different intervals)
+# used when cloudTypeSim is HGscattering
+# the reference wavelength for the cloud optical thickness is 550 nm
+# cirrus at high altitude (interval = 4)
+#                          intervalNumber    value
+opticalThickness                2             10
+angstromCoefficient             2             0.0 
+singleScatteringAlbedo          2             1.0 
+HGparameter_g                   2             0.85 
 
-subsection LambWavelIndepRetr     (used when cloudTypeRetr is LambWavelIndep)
-APcloudAlbedo     0.80            (Lambertian cloud albedo; cloud is located at top fit interval)
-APvariance        0.01            (a priori variance of the Lambertian cloud albedo)
+subsection HGscatteringRetr    ( repeat for different intervals)
+# used when cloudTypeRetr is HGscattering
+# values can be specified for more than one interval
+# by repeating the four lines and changing the intervalNumber and values
+# However, only values for the fit interval can be fitted (see section GENERAL subsection specifyFitting)
+# and values for the APvariance for other intervals are ignored
+# the reference wavelength for the cloud optical thickness is 550 nm
+# cirrus at high altitude (interval = 4)
+#                          intervalNumber    APvalue     APvariance
+opticalThickness                2              0.1                  ( AP variance is required if the parameters is fitted)
+angstromCoefficient             2              0.0                  ( AP variance is required if the parameters is fitted)
+singleScatteringAlbedo          2              1.0                  ( ssa of cloud can not be fitted )
+HGparameter_g                   2              0.7                  ( parameter g of cloud can not be fitted )
 
 SECTION AEROSOL
 

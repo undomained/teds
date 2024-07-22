@@ -945,11 +945,93 @@ or the single item is turned into a list, and the new value is appended.'''
             fp.close()
 
 
+def disamar_add_gas_cfg(cfg, tmp_dir_disamar):
+    # Add subsection for each gas to disamar config template
+
+    template_tmp = tmp_dir_disamar+'/disamar_template.in'
+
+    shutil.copyfile(cfg['rtm']['disamar_cfg_template'],template_tmp)
+
+    with open(template_tmp,'a+') as f:
+
+        for gas in cfg['atm']['gases']:
+            match gas:
+                case 'no2':
+                    refspec = 'NO2T_VD.dat'
+                    o3_climatology = ''
+                case 'o3':
+                    refspec = 'O3_Brion_coeff_4Temp.txt'
+                    o3_climatology = '''
+subsection climatology     (the subsection climatology is required only for ozone; it must be omitted for other gases)
+useO3ClimSim         0     (1= use TOMS V8 climatology to replace vmr for key P_vmr_ppmv_sim; 0= do not replace vmr)
+useO3ClimRetr        0     (1= use TOMS V8 climatology to replace vmr for key P_vmr_ppmv_error_percent_retr; 0= do not replace vmr)
+latitude             0.0   (specify latitude in degrees (-90, 90) )
+month                3     (specify month 1 = Jan; 2 = Febr; ....; 12 = Dec )
+day_of_month        12     (specify day of month [1,31]; tabulated values in climatology are for day_of_month = 15)
+relError_vmr        9.0    (replace the error in percent for key P_vmr_ppmv_error_percent_retr by the value listed here)
+'''
+
+            template_gas = f'''
+SECTION {gas.upper()}
+# the following absorbing gases are recognized as section name
+# O3, NO2, trop_NO2, strat_NO2, O2, O2-O2, SO2, HCHO, CHOCHO, BrO, H2O, CH4, CO, CO2
+
+{o3_climatology}
+
+subsection filenames
+XsectionFileNameSim      RefSpec/{refspec} (file name with absorption cross section data used for simulation)
+XsectionFileNameRetr     RefSpec/NO2T_VD.dat (file name with absorption cross section data used for retrieval)
+
+subsection specifyFitting
+# profile and column can not be fitted for O2 and O2-O2
+fitProfile           0   (1 = fit profile ; 0 = do not fit profile)
+fitColumn            1   (1 = fit column  ; 0 = do not fit column)  (it is an error to fit both column and profile)
+
+subsection  profile
+
+P_vmr_ppmv_sim  1013.47400    2.3122106E-02
+
+P_vmr_ppmv_error_percent_retr  1013.474    2.3122106E-02   2.0000000E+01
 
 
+# the profile is defined through linear interpolation on the logarithm of the volume mixing ratio
+# or through cubic spline interpolation on the logarithm of the volume mixing ratio.
+# For strong absorption (ozone at wavelengths < 305 nm) and in the oxygen A band spline intrepolation can become
+# inaccurate and linear interpolation is preferred. If spline interpolation is used there can be the
+# side efect that d2R/dkabs/dz > 0 for some parts of the atmosphere and strong absorption. This has negative
+# consequences if DISMAS is used as retrieval method because we can not fit a low order polynomial in the wavelength 
+# for ln(d2R/dkabs/dz), but have to use  a polynomial for d2R/dkabs/dz. Hence for ozone profile retrieval
+# combined with DISMAS linear interpolation should be used.
+useLinInterpSim          1    (1 = linear interpolation for ln(vmr(z)); 0 = cubic spline interpolation for ln(vmr(z)) )
+useLinInterpRetr         1    (1 = linear interpolation for ln(vmr(z)); 0 = cubic spline interpolation for ln(vmr(z)) )
+
+subsection column
+# specify colum either in molecules cm-2 or in Dobson Units
+columnSim_molcm2       0.0  ( in molecules cm-2; use columnSim_DU for Dobson Units )
+columnRetr_molcm2      0.0  ( in molecules cm-2; use columnRetr_DU for Dobson Units )
+# columnSim_DU         300.0   ( in DU; use columnSim_molcm2 for molecules cm-2)
+# columnRetr_DU        300.0   ( in DU; use columnRetr_molcm2 for molecules cm-2)
+APerrorColumn_percent  500.0   ( a-priori error for the column in percent)
+
+subsection scaling
+# If scaleProfileToColumn = 1 the profile shape is kept constant but the profile is scaled so that
+# the column agrees with the column specified in subsection column. If scaleProfileToColumn = 0 no
+# scaling is performed and the column values specified in subsection column are ignored. In fact,
+# internally the column values read are overwritten with the column value calculated from the profile.
+# The a priori error APerrorColumn_percent and the errors specified for the profile are expressed
+# in percent and these are therefore not affected by scaling.
+scaleProfileToColumnSim  0      ( 1 = scale profile ; 0 = do not scale profile)
+scaleProfileToColumnRetr 0      ( 1 = scale profile ; 0 = do not scale profile)
+scaleFactorXsecSim       1.0    ( absorption cross section is multiplied with this factor ) 
+scaleFactorXsecRetr      1.0    ( absorption cross section is multiplied with this factor ) 
+            '''
 
 
+            f.write('\n')
+            f.write(template_gas)
 
+
+    return template_tmp
 
 class rt_run(object):  #IGNORE:C0103
     '''run the radiative transfer model (and retrieval system) DISAMAR

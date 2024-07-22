@@ -582,9 +582,15 @@ def run_disamar(filename,disamar_exe):
     dis_cfg = libRT_no2.RT_configuration(filename=filename)
     output_filename = filename.replace('.in', '.h5')
 
+    if logger.isEnabledFor(logging.DEBUG):
+        quiet = False
+        debug = True
+    else:
+        quiet = True
+        debug = False
 
     try:
-        RT = libRT_no2.rt_run(cfg=dis_cfg, disamar=disamar_exe, output=output_filename, quiet=True, debug=False)
+        RT = libRT_no2.rt_run(cfg=dis_cfg, disamar=disamar_exe, output=output_filename, quiet=quiet, debug=debug)
         starttime = time.time()
         RT()
         logger.debug(f'finished: {filename} in {np.round(time.time()-starttime,1)} s')
@@ -921,12 +927,6 @@ def scene_generation_module_nitro(config):
     # convert atm profiles to disamar format
     dis_profiles = convert_atm_profiles(atm, config)
 
-    if os.path.isfile(config['rtm']['disamar_cfg_template']):
-        dis_cfg = libRT_no2.RT_configuration(filename=config['rtm']['disamar_cfg_template'])
-    else:
-        logger.error(f"File {config['rtm']['disamar_cfg_template']} not found")
-
-    dis_cfg_filenames=[]
 
     timestamp = datetime.datetime.now().strftime('%Y%m%dT%H%M%S')
     tmp_dir = '{}/{}'.format( config['rtm']['tmp_dir'], timestamp)
@@ -934,6 +934,17 @@ def scene_generation_module_nitro(config):
         logger.info(f'Creating tmp directory DISAMAR: {tmp_dir}')
 
         os.makedirs(tmp_dir, exist_ok=True)
+
+
+    if os.path.isfile(config['rtm']['disamar_cfg_template']):
+        tmp_template_disamar = libRT_no2.disamar_add_gas_cfg(config, tmp_dir)
+        dis_cfg = libRT_no2.RT_configuration(filename=tmp_template_disamar)
+    else:
+        logger.error(f"File {config['rtm']['disamar_cfg_template']} not found")
+
+    dis_cfg_filenames=[]
+
+
 
     for ialt in range(nalt):
         for iact in range(nact):

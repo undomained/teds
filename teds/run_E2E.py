@@ -374,19 +374,22 @@ if __name__ == "__main__":
 
     
     # Get logger for run script
-    build_logger = Utils.get_logger()
+    logger = Utils.get_logger()
 
     # Get input arguments
     cfgFile, step =  cmdline(sys.argv[1:])
     cfg_path, filename = os.path.split(cfgFile)
 
     # Get configuration info
-    config = Utils.getConfig(build_logger, cfgFile)
+    config = Utils.getConfig(logger, cfgFile)
     config['header']['path'] = cfg_path
+
+    if config['log_level'] == 'debug':
+        logger.setLevel(logging.DEBUG)
 
     # Get information (like git hash and config file name and version (if available) 
     # that will be added to the output files as attributes
     main_attribute_dict = Utils.get_main_attributes(config)
 
-    build(build_logger, config, step, cfg_path, main_attribute_dict)
+    build(logger, config, step, cfg_path, main_attribute_dict)
 

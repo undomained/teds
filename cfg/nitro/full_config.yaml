@@ -1,5 +1,6 @@
-# Cobined config file for all steps in E2E analysis.
+# Combined config file for all steps in E2E analysis.
 #
+log_level: 'debug' # 'info' or 'debug', default is 'info'
 header:
     file_name: 'full_config.yaml'
     version: '0.000'

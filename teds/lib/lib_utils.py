@@ -1,6 +1,5 @@
 import os, sys
 import logging
-import yaml
 import subprocess
 import netCDF4 as nc
 
@@ -17,7 +16,6 @@ def get_logger():
     log_level = logging.INFO
     log_format = '%(asctime)s : %(name)s : %(module)s : %(lineno)d : %(levelname)s : %(message)s'
     log_formatter = logging.Formatter(log_format)
-    date_format = '%d/%m/%Y %H:%M:%S'
 
     logger = logging.getLogger('E2E')
     logger.setLevel(log_level)

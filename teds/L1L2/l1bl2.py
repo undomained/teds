@@ -46,6 +46,7 @@ def get_l1b(l1b_filename):
     l1b_data['mask'] = ~nc_var[:].mask
     if not nc_var[:].mask.shape:
         l1b_data['mask'] = np.full(nc_var[:].shape, True)
+    
     return (l1b_data)
 
 def get_sgm_atm(filen_sgm_atm):
@@ -65,18 +66,18 @@ def get_sgm_atm(filen_sgm_atm):
     return (surf_sgm, atm_sgm)
 
 
-def write_gasdata(gas, output_l2, _dims, _dims3d, nalt_l2, nact, nlay, l2product, retrieval_init):
+def write_gasdata(gas, output_l2, _dims, _dims3d, nalt, nact, nlay, l2product, retrieval_init):
     scale = {'CO2': 1.E6, 'CH4': 1.E9, 'H2O': 1.E6}
     # names
     xgas = "X" + gas
     xgas_precision = xgas + " precision"
     xgas_ker = xgas + ' col avg kernel'
-    l2_X = np.zeros((nalt_l2, nact))
-    l2_X_prec  = np.zeros((nalt_l2, nact))
-    l2_X_avgk  = np.zeros((nalt_l2, nact, nlay))
-    l2_X_prof  = np.zeros((nalt_l2, nact, nlay))
+    l2_X = np.zeros((nalt, nact))
+    l2_X_prec  = np.zeros((nalt, nact))
+    l2_X_avgk  = np.zeros((nalt, nact, nlay))
+    l2_X_prof  = np.zeros((nalt, nact, nlay))
 
-    for ialt in range(nalt_l2):
+    for ialt in range(nalt):
         for iact in range(nact):
             tmp = (l2product[ialt, iact][xgas]*scale[gas])
             l2_X[ialt, iact] = tmp
@@ -94,17 +95,17 @@ def write_gasdata(gas, output_l2, _dims, _dims3d, nalt_l2, nact, nlay, l2product
     _ = writevariablefromname(output_l2, avgker_varname, _dims3d, l2_X_avgk)
     _ = writevariablefromname(output_l2, aprof_varname,  _dims3d, l2_X_prof)
 
-def write_proxygasdata(gas, output_l2, _dims, nalt_l2, nact, nlay, l2product):
+def write_proxygasdata(gas, output_l2, _dims, nalt, nact, nlay, l2product):
     scale = {'CO2': 1.E6, 'CH4': 1.E9, 'H2O': 1.E6}
     # names
     xgas = "X" + gas + " proxy"
     xgas_precision = xgas + " precision"
-    l2_X = np.zeros((nalt_l2, nact))
-    l2_X_prec = np.zeros((nalt_l2, nact))
-    l2_X_accu = np.zeros((nalt_l2, nact))
-    l2_X_qav  = np.zeros((nalt_l2, nact), dtype = np.int16)
+    l2_X = np.zeros((nalt, nact))
+    l2_X_prec = np.zeros((nalt, nact))
+    l2_X_accu = np.zeros((nalt, nact))
+    l2_X_qav  = np.zeros((nalt, nact), dtype = np.int16)
     
-    for ialt in range(nalt_l2):
+    for ialt in range(nalt):
         for iact in range(nact):
             tmp = (l2product[ialt, iact][xgas]*scale[gas])
             l2_X[ialt, iact] = tmp
@@ -125,25 +126,18 @@ def write_proxygasdata(gas, output_l2, _dims, nalt_l2, nact, nlay, l2product):
 
 def level2_output(filename, l2product, retrieval_init, l1bproduct, settings):
     # output of level 2 data
-    nalt_l2 = len(l2product)
+    nalt = len(l2product)
     nalt = l1bproduct['latitude'][:, 0].size
     nact = len(l2product[0])
     nlay = len(l2product[0][0]['XCO2 col avg kernel'])
-
-    if (settings['sw_ALT_select']):
-        nalt_start = settings['first_ALT_index']
-        nalt_end = settings['last_ALT_index']
-    else:
-        nalt_start = 0
-        nalt_end = nalt
-    nalt_l2 = nalt_end-nalt_start
+        
     # filename
     print(filename)
     output_l2 = nc.Dataset(filename, mode='w')
     output_l2.title = 'Tango Carbon E2ES L2 product'
     output_l2.createDimension('number_layers', nlay)     # spectral axis
     output_l2.createDimension('bins_across_track', nact)     # across track axis
-    output_l2.createDimension('bins_along_track', nalt_l2)     # along track axis
+    output_l2.createDimension('bins_along_track', nalt)     # along track axis
     output_l2.createDimension('bins_albedo', 1)     # spectral bins albedo
     grp_ns    = output_l2.createGroup('non_scattering_retrieval')
     grp_prior = output_l2.createGroup('prior')
@@ -158,16 +152,16 @@ def level2_output(filename, l2product, retrieval_init, l1bproduct, settings):
     _dims   = ('bins_along_track', 'bins_across_track')
     _dims3d = ('bins_along_track', 'bins_across_track', 'number_layers',)
     # variables
-    l2_conv = np.zeros((nalt_l2, nact), dtype = np.int32)
-    l2_numb_iter = np.zeros((nalt_l2, nact), dtype = np.int32)
-    l2_proc_flag = np.zeros((nalt_l2, nact), dtype = np.int16) + 100
-    l2_chi2 = np.zeros((nalt_l2, nact))
-    l2_alb = np.zeros((nalt_l2, nact))
-    l2_spec_shift  = np.zeros((nalt_l2, nact))
-    l2_spec_squeeze = np.zeros((nalt_l2, nact))
-    l2_aqutime = np.zeros(nalt_l2) + 99999.   #aquisition time (dummy)
+    l2_conv = np.zeros((nalt, nact), dtype = np.int32)
+    l2_numb_iter = np.zeros((nalt, nact), dtype = np.int32)
+    l2_proc_flag = np.zeros((nalt, nact), dtype = np.int16) + 100
+    l2_chi2 = np.zeros((nalt, nact))
+    l2_alb = np.zeros((nalt, nact))
+    l2_spec_shift  = np.zeros((nalt, nact))
+    l2_spec_squeeze = np.zeros((nalt, nact))
+    l2_aqutime = np.zeros(nalt) + 99999.   #aquisition time (dummy)
     
-    for ialt in range(nalt_l2):
+    for ialt in range(nalt):
         for iact in range(nact):
             l2_conv[ialt, iact]         = int(l2product[ialt, iact]['convergence'])
             l2_numb_iter[ialt, iact]    = l2product[ialt, iact]['number_iter']
@@ -183,9 +177,9 @@ def level2_output(filename, l2product, retrieval_init, l1bproduct, settings):
     # convergence
     _ = writevariablefromname(grp_diag,  'convergence',     _dims, l2_conv)
     # latitude
-    _ = writevariablefromname(output_l2, 'latitude',        _dims, l1bproduct['latitude'][nalt_start:nalt_end, :nact])
+    _ = writevariablefromname(output_l2, 'latitude',        _dims, l1bproduct['latitude'][:, :nact])
     # longitude
-    _ = writevariablefromname(output_l2, 'longitude',       _dims, l1bproduct['longitude'][nalt_start:nalt_end, :nact])
+    _ = writevariablefromname(output_l2, 'longitude',       _dims, l1bproduct['longitude'][:, :nact])
     # maxiterations
     _ = writevariablefromname(grp_diag,  'maxiterations',   _dims, l2_numb_iter)
     # chi2
@@ -210,12 +204,12 @@ def level2_output(filename, l2product, retrieval_init, l1bproduct, settings):
         xgas_precision = xgas + " precision"
         xgas_ker = xgas + ' col avg kernel'
 
-        l2_X = np.zeros((nalt_l2, nact))
-        l2_X_prec  = np.zeros((nalt_l2, nact))
-        l2_X_avgk  = np.zeros((nalt_l2, nact, nlay))
-        l2_X_prof  = np.zeros((nalt_l2, nact, nlay))
+        l2_X = np.zeros((nalt, nact))
+        l2_X_prec  = np.zeros((nalt, nact))
+        l2_X_avgk  = np.zeros((nalt, nact, nlay))
+        l2_X_prof  = np.zeros((nalt, nact, nlay))
 
-        for ialt in range(nalt_l2):
+        for ialt in range(nalt):
             for iact in range(nact):
                 tmp = (l2product[ialt, iact][xgas]*scale[gas])
                 l2_X[ialt, iact] = tmp
@@ -239,12 +233,12 @@ def level2_output(filename, l2product, retrieval_init, l1bproduct, settings):
 
         xgas = "X" + gas + " proxy"
         xgas_precision = xgas + " precision"
-        l2_X = np.zeros((nalt_l2, nact))
-        l2_X_prec = np.zeros((nalt_l2, nact))
-        l2_X_accu = np.zeros((nalt_l2, nact))
-        l2_X_qav  = np.zeros((nalt_l2, nact), dtype = np.int16)
+        l2_X = np.zeros((nalt, nact))
+        l2_X_prec = np.zeros((nalt, nact))
+        l2_X_accu = np.zeros((nalt, nact))
+        l2_X_qav  = np.zeros((nalt, nact), dtype = np.int16)
     
-        for ialt in range(nalt_l2):
+        for ialt in range(nalt):
             for iact in range(nact):
                 l2_X[ialt, iact] = (l2product[ialt, iact][xgas]*scale[gas])
                 l2_X_prec[ialt, iact] = l2product[ialt, iact][xgas_precision]*scale[gas]
@@ -397,20 +391,12 @@ def level1b_to_level2_processor(config, sw_diag_output = False):
     XCO2_true = np.zeros(nact)
     XCO2_prec = np.zeros(nact)
 
-    if (config['retrieval_init']['sw_ALT_select']):
-        nalt_start = config['retrieval_init']['first_ALT_index']
-        nalt_end = config['retrieval_init']['last_ALT_index']
-    else:
-        nalt_start = 0
-        nalt_end = nalt
-    nalt_l2 = nalt_end-nalt_start
-    
-    l2product = np.ndarray((nalt_l2, nact), np.object_)
-    measurement = np.ndarray((nalt_l2, nact), np.object_)
+    l2product = np.ndarray((nalt, nact), np.object_)
+    measurement = np.ndarray((nalt, nact), np.object_)
 
-    # plt.plot(l1b['wavelength'][0,mask[0,:]], l1b['radiance'][0,0,mask[0,:]])
-    # plt.plot(l1b['wavelength'][10,mask[10,:]], l1b['radiance'][0,10,mask[10,:]])
-    # sys.exit()
+#    plt.plot(l1b['wavelength'][0,mask[0,0,:]], l1b['radiance'][0,0,mask[0,0,:]])
+#    plt.plot(l1b['wavelength'][10,mask[0,9,:]], l1b['radiance'][0,9,mask[0,9,:]])
+#    sys.exit()
     # We introduce two types of ialt indices, ialt points to l1b data structure and ilat_l2 to l2 data structure.
     # Later is different to l1b structure because of option for image selection (sw_ALT_select).
 
@@ -420,10 +406,10 @@ def level1b_to_level2_processor(config, sw_diag_output = False):
     runtime_cum['conv'] = 0.
     runtime_cum['kern'] = 0.
 
-    for ialt_l2, ialt in enumerate(tqdm(range(nalt_start, nalt_end))):
+    for ialt, ialt in enumerate(tqdm(range(nalt))):
         for iact in range(nact):
             # number of 'good' pixels
-            numb_spec_points = np.sum(mask[ialt_l2,iact,:])/float(mask[ialt_l2,iact,:].size)
+            numb_spec_points = np.sum(mask[ialt,iact,:])/float(mask[ialt,iact,:].size)
             if(numb_spec_points >=0.9):
                 # initialization of pixel retrieval
                 xco2_ref = 405.  # ppm
@@ -440,8 +426,8 @@ def level1b_to_level2_processor(config, sw_diag_output = False):
                 else:
                     sys.exit('sw_prof_init of l1bl2 configuration not set correctly!')
                     
-                retrieval_init['surface pressure']  = np.zeros([nalt_l2,nact])+1013.  #these are dummy values for the time being
-                retrieval_init['surface elevation'] = np.zeros([nalt_l2,nact])
+                retrieval_init['surface pressure']  = np.zeros([nalt,nact])+1013.  #these are dummy values for the time being
+                retrieval_init['surface elevation'] = np.zeros([nalt,nact])
 
                 wavelength = l1b['wavelength'][iact, mask[ialt,iact, :]].data
                 istart = np.argmin(np.abs(wavelength - wave_start))
@@ -458,58 +444,58 @@ def level1b_to_level2_processor(config, sw_diag_output = False):
     
                 # Observation geometry
                 nwave = wave_meas.size
-                measurement[ialt_l2, iact] = {}
-                measurement[ialt_l2, iact]['wavelength'] = wave_meas[:]
-                measurement[ialt_l2, iact]['mu0'] = np.cos(np.deg2rad(l1b['sza'][ialt, iact]))
-                measurement[ialt_l2, iact]['muv'] = np.cos(np.deg2rad(l1b['vza'][ialt, iact]))
-                measurement[ialt_l2, iact]['ymeas'] = l1b['radiance'][ialt, iact, mask[ialt,iact, :]][istart:iend+1].data
-                measurement[ialt_l2, iact]['Smeas'] = np.eye(
+                measurement[ialt, iact] = {}
+                measurement[ialt, iact]['wavelength'] = wave_meas[:]
+                measurement[ialt, iact]['mu0'] = np.cos(np.deg2rad(l1b['sza'][ialt, iact]))
+                measurement[ialt, iact]['muv'] = np.cos(np.deg2rad(l1b['vza'][ialt, iact]))
+                measurement[ialt, iact]['ymeas'] = l1b['radiance'][ialt, iact, mask[ialt,iact, :]][istart:iend+1].data
+                measurement[ialt, iact]['Smeas'] = np.eye(
                     nwave)*(l1b['noise'][ialt, iact, mask[ialt,iact, :]][istart:iend+1].data)**2
-                measurement[ialt_l2, iact]['sun'] = sun
+                measurement[ialt, iact]['sun'] = sun
     
                 # derive first guess albedo from the maximum reflectance
-                ymeas_max = np.max(measurement[ialt_l2, iact]['ymeas'])
-    
-                idx = np.where(measurement[ialt_l2, iact]['ymeas'] == ymeas_max)[0][0]
-                alb_first_guess = measurement[ialt_l2, iact]['ymeas'][idx] / \
+                ymeas_max = np.max(measurement[ialt, iact]['ymeas'])
+
+                idx = np.where(measurement[ialt, iact]['ymeas'] == ymeas_max)[0][0]
+                alb_first_guess = measurement[ialt, iact]['ymeas'][idx] / \
                     sun[idx]*np.pi/np.cos(np.deg2rad(l1b['sza'][ialt, iact]))
                 retrieval_init['surface'] = {'alb0': alb_first_guess, 'alb1': 0.0}
     
                 # Non-scattering least squares fit
-                l2product[ialt_l2, iact], runtime = libINV.Gauss_Newton_iteration(
-                    retrieval_init, atm_ret, optics, measurement[ialt_l2, iact],
+                l2product[ialt, iact], runtime = libINV.Gauss_Newton_iteration(
+                    retrieval_init, atm_ret, optics, measurement[ialt, iact],
                     config['retrieval_init']['max_iter'], config['retrieval_init']['chi2_lim'],
                     isrf_convolution)
     
                 for key in runtime.keys():
                     runtime_cum[key] = runtime_cum[key] + runtime[key]
     
-                if (not l2product[ialt_l2, iact]['convergence']):
-                    print('pixel did not converge (ialt,iact) = ', ialt_l2, iact)
+                if (not l2product[ialt, iact]['convergence']):
+                    print('pixel did not converge (ialt,iact) = ', ialt, iact)
     
                 # Define proxy product
-                l2product[ialt_l2, iact]['XCO2 proxy'] = l2product[ialt_l2,
-                                                                   iact]['XCO2']/l2product[ialt_l2, iact]['XCH4']*xch4_model
-                l2product[ialt_l2, iact]['XCH4 proxy'] = l2product[ialt_l2,
-                                                                   iact]['XCH4']/l2product[ialt_l2, iact]['XCO2']*xco2_model
-                rel_error = np.sqrt((l2product[ialt_l2, iact]['XCO2 precision']/l2product[ialt_l2, iact]['XCO2'])**2 +
-                                    (l2product[ialt_l2, iact]['XCH4 precision']/l2product[ialt_l2, iact]['XCH4'])**2)
-                l2product[ialt_l2, iact]['XCO2 proxy precision'] = rel_error * l2product[ialt_l2, iact]['XCO2']
-                l2product[ialt_l2, iact]['XCH4 proxy precision'] = rel_error * l2product[ialt_l2, iact]['XCH4']
+                l2product[ialt, iact]['XCO2 proxy'] = l2product[ialt,
+                                                                   iact]['XCO2']/l2product[ialt, iact]['XCH4']*xch4_model
+                l2product[ialt, iact]['XCH4 proxy'] = l2product[ialt,
+                                                                   iact]['XCH4']/l2product[ialt, iact]['XCO2']*xco2_model
+                rel_error = np.sqrt((l2product[ialt, iact]['XCO2 precision']/l2product[ialt, iact]['XCO2'])**2 +
+                                    (l2product[ialt, iact]['XCH4 precision']/l2product[ialt, iact]['XCH4'])**2)
+                l2product[ialt, iact]['XCO2 proxy precision'] = rel_error * l2product[ialt, iact]['XCO2']
+                l2product[ialt, iact]['XCH4 proxy precision'] = rel_error * l2product[ialt, iact]['XCH4']
 
             else:
-                l2product[ialt_l2, iact] = level2_nan(retrieval_init, nlay)
-                l2product[ialt_l2, iact]['XCO2 proxy'] = float("nan")
-                l2product[ialt_l2, iact]['XCH4 proxy'] = float("nan")
-                l2product[ialt_l2, iact]['XCO2 proxy precision'] = float("nan")
-                l2product[ialt_l2, iact]['XCH4 proxy precision'] = float("nan")
+                l2product[ialt, iact] = level2_nan(retrieval_init, nlay)
+                l2product[ialt, iact]['XCO2 proxy'] = float("nan")
+                l2product[ialt, iact]['XCH4 proxy'] = float("nan")
+                l2product[ialt, iact]['XCO2 proxy precision'] = float("nan")
+                l2product[ialt, iact]['XCH4 proxy precision'] = float("nan")
 
-            l2product[ialt_l2, iact]['spec_shift']   = 0.  #dummies for the time beeing
-            l2product[ialt_l2, iact]['spec_squeeze'] = 0.
+            l2product[ialt, iact]['spec_shift']   = 0.  #dummies for the time beeing
+            l2product[ialt, iact]['spec_squeeze'] = 0.
 
-            # XCO2[iact] = l2product[ialt_l2, iact]['XCO2 proxy']*1.E6
-            # XCO2_prec[iact] = l2product[ialt_l2, iact]['XCO2 proxy precision']*1.E6
-            # XCO2_true_smoothed[iact] = np.dot(l2product[ialt_l2, iact]['XCO2 col avg kernel'],
+            # XCO2[iact] = l2product[ialt, iact]['XCO2 proxy']*1.E6
+            # XCO2_prec[iact] = l2product[ialt, iact]['XCO2 proxy precision']*1.E6
+            # XCO2_true_smoothed[iact] = np.dot(l2product[ialt, iact]['XCO2 col avg kernel'],
             #                                   atm_sgm['dcol_co2'][ialt, iact, :])/np.sum(atm.air)*1.E6
             # XCO2_true[iact] = np.sum(atm_sgm['dcol_co2'][ialt, iact, :])/np.sum(atm.air)*1.E6
 

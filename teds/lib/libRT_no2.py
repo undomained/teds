@@ -955,10 +955,12 @@ def disamar_add_gas_cfg(cfg, tmp_dir_disamar):
     with open(template_tmp,'a+') as f:
 
         for gas in cfg['atm']['gases']:
+            o3_climatology = ''
             match gas:
                 case 'no2':
                     refspec = 'NO2T_VD.dat'
-                    o3_climatology = ''
+                case 'o2-o2':
+                    refspec = 'O2O2T_BIRA.dat'
                 case 'o3':
                     refspec = 'O3_Brion_coeff_4Temp.txt'
                     o3_climatology = '''
@@ -985,7 +987,7 @@ XsectionFileNameRetr     RefSpec/NO2T_VD.dat (file name with absorption cross se
 subsection specifyFitting
 # profile and column can not be fitted for O2 and O2-O2
 fitProfile           0   (1 = fit profile ; 0 = do not fit profile)
-fitColumn            1   (1 = fit column  ; 0 = do not fit column)  (it is an error to fit both column and profile)
+fitColumn            0   (1 = fit column  ; 0 = do not fit column)  (it is an error to fit both column and profile)
 
 subsection  profile
 

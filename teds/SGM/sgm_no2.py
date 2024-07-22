@@ -489,6 +489,18 @@ def convert_atm_profiles(atm, cfg):
     for key in profiles:
         profiles[key] = profiles[key].clip(min=1.0e-10)
 
+    # O2-O2
+    # note that for a collision complex the parent gas has to be specified here, 
+    # e.g. for O2-O2 the volume mixing ratio of O2 has to be specified
+
+    # mixing ratio of O2 is 0.20946 taken from R. Goody, Principles of atmospheric physics and chemistry,
+    # Table 1.2, Oxford University Press, New York, 1995. [DAK uses 0.209476  (US Stand. Atm., 1976)]
+    o2_mixing_ratio =  20.94600E+04
+    if cfg['rtm']['o2o2']:
+        cfg['atm']['gases'].append('o2-o2')
+        profiles['o2-o2'] = np.ones_like(profiles['p'])*o2_mixing_ratio
+
+
     return profiles
 
 
@@ -512,6 +524,7 @@ def set_disamar_cfg_sim(cfg, dis_cfg, ground_points, profiles, albedo, i_t, i_x)
         dis_cfg['GENERAL','method', 'simulationMethod'].setvalue(0)
         dis_cfg['GENERAL','method', 'ignoreSlitSim'].setvalue(1)
 
+    dis_cfg['GENERAL','overall', 'numberTraceGases'].setvalue(len(cfg['atm']['gases']))
 
     # get datetime
     # dt = ground_points['epoch'] + datetime.timedelta( seconds=ground_points['seconds_from_epoch'][i_t] )

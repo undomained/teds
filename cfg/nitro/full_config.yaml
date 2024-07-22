@@ -1,6 +1,6 @@
 # Combined config file for all steps in E2E analysis.
 #
-log_level: 'debug' # 'info' or 'debug', default is 'info'
+log_level: 'info' # 'info' or 'debug', default is 'info'
 header:
     file_name: 'full_config.yaml'
     version: '0.000'
@@ -115,7 +115,8 @@ SGM:
         wave_start: 395         #nm
         wave_end:   502         #nm
         dwave:      0.05        #nm
-        cleanup: True # rm disamartmp directory when finished
+        cleanup: True           # rm disamartmp directory when finished
+        o2o2: True              # add o2-o2 absorption
     
     S2_albedo:
         band: B01

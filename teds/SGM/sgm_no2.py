@@ -530,7 +530,6 @@ def convert_atm_to_disamar(atm, cfg):
         atm_disamar['cloud_top_pressure'] = atm.ctp.copy()
         atm_disamar['cloud_bottom_pressure'] = atm.cbp.copy()
 
-
     return atm_disamar
 
 
@@ -1009,7 +1008,6 @@ def scene_generation_module_nitro(config):
 
     if os.path.isfile(config['rtm']['disamar_cfg_template']):
         tmp_template_disamar = libRT_no2.disamar_add_gas_cfg(config, tmp_dir)
-        dis_cfg = libRT_no2.RT_configuration(filename=tmp_template_disamar)
     else:
         logger.error(f"File {config['rtm']['disamar_cfg_template']} not found")
 
@@ -1019,8 +1017,8 @@ def scene_generation_module_nitro(config):
 
     for ialt in range(nalt):
         for iact in range(nact):
-
-            dis_cfg = set_disamar_cfg_sim(config, dis_cfg, gm_data, atm_disamar, albedo, ialt, iact)
+            dis_cfg_template = libRT_no2.RT_configuration(filename=tmp_template_disamar)
+            dis_cfg = set_disamar_cfg_sim(config, dis_cfg_template, gm_data, atm_disamar, albedo, ialt, iact)
 
             filename = f'{tmp_dir}/alt{ialt:04d}_act{iact:03d}.in'
             dis_cfg.write(filename=filename)

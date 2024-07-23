@@ -106,9 +106,17 @@ SGM:
             path: '../data/no2/dem.nc'
         cloud:                  # HG scattering clouds
             use: True
+            cloud_fraction: 1.0
             cloud_optical_thickness: 10.0
             cloud_bottom_pressure: 900 # hPa
             cloud_top_pressure: 800 # hPa
+            # define pixels where to put cloud, default is all pixels
+            alt:    
+                start: 0
+                stop: 5
+            act:
+                start: 0
+                stop: 50
 
     
     rtm:   # disamar (RTM) settings

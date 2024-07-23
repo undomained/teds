@@ -278,12 +278,26 @@ def combine_mhh_cams( mhh_data, atm, species=['no2', 'co2', 'no']):
     return atm
 
 def add_clouds(cfg, atm):
-    # Add cloud parameters to atm
-    # for now all pixels have the same specified cloud
+    # Add cloud parameters to atm for specified range
 
-    atm.cot = np.ones_like(atm.lat)*cfg['atm']['cloud']['cloud_optical_thickness']
-    atm.cbp = np.ones_like(atm.lat)*cfg['atm']['cloud']['cloud_bottom_pressure']
-    atm.ctp = np.ones_like(atm.lat)*cfg['atm']['cloud']['cloud_top_pressure']
+    atm.cf = np.zeros_like(atm.lat)
+    atm.cot = np.ma.masked_all_like(atm.lat)
+    atm.cbp = np.ma.masked_all_like(atm.lat)
+    atm.ctp = np.ma.masked_all_like(atm.lat)
+
+    if 'alt' in cfg['atm']['cloud']:
+        slice_alt = slice(cfg['atm']['cloud']['alt']['start'],cfg['atm']['cloud']['alt']['stop']+1)
+    else:
+        slice_alt = slice(0,None)
+    if 'act' in cfg['atm']['cloud']:
+        slice_act = slice(cfg['atm']['cloud']['act']['start'],cfg['atm']['cloud']['act']['stop']+1)
+    else:
+        slice_act = slice(0,None)
+
+    atm.cf[slice_alt, slice_act] =  cfg['atm']['cloud']['cloud_fraction']
+    atm.cot[slice_alt, slice_act] =  cfg['atm']['cloud']['cloud_optical_thickness']
+    atm.cbp[slice_alt, slice_act] = cfg['atm']['cloud']['cloud_bottom_pressure']
+    atm.ctp[slice_alt, slice_act] = cfg['atm']['cloud']['cloud_top_pressure']
 
     return atm
 
@@ -511,7 +525,7 @@ def convert_atm_to_disamar(atm, cfg):
         atm_disamar['o2-o2'] = np.ones_like(atm_disamar['p'])*o2_mixing_ratio
 
     if cfg['atm']['cloud']['use']:
-        atm_disamar['cloud_fraction'] = np.ones((atm_disamar['p'].shape[:2]))
+        atm_disamar['cloud_fraction'] = atm.cf.copy()
         atm_disamar['cloud_optical_thickness'] = atm.cot.copy()
         atm_disamar['cloud_top_pressure'] = atm.ctp.copy()
         atm_disamar['cloud_bottom_pressure'] = atm.cbp.copy()
@@ -768,6 +782,14 @@ def sgm_output_atm(config, atm, albedo, microhh_data, mode='raw'):
         _ = writevariablefromname(output_atm, 'subcol_density_'+gas, dims_layer, atm.__getattribute__('dcol_'+gas)) # [molec/cm2]
         _ = writevariablefromname(output_atm, 'column_'+gas, dims_2d, atm.__getattribute__('col_'+gas)) # [molec/cm2]
 
+    # clouds
+    if config['atm']['cloud']['use'] and mode=='convolved':
+        _ = writevariablefromname(output_atm, 'cloud_fraction', dims_2d, atm.cf)
+        _ = writevariablefromname(output_atm, 'cloud_optical_thickness', dims_2d, atm.cot)
+        _ = writevariablefromname(output_atm, 'cloud_bottom_pressure', dims_2d, atm.cbp)
+        _ = writevariablefromname(output_atm, 'cloud_top_pressure', dims_2d, atm.ctp)
+
+
 
     if config['atm']['microHH']['use'] and mode=='raw':
         #information on emission source    
@@ -955,14 +977,14 @@ def scene_generation_module_nitro(config):
         # recalculate total columns
         atm = recalc_total_column(atm, config)
 
+        # add clouds
+        if config['atm']['cloud']['use']:
+            atm = add_clouds(config,atm)
 
         # write atm to file
         logger.info(f"Writing convolved scene atmosphere: {config['io']['sgm_atm']}")
         sgm_output_atm(config, atm, albedo, microhh_data, mode = 'convolved')
 
-    # test with adding clouds
-    if config['atm']['cloud']['use']:
-        atm = add_clouds(config,atm)
         
     # =============================================================================================
     # 6) radiative transfer simulations with DISAMAR

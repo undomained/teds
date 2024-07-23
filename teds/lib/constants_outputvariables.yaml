@@ -243,6 +243,26 @@ conc_o3:
   long_name: O3 layer concentration
   units: ppmv
 
+cloud_fraction:
+  name: cloud fraction
+  long_name: 'Geometric cloud fraction'
+  units: '1'
+
+cloud_optical_thickness:
+  name: cloud optical thickness
+  long_name: 'Cloud opticall thickness'
+  units: '1'
+
+cloud_bottom_pressure:
+  name: cloud bottom pressure
+  long_name: 'Pressure of bottom of cloud layer'
+  units: 'hPa'
+
+cloud_top_pressure:
+  name: cloud top pressure
+  long_name: 'Pressure of top of cloud layer'
+  units: 'hPa'
+
 # level 2 output
 convergence:
   name: convergence

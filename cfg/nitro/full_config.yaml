@@ -246,97 +246,146 @@ L1L2:
         plot: no
         log: no
 
-    # The window for the DOAS fit.
-    fit_window: [405.0, 465.0] 
+    retrieve:
+        no2: yes
+        o2o2: yes
 
-    #The number of coefficients of the DOAS polynomial (which is the degree of the polynomial + 1)# minimum is 3, maximum is 10.
-    polynomial_coefs: 6
+    no2:
+        # The window for the DOAS fit.
+        fit_window: [405.0, 465.0] 
 
-    #List of the trace gases to use, separated by spaces, e.g.: NO2  O3  O2O2  H2Ovap  H2Oliq
-    # Do NOT include 'Ring' here!
-    # Use 'None' for zero trace gases, i.e. fit only a polynomial.
-    trace_gas_list: [NO2, O3]
+        #The number of coefficients of the DOAS polynomial (which is the degree of the polynomial + 1)# minimum is 3, maximum is 10.
+        polynomial_coefs: 6
 
-    # Specify whether and if so how to fit the Ring spectrum:
-    #    No  = do not apply Ring correction
-    #    Iring = use the non-linear Ring correction approach,
-    #            based on the Ring radiance spectrun Iring   
-    #    sigma = use the linear Ring correction approach,    
-    #            based on the differential Ring spectrum     
-    ring_fit_term: No
+        #List of the trace gases to use, separated by spaces, e.g.: NO2  O3  O2O2  H2Ovap  H2Oliq
+        # Do NOT include 'Ring' here!
+        # Use 'None' for zero trace gases, i.e. fit only a polynomial.
+        trace_gas_list: [O2O2, NO2, O3]
 
-    # Number of intensity offset correction coefficients:
-    #    0 = no intensity offset correction
-    #    1 = a constant   offset correction : Aoff
-    #    2 = a linear     offset correction : Aoff + Boff*lambda
-    # Note that fitting an intensity offset makes no sense if all
-    # else there is to fit is a polynomial.
-    # scaling factor Soff:  scaling factor to absorb the unit of IO(w)
-    intensity_coefs: 0
-    intensity_scaling_factor: 1.0
+        # Specify whether and if so how to fit the Ring spectrum:
+        #    No  = do not apply Ring correction
+        #    Iring = use the non-linear Ring correction approach,
+        #            based on the Ring radiance spectrun Iring   
+        #    sigma = use the linear Ring correction approach,    
+        #            based on the differential Ring spectrum     
+        ring_fit_term: No
 
-    # Maximum number of iterations to use in the DOAS fit
-    max_iterations: 8
+        # Number of intensity offset correction coefficients:
+        #    0 = no intensity offset correction
+        #    1 = a constant   offset correction : Aoff
+        #    2 = a linear     offset correction : Aoff + Boff*lambda
+        # Note that fitting an intensity offset makes no sense if all
+        # else there is to fit is a polynomial.
+        # scaling factor Soff:  scaling factor to absorb the unit of IO(w)
+        intensity_coefs: 0
+        intensity_scaling_factor: 1.0
 
-    # Spike removal: off/on
-    spike_removal: off
-    
-    #Max number of outliers that iis accepted
-    max_outliers: 10
+        # Maximum number of iterations to use in the DOAS fit
+        max_iterations: 8
 
-    # convergence threshold for OE
-    convergence_threshold: 1.0
-
-    # ---- Reference Spectra ----
-    # ref spec convolved with FWHM 0.6 nm
-    ref_solar: ../data/no2/refspec_06/solar_irradiance.xs
-    ref_xs_no2: ../data/no2/refspec_06/no2.xs
-    ref_xs_o3: ../data/no2/refspec_06/o3.xs
-
-
-    # ---- Wavelength calibration ----
-
-    # Wavelength calibation for solar and earth spectra (off/on)
-    wlcal_solar: off
-    wlcal_earth: off
-
-    # Include wavelength stretch in wavelength calibration(off/on)
-    wlcal_solar_stretch: off
-    wlcal_earth_stretch: off
-
-    # window to use for the calibration, but use the full  
-    #                   fit window if wlcal_[solar/earth]_stretch = 1
-    wlcal_window: [405.0, 465.0]
-
-    # prior values for OE: [value, error]
-    prior:
-        doas: # P is polynomial, C is intensity offset
-            P0: [1.0, 1.0]
-            P1: [0.015625, 0.015625]
-            P2: [0.015625, 0.015625]
-            P3: [0.015625, 0.015625]
-            P4: [0.015625, 0.015625]
-            P5: [0.015625, 0.015625]
-            C0: [1.0, 1.0]
-            C1: [0.125, 0.125]
-            C2: [0.015625, 0.015625]
-            C3: [0.015625, 0.015625]
-            Cring: [0.06, 0.2]
-            Dring: [0.06, 0.2]
-            NO2: [1.2e-5, 1.0e-2]
-            O2O2: [8.0e+5, 2.0e+6]
-            O3: [3.6e-1, 5.0]
-            H20vap: [1.5e+3, 1.0e+4]
-            H20liq: [0.0, 20.0]
+        # Spike removal: off/on
+        spike_removal: off
         
-        wvl_cal: # ws = shift, wq = stretch/squeeze, error: 1/3th of spacing of nominal grid: sigma=dlambda/3
-            ws: [0.0, 0.07]
-            wq: [0.0, 0.07]
-            P0: [1.0, 1.0]
-            P1: [0.1, 0.1]
-            P2: [0.01, 0.01]
-            Cring: [0.06, 0.06]
-            Dring: [0.06, 0.06]
+        #Max number of outliers that iis accepted
+        max_outliers: 10
+
+        # convergence threshold for OE
+        convergence_threshold: 1.0
+
+        # ---- Reference Spectra ----
+        # ref spec convolved with FWHM 0.6 nm
+        ref_solar: ../data/no2/refspec_06/solar_irradiance.xs
+        ref_xs_no2: ../data/no2/refspec_06/no2.xs
+        ref_xs_o2o2: ../data/no2/refspec_06/o2o2.xs
+        ref_xs_o3: ../data/no2/refspec_06/o3.xs
+
+
+        # ---- Wavelength calibration ----
+
+        # Wavelength calibation for solar and earth spectra (off/on)
+        wlcal_solar: off
+        wlcal_earth: off
+
+        # Include wavelength stretch in wavelength calibration(off/on)
+        wlcal_solar_stretch: off
+        wlcal_earth_stretch: off
+
+        # window to use for the calibration, but use the full  
+        #                   fit window if wlcal_[solar/earth]_stretch = 1
+        wlcal_window: [405.0, 465.0]
+
+        # prior values for OE: [value, error]
+        prior:
+            doas: # P is polynomial, C is intensity offset
+                P0: [1.0, 1.0]
+                P1: [0.015625, 0.015625]
+                P2: [0.015625, 0.015625]
+                P3: [0.015625, 0.015625]
+                P4: [0.015625, 0.015625]
+                P5: [0.015625, 0.015625]
+                C0: [1.0, 1.0]
+                C1: [0.125, 0.125]
+                C2: [0.015625, 0.015625]
+                C3: [0.015625, 0.015625]
+                Cring: [0.06, 0.2]
+                Dring: [0.06, 0.2]
+                NO2: [1.2e-5, 1.0e-2]
+                O2O2: [8.0e+5, 2.0e+6]
+                O3: [3.6e-1, 5.0]
+                H20vap: [1.5e+3, 1.0e+4]
+                H20liq: [0.0, 20.0]
+            
+            wvl_cal: # ws = shift, wq = stretch/squeeze, error: 1/3th of spacing of nominal grid: sigma=dlambda/3
+                ws: [0.0, 0.07]
+                wq: [0.0, 0.07]
+                P0: [1.0, 1.0]
+                P1: [0.1, 0.1]
+                P2: [0.01, 0.01]
+                Cring: [0.06, 0.06]
+                Dring: [0.06, 0.06]
+    
+    o2o2:
+        fit_window: [460.0, 490.0] 
+        polynomial_coefs: 3
+        trace_gas_list: [O2O2, NO2, O3]
+        ring_fit_term: No
+        intensity_coefs: 0
+        intensity_scaling_factor: 1.0
+        max_iterations: 8
+        spike_removal: off
+        max_outliers: 10
+        convergence_threshold: 1.0
+        ref_solar: ../data/no2/refspec_06/solar_irradiance.xs
+        ref_xs_no2: ../data/no2/refspec_06/no2.xs
+        ref_xs_o2o2: ../data/no2/refspec_06/o2o2.xs
+        ref_xs_o3: ../data/no2/refspec_06/o3.xs
+        wlcal_solar: off
+        wlcal_earth: off
+        wlcal_solar_stretch: off
+        wlcal_earth_stretch: off
+        wlcal_window: [460.0, 490.0] 
+        prior:
+            doas:
+                P0: [1.0, 1.0]
+                P1: [0.125, 0.125]
+                P2: [0.015625, 0.015625]
+                P3: [0.015625, 0.015625]
+                P4: [0.015625, 0.015625]
+                P5: [0.015625, 0.015625]
+                Cring: [0.06, 0.2]
+                NO2: [1.8e-4, 1.0e-2]
+                O2O2: [8.0e+5, 2.0e+6]
+                O3: [3.6e-1, 5.0]
+                H20vap: [1.5e+3, 1.0e+4]
+                H20liq: [0.0, 20.0]
+            wvl_cal: 
+                ws: [0.0, 0.07]
+                wq: [0.0, 0.07]
+                P0: [1.0, 1.0]
+                P1: [0.1, 0.1]
+                P2: [0.01, 0.01]
+                Cring: [0.06, 0.06]
+                Dring: [0.06, 0.06]
 
     LUT_NN_file: ../data/no2/LUT_NN_combined_20231113.nc # file containing a neural network of the NO2 look-up tables
 

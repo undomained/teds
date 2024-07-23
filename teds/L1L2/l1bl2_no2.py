@@ -43,11 +43,15 @@ def conv_irr(sgm_rad_file, fwhm):
     return file_out
 
 
-def ifdoe_run(cfg):
+def ifdoe_run(config, mode='no2'):
     '''
      Routine which contains the IFDOE processing chain, i.e
      the main sections.
     '''
+
+    # take mode specific cfg from cfg
+    cfg = config.copy()
+    cfg.update(cfg[mode])
 
     if cfg['debug']['plot']:
         verboseLevel = 3
@@ -61,8 +65,8 @@ def ifdoe_run(cfg):
 
     startTime = time.time()
     
-    logger.info('=== Start IFDOE processing')
-    
+    logger.info(f'=== Start IFDOE processing {mode.upper()}')
+
     cfg = libDOAS.AddConfig(cfg)
 
     # A.2  Assemble list of parameters
@@ -546,8 +550,9 @@ def ifdoe_run(cfg):
                     #     Cring = model.stateVector[i] 
                     #     results['R_O2O2'][iscan,ipxl] *= (1 + Cring)
 
-                    results['R_O2O2'][iscan,ipxl] *= szaFactor
-                    results['R_O2O2_precision'][iscan,ipxl] *= szaFactor
+                results['R_O2O2'][iscan,ipxl] *= szaFactor
+                results['R_O2O2_precision'][iscan,ipxl] *= szaFactor
+
 
 
             if cfg['export_spectra']:
@@ -590,19 +595,16 @@ def ifdoe_run(cfg):
         for iscan in range(scanBeg,scanEnd+1,1):
             process_scanline(iscan,results)
 
-
     # H)  Finishing up
+    if not os.path.isfile(cfg['io']['l2']):
+        libDOAS.initOutput(cfg['io']['l2'],geo)
 
     # write results to output file
     libDOAS.writeOutput(cfg['io']['l2'],cfg,parameterNames,results,geo)
-
-
     logger.info(f"Output witten to {cfg['io']['l2']}")
 
-
-    logger.info(f'IFDOE calculation finished in {np.round(time.time()-startTime,1)} s')
+    logger.info(f'IFDOE {mode.upper()} calculation finished in {np.round(time.time()-startTime,1)} s')
     
-
     return results
 
 
@@ -639,6 +641,9 @@ def l1bl2_no2(cfg):
 
     startTime = time.time()
 
+    if os.path.isfile(cfg['io']['l2']):
+        os.remove(cfg['io']['l2'])
+
     # use irradiance file from SGM. optional convolving
     if cfg['irr_from_sgm']:
         if cfg['convolve_irr']:
@@ -656,7 +661,14 @@ def l1bl2_no2(cfg):
         numpy_cpu = 1
 
     with threadpool_limits(limits=numpy_cpu, user_api='blas'):
-        doas_results = ifdoe_run(cfg)
+
+        if cfg['retrieve']['no2']:
+            doas_results_no2 = ifdoe_run(cfg, mode='no2')
+        
+        if cfg['retrieve']['o2o2']:
+            doas_results_o2o2 = ifdoe_run(cfg, mode='o2o2')
+    
+    breakpoint()
                         
     amf_results = amf_run(cfg)
 

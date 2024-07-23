@@ -1792,31 +1792,35 @@ def SplineInterp1D(x,y,xnew):
 
     return ynew
 
+def initOutput(l2_file,geo):
+    # initialise output
+
+    with nc.Dataset(l2_file, 'w', format='NETCDF4') as dst:
+
+        # dst.DOAS_config = str(IFDOEconfig)
+        dst.processing_date = datetime.datetime.now().strftime('%Y%m%dT%H%M%S')
+
+        # create dims
+        alt_dim = dst.createDimension('scanline', geo['lat'].shape[0])
+        act_dim = dst.createDimension('ground_pixel', geo['lat'].shape[1])
+
+        _ = writevariablefromname(dst, 'latitude', ('scanline','ground_pixel'), geo['lat'])
+        _ = writevariablefromname(dst, 'longitude', ('scanline','ground_pixel'), geo['lon'])
+        _ = writevariablefromname(dst, 'solarzenithangle', ('scanline','ground_pixel'), geo['sza'])
+        _ = writevariablefromname(dst, 'viewingzenithangle', ('scanline','ground_pixel'), geo['vza'])
+        _ = writevariablefromname(dst, 'solarazimuthangle', ('scanline','ground_pixel'), geo['saa'])
+        _ = writevariablefromname(dst, 'viewingazimuthangle', ('scanline','ground_pixel'), geo['vaa'])
+
+        newgroup = dst.createGroup('doas')
+
+    return
 
 def writeOutput(l2_file,IFDOEconfig,parameterNames,results,geo):
     # write results to output file
 
-    dst = nc.Dataset(l2_file, 'w', format='NETCDF4')
+    dst = nc.Dataset(l2_file, 'a', format='NETCDF4')
 
-
-    # dst.DOAS_config = str(IFDOEconfig)
-    dst.processing_date = datetime.datetime.now().strftime('%Y%m%dT%H%M%S')
-
-    # create dims
-    alt_dim = dst.createDimension('scanline', geo['lat'].shape[0])
-    act_dim = dst.createDimension('ground_pixel', geo['lat'].shape[1])
-
-    _ = writevariablefromname(dst, 'latitude', ('scanline','ground_pixel'), geo['lat'])
-    _ = writevariablefromname(dst, 'longitude', ('scanline','ground_pixel'), geo['lon'])
-    _ = writevariablefromname(dst, 'solarzenithangle', ('scanline','ground_pixel'), geo['sza'])
-    _ = writevariablefromname(dst, 'viewingzenithangle', ('scanline','ground_pixel'), geo['vza'])
-    _ = writevariablefromname(dst, 'solarazimuthangle', ('scanline','ground_pixel'), geo['saa'])
-    _ = writevariablefromname(dst, 'viewingazimuthangle', ('scanline','ground_pixel'), geo['vaa'])
-
-
-    group = ''
-    newgroup = dst.createGroup('doas')
-    group += 'doas/' 
+    group = 'doas/' 
 
     if IFDOEconfig['fit_window'][1] < 477.0:
         newgroup3 = dst[group].createGroup('no2')
@@ -1824,10 +1828,7 @@ def writeOutput(l2_file,IFDOEconfig,parameterNames,results,geo):
     elif IFDOEconfig['fit_window'][1] > 477.0:
         newgroup3 = dst[group].createGroup('o2o2')
         group += 'o2o2/' 
-
-
-
-
+        
     # convert np.nan to netcdf fill value
 
     intList = ['nIter','errorFlag']

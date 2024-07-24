@@ -244,22 +244,22 @@ conc_o3:
   units: ppmv
 
 cloud_fraction:
-  name: cloud fraction
+  name: cloud_fraction
   long_name: 'Geometric cloud fraction'
   units: '1'
 
 cloud_optical_thickness:
-  name: cloud optical thickness
-  long_name: 'Cloud opticall thickness'
+  name: cloud_optical thickness
+  long_name: 'Cloud optical thickness'
   units: '1'
 
 cloud_bottom_pressure:
-  name: cloud bottom pressure
+  name: cloud_bottom_pressure
   long_name: 'Pressure of bottom of cloud layer'
   units: 'hPa'
 
 cloud_top_pressure:
-  name: cloud top pressure
+  name: cloud_top_pressure
   long_name: 'Pressure of top of cloud layer'
   units: 'hPa'
 

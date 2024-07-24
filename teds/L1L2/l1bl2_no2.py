@@ -12,7 +12,7 @@ import time
 from scipy.ndimage import gaussian_filter1d
 import datetime
 
-from teds.lib import libDOAS, libAMF
+from teds.lib import libDOAS, libAMF, libCloud
 from teds.lib.libWrite import writevariablefromname
 
 logger = logging.getLogger('E2E')
@@ -607,11 +607,7 @@ def ifdoe_run(config, mode='no2'):
     
     return results
 
-
-def amf_run(cfg):
-
-    startTime = time.time()
-
+def get_slice(cfg):
     if 'alt' in cfg:
         slice_alt = slice(cfg['alt']['start'],cfg['alt']['stop']+1)
     else:
@@ -621,11 +617,47 @@ def amf_run(cfg):
     else:
         slice_act = slice(0,None)
 
+    return slice_alt, slice_act
+
+
+def cloud_run(cfg):
+
+    startTime = time.time()
+    
+    slice_alt, slice_act = get_slice(cfg)
+
+    logger.info(f"Reading DOAS results from L2 file: {cfg['io']['l2']}")
+    doas = libCloud.read_doas(cfg['io']['l2'], slice_alt, slice_act)
+
+    logger.info(f"Reading atm file: {cfg['io']['sgm_atm']}")
+    atm = libCloud.read_atm(cfg['io']['sgm_atm'], slice_alt, slice_act)
+
+    logger.info('Calculating cloud fraction')
+    cloud_results = libCloud.get_cloud_fraction(cfg, doas, atm)
+
+    logger.info('Calculating cloud parameters')
+    cloud_results = libCloud.get_cloud_parameters(cfg, doas, atm, cloud_results)
+
+    logger.info(f"Writing cloud results to: {cfg['io']['l2']}")
+    libCloud.write_cloud(cfg, cloud_results, slice_alt, slice_act)
+
+    logger.info(f'Cloud calculation finished in {np.round(time.time()-startTime,1)} s')
+    return cloud_results
+
+def amf_run(cfg):
+
+    startTime = time.time()
+
+    slice_alt, slice_act = get_slice(cfg)
+
     logger.info(f"Reading DOAS results from L2 file: {cfg['io']['l2']}")
     doas = libAMF.read_doas(cfg['io']['l2'], slice_alt, slice_act)
 
     logger.info(f"Reading atm file: {cfg['io']['sgm_atm']}")
     atm = libAMF.read_atm(cfg['io']['sgm_atm'], slice_alt, slice_act)
+
+    logger.info(f"Reading cloud results from L2 file: {cfg['io']['l2']}")
+    cloud = libAMF.read_cloud(cfg['io']['l2'], slice_alt, slice_act)
 
     logger.info('Calculating AMF')
     amf_results = libAMF.get_amf(cfg, doas, atm)
@@ -641,36 +673,40 @@ def l1bl2_no2(cfg):
 
     startTime = time.time()
 
-    if os.path.isfile(cfg['io']['l2']):
-        os.remove(cfg['io']['l2'])
+    if cfg['run_doas']:
 
-    # use irradiance file from SGM. optional convolving
-    if cfg['irr_from_sgm']:
-        if cfg['convolve_irr']:
-            convolved_irr_file = conv_irr(cfg['io']['sgm_rad'],cfg['isrf']['fwhm_gauss'])
-            cfg['io']['sgm_irr'] = convolved_irr_file
-        else:
-            cfg['io']['sgm_irr'] = cfg['io']['sgm_rad']
-    
-    # Python parallises internally with numpy, for single thread optimum is 4 numpy threads
-    # for multi-threading use only 1 numpy thread, otherwise slow-down
+        if os.path.isfile(cfg['io']['l2']):
+            os.remove(cfg['io']['l2'])
 
-    if cfg['threads'] == 1:
-        numpy_cpu = 4
-    else:
-        numpy_cpu = 1
-
-    with threadpool_limits(limits=numpy_cpu, user_api='blas'):
-
-        if cfg['retrieve']['no2']:
-            doas_results_no2 = ifdoe_run(cfg, mode='no2')
+        # use irradiance file from SGM. optional convolving
+        if cfg['irr_from_sgm']:
+            if cfg['convolve_irr']:
+                convolved_irr_file = conv_irr(cfg['io']['sgm_rad'],cfg['isrf']['fwhm_gauss'])
+                cfg['io']['sgm_irr'] = convolved_irr_file
+            else:
+                cfg['io']['sgm_irr'] = cfg['io']['sgm_rad']
         
-        if cfg['retrieve']['o2o2']:
-            doas_results_o2o2 = ifdoe_run(cfg, mode='o2o2')
+        # Python parallises internally with numpy, for single thread optimum is 4 numpy threads
+        # for multi-threading use only 1 numpy thread, otherwise slow-down
+
+        if cfg['threads'] == 1:
+            numpy_cpu = 4
+        else:
+            numpy_cpu = 1
+
+        with threadpool_limits(limits=numpy_cpu, user_api='blas'):
+
+            if cfg['retrieve']['no2']:
+                doas_results_no2 = ifdoe_run(cfg, mode='no2')
+            
+            if cfg['retrieve']['o2o2']:
+                doas_results_o2o2 = ifdoe_run(cfg, mode='o2o2')
     
-    breakpoint()
-                        
-    amf_results = amf_run(cfg)
+    if cfg['run_clouds']:
+        cloud_results = cloud_run(cfg)
+
+    if cfg['run_amf']:               
+        amf_results = amf_run(cfg)
 
     logger.info(f'L1L2 calculation finished in {np.round(time.time()-startTime,1)} s')
 

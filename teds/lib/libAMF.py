@@ -1,4 +1,3 @@
-import sys
 import numpy as np
 import tqdm
 import logging
@@ -10,20 +9,14 @@ from lib.libWrite import writevariablefromname
 logger = logging.getLogger('E2E')
 
 def read_atm(file_atm, slice_alt, slice_act):
-
     atm = {}
-
     with nc.Dataset(file_atm) as f:
         for key in f.variables.keys():
             atm[key] = f[key][slice_alt,slice_act]
-
     return atm
 
-
 def read_doas(file_doas, slice_alt, slice_act):
-
     doas = {}
-
     with nc.Dataset(file_doas) as f:
         doas['no2_scd'] = f['doas/no2/nitrogendioxide_slant_column_density'][slice_alt,slice_act]
         doas['lat'] = f['lat'][slice_alt,slice_act]
@@ -32,8 +25,16 @@ def read_doas(file_doas, slice_alt, slice_act):
         doas['vza'] = f['vza'][slice_alt,slice_act]
         doas['saa'] = f['saa'][slice_alt,slice_act]
         doas['vaa'] = f['vaa'][slice_alt,slice_act]
-
     return doas
+
+def read_cloud(file_cloud, slice_alt, slice_act):
+    cloud = {}
+    with nc.Dataset(file_cloud) as f:
+        cloud['cot'] = f['cot'][slice_alt,slice_act]
+        cloud['cld_top_pres'] = f['cld_top_pres'][slice_alt,slice_act]
+        cloud['cld_bot_pres'] = f['cld_bot_pres'][slice_alt,slice_act]
+
+    return cloud
 
 def get_amf(cfg, doas, atm):
     # -----------------------------------------------------------------
@@ -82,7 +83,7 @@ def get_amf(cfg, doas, atm):
     
     # try calculating amf vectorised, otherwise loop over pixels
     try:
-        boxamf_clear= predict_NN_vector(point_clear, amf_clear_NN)
+        boxamf_clear= predict_NN_vector_3D(point_clear, amf_clear_NN)
     except MemoryError as e:
         logging.error(e)
         logging.error('Not enough memory for vectorised approach, falling back to pixel by pixel approach')
@@ -281,6 +282,11 @@ def read_NN(parameter, NN_file):
     for group in f_NN[parameter].groups.keys():
         dict_out[group] = {'bias':f_NN[f'{parameter}/{group}/bias'][:], 'kernel':f_NN[f'{parameter}/{group}/kernel'][:]}
 
+    # check
+    if 'layer_4' not in dict_out:
+        logger.error('All NNs should have 4 layers')
+        raise
+
     return dict_out
 
 
@@ -301,11 +307,6 @@ def predict_NN(input_vector, NN):
     - Output variable. Specified in NN file.
     '''
 
-    # check
-    if 'layer_4' not in NN:
-        logger.error('All NNs should have 4 layers')
-        raise
-    
     # normalize input
     norm = NN['normalization_input'][()]
     input_vector_norm = (input_vector - norm[:,0]) / (norm[:,1] - norm[:,0])
@@ -318,17 +319,12 @@ def predict_NN(input_vector, NN):
 
     return output[0]
 
-def predict_NN_vector(input_vector, NN):
-
-    # check
-    if 'layer_4' not in NN:
-        logger.error('All NNs should have 4 layers')
-        raise
+def predict_NN_vector_3D(input_vector, NN):
 
     # normalize input
     norm = NN['normalization_input'][()]
 
-    input_vector_norm = (input_vector - norm[:,0,np.newaxis,np.newaxis,np.newaxis]) / (norm[:,1,np.newaxis,np.newaxis, np.newaxis] - norm[:,0,np.newaxis,np.newaxis,np.newaxis])
+    input_vector_norm = (input_vector - norm[:,0,np.newaxis,np.newaxis,np.newaxis]) / (norm[:,1,np.newaxis,np.newaxis,np.newaxis] - norm[:,0,np.newaxis,np.newaxis,np.newaxis])
 
     input_vector_norm = np.moveaxis(input_vector_norm, 0, -1)
 
@@ -339,6 +335,23 @@ def predict_NN_vector(input_vector, NN):
     output = np.einsum('ijkl,lm->ijkm',layer3,NN['layer_4']['kernel']) + NN['layer_4']['bias'][np.newaxis,np.newaxis,np.newaxis,...]
 
     return output[:,:,:,0]
+
+def predict_NN_vector_2D(input_vector, NN):
+
+    # normalize input
+    norm = NN['normalization_input'][()]
+
+    input_vector_norm = (input_vector - norm[:,0,np.newaxis,np.newaxis]) / (norm[:,1,np.newaxis,np.newaxis] - norm[:,0,np.newaxis,np.newaxis])
+
+    input_vector_norm = np.moveaxis(input_vector_norm, 0, -1)
+
+    # optimize='optimal'
+    layer1 = leakyrelu( np.einsum('ijl,lm->ijm',input_vector_norm,NN['layer_1']['kernel']) + NN['layer_1']['bias'][np.newaxis,np.newaxis,...] )
+    layer2 = leakyrelu( np.einsum('ijl,lm->ijm',layer1,NN['layer_2']['kernel']) + NN['layer_2']['bias'][np.newaxis,np.newaxis,...] )
+    layer3 = leakyrelu( np.einsum('ijl,lm->ijm',layer2,NN['layer_3']['kernel']) + NN['layer_3']['bias'][np.newaxis,np.newaxis,...] )
+    output = np.einsum('ijl,lm->ijm',layer3,NN['layer_4']['kernel']) + NN['layer_4']['bias'][np.newaxis,np.newaxis,...]
+
+    return output[:,:,0]
 
 
 def write_amf(cfg, amf, slice_alt, slice_act):

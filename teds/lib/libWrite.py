@@ -39,9 +39,14 @@ def writevariablefromname(grp, _name, dims, data):
         logger.error(f"'{_name}' not found in constants_outputvariables.yaml")
         return -1
     
-    var = grp.createVariable(attr["name"], data.dtype, dims)
-    for _ky, val in attr.items():
-        if _ky != "name":
-            var.setncattr(_ky, val)
+    if attr["name"] not in grp.variables:
+        var = grp.createVariable(attr["name"], data.dtype, dims)
+        for _ky, val in attr.items():
+            if _ky != "name":
+                var.setncattr(_ky, val)
+    else:
+        var = grp[attr["name"]]
+                  
     var[:] = data
+
     return var

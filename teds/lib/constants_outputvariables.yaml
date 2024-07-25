@@ -249,7 +249,7 @@ cloud_fraction:
   units: '1'
 
 cloud_optical_thickness:
-  name: cloud_optical thickness
+  name: cloud_optical_thickness
   long_name: 'Cloud optical thickness'
   units: '1'
 

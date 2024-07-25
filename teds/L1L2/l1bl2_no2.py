@@ -660,7 +660,7 @@ def amf_run(cfg):
     cloud = libAMF.read_cloud(cfg['io']['l2'], slice_alt, slice_act)
 
     logger.info('Calculating AMF')
-    amf_results = libAMF.get_amf(cfg, doas, atm)
+    amf_results = libAMF.get_amf(cfg, doas, atm, cloud)
 
     logger.info(f"Writing AMF results to: {cfg['io']['l2']}")
     libAMF.write_amf(cfg, amf_results, slice_alt, slice_act)

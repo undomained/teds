@@ -30,17 +30,17 @@ def read_doas(file_doas, slice_alt, slice_act):
 def read_cloud(file_cloud, slice_alt, slice_act):
     cloud = {}
     with nc.Dataset(file_cloud) as f:
-        cloud['cot'] = f['cot'][slice_alt,slice_act]
-        cloud['cld_top_pres'] = f['cld_top_pres'][slice_alt,slice_act]
-        cloud['cld_bot_pres'] = f['cld_bot_pres'][slice_alt,slice_act]
+        cloud['cloud_optical_thickness'] = f['cloud_optical_thickness'][slice_alt,slice_act]
+        cloud['cloud_bottom_pressure'] = f['cloud_bottom_pressure'][slice_alt,slice_act]
+        cloud['cloud_fraction'] = f['cloud_fraction'][slice_alt,slice_act]
 
     return cloud
 
-def get_amf(cfg, doas, atm):
+def get_amf(cfg, doas, atm, cloud):
     # -----------------------------------------------------------------
     # - Calculate NO2 AMF using AMF LUT NN
     # - Vectorised
-    # - Clear-sky only for now
+    # - for now: either fully cloud or fully clear
     # -----------------------------------------------------------------
     # create output fields
 
@@ -55,6 +55,7 @@ def get_amf(cfg, doas, atm):
 
     # load NN
     amf_clear_NN = read_NN('LUT_AMF_clear', cfg['LUT_NN_file'])
+    amf_cloud_NN = read_NN('LUT_AMF_SCM', cfg['LUT_NN_file'])
 
     # convert input
     mu = np.cos(np.deg2rad(doas['vza']))
@@ -76,6 +77,8 @@ def get_amf(cfg, doas, atm):
     wvl_no2_amf = 437.5 # nm
     wvl = np.ones_like(doas['lat'])*wvl_no2_amf
 
+
+    # clear-sky
     point_clear =  np.array([wvl, surface_pressure, atm['albedo'], mu0, mu, dphi, np.zeros_like(doas['lat']) ])
 
     point_clear = np.tile(point_clear[...,np.newaxis],pressure_levels_midpoint.shape[-1])
@@ -99,6 +102,32 @@ def get_amf(cfg, doas, atm):
 
     boxamf_clear[boxamf_clear<0.0] = 0.0
 
+    # skip if no cloudy pixels
+    if cloud['cloud_fraction'].sum()>0.0:
+        # cloud
+        point_cloud =  np.array([wvl, surface_pressure, atm['albedo'], cloud['cloud_optical_thickness'], cloud['cloud_bottom_pressure'], mu0, mu, dphi, np.zeros_like(doas['lat']) ])
+        point_cloud = np.tile(point_cloud[...,np.newaxis],pressure_levels_midpoint.shape[-1])
+        point_cloud[-1,:,:,:] = pressure_levels_midpoint
+        
+        # try calculating amf vectorised, otherwise loop over pixels
+        try:
+            boxamf_cloud= predict_NN_vector_3D(point_cloud, amf_cloud_NN)
+        except MemoryError as e:
+            logging.error(e)
+            logging.error('Not enough memory for vectorised approach, falling back to pixel by pixel approach')
+            boxamf_cloud = np.ma.masked_all_like(pressure_levels_midpoint)
+            iterlist = tqdm.tqdm(np.ndindex(doas['lat'].shape), total=doas['lat'].size)
+            for idx,idy in iterlist:
+                for idz in range(pressure_levels_midpoint.shape[-1]):
+                    boxamf_cloud[idx,idy,idz]= predict_NN(boxamf_cloud[:,idx,idy,idz], amf_cloud_NN)
+
+        # multiply with amf geo
+        boxamf_cloud*= amf_geo[...,np.newaxis]
+
+        boxamf_cloud[boxamf_cloud<0.0] = 0.0
+    else:
+        boxamf_cloud = np.zeros_like(boxamf_clear)
+
     # troposphere only profile:
     # no2_profile_trop = np.copy(no2_profile)
     # no2_profile_trop[(tropopause_layer_index+1):] = 0
@@ -110,7 +139,11 @@ def get_amf(cfg, doas, atm):
     results['no2_total_scd'] = doas['no2_scd']
 
     # calculate total amf
-    results['no2_total_amf']= np.sum(boxamf_clear*no2_profile*f_tcorr, axis=-1) / np.sum(no2_profile, axis=-1)
+    results['no2_total_amf_clear']= np.sum(boxamf_clear*no2_profile*f_tcorr, axis=-1) / np.sum(no2_profile, axis=-1)
+    results['no2_total_amf_cloud']= np.sum(boxamf_cloud*no2_profile*f_tcorr, axis=-1) / np.sum(no2_profile, axis=-1)
+
+
+    results['no2_total_amf'] = cloud['cloud_fraction']*results['no2_total_amf_cloud'] + (1 - cloud['cloud_fraction']) * results['no2_total_amf_clear']
 
     # calculate scd total by dividing by total amf
     results['no2_total_vcd']= results['no2_total_scd'] / results['no2_total_amf']
@@ -118,7 +151,7 @@ def get_amf(cfg, doas, atm):
     # results_scan['tropopause_layer_index'][iscan,ipxl] = tropopause_layer_index
 
     # averaging kernel:  ak =  box_amf * temperature_correction / total_amf
-    results['no2_averaging_kernel'] = boxamf_clear * f_tcorr  / results['no2_total_amf'][...,np.newaxis]
+    results['no2_averaging_kernel'] = (cloud['cloud_fraction'][...,np.newaxis]*boxamf_cloud + (1-cloud['cloud_fraction'][...,np.newaxis])*boxamf_clear) * f_tcorr  / results['no2_total_amf'][...,np.newaxis]
 
     return results
 

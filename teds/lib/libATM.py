@@ -11,11 +11,13 @@ import netCDF4 as nc
 from scipy.interpolate import griddata
 from tqdm import tqdm
 from copy import deepcopy
-from .libMeteo import readmeteodata
-from . import constants
-from .libNumTools import convolution_2d, TransformCoords, getconvolutionparams
-# import matplotlib.pyplot as plt
-###########################################################
+import logging
+
+from teds.lib.libMeteo import readmeteodata
+import teds.lib.constants as constants
+from teds.lib.libNumTools import convolution_2d, TransformCoords, getconvolutionparams
+
+logger = logging.getLogger('E2E')
 
 
 class Emptyclass:
@@ -116,7 +118,7 @@ def get_atmosphericdata_new(gm_lat, gm_lon, meteo_settings):
     """
     # read data
     # data is already in molceules/m^2
-    print('Getting meteo data ...')
+    logger.info('Getting meteo data ...')
     data = readmeteodata(meteo_settings["path_data"], meteo_settings['gases'], meteo_settings["filesuffix"])
     # shrink or extend domain according to the input
 
@@ -158,7 +160,6 @@ def get_atmosphericdata_new(gm_lat, gm_lon, meteo_settings):
         conc = data.__getattribute__(gas)
         conc_new = np.pad(conc[:, idy[0]:idy[1], idx[0]:idx[1]], pad_width=((0,0), pady, padx), constant_values=0)
         meteo_data.__setattr__(gas+"_raw", flip_zyx2yxz(conc_new))
-    print('                     ...done')
     return meteo_data
 
 
@@ -705,6 +706,8 @@ class atmosphere_data:
 
         # Read data from file
         raw = np.genfromtxt(filename, skip_header=21, unpack=True)
+
+
 def interpolate_data_irregular(meteodata, gm_data, gases):
     """Interpolate irregular data in lat-lon coordinates.
 
@@ -854,7 +857,7 @@ def combine_meteo_standard_atm_new(meteo, atm_std, config):
     if(not afgl_only):
 
         #use AFGL above top boundary of microHH, and add microHH at lower altitudes
-        print('Combining microHH and AFGL model')
+        logger.info('Combining microHH and AFGL model')
 
         # index of standard atmosphere that corresponds to meteo.zlev
         idx = (np.abs(atm_std.zlev - np.max(meteo.zlev))).argmin()

@@ -22,8 +22,9 @@ import logging
 from itertools import repeat
 import tqdm
 from scipy.interpolate import RegularGridInterpolator
+import xarray as xr
 
-from lib import libATM, libSGM, libRT_no2, libNumTools, constants
+from lib import libATM, libSGM, libSURF, libRT_no2, libNumTools, constants
 from lib.libWrite import writevariablefromname
 
 logger = logging.getLogger('E2E')
@@ -51,6 +52,24 @@ def get_gm_data(filename):
         gm_data['lon'] = deepcopy(data['lon'][:, :])
     return gm_data
 
+def get_sentinel2_albedo(filename):
+    '''Read a list of Sentinel 2 albedos from a NetCDF file.
+
+    '''
+    f = nc.Dataset(filename)
+    albedos = []
+    for group in f.groups:
+        albedo = xr.DataArray(f[group]['albedo'][:],
+                           dims=('y', 'x'),
+                           coords={
+                               'y': f[group]['y'][:],
+                               'x': f[group]['x'][:]
+                           })
+        albedo.attrs['gsd'] = f[group]['gsd'][:]
+        albedo.attrs['band_label'] = group
+        albedo.rio.write_crs(f[group].crs, inplace=True)
+        albedos.append(albedo)
+    return albedos
 
 def get_dem(fname, lat, lon, radius: int = 3):
 
@@ -304,24 +323,12 @@ def add_clouds(cfg, atm):
 
 def convolvedata_nitro(atm, albedo, microhh, config):
 
-    """Convolve meteo and albedo data.
-
-    Parameters
-    ----------
-    meteodata : Class
-        Meteo data
-    config : Dict
-        Dict containing configuration parameters.
-
-    """
+    """Convolve meteo and albedo data."""
     
-    dx = np.mean(microhh.dx)
-    dy = np.mean(microhh.dy)
+    conv_settings = libNumTools.getconvolutionparams(config['kernel_parameter'], microhh.dx, microhh.dy)
     
-    conv_settings = libNumTools.getconvolutionparams(config['kernel_parameter'], dx, dy)
-    
-    # convolution of albedo   
-    atm.__setattr__("albedo_conv", libNumTools.convolution_2d(albedo, conv_settings))
+    for albedo_band in albedo:
+        albedo_band.values = libNumTools.convolution_2d(albedo_band, conv_settings)
     
     for gas in config['atm']['gases']:
         dcolgas = atm.__getattribute__("dcol_"+gas)
@@ -335,10 +342,10 @@ def convolvedata_nitro(atm, albedo, microhh, config):
             atm.__setattr__("dcol_"+gas+"_conv", dcolgas_conv)
             atm.__setattr__("ppmv_"+gas+"_conv", ppmvgas_conv)
 
-    return atm
+    return atm, albedo
 
 
-def interpolate_data_regular_nitro(indata, gm_data, config):
+def interpolate_data_regular_nitro(atm, albedo, gm_data, config):
     """Interpolate data on regular cartesian grid.
 
     Meteo data is in regular x-y grid and this is used to interpolate
@@ -347,8 +354,10 @@ def interpolate_data_regular_nitro(indata, gm_data, config):
 
     Parameters
     ----------
-    indata : Class
+    atm : Class
         Meteo data
+    albedo: List
+        List of albedo bands
     gm_data : Dict
         Parameters from geometry module
     gases : List
@@ -356,61 +365,75 @@ def interpolate_data_regular_nitro(indata, gm_data, config):
 
     Returns
     -------
-    albedo : Matrix
-        Albedo on gm grid
-    outdata: Class
+    atm: Class
         Meteo data on gm grid
+    albedo_interp : List
+        List of albedo bands on gm grid
     """
-    logger.debug('Interpolating data to GM mesh...')
-    outdata = Emptyclass()
-    outdata.__setattr__("lat", gm_data['lat'])
-    outdata.__setattr__("lon", gm_data['lon'])
+    logger.info('Interpolating data to GM mesh...')
+    atm_interp = Emptyclass()
+    atm_interp.__setattr__("lat", gm_data['lat'])
+    atm_interp.__setattr__("lon", gm_data['lon'])
 
-    dim_alt, dim_act = outdata.lat.shape   # dimensions
-    dim_lay = indata.play.shape[2]
-    dim_lev = indata.plev.shape[2]
+    dim_alt, dim_act = atm_interp.lat.shape   # dimensions
+    dim_lay = atm.play.shape[2]
+    dim_lev = atm.plev.shape[2]
     
     # Interpolate albedo to GM grid
-    fa = RegularGridInterpolator((indata.ypos, indata.xpos), indata.albedo_conv, 
+    albedo_interp = []
+    for albedo_band in albedo:
+        fa = RegularGridInterpolator((atm.ypos, atm.xpos), albedo_band.values, 
                                  bounds_error=False, fill_value=0.0)
-    albedo = fa((gm_data['ypos'], gm_data['xpos']))
+        albedo_band_interp = xr.DataArray(
+            data=fa((gm_data['ypos'], gm_data['xpos'])),
+            dims=["y", "x"],
+            coords=dict(
+                lon=(["y", "x"], gm_data['lat']),
+                lat=(["y", "x"], gm_data['lon'])),
+            attrs=albedo_band.attrs)
+        
+        # do not allow zeros
+        albedo_band_interp.values[albedo_band_interp.values==0.0] = 1e-5
+        albedo_interp.append(albedo_band_interp)
+
+    # Interpolate atm parameters to GM grid
     for gas in config['atm']['gases']:
         interpdata = np.zeros([dim_alt, dim_act, dim_lay])
-        conv_gas = indata.__getattribute__("dcol_"+gas+"_conv")
+        conv_gas = atm.__getattribute__("dcol_"+gas+"_conv")
         for iz in range(dim_lay):
             gasmin = np.min(conv_gas[:, :, iz])
-            fa = RegularGridInterpolator((indata.ypos, indata.xpos), conv_gas[:, :, iz], 
+            fa = RegularGridInterpolator((atm.ypos, atm.xpos), conv_gas[:, :, iz], 
                                          bounds_error=False, fill_value=gasmin)
             interpdata[:, :, iz] = fa((gm_data['ypos'], gm_data['xpos']))
         # do not allow negative values
         interpdata = interpdata.clip(min=0)
-        outdata.__setattr__('dcol_'+gas, interpdata)
+        atm_interp.__setattr__('dcol_'+gas, interpdata)
 
         interpdata = np.zeros([dim_alt, dim_act, dim_lay])
-        ppmv_gas = indata.__getattribute__("ppmv_"+gas+"_conv")
+        ppmv_gas = atm.__getattribute__("ppmv_"+gas+"_conv")
         for iz in range(dim_lay):
             gasmin = np.min(ppmv_gas[:, :, iz])
-            fa = RegularGridInterpolator((indata.ypos, indata.xpos), ppmv_gas[:, :, iz], 
+            fa = RegularGridInterpolator((atm.ypos, atm.xpos), ppmv_gas[:, :, iz], 
                                          bounds_error=False, fill_value=gasmin)
             interpdata[:, :, iz] = fa((gm_data['ypos'], gm_data['xpos']))
         # do not allow negative values
         interpdata = interpdata.clip(min=0)
-        outdata.__setattr__('ppmv_'+gas, interpdata)
+        atm_interp.__setattr__('ppmv_'+gas, interpdata)
 
     if config['atm']['type'] == 'afgl':
         #Here, we make a shortcut using a equally vertically gridded atmosphere 
         #So we duplicate the vertical grid!
-        dum = np.tile(indata.play[0,0,:], dim_alt*dim_act)
-        outdata.__setattr__("play", np.reshape(dum,(dim_alt,dim_act,dim_lay)))
+        dum = np.tile(atm.play[0,0,:], dim_alt*dim_act)
+        atm_interp.__setattr__("play", np.reshape(dum,(dim_alt,dim_act,dim_lay)))
 
-        dum = np.tile(indata.plev[0,0,:], dim_alt*dim_act)
-        outdata.__setattr__("plev", np.reshape(dum,(dim_alt,dim_act,dim_lev)))
+        dum = np.tile(atm.plev[0,0,:], dim_alt*dim_act)
+        atm_interp.__setattr__("plev", np.reshape(dum,(dim_alt,dim_act,dim_lev)))
 
-        dum = np.tile(indata.tlay[0,0,:], dim_alt*dim_act)
-        outdata.__setattr__("tlay", np.reshape(dum,(dim_alt,dim_act,dim_lay)))
+        dum = np.tile(atm.tlay[0,0,:], dim_alt*dim_act)
+        atm_interp.__setattr__("tlay", np.reshape(dum,(dim_alt,dim_act,dim_lay)))
 
-        dum = np.tile(indata.tlev[0,0,:], dim_alt*dim_act)
-        outdata.__setattr__("tlev", np.reshape(dum,(dim_alt,dim_act,dim_lev)))
+        dum = np.tile(atm.tlev[0,0,:], dim_alt*dim_act)
+        atm_interp.__setattr__("tlev", np.reshape(dum,(dim_alt,dim_act,dim_lev)))
 
     elif config['atm']['type'] == 'cams':
         varlist = ['plev','play','tlay']
@@ -420,17 +443,17 @@ def interpolate_data_regular_nitro(indata, gm_data, config):
             elif 'lay' in var:
                 dim_z = dim_lay
             interpdata = np.zeros([dim_alt, dim_act, dim_z])
-            vardata = indata.__getattribute__(var)
+            vardata = atm.__getattribute__(var)
             for iz in range(dim_z):
                 varmin = np.min(vardata[:, :, iz])
-                fa = RegularGridInterpolator((indata.ypos, indata.xpos), vardata[:, :, iz], 
+                fa = RegularGridInterpolator((atm.ypos, atm.xpos), vardata[:, :, iz], 
                                             bounds_error=False, fill_value=varmin)
                 interpdata[:, :, iz] = fa((gm_data['ypos'], gm_data['xpos']))
             # do not allow negative values
             interpdata = interpdata.clip(min=0)
-            outdata.__setattr__(var, interpdata)
+            atm_interp.__setattr__(var, interpdata)
      
-    return albedo, outdata
+    return atm_interp, albedo_interp
 
 def recalc_total_column(atm, config):
     # recalculate total column from partial columns after convolution and regridding
@@ -597,18 +620,17 @@ def set_disamar_cfg_sim(cfg, dis_cfg, ground_points, atm_disamar, albedo, i_t, i
         
     # SURFACE
 
-    # find albedo wvl
-    match cfg['S2_albedo']['band']:
-        case 'B01':
-            albedo_wvl = 442.5 # [nm]
-        case 'B02':
-            albedo_wvl = 492.3
-        case _:
-            logger.error('unknown S2 albedo band')
-            albedo_wvl = 440.0
+    # get albedo band index and albedo_wvl
+    i_band=-99
+    for index, band in enumerate(albedo):
+        if band.band_label == cfg['rtm']['albedo']:
+            i_band = index
+    if i_band == -99:
+        logging.error(f'Albedo band {cfg['rtm']['albedo']} not found')
+    albedo_wvl = albedo[i_band].central_wavelength
 
     dis_cfg['SURFACE', 'wavelDependentSim', 'wavelSurfAlbedo'].setvalue(albedo_wvl)
-    dis_cfg['SURFACE', 'wavelDependentSim', 'surfAlbedo'].setvalue(albedo[i_t,i_x])
+    dis_cfg['SURFACE', 'wavelDependentSim', 'surfAlbedo'].setvalue(albedo[i_band].values[i_t,i_x])
 
     dis_cfg['SURFACE','pressure', 'surfPressureSim'].setvalue(atm_disamar['p'][i_t,i_x, 0])
     dis_cfg['SURFACE','pressure', 'surfPressureRetr'].setvalue(atm_disamar['p'][i_t,i_x, 0])
@@ -768,15 +790,14 @@ def sgm_output_atm(config, atm, albedo, microhh_data, mode='raw'):
     if hasattr(atm, 'tlay'):
         _ = writevariablefromname(output_atm, 'temperature', dims_layer, atm.tlay)
 
-    if mode == 'raw':
-        bands = [x.removesuffix('_albedo') for x in albedo.__dict__.keys() if '_albedo' in x]
-        for band in bands:
-            var_alb = writevariablefromname(output_atm, 'albedo_'+ band, dims_2d, 
-                                            albedo.__getattribute__(band+'_albedo'))
-            var_alb.setncattr("central wavelength", albedo.__getattribute__(band+'_central_wave'))
-            var_alb.setncattr("band width", albedo.__getattribute__(band+'_band_width'))
-    elif mode == 'convolved':
-        var_alb = writevariablefromname(output_atm, 'albedo', dims_2d, albedo)
+    for albedo_band in albedo:
+        var_alb = writevariablefromname(
+            output_atm,
+            'albedo_' + albedo_band.band_label,
+            dims_2d,
+            albedo_band.values)
+        var_alb.setncattr("central wavelength", albedo_band.central_wavelength)
+        var_alb.setncattr("band width", albedo_band.bandwidth)
 
     for gas in gases:
         _ = writevariablefromname(output_atm, 'conc_'+ gas, dims_layer, atm.__getattribute__('ppmv_'+gas)) # [ppmv]
@@ -842,17 +863,8 @@ def scene_generation_module_nitro(config):
     # 2) get microHH data
     # =============================================================================================
     if config['atm']['microHH']['use']:
-        if ((not os.path.exists(config['atm']['microHH']['dump'])) or config['atm']['microHH']['forced']):
-            logger.info(f"Loading microHH data: {config['atm']['microHH']['path_data']}")
-
-            microhh_data = libATM.get_atmosphericdata_new(gm_data['lat'], gm_data['lon'], config['atm']['microHH'])
-            
-            # Dump microHH dictionary into temporary pkl file
-            pickle.dump(microhh_data.__dict__, open(config['atm']['microHH']['dump'], 'wb'))
-        else:
-            logger.info(f"Loading microHH data from dump file: {config['atm']['microHH']['dump']}")
-            # Read microHH from pickle file
-            microhh_data = Dict2Class(pickle.load(open(config['atm']['microHH']['dump'], 'rb')))
+        logger.info(f"Loading microHH data: {config['atm']['microHH']['path_data']}")
+        microhh_data = libATM.get_atmosphericdata_new(gm_data['lat'], gm_data['lon'], config['atm']['microHH'])
         lat = microhh_data.lat
         lon = microhh_data.lon
     else:
@@ -864,27 +876,17 @@ def scene_generation_module_nitro(config):
     # 3) get collocated S2 albedo data on microHH grid
     # =============================================================================================
 
-    albedo = np.zeros([nalt, nact])
+    # download albedo and store as netcdf
+    file_exists = os.path.isfile(config['sentinel2']['albedo_file'])
+    if (not file_exists or (config['sentinel2']['forced'])):
+        libSGM.download_sentinel2_albedo(config)
 
-    file_exists = os.path.isfile(config['S2_albedo']['dump'])
-    if (file_exists and (not config['S2_albedo']['forced'])):
-        logger.info(f"Loading S2 data from dump file: {config['S2_albedo']['dump']}")
-        albedo = pickle.load(open(config['S2_albedo']['dump'], 'rb'))
-    else:
-        logger.info(f"Downloading S2 data for band: {config['S2_albedo']['band']}")
-                
-        albedo = libSGM.get_sentinel2_albedo_new(lat, lon, [config['S2_albedo']['band']])
+    # load albedo netcdf
+    albedo = get_sentinel2_albedo(config['sentinel2']['albedo_file'])
 
-        # clip albedo
-        bands = [x for x in albedo.__dict__.keys() if '_albedo' in x]
-        for band in bands:
-            albedo_tmp = albedo.__getattribute__(band)
-            albedo_tmp[albedo_tmp>1.0] = 1.0
-            albedo_tmp[albedo_tmp<0.0] = 0.0
-            albedo.__setattr__(band,albedo_tmp)
-        
-        pickle.dump(albedo, open(config['S2_albedo']['dump'], 'wb')) # .pkl extension is added if not given
-    
+    # interpolate albedo grid to microHH grid
+    albedo = libSGM.interp_sentinel2_albedo(albedo, lat, lon)
+
     # =============================================================================================
     # 4) build model atmosphere and write output
     # =============================================================================================
@@ -962,9 +964,9 @@ def scene_generation_module_nitro(config):
     if config['atm']['microHH']['use']:
         logger.info('Convolving SGM atmosphere with instrument spatial response function')
 
-        #convolution of albeod and microHH data with instrument spatial response
-        atm = convolvedata_nitro(atm, albedo.B01_albedo, microhh_data, config)
-        
+        #convolution of albedo and microHH data with instrument spatial response
+        atm, albedo = convolvedata_nitro(atm, albedo, microhh_data, config)
+
         # create a transform method 
         trans = libNumTools.TransformCoords(microhh_data.no2_source[1:])
 
@@ -973,8 +975,8 @@ def scene_generation_module_nitro(config):
         gm_data['xpos'], gm_data['ypos'] = trans.latlon2xymts(gm_data_class.lat, gm_data_class.lon)
 
         #interpolate convolved data to gm grid
-        albedo, atm = interpolate_data_regular_nitro(atm, gm_data, config)
-
+        atm, albedo = interpolate_data_regular_nitro(atm, albedo, gm_data, config)
+        
         # recalculate total columns
         atm = recalc_total_column(atm, config)
 
@@ -986,7 +988,6 @@ def scene_generation_module_nitro(config):
         logger.info(f"Writing convolved scene atmosphere: {config['io']['sgm_atm']}")
         sgm_output_atm(config, atm, albedo, microhh_data, mode = 'convolved')
 
-        
     # =============================================================================================
     # 6) radiative transfer simulations with DISAMAR
     # =============================================================================================

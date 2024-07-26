@@ -99,8 +99,6 @@ SGM:
             path_data: '../data/no2/microHH/Jaenschwalde/'
             gases: [no2]
             filesuffix: src3_20180523_0930
-            forced: True
-            dump: '../data/no2/tmp/microHH_dump.pkl'
         dem:                       # correct surface pressure using tropomi dem (3k radius), only for CAMS
             use: True
             path: '../data/no2/dem.nc'
@@ -129,15 +127,14 @@ SGM:
         wave_start: 395             #nm
         wave_end:   502             #nm
         dwave:      0.05            #nm
-        cleanup: True               # rm disamartmp directory when finished
+        cleanup: True              # rm disamartmp directory when finished
         o2o2: True                  # add o2-o2 absorption
-    
-    S2_albedo:
-        band: B01
-        # B01: 442.7 nm (S2A), 442.3 nm (S2B) 60m
-        # B02: 492.4 nm (S2A), 492.1 nm (S2B)    10m
-        forced:   True     
-        dump: '../data/no2/tmp/sgm_dumpfile.pkl'
+        albedo: B01
+
+    sentinel2:
+        band_section: [B01,B02]
+        albedo_file: '../data/no2/albedo.nc'
+        forced: True     
     
 #########################################################
 #
@@ -400,7 +397,7 @@ L1L2:
 #
 #########################################################
 PAM:
-    figure_dir: ../data/no2/tmp/figs/
+    figure_dir: ../data/no2/figs/
     plot_list: { # usage: '{title}' : {'sgm_name':{var name in SGM file}, 'l2_name':{var name in L2 file}
                 'NO2 vertical column': {'sgm_name':'col_no2', 'l2_name':'no2_total_vcd'}
     }

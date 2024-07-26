@@ -1,7 +1,7 @@
 # Combined config file for all steps in E2E analysis.
 #
 log_level: 'info' # 'info' or 'debug'
-show_progress: True # show/not show progress bars 
+show_progress: True # toggle show progress bars 
 header:
     file_name: 'full_config.yaml'
     version: '0.000'
@@ -11,7 +11,7 @@ header:
 #########################################################
 io: 
     base_dir: '../data/no2/'
-##GM IO
+## GM IO
     gm: 'geometry.nc'
 ## SGM IO
     # output of SGM (sgm_rad is input for IM)
@@ -71,7 +71,6 @@ GM:
         pitch: 0.0
         roll: 0.0
         yaw: 0.0
-    # gm_title: 'Tango E2ES GM output'
 #########################################################
 #
 # SGM nitro 
@@ -80,7 +79,7 @@ GM:
 #########################################################
 SGM:
     kernel_parameter:               #parameter to configure the 2D blurring of the scene
-        type:    2D Gaussian        #type pf kernel, current version has only one option
+        type:    2D Gaussian        #type of kernel, current version has only one option
         fwhm_x:  300                #FWHM in ACT direction
         fwhm_y:  300                #FWHM in flight direction
         size_factor: 2              #the size of the convolution kernel in units of fwhm
@@ -117,7 +116,6 @@ SGM:
                 start: 0
                 stop: 50
 
-    
     rtm:   # disamar (RTM) settings
         tmp_dir:    '../data/no2/tmp/'
         disamar_cfg_template: '../cfg/nitro/disamar_config_sim.in_template'
@@ -132,11 +130,10 @@ SGM:
         o2o2: True                  # add o2-o2 absorption
         albedo: B01
 
-    sentinel2:
+    sentinel2: # albedo download
         band_section: [B01,B02]
         albedo_file: '../data/no2/albedo.nc'
         forced: True     
-    
 #########################################################
 #
 # IM specific
@@ -146,40 +143,34 @@ SGM:
 ############################
 IM:
     do_python: false
-#    do_python: true
     proctable:
         file: '../cfg/nitro/proctable.yaml'
         algo_list: 'algos_im'
     instrument: 'nitro'
     processing_version: 0.000
     cal_level: 'l1a' # To indicate wether to uncalibrate the whole way (l1a) or to stop at a certain point ('prnu' -> uncalibrate until (NOT INCLUDING) prnu step)
-    image_start: 0
-#    image_end: 105
+    # image_start: 0
+    # image_end: 105
     detector:
         binning_table_id: 1         # across track binning
-#        binning_table_id: 2         # across track binning
         exposure_time:    0.021     # exposure time [sec]
         nr_coadditions:   2         # along track co-adding
     isrf:
         enabled: true      # apply spectral convolution (true) or not (false)
         fwhm_gauss: 0.6    #full width half max [nm] (for carbon: 0.45 and for nitro 0.60)
     noise:
-    #    enabled: false      # Add noise (true) or not (false)
         enabled: true      # Add noise (true) or not (false)
         seed:    100       # Seed for noise generation
     dark:
         enabled: true      # apply dark current and dark offset (true) or not (false)
     nonlin:
-    #    enabled: true      # apply non linearity (true) or not (false)
         enabled: false     # apply non linearity (true) or not (false)
     prnu:
         enabled: true      # apply PRNU and QE (true) or not (false)
     stray:
-    #    enabled: true      # apply straylight (true) or not (false)
         enabled: false     # apply straylight (true) or not (false)
     rad:
         enabled: true      # apply radiametric (true) or not (false)
-    #    enabled: false     # apply radiametric (true) or not (false)
 #########################################################
 #
 # L1AL1B specific
@@ -195,28 +186,23 @@ L1AL1B:
         algo_list: 'algos_l1b'
     instrument: 'nitro'
     processing_version: 0.000
-    image_start: 0
-#    image_end: 105
+    # image_start: 0
+    # image_end: 105
     cal_level: 'l1b' # To indicate wether to calibrate the whole way (l1b) or to stop at a certain point ('prnu' -> calibrate until (NOT INCLUDING) prnu step)
 # What about geolocation??????
     noise:
-#        enabled: false      # apply noise calibration (true) or not (false)
         enabled: true      # apply noise calibration (true) or not (false)
     dark:
         enabled: true      # apply dark current and dark offset corrections (true) or not (false)
     nonlin:
-#        enabled: true      # apply non linearity correction(true) or not (false)
         enabled: false     # apply non linearity correction(true) or not (false)
     prnu:
         enabled: true      # apply PRNU and QE corrections (true) or not (false)
     stray:
         enabled: false     # apply straylight correction (true) or not (false)
         van_cittert_steps: 0  #van Citter iteration for stray light correction (0=no correction)
-#        enabled: true      # apply straylight correction (true) or not (false)
-#        van_cittert_steps: 4  #van Citter iteration for stray light correction (0=no correction)
     rad:
         enabled: true      # apply radiometric correction (true) or not (false)
-#        enabled: false     # apply radiometric correction (true) or not (false)
 #############################    
 #########################################################
 #
@@ -300,7 +286,6 @@ L1L2:
         ref_xs_no2: ../data/no2/refspec_06/no2.xs
         ref_xs_o2o2: ../data/no2/refspec_06/o2o2.xs
         ref_xs_o3: ../data/no2/refspec_06/o3.xs
-
 
         # ---- Wavelength calibration ----
 

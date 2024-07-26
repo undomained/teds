@@ -1,11 +1,31 @@
-settings:
-    van_cittert_steps: 4  #van Citter iteration for stray light correction (0=no correction)
-    # Whether to use inteprolating stray light kernels
-    stray_interpolating: yes
-    geolocation:  0       #calculate geolocation (0 no, 1 yes), currently only 0 possible
-    van_cittert_steps: 0  #van Citter iteration for stray light correction (0=no correction) 
-    geolocation:       0                                  #calculate geolocation (0 no, 1 yes), currently only 0 possible
-    sw_dark:           0                                   #switch dark current (1 on, 0 off)
-    sw_nonlin:         0                                   #switch non-linearity (1 on, 0 off)
-    sw_prnu:           0                                   #switch pixel response non-uniformity (1 on, 0 off)
-    sw_rad:            1                                   #switch radiometric calibration (1 on, 0 off)
+# Input for Tango L1B code
+
+# instrument: spexone
+
+processing_version: 1.0
+
+# cal_level: rad
+
+reverse_wavelength: yes
+
+# dark:
+#   enabled: no
+
+# prnu:
+#   enabled: no
+
+stray:
+  van_cittert_steps: 3
+
+swath:
+  spectrum_width: 3.0
+
+# geolocation:
+#   enabled: no
+
+io:
+  ckd: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/ckd/ckd_OWL640S_low_gain.nc
+  binning_table: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/ckd/binning_table.nc
+  l1b: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/level1b/Tango_Carbon_l1b_exp1.0.nc
+  l1a: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/level1a/Tango_Carbon_l1a_exp1.0.nc
+  geometry: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/gm/Tango_Carbon_gm_exp1.0.nc

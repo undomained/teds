@@ -79,7 +79,7 @@ def get_amf(cfg, doas, atm, cloud):
 
 
     # clear-sky
-    point_clear =  np.array([wvl, surface_pressure, atm['albedo'], mu0, mu, dphi, np.zeros_like(doas['lat']) ])
+    point_clear =  np.array([wvl, surface_pressure, atm['albedo_B01'], mu0, mu, dphi, np.zeros_like(doas['lat']) ])
 
     point_clear = np.tile(point_clear[...,np.newaxis],pressure_levels_midpoint.shape[-1])
     point_clear[-1,:,:,:] = pressure_levels_midpoint
@@ -105,7 +105,7 @@ def get_amf(cfg, doas, atm, cloud):
     # skip if no cloudy pixels
     if cloud['cloud_fraction'].sum()>0.0:
         # cloud
-        point_cloud =  np.array([wvl, surface_pressure, atm['albedo'], cloud['cloud_optical_thickness'], cloud['cloud_bottom_pressure'], mu0, mu, dphi, np.zeros_like(doas['lat']) ])
+        point_cloud =  np.array([wvl, surface_pressure, atm['albedo_B01'], cloud['cloud_optical_thickness'], cloud['cloud_bottom_pressure'], mu0, mu, dphi, np.zeros_like(doas['lat']) ])
         point_cloud = np.tile(point_cloud[...,np.newaxis],pressure_levels_midpoint.shape[-1])
         point_cloud[-1,:,:,:] = pressure_levels_midpoint
         
@@ -202,7 +202,7 @@ def get_amf_iter(cfg, doas, atm):
         # tropopause_layer_index = get_tropopause(atm['temperature'][idx,idy,:])
 
         # NN LUT 
-        point_clear =  [437.5, surface_pressure, atm['albedo'][idx,idy], mu0, mu, dphi, 0]
+        point_clear =  [437.5, surface_pressure, atm['albedo_B01'][idx,idy], mu0, mu, dphi, 0]
 
         # loop over pressure levels and get boxamf clear and cloudy
         boxamf_clear = np.zeros_like(pressure_levels_midpoint)

@@ -77,7 +77,7 @@ def get_cloud_parameters(cfg, doas, atm, cld_results):
 
         # NN for COT (cloud optical thickness)
 
-        vector_cot_NN = np.array([surface_pressure, atm['albedo'], doas['o2o2_R'], cld_results['cld_bot_pres'], mu0, mu, dphi])
+        vector_cot_NN = np.array([surface_pressure, atm['albedo_B01'], doas['o2o2_R'], cld_results['cld_bot_pres'], mu0, mu, dphi])
 
         cld_results['cot'] = libAMF.predict_NN_vector_2D(vector_cot_NN, cot_NN)
 
@@ -97,7 +97,7 @@ def get_cloud_parameters(cfg, doas, atm, cld_results):
                 continue
 
             #### using bisection method.
-            point_cloud = [wvl_o2o2_amf, surface_pressure[idx,idy], atm['albedo'][idx,idy], cld_results['cot'][idx,idy], 0, mu0[idx,idy], mu[idx,idy], dphi[idx,idy] , 0]
+            point_cloud = [wvl_o2o2_amf, surface_pressure[idx,idy], atm['albedo_B01'][idx,idy], cld_results['cot'][idx,idy], 0, mu0[idx,idy], mu[idx,idy], dphi[idx,idy] , 0]
             scd_O2O2_cld_list = bisection_o2o2(amf_scm_NN, point_cloud, play[idx,idy], tlay[idx,idy], doas['o2o2_scd'][idx,idy])
 
             # filter out nans

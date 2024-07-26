@@ -1,6 +1,7 @@
 # Combined config file for all steps in E2E analysis.
 #
-log_level: 'info' # 'info' or 'debug', default is 'info'
+log_level: 'info' # 'info' or 'debug'
+show_progress: True # show/not show progress bars 
 header:
     file_name: 'full_config.yaml'
     version: '0.000'

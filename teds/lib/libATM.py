@@ -11,13 +11,11 @@ import netCDF4 as nc
 from scipy.interpolate import griddata
 from tqdm import tqdm
 from copy import deepcopy
-import logging
 
+from teds import log
 from teds.lib.libMeteo import readmeteodata
 import teds.lib.constants as constants
 from teds.lib.libNumTools import convolution_2d, TransformCoords, getconvolutionparams
-
-logger = logging.getLogger('E2E')
 
 
 class Emptyclass:
@@ -118,7 +116,7 @@ def get_atmosphericdata_new(gm_lat, gm_lon, meteo_settings):
     """
     # read data
     # data is already in molceules/m^2
-    logger.info('Getting meteo data ...')
+    log.info('Getting meteo data ...')
     data = readmeteodata(meteo_settings["path_data"], meteo_settings['gases'], meteo_settings["filesuffix"])
     # shrink or extend domain according to the input
 
@@ -857,7 +855,7 @@ def combine_meteo_standard_atm_new(meteo, atm_std, config):
     if(not afgl_only):
 
         #use AFGL above top boundary of microHH, and add microHH at lower altitudes
-        logger.info('Combining microHH and AFGL model')
+        log.info('Combining microHH and AFGL model')
 
         # index of standard atmosphere that corresponds to meteo.zlev
         idx = (np.abs(atm_std.zlev - np.max(meteo.zlev))).argmin()

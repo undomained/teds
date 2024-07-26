@@ -3,8 +3,7 @@ from teds.IM.Python.input.input_base import Input
 
 class Input_yaml(Input):
 
-    def __init__(self, logger, file_name):
-        self._logger = logger
+    def __init__(self, file_name):
         self._file_name = file_name
         self._data = None
 

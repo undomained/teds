@@ -4,7 +4,8 @@ import subprocess
 import netCDF4 as nc
 
 from teds.IM.Python.input.input_yaml import Input_yaml
-import teds.lib.data_netcdf.data_netcdf as dn
+# import teds.lib.data_netcdf.data_netcdf as dn
+from teds import log
 
 def get_logger():
     """
@@ -26,7 +27,7 @@ def get_logger():
 
     return logger
 
-def getConfig(logger, cfgFile):
+def getConfig(cfgFile):
     """
         Get the config information from the configuration file
        - logger: Reference to the program logger
@@ -36,7 +37,7 @@ def getConfig(logger, cfgFile):
     """
     cfg_path, filename = os.path.split(cfgFile)
 
-    config_input = Input_yaml(logger, cfgFile)
+    config_input = Input_yaml(cfgFile)
     config = config_input.read()
     print(f"{config_input}")
 
@@ -63,7 +64,7 @@ def getConfig(logger, cfgFile):
 
 
     config_string = config_input.print()
-    logger.info(config_string)
+    log.info(config_string)
 
     return config
 
@@ -93,7 +94,7 @@ def get_main_attributes(config, config_attributes_name='E2E_configuration'):
 
     return attribute_dict
 
-def add_attributes_to_output(logger, output_file, attribute_dict):
+def add_attributes_to_output(output_file, attribute_dict):
     """
         Add attributes to the output file
     """

@@ -11,7 +11,7 @@ import cartopy.crs as crs
 import matplotlib as mpl
 from scipy.stats import linregress
 
-logger = logging.getLogger('E2E')
+from teds import log
 
 def read_file(file):
     # read in netcdf file, return as dict
@@ -149,7 +149,7 @@ def plot_scatter(var1,var2,var_name,var1_name,var2_name,save_location):
 def pam_nitro(cfg):
 
 
-    logger.info(f"Started PAM")
+    log.info(f"Started PAM")
 
     # read SGM atm and L2 file
 
@@ -159,14 +159,14 @@ def pam_nitro(cfg):
 #    plotvars = cfg['pam']['plot_list']
     plotvars = cfg['plot_list']
 
-#    logger.info(f"Saving figures to: {cfg['pam']['figure_dir']}")
-    logger.info(f"Saving figures to: {cfg['figure_dir']}")
+#    log.info(f"Saving figures to: {cfg['pam']['figure_dir']}")
+    log.info(f"Saving figures to: {cfg['figure_dir']}")
 
     # loop over plotting vars
 
     for varname in plotvars:
 
-        logger.info(f'Plotting {varname}')
+        log.info(f'Plotting {varname}')
 
         plotvar = plotvars[varname]
         l2_var = l2[plotvar['l2_name']]
@@ -188,7 +188,7 @@ def pam_nitro(cfg):
 #        plot_scatter(sgm_var,l2_var,varname,f'SGM {varname}',f'L2 {varname}', cfg['pam']['figure_dir'])
         plot_scatter(sgm_var,l2_var,varname,f'SGM {varname}',f'L2 {varname}', cfg['figure_dir'])
 
-    logger.info(f'Finished PAM')
+    log.info(f'Finished PAM')
 
     return
 
@@ -197,40 +197,7 @@ if __name__ == '__main__':
     # call with:
     # python pam.py pam_no2.yaml
 
-    # or with logging to file:
-    # python pam.py pam_no2.yaml pam_no2.log
-
-
     # reading yaml config
     cfg = yaml.safe_load(open(sys.argv[1]))
 
-    # cfg = cfg['pam']
-
-    loglevel = logging.INFO
-
-    # setup the logging to screen and to file
-    formatter = logging.Formatter('%(asctime)s %(levelname)s: %(message)s')
-
-    if len(sys.argv) > 2:
-        fh = logging.FileHandler(sys.argv[2], mode='w')
-        fh.setLevel(logging.ERROR)
-        fh.setFormatter(formatter)
-
-        ch = logging.StreamHandler()
-        ch.setLevel(loglevel)
-        ch.setFormatter(formatter) 
-
-        logging.basicConfig(level=loglevel, handlers = [ch,fh])
-
-        logging.info(f'Logging to file: {sys.argv[2]}')
-
-    else:
-        ch = logging.StreamHandler()
-        ch.setLevel(loglevel)
-        ch.setFormatter(formatter) 
-        logging.basicConfig(level=loglevel,handlers = [ch])
-
-    logger = logging.getLogger()
-    
-
-    pam_nitro(logger,cfg)
+    pam_nitro(cfg)

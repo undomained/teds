@@ -18,8 +18,7 @@ import shapely
 from requests import get
 from tqdm import tqdm
 from io import BytesIO
-
-logger = logging.getLogger('E2E')
+from teds import log
 
 
 def generate_geometry(lat: List[float], lon: List[float]) -> List[PystacItem]:
@@ -113,7 +112,7 @@ def download_sentinel2_albedo(config) -> None:
     # Extract the high resolution albedo map of selected wavelength bands
     albedos = []
     for band_label in config['sentinel2']['band_section']:
-        logger.info(f'Downloading Sentinel 2 albedo for band {band_label}')
+        log.info(f'Downloading Sentinel 2 albedo for band {band_label}')
         tiff_url = collection[-1].assets[band_label].href
         short_name = tiff_url.split('sentinel-s2-l2a-cogs/')[1]
         resp = get(tiff_url, stream=True)
@@ -143,7 +142,7 @@ def interp_sentinel2_albedo(s2_albedos: List[DataArray],
     for s2_albedo in s2_albedos:
         # if s2_albedo.gsd < 11:
         #     continue
-        logger.info(f'Sentinel 2 band {s2_albedo.band_label}:')
+        log.info(f'Sentinel 2 band {s2_albedo.band_label}:')
         # # Define the settings for the convolution
         # conv_settings = {}
         # if (kernel_para['type'] == '2D Gaussian'):
@@ -157,18 +156,18 @@ def interp_sentinel2_albedo(s2_albedos: List[DataArray],
         #     # Convert all kernel parameter to units of sampling distance
         #     conv_settings['fwhm x'] = int(fwhm_x / s2_albedo.gsd)
         #     conv_settings['fwhm y'] = int(fwhm_y / s2_albedo.gsd)
-        #     logger.info('  Convolving with Gaussian')
+        #     log.info('  Convolving with Gaussian')
         #     s2_albedo.values = convolution_2d(s2_albedo.values, conv_settings)
 
         #   Change coordinate system to WGS84
-        logger.info('  Projecting to WSG84')
+        log.info('  Projecting to WSG84')
         s2_albedo = s2_albedo.rio.reproject('EPSG:4326')
         s2_albedo = s2_albedo.rename({'x': 'lon', 'y': 'lat'})
 
         # Extract data on target grid. Define an interpolating
         # function interp such that interp(lat,lon) is an interpolated
         # value.
-        logger.info('  Interpolating to MicroHH grid')
+        log.info('  Interpolating to MicroHH grid')
         interp = RegularGridInterpolator(
             (s2_albedo.lat, s2_albedo.lon), s2_albedo.values, method='linear')
 

@@ -1,12 +1,11 @@
 import numpy as np
 import tqdm
-import logging
 import netCDF4 as nc
 
+from teds import log
 from teds.lib import constants
-from lib.libWrite import writevariablefromname
+from teds.lib.libWrite import writevariablefromname
 
-logger = logging.getLogger('E2E')
 
 def read_atm(file_atm, slice_alt, slice_act):
     atm = {}
@@ -88,8 +87,8 @@ def get_amf(cfg, doas, atm, cloud):
     try:
         boxamf_clear= predict_NN_vector_3D(point_clear, amf_clear_NN)
     except MemoryError as e:
-        logging.error(e)
-        logging.error('Not enough memory for vectorised approach, falling back to pixel by pixel approach')
+        log.error(e)
+        log.error('Not enough memory for vectorised approach, falling back to pixel by pixel approach')
         boxamf_clear = np.ma.masked_all_like(pressure_levels_midpoint)
         iterlist = tqdm.tqdm(np.ndindex(doas['lat'].shape), total=doas['lat'].size)
         for idx,idy in iterlist:
@@ -113,8 +112,8 @@ def get_amf(cfg, doas, atm, cloud):
         try:
             boxamf_cloud= predict_NN_vector_3D(point_cloud, amf_cloud_NN)
         except MemoryError as e:
-            logging.error(e)
-            logging.error('Not enough memory for vectorised approach, falling back to pixel by pixel approach')
+            log.error(e)
+            log.error('Not enough memory for vectorised approach, falling back to pixel by pixel approach')
             boxamf_cloud = np.ma.masked_all_like(pressure_levels_midpoint)
             iterlist = tqdm.tqdm(np.ndindex(doas['lat'].shape), total=doas['lat'].size)
             for idx,idy in iterlist:
@@ -405,7 +404,7 @@ def write_amf(cfg, amf, slice_alt, slice_act):
             out = np.ma.masked_all(dst['lat'].shape+(amf[var].shape[-1],))
             out[slice_alt,slice_act,:] = amf[var]
         else:
-            logging.error('{var} has {var.ndim} dimensions, not recognised.')
+            log.error('{var} has {var.ndim} dimensions, not recognised.')
 
         _ = writevariablefromname(dst, var, dim, out)
         

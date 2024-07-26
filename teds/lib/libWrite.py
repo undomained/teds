@@ -8,9 +8,8 @@ Created on Fri Jun 12 2023.
 
 from importlib.resources import files
 from yaml import safe_load
-import logging
 
-logger = logging.getLogger('E2E')
+from teds import log
 
 consts_file = files("teds.lib").joinpath("constants_outputvariables.yaml")
 with open(consts_file, "r") as file:
@@ -36,7 +35,7 @@ def writevariablefromname(grp, _name, dims, data):
     if _name in variable_dict:
         attr = variable_dict.get(_name)
     else:
-        logger.error(f"'{_name}' not found in constants_outputvariables.yaml")
+        log.error(f"'{_name}' not found in constants_outputvariables.yaml")
         return -1
     
     if attr["name"] not in grp.variables:

@@ -1,14 +1,12 @@
 import numpy as np
 import tqdm
-import logging
 import netCDF4 as nc
 import scipy 
 
+from teds import log
 from teds.lib import constants
-from lib.libWrite import writevariablefromname
+from teds.lib.libWrite import writevariablefromname
 from teds.lib import libAMF
-
-logger = logging.getLogger('E2E')
 
 def read_atm(file_atm, slice_alt, slice_act):
     atm = {}
@@ -244,7 +242,7 @@ def write_cloud(cfg, cloud, slice_alt, slice_act):
             out = np.ma.masked_all(dst['lat'].shape+(cloud[var].shape[-1],))
             out[slice_alt,slice_act,:] = cloud[var]
         else:
-            logging.error('{var} has {var.ndim} dimensions, not recognised.')
+            log.error('{var} has {var.ndim} dimensions, not recognised.')
 
         _ = writevariablefromname(dst, vardict[var], dim, out)
         

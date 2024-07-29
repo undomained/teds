@@ -11,16 +11,15 @@ from xarray import DataArray
 from .libNumTools import convolution_2d
 from typing import List
 
+
 def interp_sentinel2_albedo(s2_albedos: List[DataArray],
-                         lat,
-                         lon,
-                         kernel_para,
-                         band) -> List[DataArray]:
+                            lat,
+                            lon,
+                            kernel_para,
+                            band) -> List[DataArray]:
 
     s2_albedos_regridded = []
     for s2_albedo in s2_albedos:
-        if s2_albedo.gsd < 11:
-            continue
         logging.info(f'Sentinel 2 band {s2_albedo.band_label}:')
         # Define the settings for the convolution
         conv_settings = {}

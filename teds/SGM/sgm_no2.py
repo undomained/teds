@@ -657,6 +657,8 @@ def set_disamar_cfg_sim(cfg, dis_cfg, ground_points, atm_disamar, albedo, i_t, i
     return dis_cfg
 
 
+def run_disamar_star(args):
+    return run_disamar(*args)
 
 def run_disamar(filename,disamar_exe):
 
@@ -1032,8 +1034,11 @@ def scene_generation_module_nitro(config):
     log.info('Running DISAMAR')
 
     with multiprocessing.Pool(config['rtm']['n_threads']) as pool:
+        print(len(dis_cfg_filenames) / len(pool._pool))
         # stat = pool.starmap(run_disamar, zip(dis_cfg_filenames, repeat(config['rtm']['disamar_exe'])),chunksize=1)
-        stat = pool.starmap(run_disamar, tqdm.tqdm(zip(dis_cfg_filenames, repeat(config['rtm']['disamar_exe'])),total=len(dis_cfg_filenames)),chunksize=1)
+
+        args = [(cfg, config['rtm']['disamar_exe']) for cfg in dis_cfg_filenames]
+        stat = list(tqdm.tqdm(pool.imap(run_disamar_star, args), total=len(dis_cfg_filenames)))
 
     if sum(stat) != 0:
         log.error('Error in at least one RT calculation run with DISAMAR')

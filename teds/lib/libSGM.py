@@ -136,13 +136,11 @@ def download_sentinel2_albedo(config) -> None:
 
 
 def interp_sentinel2_albedo(s2_albedos: List[DataArray],
-                         lat,
-                         lon) -> List[DataArray]:
+                            lat,
+                            lon) -> List[DataArray]:
 
     s2_albedos_regridded = []
     for s2_albedo in s2_albedos:
-        # if s2_albedo.gsd < 11:
-        #     continue
         log.info(f'Sentinel 2 band {s2_albedo.band_label}:')
         # # Define the settings for the convolution
         # conv_settings = {}

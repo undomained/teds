@@ -637,21 +637,21 @@ def set_disamar_cfg_sim(cfg, dis_cfg, ground_points, atm_disamar, albedo, i_t, i
 
 
     # clouds (HG scattering)
-    if atm_disamar['cloud_fraction'][i_t,i_x] > 0.0:
+    if cfg['atm']['cloud']['use']:
+        if atm_disamar['cloud_fraction'][i_t,i_x] > 0.0:
+            # cloud fraction
+            dis_cfg['CLOUD_AEROSOL_FRACTION','wavelIndependentSim', 'fraction'].setvalue( atm_disamar['cloud_fraction'][i_t,i_x] )
+            
+            # cloud optical thickness
+            dis_cfg['CLOUD','HGscatteringSim', 'opticalThickness'].setvalue( [ 2.0 , atm_disamar['cloud_optical_thickness'][i_t,i_x] ] )
 
-        # cloud fraction
-        dis_cfg['CLOUD_AEROSOL_FRACTION','wavelIndependentSim', 'fraction'].setvalue( atm_disamar['cloud_fraction'][i_t,i_x] )
-        
-        # cloud optical thickness
-        dis_cfg['CLOUD','HGscatteringSim', 'opticalThickness'].setvalue( [ 2.0 , atm_disamar['cloud_optical_thickness'][i_t,i_x] ] )
+            # cloud bottom and top pressures
+            dis_cfg['ATMOSPHERIC_INTERVALS','interval_top_pressures', 'topPressureSim'].setvalue( [ atm_disamar['cloud_bottom_pressure'][i_t,i_x], atm_disamar['cloud_top_pressure'][i_t,i_x], 0.30] )
 
-        # cloud bottom and top pressures
-        dis_cfg['ATMOSPHERIC_INTERVALS','interval_top_pressures', 'topPressureSim'].setvalue( [ atm_disamar['cloud_bottom_pressure'][i_t,i_x], atm_disamar['cloud_top_pressure'][i_t,i_x], 0.30] )
-
-        # radiative transfer settings for optically thick cloud
-        dis_cfg['RADIATIVE_TRANSFER','numDivPointsAlt', 'numDivPointsAltSim'].setvalue( [8, int(np.ceil(1.5*atm_disamar['cloud_optical_thickness'][i_t,i_x])), 32] )
-        dis_cfg['RADIATIVE_TRANSFER','RTM_Sim_Retr', 'useAddingSim'].setvalue(1)
-        dis_cfg['RADIATIVE_TRANSFER','RTM_Sim_Retr', 'nstreamsSim'].setvalue(64)
+            # radiative transfer settings for optically thick cloud
+            dis_cfg['RADIATIVE_TRANSFER','numDivPointsAlt', 'numDivPointsAltSim'].setvalue( [8, int(np.ceil(1.5*atm_disamar['cloud_optical_thickness'][i_t,i_x])), 32] )
+            dis_cfg['RADIATIVE_TRANSFER','RTM_Sim_Retr', 'useAddingSim'].setvalue(1)
+            dis_cfg['RADIATIVE_TRANSFER','RTM_Sim_Retr', 'nstreamsSim'].setvalue(64)
 
 
     return dis_cfg

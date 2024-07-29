@@ -39,7 +39,7 @@ def getConfig(cfgFile):
 
     config_input = Input_yaml(cfgFile)
     config = config_input.read()
-    print(f"{config_input}")
+    # print(f"{config_input}")
 
 #    stream =  open(cfgFile, 'r')
 #    config = yaml.safe_load(stream)

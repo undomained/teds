@@ -130,6 +130,7 @@ def download_sentinel2_albedo(config) -> None:
             'band_label': band_label,
             'gsd': abs(albedo.x.values[1] - albedo.x.values[0])
         })
+        albedo = albedo.clip(min=1e-5, max=1.0)
         albedos.append(albedo)
     write_albedo_to_netcdf(config['sentinel2']['albedo_file'], albedos)
 

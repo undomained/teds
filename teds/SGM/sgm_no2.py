@@ -1034,7 +1034,6 @@ def scene_generation_module_nitro(config):
     log.info('Running DISAMAR')
 
     with multiprocessing.Pool(config['rtm']['n_threads']) as pool:
-        print(len(dis_cfg_filenames) / len(pool._pool))
         # stat = pool.starmap(run_disamar, zip(dis_cfg_filenames, repeat(config['rtm']['disamar_exe'])),chunksize=1)
 
         args = [(cfg, config['rtm']['disamar_exe']) for cfg in dis_cfg_filenames]

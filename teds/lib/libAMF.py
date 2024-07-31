@@ -29,10 +29,12 @@ def read_doas(file_doas, slice_alt, slice_act):
 def read_cloud(file_cloud, slice_alt, slice_act):
     cloud = {}
     with nc.Dataset(file_cloud) as f:
-        cloud['cloud_optical_thickness'] = f['cloud_optical_thickness'][slice_alt,slice_act]
-        cloud['cloud_bottom_pressure'] = f['cloud_bottom_pressure'][slice_alt,slice_act]
-        cloud['cloud_fraction'] = f['cloud_fraction'][slice_alt,slice_act]
-
+        if 'cloud_fraction' in cloud.variables():
+            cloud['cloud_optical_thickness'] = f['cloud_optical_thickness'][slice_alt,slice_act]
+            cloud['cloud_bottom_pressure'] = f['cloud_bottom_pressure'][slice_alt,slice_act]
+            cloud['cloud_fraction'] = f['cloud_fraction'][slice_alt,slice_act]
+        else:
+            cloud['cloud_fraction'] = np.zeros_like(f['lat'][slice_alt,slice_act])
     return cloud
 
 def get_amf(cfg, doas, atm, cloud):
@@ -416,8 +418,9 @@ def write_amf(cfg, amf, slice_alt, slice_act):
     varlist = ['pressure_layers', 'no2_averaging_kernel', 'no2_total_amf', 'no2_total_vcd', 'no2_total_scd' ]
 
     with nc.Dataset(cfg['io']['l2'], 'a') as dst:
-
-        p_dim = dst.createDimension('pressure_layers', amf['pressure_layers'].shape[-1])
+        
+        if 'pressure_layers' not in dst.dimensions:
+            p_dim = dst.createDimension('pressure_layers', amf['pressure_layers'].shape[-1])
 
         for var in varlist:
             write_out(var)

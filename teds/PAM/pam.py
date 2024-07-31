@@ -114,10 +114,12 @@ def plot_scatter(var1,var2,var_name,var1_name,var2_name,save_location):
     var2_flat = var2_flat[~var12_mask].data
 
     # fit regressions line and calc stats
+    try:
+        slope, intercept, r_pearson, p_value, std_err = linregress(var1_flat, var2_flat)
+        r2 = r_pearson*r_pearson
+    except:
+        slope = intercept = r2 = -1
 
-    slope, intercept, r_pearson, p_value, std_err = linregress(var1_flat, var2_flat)
-
-    r2 = r_pearson*r_pearson
     bias = var1_flat-var2_flat
     sigma = np.std(bias)
     bias = np.mean(np.abs(bias))

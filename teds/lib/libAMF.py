@@ -184,7 +184,7 @@ def get_amf_iter(cfg, doas, atm):
     for idx,idy in iterlist:
 
         if np.ma.is_masked(doas['no2_scd'][idx,idy]):
-            logger.info(f'Skipping pixel {idx},{idy}: NaN in doas input')
+            log.info(f'Skipping pixel {idx},{idy}: NaN in doas input')
             continue
 
         mu = np.cos(np.deg2rad(doas['vza'][idx,idy]))
@@ -318,7 +318,7 @@ def read_NN(parameter, NN_file):
 
     # check
     if 'layer_4' not in dict_out:
-        logger.error('All NNs should have 4 layers')
+        log.error('All NNs should have 4 layers')
         raise
 
     return dict_out

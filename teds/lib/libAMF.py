@@ -29,7 +29,7 @@ def read_doas(file_doas, slice_alt, slice_act):
 def read_cloud(file_cloud, slice_alt, slice_act):
     cloud = {}
     with nc.Dataset(file_cloud) as f:
-        if 'cloud_fraction' in cloud.variables():
+        if 'cloud_fraction' in f.variables:
             cloud['cloud_optical_thickness'] = f['cloud_optical_thickness'][slice_alt,slice_act]
             cloud['cloud_bottom_pressure'] = f['cloud_bottom_pressure'][slice_alt,slice_act]
             cloud['cloud_fraction'] = f['cloud_fraction'][slice_alt,slice_act]

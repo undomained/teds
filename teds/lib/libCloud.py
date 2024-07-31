@@ -62,6 +62,7 @@ def get_cloud_parameters(cfg, doas, atm, cld_results):
     mu = np.cos(np.deg2rad(doas['vza']))
     mu0 = np.cos(np.deg2rad(doas['sza']))
     dphi	= np.abs( 180.0 - np.abs(doas['vaa']-doas['saa'])) # RAA [deg]
+    scat = scatangle(doas['sza'], doas['vza'], dphi)
 
     play = atm['pressure_layers'][:,:,::-1] # hPa
     tlay = atm['temperature'][:,:,::-1] # K
@@ -75,7 +76,7 @@ def get_cloud_parameters(cfg, doas, atm, cld_results):
 
         # NN for COT (cloud optical thickness)
 
-        vector_cot_NN = np.array([surface_pressure, atm['albedo_B01'], doas['o2o2_R'], cld_results['cld_bot_pres'], mu0, mu, dphi])
+        vector_cot_NN = np.array([surface_pressure, atm['albedo_B01'], doas['o2o2_R'], cld_results['cld_bot_pres'], mu0, mu, scat])
 
         cld_results['cot'] = libAMF.predict_NN_vector_2D(vector_cot_NN, cot_NN)
 
@@ -226,6 +227,33 @@ def bisection_o2o2(amf_NN,input_vector,p,T,scd_O2O2_cld_meas):
 
 
     return scd_O2O2_cld_list
+
+
+def scatangle(sza, vza, raa):
+    """
+    Get single scattering angle for sun-satellite geometry.
+   	All input angles in degrees.
+   	RAA/scattering angle according to S5P / DAK.
+    RAA/dphi = abs(180 - abs(azi_sat - azi_sun))
+    0 deg = forward scattering
+    180 deg = back scattering
+    """
+
+    sin_ts = np.sin(np.deg2rad(sza))
+    sin_tv = np.sin(np.deg2rad(vza))
+    cos_ts = np.cos(np.deg2rad(sza))
+    cos_tv = np.cos(np.deg2rad(vza))
+    cos_phi_r = np.cos(np.deg2rad(raa))
+
+    cos_scatangle = - cos_ts * cos_tv + sin_ts * sin_tv * cos_phi_r
+    if isinstance(cos_scatangle, np.ndarray):
+        cos_scatangle[cos_scatangle>=1.0] = 0.9999999999
+        cos_scatangle[cos_scatangle<=-1.0] = -0.9999999999
+    else:
+        cos_scatangle = 0.9999999999 if cos_scatangle >= 1.0 else cos_scatangle
+        cos_scatangle = -0.9999999999 if cos_scatangle <= -1.0 else cos_scatangle
+    
+    return np.rad2deg(np.arccos(cos_scatangle))
 
 
 def write_cloud(cfg, cloud, slice_alt, slice_act):

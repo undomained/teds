@@ -374,7 +374,7 @@ L1L2:
                 Cring: [0.06, 0.06]
                 Dring: [0.06, 0.06]
 
-    LUT_NN_file: ../data/no2/LUT_NN_combined_20231113.nc # file containing a neural network of the NO2 look-up tables
+    LUT_NN_file: ../data/no2/LUT_NN_combined_20240429.nc # file containing a neural network of the NO2 look-up tables
 
 ########################################################
 #

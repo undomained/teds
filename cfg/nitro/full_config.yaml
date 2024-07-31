@@ -383,9 +383,9 @@ L1L2:
 #
 #########################################################
 PAM:
-    figure_dir: ../data/no2/figs/
     plot_list: { # usage: '{title}' : {'sgm_name':{var name in SGM file}, 'l2_name':{var name in L2 file}
                 'NO2 vertical column': {'sgm_name':'col_no2', 'l2_name':'no2_total_vcd'},
                 'Cloud optical thickness': {'sgm_name':'cloud_optical_thickness', 'l2_name':'cloud_optical_thickness'},
-                'Cloud top pressure': {'sgm_name':'cloud_top_pressure', 'l2_name':'cloud_top_pressure'}
+                'Cloud top pressure': {'sgm_name':'cloud_top_pressure', 'l2_name':'cloud_top_pressure'},
+                'Cloud bottom pressure': {'sgm_name':'cloud_bottom_pressure', 'l2_name':'cloud_bottom_pressure'}
     }

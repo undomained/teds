@@ -1,17 +1,16 @@
 import numpy as np
 import os
 import sys
-import logging
 import yaml
 import netCDF4 as nc
 import matplotlib.pyplot as plt
 import matplotlib.colorbar as colorbar
-import matplotlib.colors as colors
 import cartopy.crs as crs
 import matplotlib as mpl
 from scipy.stats import linregress
+from pathlib import Path
 
-logger = logging.getLogger('E2E')
+from teds import log
 
 def read_file(file):
     # read in netcdf file, return as dict
@@ -113,35 +112,47 @@ def plot_scatter(var1,var2,var_name,var1_name,var2_name,save_location):
     var1_flat = var1_flat[~var12_mask].data
     var2_flat = var2_flat[~var12_mask].data
 
+    # make 1D hist
+    if (var1_flat == var1_flat[0]).all():
+        plt.figure(figsize=(9,9))
+        plt.hist(var2_flat, bins=25,label='L2')
+        plt.axvline(x=var1_flat[0],linestyle='--',color='k',label='SGM')
+        plt.ylabel('Count')
+        plt.xlabel(f'{var1_name} [{var1.units}]')
+        plt.legend()
+        savestring = 'hist_'+var_name.lower().replace(" ", "_")
+        plt.savefig(f'{save_location}/{savestring}.png',format='png', dpi=1000, bbox_inches='tight')
+
+    # make 2D hist
     # fit regressions line and calc stats
+    else:
+        slope, intercept, r_pearson, p_value, std_err = linregress(var1_flat, var2_flat)
+        r2 = r_pearson*r_pearson
 
-    slope, intercept, r_pearson, p_value, std_err = linregress(var1_flat, var2_flat)
+        bias = var1_flat-var2_flat
+        sigma = np.std(bias)
+        bias = np.mean(np.abs(bias))
 
-    r2 = r_pearson*r_pearson
-    bias = var1_flat-var2_flat
-    sigma = np.std(bias)
-    bias = np.mean(np.abs(bias))
+        # plot
 
-    # plot
+        fig,ax = plt.subplots(figsize=(9,9))
+        h = plt.hist2d(var1_flat, var2_flat,bins=100, norm=mpl.colors.LogNorm())
+        lims = np.array([np.min([ax.get_xlim(), ax.get_ylim()]),np.max([ax.get_xlim(), ax.get_ylim()])])
+        ax.plot(lims, lims, 'k-', alpha=0.3, zorder=3,label='1:1')
+        ax.set_aspect('equal')
+        ax.set_xlim(lims)
+        ax.set_ylim(lims)
+        plt.title('N = {}, R$^2$ = {:.3f}, mean $\sigma$ = {:.3E}, mean bias = {:.3E}'.format(var1_flat.size,r2, sigma, bias))
+        plt.xlabel(f'{var1_name} [{var1.units}]')
+        plt.ylabel(f'{var2_name} [{var2.units}]')
+        plt.plot(lims,lims*slope+intercept,'k--',alpha=0.5,zorder=2,label='y={:.2f}x+{:.2E}'.format(slope, intercept))
+        plt.legend()
+        cax,kw = colorbar.make_axes(ax,location='right',pad=0.02,shrink=0.5)
+        cbar=fig.colorbar(h[-1],cax=cax, extend='neither')
+        cbar.set_label('Number of pixels')
 
-    fig,ax = plt.subplots(figsize=(9,9))
-    h = plt.hist2d(var1_flat, var2_flat,bins=100, norm=mpl.colors.LogNorm())
-    lims = np.array([np.min([ax.get_xlim(), ax.get_ylim()]),np.max([ax.get_xlim(), ax.get_ylim()])])
-    ax.plot(lims, lims, 'k-', alpha=0.3, zorder=3,label='1:1')
-    ax.set_aspect('equal')
-    ax.set_xlim(lims)
-    ax.set_ylim(lims)
-    plt.title('N = {}, R$^2$ = {:.3f}, mean $\sigma$ = {:.3E}, mean bias = {:.3E}'.format(var1_flat.size,r2, sigma, bias))
-    plt.xlabel(f'{var1_name} [{var1.units}]')
-    plt.ylabel(f'{var2_name} [{var2.units}]')
-    plt.plot(lims,lims*slope+intercept,'k--',alpha=0.5,zorder=2,label='y={:.2f}x+{:.2E}'.format(slope, intercept))
-    plt.legend()
-    cax,kw = colorbar.make_axes(ax,location='right',pad=0.02,shrink=0.5)
-    cbar=fig.colorbar(h[-1],cax=cax, extend='neither')
-    cbar.set_label('Number of pixels')
-
-    savestring = 'scatter_'+var_name.lower().replace(" ", "_")
-    plt.savefig(f'{save_location}/{savestring}.png',format='png', dpi=1000, bbox_inches='tight')
+        savestring = 'scatter_'+var_name.lower().replace(" ", "_")
+        plt.savefig(f'{save_location}/{savestring}.png',format='png', dpi=1000, bbox_inches='tight')
 
     return
 
@@ -149,46 +160,44 @@ def plot_scatter(var1,var2,var_name,var1_name,var2_name,save_location):
 def pam_nitro(cfg):
 
 
-    logger.info(f"Started PAM")
+    log.info(f"Started PAM")
 
     # read SGM atm and L2 file
 
     sgm = read_file(cfg['io']['sgm_atm'])
     l2  = read_file(cfg['io']['l2'])
+    basedir  = os.path.dirname(cfg['io']['l2'])
 
-#    plotvars = cfg['pam']['plot_list']
+    savedir = os.path.join(basedir, 'figs' )
+    Path(savedir).mkdir(exist_ok=True)
+    
     plotvars = cfg['plot_list']
 
-#    logger.info(f"Saving figures to: {cfg['pam']['figure_dir']}")
-    logger.info(f"Saving figures to: {cfg['figure_dir']}")
+    log.info(f"Saving figures to: {savedir}")
 
     # loop over plotting vars
 
     for varname in plotvars:
 
-        logger.info(f'Plotting {varname}')
+        log.info(f'Plotting {varname}')
 
         plotvar = plotvars[varname]
         l2_var = l2[plotvar['l2_name']]
         sgm_var = sgm[plotvar['sgm_name']]
 
         # map of SGM var
-#        plot_map(sgm['lat'],sgm['lon'],sgm_var, f'SGM {varname}', cfg['pam']['figure_dir'])
-        plot_map(sgm['lat'],sgm['lon'],sgm_var, f'SGM {varname}', cfg['figure_dir'])
+        plot_map(sgm['lat'],sgm['lon'],sgm_var, f'SGM {varname}', savedir)
 
         # map of L2 var
-#        plot_map(l2['lat'],l2['lon'],l2_var, f'L2 {varname}', cfg['pam']['figure_dir'])
-        plot_map(l2['lat'],l2['lon'],l2_var, f'L2 {varname}', cfg['figure_dir'])
+        plot_map(l2['lat'],l2['lon'],l2_var, f'L2 {varname}', savedir)
         
         # diff map (L2 - SGM)
-#        plot_map_diff(l2['lat'],l2['lon'],l2_var,sgm_var, varname, f'(L2 - SGM) {varname}', cfg['pam']['figure_dir'])
-        plot_map_diff(l2['lat'],l2['lon'],l2_var,sgm_var, varname, f'(L2 - SGM) {varname}', cfg['figure_dir'])
+        plot_map_diff(l2['lat'],l2['lon'],l2_var,sgm_var, varname, f'(L2 - SGM) {varname}', savedir)
 
         # scatter plot SGM vs L2 var
-#        plot_scatter(sgm_var,l2_var,varname,f'SGM {varname}',f'L2 {varname}', cfg['pam']['figure_dir'])
-        plot_scatter(sgm_var,l2_var,varname,f'SGM {varname}',f'L2 {varname}', cfg['figure_dir'])
+        plot_scatter(sgm_var,l2_var,varname,f'SGM {varname}',f'L2 {varname}', savedir)
 
-    logger.info(f'Finished PAM')
+    log.info(f'Finished PAM')
 
     return
 
@@ -197,40 +206,7 @@ if __name__ == '__main__':
     # call with:
     # python pam.py pam_no2.yaml
 
-    # or with logging to file:
-    # python pam.py pam_no2.yaml pam_no2.log
-
-
     # reading yaml config
     cfg = yaml.safe_load(open(sys.argv[1]))
 
-    # cfg = cfg['pam']
-
-    loglevel = logging.INFO
-
-    # setup the logging to screen and to file
-    formatter = logging.Formatter('%(asctime)s %(levelname)s: %(message)s')
-
-    if len(sys.argv) > 2:
-        fh = logging.FileHandler(sys.argv[2], mode='w')
-        fh.setLevel(logging.ERROR)
-        fh.setFormatter(formatter)
-
-        ch = logging.StreamHandler()
-        ch.setLevel(loglevel)
-        ch.setFormatter(formatter) 
-
-        logging.basicConfig(level=loglevel, handlers = [ch,fh])
-
-        logging.info(f'Logging to file: {sys.argv[2]}')
-
-    else:
-        ch = logging.StreamHandler()
-        ch.setLevel(loglevel)
-        ch.setFormatter(formatter) 
-        logging.basicConfig(level=loglevel,handlers = [ch])
-
-    logger = logging.getLogger()
-    
-
-    pam_nitro(logger,cfg)
+    pam_nitro(cfg)

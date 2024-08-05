@@ -1,10 +1,11 @@
 import os, sys
 import logging
-import yaml
 import subprocess
+import netCDF4 as nc
 
 from teds.IM.Python.input.input_yaml import Input_yaml
-import teds.lib.data_netcdf.data_netcdf as dn
+# import teds.lib.data_netcdf.data_netcdf as dn
+from teds import log
 
 def get_logger():
     """
@@ -16,7 +17,6 @@ def get_logger():
     log_level = logging.INFO
     log_format = '%(asctime)s : %(name)s : %(module)s : %(lineno)d : %(levelname)s : %(message)s'
     log_formatter = logging.Formatter(log_format)
-    date_format = '%d/%m/%Y %H:%M:%S'
 
     logger = logging.getLogger('E2E')
     logger.setLevel(log_level)
@@ -27,7 +27,7 @@ def get_logger():
 
     return logger
 
-def getConfig(logger, cfgFile):
+def getConfig(cfgFile):
     """
         Get the config information from the configuration file
        - logger: Reference to the program logger
@@ -37,9 +37,9 @@ def getConfig(logger, cfgFile):
     """
     cfg_path, filename = os.path.split(cfgFile)
 
-    config_input = Input_yaml(logger, cfgFile)
+    config_input = Input_yaml(cfgFile)
     config = config_input.read()
-    print(f"{config_input}")
+    # print(f"{config_input}")
 
 #    stream =  open(cfgFile, 'r')
 #    config = yaml.safe_load(stream)
@@ -64,7 +64,7 @@ def getConfig(logger, cfgFile):
 
 
     config_string = config_input.print()
-    logger.info(config_string)
+    log.info(config_string)
 
     return config
 
@@ -94,14 +94,18 @@ def get_main_attributes(config, config_attributes_name='E2E_configuration'):
 
     return attribute_dict
 
-def add_attributes_to_output(logger, output_file, attribute_dict):
+def add_attributes_to_output(output_file, attribute_dict):
     """
         Add attributes to the output file
     """
 
-    out_data = dn.DataNetCDF(logger, output_file, mode='r')
-    for name, value in attribute_dict.items():
-        out_data.add(name, value=str(value), kind='attribute')
-    out_data.write()
-    return
+    # out_data = dn.DataNetCDF(logger, output_file, mode='r')
+    # for name, value in attribute_dict.items():
+    #     out_data.add(name, value=str(value), kind='attribute')
+    # out_data.write()
+    # return
 
+    with nc.Dataset(output_file, 'a') as file:
+        for name, value in attribute_dict.items():
+            setattr(file, name, str(value))
+    return

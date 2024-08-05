@@ -5,8 +5,11 @@ import importlib
 import subprocess
 import yaml
 import numpy as np
+import os
+
+from teds import log
 import teds.lib.lib_utils as Utils
-import lib.data_netcdf.data_netcdf as dn
+import teds.lib.data_netcdf.data_netcdf as dn
 
 def cmdline(arguments):
     """             
@@ -34,7 +37,7 @@ def cmdline(arguments):
     
     return cfgFile, step
 
-def reshape_output(logger, output_key, config):
+def reshape_output(output_key, config):
     """
         Note: output dataset is 2D. When it is on detector level
         these dimensions are: along track and pixels.
@@ -45,7 +48,7 @@ def reshape_output(logger, output_key, config):
     temp_output_file = None
     # readin output file
     output_file = config['io'][output_key]
-    output_data = dn.DataNetCDF(logger, output_file, mode='r')
+    output_data = dn.DataNetCDF(log, output_file, mode='r')
 
     # cal_level determines until which step IM and L1B are run.
     # A check on cal_level can be used to determine whether or not reshaping is needed.
@@ -67,7 +70,7 @@ def reshape_output(logger, output_key, config):
 
         # Get dimensions from ckd?
         ckd_file = config['io']['ckd']
-        ckd_data = dn.DataNetCDF(logger, ckd_file, mode='r')
+        ckd_data = dn.DataNetCDF(log, ckd_file, mode='r')
         det_rows = ckd_data.get('detector_row', kind='dimension')
         det_cols = ckd_data.get('detector_column', kind='dimension')
 
@@ -80,7 +83,7 @@ def reshape_output(logger, output_key, config):
         # How do I get the right dimensions when binning has been applied?
         # For now stupidly devide det_rows by table_id
         bin_file = config['io']['binning_table']
-        bin_data = dn.DataNetCDF(logger, bin_file, mode='r')
+        bin_data = dn.DataNetCDF(log, bin_file, mode='r')
         bin_id = config['detector']['binning_table_id']
         table = f"Table_{bin_id}"
         print(f"Binning table: {table}")
@@ -147,13 +150,13 @@ def get_file_name(config, step):
        
     return file_path 
 
-def get_specific_config(logger, orig_config, kind):
+def get_specific_config(orig_config, kind):
     """
         Obtain module specific configuration from full configuration
     """
     if kind not in orig_config:
         error_msg = f"Unknown module {kind}. Unable to fetch corresponding config. Exiting!"
-        logger.error(error_msg)
+        log.error(error_msg)
         sys.exit(error_msg)
 
     # Get the module specific settings
@@ -176,23 +179,26 @@ def get_specific_config(logger, orig_config, kind):
         specific_config['io']['sgm_atm'] = os.path.join(output_path, orig_config['io']['sgm_atm'])
         specific_config['io']['gm'] = os.path.join(output_path, orig_config['io']['gm'])
 
-    elif kind == 'L1L2':
-        # Combine path and file name
-        output_path = get_file_name(orig_config, 'l1l2')
-        specific_config['io']['l2'] = os.path.join(output_path, orig_config['io']['l2'])
+    elif kind == 'IM':
+        specific_config['io']['binning_table'] = orig_config['io']['binning_table']
+        specific_config['io']['ckd'] = orig_config['io']['ckd_im']
 
-        output_path = get_file_name(orig_config, 'gm')
-        specific_config['io']['gm'] = os.path.join(output_path, orig_config['io']['gm'])
+        do_python = specific_config['do_python']
+        # Output of IM
+        output_path = get_file_name(orig_config, 'im')
+        l1a_file_name = orig_config['io']['l1a']
+        if do_python:
+            l1a_file_name_python = f"{l1a_file_name[0:-3]}_python.nc"
+            print(f"l1a python file name: {l1a_file_name_python}")
+            specific_config['io']['l1a'] = os.path.join(output_path, l1a_file_name_python)
+            specific_config['io']['im_algo_output'] = os.path.join(output_path, orig_config['io']['im_algo_output'])
+        else:
+#            specific_config['io']['l1a'] = os.path.join(output_path, orig_config['io']['l1a'])
+            specific_config['io']['l1a'] = os.path.join(output_path, l1a_file_name)
 
+        # Input to IM
         output_path = get_file_name(orig_config, 'sgm')
-        specific_config['io']['sgm_atm'] = os.path.join(output_path, orig_config['io']['sgm_atm'])
-        specific_config['io']['sgm_rad'] = os.path.join(output_path, orig_config['io']['sgm_rad'])
-
-        output_path = get_file_name(orig_config, 'l1al1b')
-        specific_config['io']['l1b'] = os.path.join(output_path, orig_config['io']['l1b'])
-
-        # Also need acces to isrf which is a IM configuration parameter
-        specific_config['isrf'] = orig_config['IM']['isrf']
+        specific_config['io']['sgm'] = os.path.join(output_path, orig_config['io']['sgm_rad'])
 
     elif kind == 'L1AL1B':
 
@@ -230,26 +236,23 @@ def get_specific_config(logger, orig_config, kind):
         output_path = get_file_name(orig_config, 'gm')
         specific_config['io']['geometry'] = os.path.join(output_path, orig_config['io']['gm'])
 
-    elif kind == 'IM':
-        specific_config['io']['binning_table'] = orig_config['io']['binning_table']
-        specific_config['io']['ckd'] = orig_config['io']['ckd_im']
+    elif kind == 'L1L2':
+        # Combine path and file name
+        output_path = get_file_name(orig_config, 'l1l2')
+        specific_config['io']['l2'] = os.path.join(output_path, orig_config['io']['l2'])
 
-        do_python = specific_config['do_python']
-        # Output of IM
-        output_path = get_file_name(orig_config, 'im')
-        l1a_file_name = orig_config['io']['l1a']
-        if do_python:
-            l1a_file_name_python = f"{l1a_file_name[0:-3]}_python.nc"
-            print(f"l1a python file name: {l1a_file_name_python}")
-            specific_config['io']['l1a'] = os.path.join(output_path, l1a_file_name_python)
-            specific_config['io']['im_algo_output'] = os.path.join(output_path, orig_config['io']['im_algo_output'])
-        else:
-#            specific_config['io']['l1a'] = os.path.join(output_path, orig_config['io']['l1a'])
-            specific_config['io']['l1a'] = os.path.join(output_path, l1a_file_name)
+        output_path = get_file_name(orig_config, 'gm')
+        specific_config['io']['gm'] = os.path.join(output_path, orig_config['io']['gm'])
 
-        # Input to IM
         output_path = get_file_name(orig_config, 'sgm')
-        specific_config['io']['l1b'] = os.path.join(output_path, orig_config['io']['l1b_im'])
+        specific_config['io']['sgm_atm'] = os.path.join(output_path, orig_config['io']['sgm_atm'])
+        specific_config['io']['sgm_rad'] = os.path.join(output_path, orig_config['io']['sgm_rad'])
+
+        output_path = get_file_name(orig_config, 'l1al1b')
+        specific_config['io']['l1b'] = os.path.join(output_path, orig_config['io']['l1b'])
+
+        # Also need acces to isrf which is a IM configuration parameter
+        specific_config['isrf'] = orig_config['IM']['isrf']
 
     elif kind == 'PAM':
         output_path = get_file_name(orig_config, 'sgm')
@@ -260,12 +263,12 @@ def get_specific_config(logger, orig_config, kind):
 
     else:
         error_msg = f"Unknown module kind {kind}. Unable to fetch corresponding IO config. Exiting!"
-        logger.error(error_msg)
+        log.error(error_msg)
         sys.exit(error_msg)
 
     return specific_config
 
-def add_module_specific_attributes(logger, config, attribute_dict, step):
+def add_module_specific_attributes(config, attribute_dict, step):
     """
         Add the module specific settings to the attribute_dict
     """
@@ -278,10 +281,9 @@ def add_module_specific_attributes(logger, config, attribute_dict, step):
     return new_attribute_dict
 
 
-def build(logger, config, step, cfg_path, attribute_dict):
+def build(config, step, cfg_path, attribute_dict):
     """
         Run E2E processor.
-        - logger: Reference to the program logger
         - config: configuration file containing the settings for the different steps in the E2E processor
         - step: indicating which step in the E2E processor to run. 
         - cfg_path: configuration path
@@ -293,26 +295,26 @@ def build(logger, config, step, cfg_path, attribute_dict):
 
     if step == 'gm' or step == 'all':
 
-        gm_config = get_specific_config(logger, configuration, 'GM')
-        attribute_dict = add_module_specific_attributes(logger, gm_config, attribute_dict, 'gm')
+        gm_config = get_specific_config(configuration, 'GM')
+        attribute_dict = add_module_specific_attributes(gm_config, attribute_dict, 'gm')
         E2EModule = importlib.import_module("GM.gm")
-        E2EModule.geometry_module(gm_config, logger=logger)
+        E2EModule.geometry_module(gm_config)
         # add attributes to the output file
-        Utils.add_attributes_to_output(logger, gm_config['io']['gm'], attribute_dict)
+        Utils.add_attributes_to_output(gm_config['io']['gm'], attribute_dict)
 
     if step == 'sgm' or step == 'all':
-        sgm_config = get_specific_config(logger, configuration, 'SGM')
-        attribute_dict = add_module_specific_attributes(logger, sgm_config, attribute_dict, 'sgm')
+        sgm_config = get_specific_config(configuration, 'SGM')
+        attribute_dict = add_module_specific_attributes(sgm_config, attribute_dict, 'sgm')
         E2EModule = importlib.import_module("SGM.sgm_no2")
         E2EModule.scene_generation_module_nitro(sgm_config)
-        Utils.add_attributes_to_output(logger, sgm_config['io']['sgm_rad'], attribute_dict)
-        Utils.add_attributes_to_output(logger, sgm_config['io']['sgm_atm'], attribute_dict)
-        Utils.add_attributes_to_output(logger, sgm_config['io']['sgm_atm_raw'], attribute_dict)
+        Utils.add_attributes_to_output(sgm_config['io']['sgm_rad'], attribute_dict)
+        Utils.add_attributes_to_output(sgm_config['io']['sgm_atm'], attribute_dict)
+        Utils.add_attributes_to_output(sgm_config['io']['sgm_atm_raw'], attribute_dict)
 
     if step == 'im' or step == 'all':
 
-        im_config = get_specific_config(logger, configuration, 'IM')
-        attribute_dict = add_module_specific_attributes(logger, im_config, attribute_dict, 'im')
+        im_config = get_specific_config(configuration, 'IM')
+        attribute_dict = add_module_specific_attributes(im_config, attribute_dict, 'im')
         # write config to temp yaml file with IM values filled in
         im_config_file = f"{cfg_path}/im_config_temp.yaml"
         with open(im_config_file,'w') as outfile:
@@ -326,22 +328,22 @@ def build(logger, config, step, cfg_path, attribute_dict):
             # output dataset is 2D. In case of detector image (in case of some inbetween steps 
             # and of the final output) the second dimension is detector_pixels which is too large to view. 
             # Need to reshape to 3D to be able to make sense of this.
-            temp_output_file = reshape_output(logger, 'l1a', im_config)
+            temp_output_file = reshape_output('l1a', im_config)
 
             # Add attributes to output file
             if temp_output_file is not None:
-                Utils.add_attributes_to_output(logger, temp_output_file, attribute_dict)
-            Utils.add_attributes_to_output(logger, im_config['io']['l1a'], attribute_dict)
+                Utils.add_attributes_to_output(temp_output_file, attribute_dict)
+            Utils.add_attributes_to_output(im_config['io']['l1a'], attribute_dict)
         else:
             # run Python code
             E2EModule = importlib.import_module("IM.Python.instrument_model")
-            E2EModule.instrument_model(im_config, logger, attribute_dict)
+            E2EModule.instrument_model(im_config, log, attribute_dict)
             # No need to reshape because Python output is already 3D
 
     if step == 'l1al1b' or step == 'all':
 
-        l1b_config = get_specific_config(logger, configuration, 'L1AL1B')
-        attribute_dict = add_module_specific_attributes(logger, l1b_config, attribute_dict, 'l1al1b')
+        l1b_config = get_specific_config(configuration, 'L1AL1B')
+        attribute_dict = add_module_specific_attributes(l1b_config, attribute_dict, 'l1al1b')
         # write config to temp yaml file with L1B values filled in
         l1b_config_file = f"{cfg_path}/l1b_config_temp.yaml"
         with open(l1b_config_file,'w') as outfile:
@@ -358,44 +360,50 @@ def build(logger, config, step, cfg_path, attribute_dict):
             temp_output_file = reshape_output(logger, 'l1b', l1b_config)
 
             # Add attributes to output file
-            # if temp_output_file is not None:
-                # Utils.add_attributes_to_output(logger, temp_output_file, attribute_dict)
-            # Utils.add_attributes_to_output(logger, l1b_config['io']['l1b'], attribute_dict)
+            if temp_output_file is not None:
+                Utils.add_attributes_to_output(logger, temp_output_file, attribute_dict)
+            Utils.add_attributes_to_output(logger, l1b_config['io']['l1b'], attribute_dict)
         else:
             # run Python code
             E2EModule = importlib.import_module("L1AL1B.Python.l1b_processor")
             E2EModule.l1b_processor(l1b_config, logger, attribute_dict)
 
     if step == 'l1l2' or step == 'all':
-        l2_config = get_specific_config(logger, configuration, 'L1L2')
-        attribute_dict = add_module_specific_attributes(logger, l2_config, attribute_dict, 'l1l2')
+        l2_config = get_specific_config(configuration, 'L1L2')
+        attribute_dict = add_module_specific_attributes(l2_config, attribute_dict, 'l1l2')
         E2EModule = importlib.import_module("L1L2.l1bl2_no2")
         E2EModule.l1bl2_no2(l2_config)
-        # Utils.add_attributes_to_output(logger, l2_config['io']['l2'], attribute_dict)
+        Utils.add_attributes_to_output(l2_config['io']['l2'], attribute_dict)
 
     if step == 'pam' or step == 'all':
-        pam_config = get_specific_config(logger, configuration, 'PAM')
-        attribute_dict = add_module_specific_attributes(logger, pam_config, attribute_dict, 'pam')
+        pam_config = get_specific_config(configuration, 'PAM')
+        attribute_dict = add_module_specific_attributes(pam_config, attribute_dict, 'pam')
         E2EModule = importlib.import_module("PAM.pam")
         E2EModule.pam_nitro(pam_config)
 
 if __name__ == "__main__":
 
-    
-    # Get logger for run script
-    build_logger = Utils.get_logger()
 
     # Get input arguments
     cfgFile, step =  cmdline(sys.argv[1:])
     cfg_path, filename = os.path.split(cfgFile)
 
     # Get configuration info
-    config = Utils.getConfig(build_logger, cfgFile)
+    config = Utils.getConfig(cfgFile)
     config['header']['path'] = cfg_path
+
+    if config['log_level'] == 'debug':
+        log.setLevel(logging.DEBUG)
+    else:
+        log.setLevel(logging.INFO)
+
+    if not config['show_progress']:
+        os.environ['TQDM_DISABLE']='1'
+
 
     # Get information (like git hash and config file name and version (if available) 
     # that will be added to the output files as attributes
     main_attribute_dict = Utils.get_main_attributes(config)
 
-    build(build_logger, config, step, cfg_path, main_attribute_dict)
+    build(config, step, cfg_path, main_attribute_dict)
 

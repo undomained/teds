@@ -11,15 +11,15 @@ class TedsFormatter(_logging.Formatter):
         super().__init__()
         formats = {
             _logging.DEBUG:
-            '[%(asctime)s] [%(levelname)s] [%(name)s:%(lineno)d] %(message)s',
+            '%(asctime)s : %(name)s : %(module)s : %(lineno)d : %(levelname)s : %(message)s',
             _logging.INFO:
-            '[%(asctime)s] %(message)s',
+            '%(asctime)s : %(name)s : %(module)s: %(levelname)s : %(message)s',
             _logging.WARNING:
-            '[%(asctime)s] [%(levelname)s] %(message)s',
+            '%(asctime)s : %(name)s : %(module)s : %(lineno)d : %(levelname)s : %(message)s',
             _logging.ERROR:
-            '[%(asctime)s] [%(levelname)s] %(message)s',
+            '%(asctime)s : %(name)s : %(module)s : %(lineno)d : %(levelname)s : %(message)s',
             _logging.CRITICAL:
-            '[%(asctime)s] [%(levelname)s] %(message)s',
+            '%(asctime)s : %(name)s : %(module)s : %(lineno)d : %(levelname)s : %(message)s',
         }
         self.formatters = {}
         for f in formats:

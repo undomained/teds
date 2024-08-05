@@ -22,11 +22,12 @@ import logging
 from itertools import repeat
 import tqdm
 from scipy.interpolate import RegularGridInterpolator
+import xarray as xr
 
-from lib import libATM, libSGM, libRT_no2, libNumTools, constants
-from lib.libWrite import writevariablefromname
+from teds import log
+from teds.lib import libATM, libSGM, libRT_no2, libNumTools, constants
+from teds.lib.libWrite import writevariablefromname
 
-logger = logging.getLogger('E2E')
 
 class Emptyclass:
     """Empty class. Data container."""
@@ -51,6 +52,24 @@ def get_gm_data(filename):
         gm_data['lon'] = deepcopy(data['lon'][:, :])
     return gm_data
 
+def get_sentinel2_albedo(filename):
+    '''Read a list of Sentinel 2 albedos from a NetCDF file.
+
+    '''
+    f = nc.Dataset(filename)
+    albedos = []
+    for group in f.groups:
+        albedo = xr.DataArray(f[group]['albedo'][:],
+                           dims=('y', 'x'),
+                           coords={
+                               'y': f[group]['y'][:],
+                               'x': f[group]['x'][:]
+                           })
+        albedo.attrs['gsd'] = f[group]['gsd'][:]
+        albedo.attrs['band_label'] = group
+        albedo.rio.write_crs(f[group].crs, inplace=True)
+        albedos.append(albedo)
+    return albedos
 
 def get_dem(fname, lat, lon, radius: int = 3):
 
@@ -95,7 +114,7 @@ def time_units_in_seconds(time_units):
     elif tu == 'days':
         return 24. * 3600.
     else:
-        logger.error('Time unit not understood: ', tu)
+        log.error('Time unit not understood: ', tu)
         return(-1)
 
 def get_cams_profiles( cfg, time, lats, lons):
@@ -152,7 +171,7 @@ def get_cams_profiles( cfg, time, lats, lons):
             varcams = var
 
         if varcams not in cams:
-            logger.error(f'Requested gas {var} not in CAMS file.')
+            log.error(f'Requested gas {var} not in CAMS file.')
             continue
         
         varlist = []
@@ -277,27 +296,39 @@ def combine_mhh_cams( mhh_data, atm, species=['no2', 'co2', 'no']):
 
     return atm
 
+def add_clouds(cfg, atm):
+    # Add cloud parameters to atm for specified range
+
+    atm.cf = np.zeros_like(atm.lat)
+    atm.cot = np.ma.masked_all_like(atm.lat)
+    atm.cbp = np.ma.masked_all_like(atm.lat)
+    atm.ctp = np.ma.masked_all_like(atm.lat)
+
+    if 'alt' in cfg['atm']['cloud']:
+        slice_alt = slice(cfg['atm']['cloud']['alt']['start'],cfg['atm']['cloud']['alt']['stop']+1)
+    else:
+        slice_alt = slice(0,None)
+    if 'act' in cfg['atm']['cloud']:
+        slice_act = slice(cfg['atm']['cloud']['act']['start'],cfg['atm']['cloud']['act']['stop']+1)
+    else:
+        slice_act = slice(0,None)
+
+    atm.cf[slice_alt, slice_act] =  cfg['atm']['cloud']['cloud_fraction']
+    atm.cot[slice_alt, slice_act] =  cfg['atm']['cloud']['cloud_optical_thickness']
+    atm.cbp[slice_alt, slice_act] = cfg['atm']['cloud']['cloud_bottom_pressure']
+    atm.ctp[slice_alt, slice_act] = cfg['atm']['cloud']['cloud_top_pressure']
+
+    return atm
+
 
 def convolvedata_nitro(atm, albedo, microhh, config):
 
-    """Convolve meteo and albedo data.
-
-    Parameters
-    ----------
-    meteodata : Class
-        Meteo data
-    config : Dict
-        Dict containing configuration parameters.
-
-    """
+    """Convolve meteo and albedo data."""
     
-    dx = np.mean(microhh.dx)
-    dy = np.mean(microhh.dy)
+    conv_settings = libNumTools.getconvolutionparams(config['kernel_parameter'], microhh.dx, microhh.dy)
     
-    conv_settings = libNumTools.getconvolutionparams(config['kernel_parameter'], dx, dy)
-    
-    # convolution of albedo   
-    atm.__setattr__("albedo_conv", libNumTools.convolution_2d(albedo, conv_settings))
+    for albedo_band in albedo:
+        albedo_band.values = libNumTools.convolution_2d(albedo_band, conv_settings)
     
     for gas in config['atm']['gases']:
         dcolgas = atm.__getattribute__("dcol_"+gas)
@@ -311,10 +342,10 @@ def convolvedata_nitro(atm, albedo, microhh, config):
             atm.__setattr__("dcol_"+gas+"_conv", dcolgas_conv)
             atm.__setattr__("ppmv_"+gas+"_conv", ppmvgas_conv)
 
-    return atm
+    return atm, albedo
 
 
-def interpolate_data_regular_nitro(indata, gm_data, config):
+def interpolate_data_regular_nitro(atm, albedo, gm_data, config):
     """Interpolate data on regular cartesian grid.
 
     Meteo data is in regular x-y grid and this is used to interpolate
@@ -323,8 +354,10 @@ def interpolate_data_regular_nitro(indata, gm_data, config):
 
     Parameters
     ----------
-    indata : Class
+    atm : Class
         Meteo data
+    albedo: List
+        List of albedo bands
     gm_data : Dict
         Parameters from geometry module
     gases : List
@@ -332,61 +365,75 @@ def interpolate_data_regular_nitro(indata, gm_data, config):
 
     Returns
     -------
-    albedo : Matrix
-        Albedo on gm grid
-    outdata: Class
+    atm: Class
         Meteo data on gm grid
+    albedo_interp : List
+        List of albedo bands on gm grid
     """
-    logger.debug('Interpolating data to GM mesh...')
-    outdata = Emptyclass()
-    outdata.__setattr__("lat", gm_data['lat'])
-    outdata.__setattr__("lon", gm_data['lon'])
+    log.info('Interpolating data to GM mesh...')
+    atm_interp = Emptyclass()
+    atm_interp.__setattr__("lat", gm_data['lat'])
+    atm_interp.__setattr__("lon", gm_data['lon'])
 
-    dim_alt, dim_act = outdata.lat.shape   # dimensions
-    dim_lay = indata.play.shape[2]
-    dim_lev = indata.plev.shape[2]
+    dim_alt, dim_act = atm_interp.lat.shape   # dimensions
+    dim_lay = atm.play.shape[2]
+    dim_lev = atm.plev.shape[2]
     
     # Interpolate albedo to GM grid
-    fa = RegularGridInterpolator((indata.ypos, indata.xpos), indata.albedo_conv, 
+    albedo_interp = []
+    for albedo_band in albedo:
+        fa = RegularGridInterpolator((atm.ypos, atm.xpos), albedo_band.values, 
                                  bounds_error=False, fill_value=0.0)
-    albedo = fa((gm_data['ypos'], gm_data['xpos']))
+        albedo_band_interp = xr.DataArray(
+            data=fa((gm_data['ypos'], gm_data['xpos'])),
+            dims=["y", "x"],
+            coords=dict(
+                lon=(["y", "x"], gm_data['lat']),
+                lat=(["y", "x"], gm_data['lon'])),
+            attrs=albedo_band.attrs)
+        
+        # do not allow zeros
+        albedo_band_interp.values[albedo_band_interp.values==0.0] = 1e-5
+        albedo_interp.append(albedo_band_interp)
+
+    # Interpolate atm parameters to GM grid
     for gas in config['atm']['gases']:
         interpdata = np.zeros([dim_alt, dim_act, dim_lay])
-        conv_gas = indata.__getattribute__("dcol_"+gas+"_conv")
+        conv_gas = atm.__getattribute__("dcol_"+gas+"_conv")
         for iz in range(dim_lay):
             gasmin = np.min(conv_gas[:, :, iz])
-            fa = RegularGridInterpolator((indata.ypos, indata.xpos), conv_gas[:, :, iz], 
+            fa = RegularGridInterpolator((atm.ypos, atm.xpos), conv_gas[:, :, iz], 
                                          bounds_error=False, fill_value=gasmin)
             interpdata[:, :, iz] = fa((gm_data['ypos'], gm_data['xpos']))
         # do not allow negative values
         interpdata = interpdata.clip(min=0)
-        outdata.__setattr__('dcol_'+gas, interpdata)
+        atm_interp.__setattr__('dcol_'+gas, interpdata)
 
         interpdata = np.zeros([dim_alt, dim_act, dim_lay])
-        ppmv_gas = indata.__getattribute__("ppmv_"+gas+"_conv")
+        ppmv_gas = atm.__getattribute__("ppmv_"+gas+"_conv")
         for iz in range(dim_lay):
             gasmin = np.min(ppmv_gas[:, :, iz])
-            fa = RegularGridInterpolator((indata.ypos, indata.xpos), ppmv_gas[:, :, iz], 
+            fa = RegularGridInterpolator((atm.ypos, atm.xpos), ppmv_gas[:, :, iz], 
                                          bounds_error=False, fill_value=gasmin)
             interpdata[:, :, iz] = fa((gm_data['ypos'], gm_data['xpos']))
         # do not allow negative values
         interpdata = interpdata.clip(min=0)
-        outdata.__setattr__('ppmv_'+gas, interpdata)
+        atm_interp.__setattr__('ppmv_'+gas, interpdata)
 
     if config['atm']['type'] == 'afgl':
         #Here, we make a shortcut using a equally vertically gridded atmosphere 
         #So we duplicate the vertical grid!
-        dum = np.tile(indata.play[0,0,:], dim_alt*dim_act)
-        outdata.__setattr__("play", np.reshape(dum,(dim_alt,dim_act,dim_lay)))
+        dum = np.tile(atm.play[0,0,:], dim_alt*dim_act)
+        atm_interp.__setattr__("play", np.reshape(dum,(dim_alt,dim_act,dim_lay)))
 
-        dum = np.tile(indata.plev[0,0,:], dim_alt*dim_act)
-        outdata.__setattr__("plev", np.reshape(dum,(dim_alt,dim_act,dim_lev)))
+        dum = np.tile(atm.plev[0,0,:], dim_alt*dim_act)
+        atm_interp.__setattr__("plev", np.reshape(dum,(dim_alt,dim_act,dim_lev)))
 
-        dum = np.tile(indata.tlay[0,0,:], dim_alt*dim_act)
-        outdata.__setattr__("tlay", np.reshape(dum,(dim_alt,dim_act,dim_lay)))
+        dum = np.tile(atm.tlay[0,0,:], dim_alt*dim_act)
+        atm_interp.__setattr__("tlay", np.reshape(dum,(dim_alt,dim_act,dim_lay)))
 
-        dum = np.tile(indata.tlev[0,0,:], dim_alt*dim_act)
-        outdata.__setattr__("tlev", np.reshape(dum,(dim_alt,dim_act,dim_lev)))
+        dum = np.tile(atm.tlev[0,0,:], dim_alt*dim_act)
+        atm_interp.__setattr__("tlev", np.reshape(dum,(dim_alt,dim_act,dim_lev)))
 
     elif config['atm']['type'] == 'cams':
         varlist = ['plev','play','tlay']
@@ -396,17 +443,17 @@ def interpolate_data_regular_nitro(indata, gm_data, config):
             elif 'lay' in var:
                 dim_z = dim_lay
             interpdata = np.zeros([dim_alt, dim_act, dim_z])
-            vardata = indata.__getattribute__(var)
+            vardata = atm.__getattribute__(var)
             for iz in range(dim_z):
                 varmin = np.min(vardata[:, :, iz])
-                fa = RegularGridInterpolator((indata.ypos, indata.xpos), vardata[:, :, iz], 
+                fa = RegularGridInterpolator((atm.ypos, atm.xpos), vardata[:, :, iz], 
                                             bounds_error=False, fill_value=varmin)
                 interpdata[:, :, iz] = fa((gm_data['ypos'], gm_data['xpos']))
             # do not allow negative values
             interpdata = interpdata.clip(min=0)
-            outdata.__setattr__(var, interpdata)
+            atm_interp.__setattr__(var, interpdata)
      
-    return albedo, outdata
+    return atm_interp, albedo_interp
 
 def recalc_total_column(atm, config):
     # recalculate total column from partial columns after convolution and regridding
@@ -421,21 +468,21 @@ def recalc_total_column(atm, config):
     return atm
 
 
-def convert_atm_profiles(atm, cfg):
-    # convert atmospheric profiles for usage in disamar
+def convert_atm_to_disamar(atm, cfg):
+    # convert atmospheric profiles and parameters for usage in disamar
 
     extrapolate_to_surface = True
 
-    profiles = {}
+    atm_disamar = {}
         
     nalt, nact, nlev =  atm.plev.shape
 
     variables = cfg['atm']['gases'].copy()
     variables.extend(['t','p'])
     for var in variables:
-        profiles[var] = np.zeros((nalt, nact, nlev))
+        atm_disamar[var] = np.zeros((nalt, nact, nlev))
 
-    profiles['p'] = atm.plev[:,:,::-1] # levels, hPa, surface --> TOA
+    atm_disamar['p'] = atm.plev[:,:,::-1] # levels, hPa, surface --> TOA
 
     # gases
     for gas in cfg['atm']['gases']:
@@ -449,14 +496,14 @@ def convert_atm_profiles(atm, cfg):
                 if extrapolate_to_surface:
                     # extrapolation
                     interp_gas = RegularGridInterpolator(np.reshape(np.log(atm.play[idx,idy,:].T),(1,len(atm.play[idx,idy,:]))), gas_ppmv[idx,idy,:], method='linear',bounds_error=False, fill_value=None)
-                    profiles[gas][idx, idy, :] = interp_gas(np.log(atm.plev[idx,idy,:]))[::-1]
+                    atm_disamar[gas][idx, idy, :] = interp_gas(np.log(atm.plev[idx,idy,:]))[::-1]
                 else:
                     # no extrapolation, edge value is repeated
-                    profiles[gas][idx, idy, :] = np.interp( np.log(atm.plev[idx,idy,:]), np.log(atm.play[idx,idy,:]), gas_ppmv[idx,idy,:] )[::-1] # strictly increasing
+                    atm_disamar[gas][idx, idy, :] = np.interp( np.log(atm.plev[idx,idy,:]), np.log(atm.play[idx,idy,:]), gas_ppmv[idx,idy,:] )[::-1] # strictly increasing
     
     # temperature
     if cfg['atm']['type'] == 'afgl':
-        profiles['t'] = atm.tlev[:,:,::-1] # levels,  K , surface --> TOA
+        atm_disamar['t'] = atm.tlev[:,:,::-1] # levels,  K , surface --> TOA
 
     elif cfg['atm']['type'] == 'cams':
         tlay = atm.__getattribute__('tlay')   # layers, K, TOA --> TOA
@@ -465,35 +512,52 @@ def convert_atm_profiles(atm, cfg):
                 if extrapolate_to_surface:
                     # extrapolation
                     interp_gas = RegularGridInterpolator(np.reshape(np.log(atm.play[idx,idy,:].T),(1,len(atm.play[idx,idy,:]))), tlay[idx,idy,:], method='linear',bounds_error=False, fill_value=None)
-                    profiles['t'][idx, idy, :] = interp_gas(np.log(atm.plev[idx,idy,:]))[::-1]
+                    atm_disamar['t'][idx, idy, :] = interp_gas(np.log(atm.plev[idx,idy,:]))[::-1]
                 else:
                     # no extrapolation, edge value is repeated
-                    profiles['t'][idx, idy, :] = np.interp( np.log(atm.plev[idx,idy,:]), np.log(atm.play[idx,idy,:]), tlay[idx,idy,:] )[::-1] # strictly increasing
+                    atm_disamar['t'][idx, idy, :] = np.interp( np.log(atm.plev[idx,idy,:]), np.log(atm.play[idx,idy,:]), tlay[idx,idy,:] )[::-1] # strictly increasing
 
         # omit TOA layer CAMS, pressure is 0, disamar does not like it
-        profiles['p'] = profiles['p'][:,:,:-1]
-        profiles['t'] = profiles['t'][:,:,:-1]
+        atm_disamar['p'] = atm_disamar['p'][:,:,:-1]
+        atm_disamar['t'] = atm_disamar['t'][:,:,:-1]
         for gas in cfg['atm']['gases']:
-            profiles[gas] = profiles[gas][:,:,:-1]
+            atm_disamar[gas] = atm_disamar[gas][:,:,:-1]
 
     # set last layer of profiles to TOA, otherwise disamar does not like it
-    if (profiles['p'][:,:,-1] > 0.3 ).any():
-        profiles['p'][:,:,-1] = 0.3
-        profiles['t'][:,:,-1] = 250.0
+    if (atm_disamar['p'][:,:,-1] > 0.3 ).any():
+        atm_disamar['p'][:,:,-1] = 0.3
+        atm_disamar['t'][:,:,-1] = 250.0
         if 'no2' in cfg['atm']['gases']:
-            profiles['no2'][:,:,-1] = 6.2958549E-09
+            atm_disamar['no2'][:,:,-1] = 6.2958549E-09
         if 'o3' in cfg['atm']['gases']:
-            profiles['o3'][:,:,-1] = 7.4831730E-01
+            atm_disamar['o3'][:,:,-1] = 7.4831730E-01
 
     # do not allow negative or zero values
-    for key in profiles:
-        profiles[key] = profiles[key].clip(min=1.0e-10)
+    for key in atm_disamar:
+        atm_disamar[key] = atm_disamar[key].clip(min=1.0e-10)
 
-    return profiles
+    # O2-O2
+    # note that for a collision complex the parent gas has to be specified here, 
+    # e.g. for O2-O2 the volume mixing ratio of O2 has to be specified
+
+    # mixing ratio of O2 is 0.20946 taken from R. Goody, Principles of atmospheric physics and chemistry,
+    # Table 1.2, Oxford University Press, New York, 1995. [DAK uses 0.209476  (US Stand. Atm., 1976)]
+    o2_mixing_ratio =  20.94600E+04
+    if cfg['rtm']['o2o2']:
+        cfg['atm']['gases'].append('o2-o2')
+        atm_disamar['o2-o2'] = np.ones_like(atm_disamar['p'])*o2_mixing_ratio
+
+    if cfg['atm']['cloud']['use']:
+        atm_disamar['cloud_fraction'] = atm.cf.copy()
+        atm_disamar['cloud_optical_thickness'] = atm.cot.copy()
+        atm_disamar['cloud_top_pressure'] = atm.ctp.copy()
+        atm_disamar['cloud_bottom_pressure'] = atm.cbp.copy()
+
+    return atm_disamar
 
 
 
-def set_disamar_cfg_sim(cfg, dis_cfg, ground_points, profiles, albedo, i_t, i_x):
+def set_disamar_cfg_sim(cfg, dis_cfg, ground_points, atm_disamar, albedo, i_t, i_x):
 
     # adapted from Pepijn's E2E
     # Modify the disamar input file for simulation of spectra
@@ -512,6 +576,7 @@ def set_disamar_cfg_sim(cfg, dis_cfg, ground_points, profiles, albedo, i_t, i_x)
         dis_cfg['GENERAL','method', 'simulationMethod'].setvalue(0)
         dis_cfg['GENERAL','method', 'ignoreSlitSim'].setvalue(1)
 
+    dis_cfg['GENERAL','overall', 'numberTraceGases'].setvalue(len(cfg['atm']['gases']))
 
     # get datetime
     # dt = ground_points['epoch'] + datetime.timedelta( seconds=ground_points['seconds_from_epoch'][i_t] )
@@ -542,39 +607,58 @@ def set_disamar_cfg_sim(cfg, dis_cfg, ground_points, profiles, albedo, i_t, i_x)
     # Profiles
     # PT profile
     pt_sim = dis_cfg['PRESSURE_TEMPERATURE', 'PT_sim', 'PT']
-    pt_sim.set_rawvalue(np.asarray([profiles['p'][i_t,i_x,:], profiles['t'][i_t,i_x,:]]).T)
+    pt_sim.set_rawvalue(np.asarray([atm_disamar['p'][i_t,i_x,:], atm_disamar['t'][i_t,i_x,:]]).T)
     pt_retr = dis_cfg['PRESSURE_TEMPERATURE', 'PT_retr', 'PT']
-    pt_retr.set_rawvalue(np.asarray([profiles['p'][i_t,i_x,:], profiles['t'][i_t,i_x,:], np.ones(profiles['p'][i_t,i_x,:].shape, dtype=float)]).T)
+    pt_retr.set_rawvalue(np.asarray([atm_disamar['p'][i_t,i_x,:], atm_disamar['t'][i_t,i_x,:], np.ones(atm_disamar['p'][i_t,i_x,:].shape, dtype=float)]).T)
 
     # gas profiles
     for gas in cfg['atm']['gases']:
-        gas_vmr = np.asarray([profiles['p'][i_t,i_x,:], profiles[gas][i_t,i_x,:]]).T
-        gas_vmr_error = np.asarray([profiles['p'][i_t,i_x,:], profiles[gas][i_t,i_x,:], np.ones(profiles['p'][i_t,i_x,:].shape, dtype=float) * 20.]).T
+        gas_vmr = np.asarray([atm_disamar['p'][i_t,i_x,:], atm_disamar[gas][i_t,i_x,:]]).T
+        gas_vmr_error = np.asarray([atm_disamar['p'][i_t,i_x,:], atm_disamar[gas][i_t,i_x,:], np.ones(atm_disamar['p'][i_t,i_x,:].shape, dtype=float) * 20.]).T
         dis_cfg[gas.upper(), 'profile', 'P_vmr_ppmv_sim'].set_rawvalue(gas_vmr)
         dis_cfg[gas.upper(), 'profile', 'P_vmr_ppmv_error_percent_retr'].set_rawvalue(gas_vmr_error)
         
     # SURFACE
 
-    # find albedo wvl
-    match cfg['S2_albedo']['band']:
-        case 'B01':
-            albedo_wvl = 442.5 # [nm]
-        case 'B02':
-            albedo_wvl = 492.3
-        case _:
-            logger.error('unknown S2 albedo band')
-            albedo_wvl = 440.0
+    # get albedo band index and albedo_wvl
+    i_band=-99
+    for index, band in enumerate(albedo):
+        if band.band_label == cfg['rtm']['albedo']:
+            i_band = index
+    if i_band == -99:
+        logging.error(f'Albedo band {cfg['rtm']['albedo']} not found')
+    albedo_wvl = albedo[i_band].central_wavelength
 
     dis_cfg['SURFACE', 'wavelDependentSim', 'wavelSurfAlbedo'].setvalue(albedo_wvl)
-    dis_cfg['SURFACE', 'wavelDependentSim', 'surfAlbedo'].setvalue(albedo[i_t,i_x])
+    dis_cfg['SURFACE', 'wavelDependentSim', 'surfAlbedo'].setvalue(albedo[i_band].values[i_t,i_x])
 
-    dis_cfg['SURFACE','pressure', 'surfPressureSim'].setvalue(profiles['p'][i_t,i_x, 0])
-    dis_cfg['SURFACE','pressure', 'surfPressureRetr'].setvalue(profiles['p'][i_t,i_x, 0])
+    dis_cfg['SURFACE','pressure', 'surfPressureSim'].setvalue(atm_disamar['p'][i_t,i_x, 0])
+    dis_cfg['SURFACE','pressure', 'surfPressureRetr'].setvalue(atm_disamar['p'][i_t,i_x, 0])
+
+
+    # clouds (HG scattering)
+    if cfg['atm']['cloud']['use']:
+        if atm_disamar['cloud_fraction'][i_t,i_x] > 0.0:
+            # cloud fraction
+            dis_cfg['CLOUD_AEROSOL_FRACTION','wavelIndependentSim', 'fraction'].setvalue( atm_disamar['cloud_fraction'][i_t,i_x] )
+            
+            # cloud optical thickness
+            dis_cfg['CLOUD','HGscatteringSim', 'opticalThickness'].setvalue( [ 2.0 , atm_disamar['cloud_optical_thickness'][i_t,i_x] ] )
+
+            # cloud bottom and top pressures
+            dis_cfg['ATMOSPHERIC_INTERVALS','interval_top_pressures', 'topPressureSim'].setvalue( [ atm_disamar['cloud_bottom_pressure'][i_t,i_x], atm_disamar['cloud_top_pressure'][i_t,i_x], 0.30] )
+
+            # radiative transfer settings for optically thick cloud
+            dis_cfg['RADIATIVE_TRANSFER','numDivPointsAlt', 'numDivPointsAltSim'].setvalue( [8, int(np.ceil(1.5*atm_disamar['cloud_optical_thickness'][i_t,i_x])), 32] )
+            dis_cfg['RADIATIVE_TRANSFER','RTM_Sim_Retr', 'useAddingSim'].setvalue(1)
+            dis_cfg['RADIATIVE_TRANSFER','RTM_Sim_Retr', 'nstreamsSim'].setvalue(64)
 
 
     return dis_cfg
 
 
+def run_disamar_star(args):
+    return run_disamar(*args)
 
 def run_disamar(filename,disamar_exe):
 
@@ -582,15 +666,21 @@ def run_disamar(filename,disamar_exe):
     dis_cfg = libRT_no2.RT_configuration(filename=filename)
     output_filename = filename.replace('.in', '.h5')
 
+    if log.isEnabledFor(logging.DEBUG):
+        quiet = False
+        debug = True
+    else:
+        quiet = True
+        debug = False
 
     try:
-        RT = libRT_no2.rt_run(cfg=dis_cfg, disamar=disamar_exe, output=output_filename, quiet=True, debug=False)
+        RT = libRT_no2.rt_run(cfg=dis_cfg, disamar=disamar_exe, output=output_filename, quiet=quiet, debug=debug)
         starttime = time.time()
         RT()
-        logger.debug(f'finished: {filename} in {np.round(time.time()-starttime,1)} s')
+        log.debug(f'finished: {filename} in {np.round(time.time()-starttime,1)} s')
         return 0
     except:
-        logger.error(f'failed: {filename}')
+        log.error(f'failed: {filename}')
         return -1
 
 
@@ -605,7 +695,7 @@ def read_disamar_output(gm_data,tmp_dir):
             file = f'{tmp_dir}/alt{ialt:04d}_act{iact:03d}.h5'
             
             if os.path.isfile(file) is False:
-                logger.error(f'Disamar output file {file} not found')
+                log.error(f'Disamar output file {file} not found')
                 continue
 
             with h5py.File(file, 'r') as f:
@@ -621,7 +711,7 @@ def read_disamar_output(gm_data,tmp_dir):
 
 
     if 'wavelength_lbl' not in dis_output:
-        logger.error('No DISAMAR output found. Exiting')
+        log.error('No DISAMAR output found. Exiting')
         sys.exit()
 
     return dis_output
@@ -702,20 +792,27 @@ def sgm_output_atm(config, atm, albedo, microhh_data, mode='raw'):
     if hasattr(atm, 'tlay'):
         _ = writevariablefromname(output_atm, 'temperature', dims_layer, atm.tlay)
 
-    if mode == 'raw':
-        bands = [x.removesuffix('_albedo') for x in albedo.__dict__.keys() if '_albedo' in x]
-        for band in bands:
-            var_alb = writevariablefromname(output_atm, 'albedo_'+ band, dims_2d, 
-                                            albedo.__getattribute__(band+'_albedo'))
-            var_alb.setncattr("central wavelength", albedo.__getattribute__(band+'_central_wave'))
-            var_alb.setncattr("band width", albedo.__getattribute__(band+'_band_width'))
-    elif mode == 'convolved':
-        var_alb = writevariablefromname(output_atm, 'albedo', dims_2d, albedo)
+    for albedo_band in albedo:
+        var_alb = writevariablefromname(
+            output_atm,
+            'albedo_' + albedo_band.band_label,
+            dims_2d,
+            albedo_band.values)
+        var_alb.setncattr("central wavelength", albedo_band.central_wavelength)
+        var_alb.setncattr("band width", albedo_band.bandwidth)
 
     for gas in gases:
         _ = writevariablefromname(output_atm, 'conc_'+ gas, dims_layer, atm.__getattribute__('ppmv_'+gas)) # [ppmv]
         _ = writevariablefromname(output_atm, 'subcol_density_'+gas, dims_layer, atm.__getattribute__('dcol_'+gas)) # [molec/cm2]
         _ = writevariablefromname(output_atm, 'column_'+gas, dims_2d, atm.__getattribute__('col_'+gas)) # [molec/cm2]
+
+    # clouds
+    if config['atm']['cloud']['use'] and mode=='convolved':
+        _ = writevariablefromname(output_atm, 'cloud_fraction', dims_2d, atm.cf)
+        _ = writevariablefromname(output_atm, 'cloud_optical_thickness', dims_2d, atm.cot)
+        _ = writevariablefromname(output_atm, 'cloud_bottom_pressure', dims_2d, atm.cbp)
+        _ = writevariablefromname(output_atm, 'cloud_top_pressure', dims_2d, atm.ctp)
+
 
 
     if config['atm']['microHH']['use'] and mode=='raw':
@@ -752,7 +849,7 @@ def scene_generation_module_nitro(config):
     Note: for now only works for profile: orbit
     """
 
-    logger.info('Starting SGM calculation')
+    log.info('Starting SGM calculation')
 
     start_time = time.time()
 
@@ -762,23 +859,14 @@ def scene_generation_module_nitro(config):
 
     gm_data = get_gm_data(config['io']['gm'])
     nalt, nact = gm_data['sza'].shape
-    logger.info(f"Pixels along track: {nalt} ; Pixels across track: {nact}")
+    log.info(f"Pixels along track: {nalt} ; Pixels across track: {nact}")
 
     # =============================================================================================
     # 2) get microHH data
     # =============================================================================================
     if config['atm']['microHH']['use']:
-        if ((not os.path.exists(config['atm']['microHH']['dump'])) or config['atm']['microHH']['forced']):
-            logger.info(f"Loading microHH data: {config['atm']['microHH']['path_data']}")
-
-            microhh_data = libATM.get_atmosphericdata_new(gm_data['lat'], gm_data['lon'], config['atm']['microHH'])
-            
-            # Dump microHH dictionary into temporary pkl file
-            pickle.dump(microhh_data.__dict__, open(config['atm']['microHH']['dump'], 'wb'))
-        else:
-            logger.info(f"Loading microHH data from dump file: {config['atm']['microHH']['dump']}")
-            # Read microHH from pickle file
-            microhh_data = Dict2Class(pickle.load(open(config['atm']['microHH']['dump'], 'rb')))
+        log.info(f"Loading microHH data: {config['atm']['microHH']['path_data']}")
+        microhh_data = libATM.get_atmosphericdata_new(gm_data['lat'], gm_data['lon'], config['atm']['microHH'])
         lat = microhh_data.lat
         lon = microhh_data.lon
     else:
@@ -790,27 +878,17 @@ def scene_generation_module_nitro(config):
     # 3) get collocated S2 albedo data on microHH grid
     # =============================================================================================
 
-    albedo = np.zeros([nalt, nact])
+    # download albedo and store as netcdf
+    file_exists = os.path.isfile(config['sentinel2']['albedo_file'])
+    if (not file_exists or (config['sentinel2']['forced'])):
+        libSGM.download_sentinel2_albedo(config)
 
-    file_exists = os.path.isfile(config['S2_albedo']['dump'])
-    if (file_exists and (not config['S2_albedo']['forced'])):
-        logger.info(f"Loading S2 data from dump file: {config['S2_albedo']['dump']}")
-        albedo = pickle.load(open(config['S2_albedo']['dump'], 'rb'))
-    else:
-        logger.info(f"Downloading S2 data for band: {config['S2_albedo']['band']}")
-                
-        albedo = libSGM.get_sentinel2_albedo_new(lat, lon, [config['S2_albedo']['band']])
+    # load albedo netcdf
+    albedo = get_sentinel2_albedo(config['sentinel2']['albedo_file'])
 
-        # clip albedo
-        bands = [x for x in albedo.__dict__.keys() if '_albedo' in x]
-        for band in bands:
-            albedo_tmp = albedo.__getattribute__(band)
-            albedo_tmp[albedo_tmp>1.0] = 1.0
-            albedo_tmp[albedo_tmp<0.0] = 0.0
-            albedo.__setattr__(band,albedo_tmp)
-        
-        pickle.dump(albedo, open(config['S2_albedo']['dump'], 'wb')) # .pkl extension is added if not given
-    
+    # interpolate albedo grid to microHH grid
+    albedo = libSGM.interp_sentinel2_albedo(albedo, lat, lon)
+
     # =============================================================================================
     # 4) build model atmosphere and write output
     # =============================================================================================
@@ -818,7 +896,7 @@ def scene_generation_module_nitro(config):
 
         case 'afgl':
 
-            logger.info(f"Loading afgl atmosphere: {config['atm']['afgl']['path']}")
+            log.info(f"Loading afgl atmosphere: {config['atm']['afgl']['path']}")
 
             # 4A) get a model atm from AFGL files
 
@@ -849,7 +927,7 @@ def scene_generation_module_nitro(config):
             
         case 'cams':
 
-            logger.info(f"Loading CAMS atmosphere: {config['atm']['cams']['path']}")
+            log.info(f"Loading CAMS atmosphere: {config['atm']['cams']['path']}")
 
             # 4B) get atm from CAMS
 
@@ -858,14 +936,14 @@ def scene_generation_module_nitro(config):
             atm = Dict2Class(atm)
             if config['atm']['dem']['use']:
 
-                logger.info(f"Loading DEM: {config['atm']['dem']['path']}")
+                log.info(f"Loading DEM: {config['atm']['dem']['path']}")
                 # correct surface pressure with DEM
                 atm.zsfc = get_dem(config['atm']['dem']['path'], lat, lon)
                 atm.psfc = atm.psl * np.exp( -1 * atm.zsfc / 8000.) # use 8 km scale height
 
             if config['atm']['microHH']['use']:
 
-                logger.info(f"Merging CAMS and microHH atmosphere")
+                log.info(f"Merging CAMS and microHH atmosphere")
 
                 microhh_data = elevation_to_pressure(microhh_data,atm.psfc)
 
@@ -875,7 +953,7 @@ def scene_generation_module_nitro(config):
             atm = mixingratio_to_column(config,atm)
 
 
-    logger.info(f"Writing raw scene atmosphere: {config['io']['sgm_atm_raw']}")
+    log.info(f"Writing raw scene atmosphere: {config['io']['sgm_atm_raw']}")
         
     sgm_output_atm(config, atm, albedo, microhh_data, mode = 'raw')
 
@@ -886,11 +964,11 @@ def scene_generation_module_nitro(config):
     # only convolve + interpolate when microHH is used
     # otherwise source grid is already interpolated to instrument grid
     if config['atm']['microHH']['use']:
-        logger.info('Convolving SGM atmosphere with instrument spatial response function')
+        log.info('Convolving SGM atmosphere with instrument spatial response function')
 
-        #convolution of albeod and microHH data with instrument spatial response
-        atm = convolvedata_nitro(atm, albedo.B01_albedo, microhh_data, config)
-        
+        #convolution of albedo and microHH data with instrument spatial response
+        atm, albedo = convolvedata_nitro(atm, albedo, microhh_data, config)
+
         # create a transform method 
         trans = libNumTools.TransformCoords(microhh_data.no2_source[1:])
 
@@ -899,46 +977,53 @@ def scene_generation_module_nitro(config):
         gm_data['xpos'], gm_data['ypos'] = trans.latlon2xymts(gm_data_class.lat, gm_data_class.lon)
 
         #interpolate convolved data to gm grid
-        albedo, atm = interpolate_data_regular_nitro(atm, gm_data, config)
-
+        atm, albedo = interpolate_data_regular_nitro(atm, albedo, gm_data, config)
+        
         # recalculate total columns
         atm = recalc_total_column(atm, config)
 
+        # add clouds
+        if config['atm']['cloud']['use']:
+            atm = add_clouds(config,atm)
 
         # write atm to file
-        logger.info(f"Writing convolved scene atmosphere: {config['io']['sgm_atm']}")
+        log.info(f"Writing convolved scene atmosphere: {config['io']['sgm_atm']}")
         sgm_output_atm(config, atm, albedo, microhh_data, mode = 'convolved')
 
     # =============================================================================================
     # 6) radiative transfer simulations with DISAMAR
     # =============================================================================================
 
-    logger.info('Radiative transfer simulation')
+    log.info('Radiative transfer simulation')
 
     # generate the disamar config files and tmp dirs
-    logger.info('Creating config files DISAMAR')
+    log.info('Creating config files DISAMAR')
 
     # convert atm profiles to disamar format
-    dis_profiles = convert_atm_profiles(atm, config)
+    atm_disamar = convert_atm_to_disamar(atm, config)
 
-    if os.path.isfile(config['rtm']['disamar_cfg_template']):
-        dis_cfg = libRT_no2.RT_configuration(filename=config['rtm']['disamar_cfg_template'])
-    else:
-        logger.error(f"File {config['rtm']['disamar_cfg_template']} not found")
-
-    dis_cfg_filenames=[]
 
     timestamp = datetime.datetime.now().strftime('%Y%m%dT%H%M%S')
     tmp_dir = '{}/{}'.format( config['rtm']['tmp_dir'], timestamp)
     if not os.path.isdir(tmp_dir):
-        logger.info(f'Creating tmp directory DISAMAR: {tmp_dir}')
+        log.info(f'Creating tmp directory DISAMAR: {tmp_dir}')
 
         os.makedirs(tmp_dir, exist_ok=True)
 
+
+    if os.path.isfile(config['rtm']['disamar_cfg_template']):
+        tmp_template_disamar = libRT_no2.disamar_add_gas_cfg(config, tmp_dir)
+    else:
+        log.error(f"File {config['rtm']['disamar_cfg_template']} not found")
+
+    dis_cfg_filenames=[]
+
+
+
     for ialt in range(nalt):
         for iact in range(nact):
-
-            dis_cfg = set_disamar_cfg_sim(config, dis_cfg, gm_data, dis_profiles, albedo, ialt, iact)
+            dis_cfg_template = libRT_no2.RT_configuration(filename=tmp_template_disamar)
+            dis_cfg = set_disamar_cfg_sim(config, dis_cfg_template, gm_data, atm_disamar, albedo, ialt, iact)
 
             filename = f'{tmp_dir}/alt{ialt:04d}_act{iact:03d}.in'
             dis_cfg.write(filename=filename)
@@ -946,71 +1031,45 @@ def scene_generation_module_nitro(config):
     
 
     # run disamar in parallel
-    logger.info('Running DISAMAR')
+    log.info('Running DISAMAR')
 
     with multiprocessing.Pool(config['rtm']['n_threads']) as pool:
         # stat = pool.starmap(run_disamar, zip(dis_cfg_filenames, repeat(config['rtm']['disamar_exe'])),chunksize=1)
-        stat = pool.starmap(run_disamar, tqdm.tqdm(zip(dis_cfg_filenames, repeat(config['rtm']['disamar_exe'])),total=len(dis_cfg_filenames)),chunksize=1)
+
+        args = [(cfg, config['rtm']['disamar_exe']) for cfg in dis_cfg_filenames]
+        stat = list(tqdm.tqdm(pool.imap(run_disamar_star, args), total=len(dis_cfg_filenames)))
 
     if sum(stat) != 0:
-        logger.error('Error in at least one RT calculation run with DISAMAR')
+        log.error('Error in at least one RT calculation run with DISAMAR')
 
     # read disamar output
-    logger.info('Reading DISAMAR output')
+    log.info('Reading DISAMAR output')
 
     dis_output = read_disamar_output(gm_data, tmp_dir)
 
     # cleanup
     if config['rtm']['cleanup']:
-        logger.info('Cleaning up tmp directory DISAMAR')
+        log.info('Cleaning up tmp directory DISAMAR')
         shutil.rmtree(tmp_dir)
 
     # =============================================================================================
     # 7) sgm output to radiometric file
     # =============================================================================================
-    logger.info(f"Writing scene radiance to: {config['io']['sgm_rad']}")
+    log.info(f"Writing scene radiance to: {config['io']['sgm_rad']}")
 
     sgm_output_radio(config, dis_output)
 
-    logger.info(f'SGM calculation finished in {np.round(time.time()-start_time,1)} s')
+    log.info(f'SGM calculation finished in {np.round(time.time()-start_time,1)} s')
     return
 
 
 if __name__ == '__main__':
     
-    sys.path.append( os.path.dirname( os.path.dirname( os.path.abspath(__file__) ) ) )
-
-
     # call with:
     # python sgm_no2.py sgm.yaml
 
-    # or with logging to file:
-    # python sgm_no2.py sgm.yaml sgm.log
-
-
-    # setup the logging to screen and to file
-    formatter = logging.Formatter('%(asctime)s %(levelname)s: %(message)s')
-
-    if len(sys.argv) > 2:
-        fh = logging.FileHandler(sys.argv[2], mode='w')
-        fh.setLevel(logging.ERROR)
-        fh.setFormatter(formatter)
-
-        ch = logging.StreamHandler()
-        ch.setLevel(logging.INFO)
-        ch.setFormatter(formatter) 
-
-        logging.basicConfig(level=logging.INFO, handlers = [ch,fh])
-
-        logging.info(f'Logging to file: {sys.argv[2]}')
-
-    else:
-        ch = logging.StreamHandler()
-        ch.setLevel(logging.INFO)
-        ch.setFormatter(formatter) 
-        logging.basicConfig(level=logging.INFO,handlers = [ch])
-
-    logging.info(f'Reading config file: {sys.argv[1]}')
+ 
+    log.info(f'Reading config file: {sys.argv[1]}')
     config = yaml.safe_load(open(sys.argv[1]))
     scene_generation_module_nitro(config)
 

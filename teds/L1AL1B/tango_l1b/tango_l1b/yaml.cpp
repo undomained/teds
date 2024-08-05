@@ -28,8 +28,8 @@ const std::map<std::string, tango::Unbin> unbin_to_enum {
 
 namespace YAML {
 
-auto convert<tango::ProcLevel>::decode(const Node& node, tango::ProcLevel& rhs)
-  -> bool
+auto convert<tango::ProcLevel>::decode(const Node& node,
+                                       tango::ProcLevel& rhs) -> bool
 {
     try {
         rhs = proc_level_to_enum.at(node.as<std::string>());
@@ -55,8 +55,8 @@ auto convert<tango::Unbin>::decode(const Node& node, tango::Unbin& rhs) -> bool
 
 namespace tango {
 
-auto operator<<(YAML::Emitter& out, const ProcLevel proc_level)
-  -> YAML::Emitter&
+auto operator<<(YAML::Emitter& out,
+                const ProcLevel proc_level) -> YAML::Emitter&
 {
     const auto it { std::ranges::find_if(
       proc_level_to_enum,

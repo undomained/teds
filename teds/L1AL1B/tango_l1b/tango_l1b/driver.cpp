@@ -164,7 +164,8 @@ auto driver(const SettingsL1B& settings,
       std::make_shared<std::vector<std::vector<double>>>(ckd.wave.wavelength);
 
     // Placeholder until we have geolocation
-    copyGeometry(settings.io.geometry, settings.image_start, l1_products);
+    copyGeometry(
+      settings.io.l1a, settings.io.geometry, settings.image_start, l1_products);
 
     // Write output
     timers.back().start();

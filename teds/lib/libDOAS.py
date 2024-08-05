@@ -1,6 +1,5 @@
 import sys
 import numpy as np
-import logging
 import netCDF4 as nc
 from scipy import interpolate
 from matplotlib import pyplot
@@ -9,10 +8,10 @@ from collections import OrderedDict
 import math
 import datetime
 
+from teds import log
 from teds.lib import constants
-from lib.libWrite import writevariablefromname
+from teds.lib.libWrite import writevariablefromname
 
-logger = logging.getLogger('E2E')
 class OptimalEstimationException(Exception):
     pass
 
@@ -1407,13 +1406,13 @@ def irrCal(irr,irrError,irrWvl,cfg,IFDOERefSpec,groundPixel,verboseLevel):
         lambdaCentre = irrCalConfig['fit_window'][0] + (irrCalConfig['fit_window'][1]-irrCalConfig['fit_window'][0])/2
         lambdaStar = 2*(irrWvl - (lambdaCentre) ) / (irrCalConfig['fit_window'][1] - irrCalConfig['fit_window'][0])
         irrWvlCal = irrWvl + irrCalWs + irrCalWq*lambdaStar
-        logger.debug(('irr cal. (ws, ws_sigma, wq, wq_sigma): ',irrCalWs,irrCalWsSigma,irrCalWq,irrCalWqSigma))
+        log.debug(('irr cal. (ws, ws_sigma, wq, wq_sigma): ',irrCalWs,irrCalWsSigma,irrCalWq,irrCalWqSigma))
         return irrWvlCal, irrCalWs, irrCalWsSigma, irrCalWq, irrCalWqSigma, irrCalChiSquare, irrCalConverged
 
 
     else:
         irrWvlCal = irrWvl + irrCalWs
-        logger.debug(('irr cal. (ws, ws_sigma): ',irrCalWs,irrCalWsSigma))
+        log.debug(('irr cal. (ws, ws_sigma): ',irrCalWs,irrCalWsSigma))
         return irrWvlCal, irrCalWs, irrCalWsSigma, np.nan, np.nan, irrCalChiSquare, irrCalConverged
 
 
@@ -1513,13 +1512,13 @@ def radCal(rad,radError,radWvl,cfg,IFDOERefSpec,groundPixel,verboseLevel):
         lambdaCentre = radCalConfig['fit_window'][0] + (radCalConfig['fit_window'][1]-radCalConfig['fit_window'][0])/2
         lambdaStar = 2*(radWvl - (lambdaCentre) ) / (radCalConfig['fit_window'][1] - radCalConfig['fit_window'][0])
         radWvlCal = radWvl + radCalWs + radCalWq*lambdaStar
-        logger.debug(('rad cal. (ws, ws_sigma, wq, wq_sigma): ',radCalWs,radCalWsSigma,radCalWq,radCalWqSigma))
+        log.debug(('rad cal. (ws, ws_sigma, wq, wq_sigma): ',radCalWs,radCalWsSigma,radCalWq,radCalWqSigma))
         return radWvlCal, radCalWs, radCalWsSigma, radCalWq, radCalWqSigma, radCalChiSquare, radCalConverged
 
 
     else:
         radWvlCal = radWvl + radCalWs
-        logger.debug(('rad cal. (ws, ws_sigma): ',radCalWs,radCalWsSigma))
+        log.debug(('rad cal. (ws, ws_sigma): ',radCalWs,radCalWsSigma))
         return radWvlCal, radCalWs, radCalWsSigma, np.nan, np.nan, radCalChiSquare, radCalConverged
 
 
@@ -1549,7 +1548,7 @@ def IFDOEparameters(cfg):
     for ipoly in range(0,cfg['intensity_coefs'],1):
         parameterNames.append('C'+str(ipoly))
 
-    logger.info('Parameter names: %s' % parameterNames )
+    log.info('Parameter names: %s' % parameterNames )
     
     return parameterNames
 
@@ -1792,31 +1791,35 @@ def SplineInterp1D(x,y,xnew):
 
     return ynew
 
+def initOutput(l2_file,geo):
+    # initialise output
+
+    with nc.Dataset(l2_file, 'w', format='NETCDF4') as dst:
+
+        # dst.DOAS_config = str(IFDOEconfig)
+        dst.processing_date = datetime.datetime.now().strftime('%Y%m%dT%H%M%S')
+
+        # create dims
+        alt_dim = dst.createDimension('scanline', geo['lat'].shape[0])
+        act_dim = dst.createDimension('ground_pixel', geo['lat'].shape[1])
+
+        _ = writevariablefromname(dst, 'latitude', ('scanline','ground_pixel'), geo['lat'])
+        _ = writevariablefromname(dst, 'longitude', ('scanline','ground_pixel'), geo['lon'])
+        _ = writevariablefromname(dst, 'solarzenithangle', ('scanline','ground_pixel'), geo['sza'])
+        _ = writevariablefromname(dst, 'viewingzenithangle', ('scanline','ground_pixel'), geo['vza'])
+        _ = writevariablefromname(dst, 'solarazimuthangle', ('scanline','ground_pixel'), geo['saa'])
+        _ = writevariablefromname(dst, 'viewingazimuthangle', ('scanline','ground_pixel'), geo['vaa'])
+
+        newgroup = dst.createGroup('doas')
+
+    return
 
 def writeOutput(l2_file,IFDOEconfig,parameterNames,results,geo):
     # write results to output file
 
-    dst = nc.Dataset(l2_file, 'w', format='NETCDF4')
+    dst = nc.Dataset(l2_file, 'a', format='NETCDF4')
 
-
-    # dst.DOAS_config = str(IFDOEconfig)
-    dst.processing_date = datetime.datetime.now().strftime('%Y%m%dT%H%M%S')
-
-    # create dims
-    alt_dim = dst.createDimension('scanline', geo['lat'].shape[0])
-    act_dim = dst.createDimension('ground_pixel', geo['lat'].shape[1])
-
-    _ = writevariablefromname(dst, 'latitude', ('scanline','ground_pixel'), geo['lat'])
-    _ = writevariablefromname(dst, 'longitude', ('scanline','ground_pixel'), geo['lon'])
-    _ = writevariablefromname(dst, 'solarzenithangle', ('scanline','ground_pixel'), geo['sza'])
-    _ = writevariablefromname(dst, 'viewingzenithangle', ('scanline','ground_pixel'), geo['vza'])
-    _ = writevariablefromname(dst, 'solarazimuthangle', ('scanline','ground_pixel'), geo['saa'])
-    _ = writevariablefromname(dst, 'viewingazimuthangle', ('scanline','ground_pixel'), geo['vaa'])
-
-
-    group = ''
-    newgroup = dst.createGroup('doas')
-    group += 'doas/' 
+    group = 'doas/' 
 
     if IFDOEconfig['fit_window'][1] < 477.0:
         newgroup3 = dst[group].createGroup('no2')
@@ -1824,10 +1827,7 @@ def writeOutput(l2_file,IFDOEconfig,parameterNames,results,geo):
     elif IFDOEconfig['fit_window'][1] > 477.0:
         newgroup3 = dst[group].createGroup('o2o2')
         group += 'o2o2/' 
-
-
-
-
+        
     # convert np.nan to netcdf fill value
 
     intList = ['nIter','errorFlag']

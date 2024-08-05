@@ -1,24 +1,31 @@
-settings:
-    fmc:             5                                   #forward motion compensation
-    bin_id:          1                                   #across track binning
-    co_adding:       3                                   #along track co-addng
-    exp_time:        0.066                               #exposure time [sec]
-    stray_interpolating: yes                             #Whether to use interpolating stray light kernels
-    sw_dark:         0                                   #switch dark current (1 on, 0 off)
-    sw_nonlin:       0                                   #switch non-linearity (1 on, 0 off)
-    sw_prnu:         0                                   #switch pixel response non-uniformity (1 on, 0 off)
-    sw_stray:        0                                   #switch dark spectrometer stray light (1 on, 0 off)
-    sw_rad:          1                                   #switch radiometric calibration (1 on, 0 off)
+image_start: 60
+image_end: 70
+
+detector:
+  binning_table_id: 1
+  exposure_time: 0.0460833
+  nr_coadditions: 3
 
 isrf:
-    convolution:     1                                   #switch spectral convolution (1=yes), (0=no)
-    fwhm:            0.45                                #full width half max [nm]
-    
-select_images:       False                               #select certain images form the sgm input
-first_image:         0
-last_image:          1
+  # enabled: no
+  fwhm_gauss: 0.45
+
+# dark:
+#   enabled: no
 
 noise:
-    switch:          0                                   # switch noise on (1) or off (0)
-    seed:            100                                 #seed for random generator
-    
+  enabled: no
+  seed: 10
+
+# prnu:
+#   enabled: no
+
+# stray:
+#   enabled: no
+
+io:
+  ckd: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/ckd/ckd_OWL640S_low_gain.nc
+  binning_table: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/ckd/binning_table.nc
+  l1b: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/sgm/Tango_Carbon_sgm_radiance_exp1.0.nc
+  l1a: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/level1a/Tango_Carbon_l1a_exp1.0.nc
+

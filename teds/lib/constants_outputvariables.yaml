@@ -243,6 +243,26 @@ conc_o3:
   long_name: O3 layer concentration
   units: ppmv
 
+cloud_fraction:
+  name: cloud_fraction
+  long_name: 'Geometric cloud fraction'
+  units: '1'
+
+cloud_optical_thickness:
+  name: cloud_optical_thickness
+  long_name: 'Cloud optical thickness'
+  units: '1'
+
+cloud_bottom_pressure:
+  name: cloud_bottom_pressure
+  long_name: 'Pressure of bottom of cloud layer'
+  units: 'hPa'
+
+cloud_top_pressure:
+  name: cloud_top_pressure
+  long_name: 'Pressure of top of cloud layer'
+  units: 'hPa'
+
 # level 2 output
 convergence:
   name: convergence
@@ -677,7 +697,7 @@ Xh2o:
   FillValue: -32767
 
 albedo_B01:
-  name: albedo B01
+  name: albedo_B01
   long_name: 'S2 albedo band B01'
   units: '-'
   valid_min: 0.0
@@ -685,7 +705,7 @@ albedo_B01:
   FillValue: -32767
 
 albedo_B02:
-  name: albedo B02
+  name: albedo_B02
   long_name: 'S2 albedo band B02'
   units: '-'
   valid_min: 0.0
@@ -693,7 +713,7 @@ albedo_B02:
   FillValue: -32767
 
 albedo_B03:
-  name: albedo B03
+  name: albedo_B03
   long_name: 'S2 albedo band B03'
   units: '-'
   valid_min: 0.0
@@ -701,7 +721,7 @@ albedo_B03:
   FillValue: -32767
 
 albedo_B04:
-  name: albedo B04
+  name: albedo_B04
   long_name: 'S2 albedo band B04'
   units: '-'
   valid_min: 0.0
@@ -709,7 +729,7 @@ albedo_B04:
   FillValue: -32767
 
 albedo_B05:
-  name: albedo B05
+  name: albedo_B05
   long_name: 'S2 albedo band B05'
   units: '-'
   valid_min: 0.0
@@ -717,7 +737,7 @@ albedo_B05:
   FillValue: -32767
 
 albedo_B06:
-  name: albedo B06
+  name: albedo_B06
   long_name: 'S2 albedo band B06'
   units: '-'
   valid_min: 0.0
@@ -725,7 +745,7 @@ albedo_B06:
   FillValue: -32767
 
 albedo_B07:
-  name: albedo B07
+  name: albedo_B07
   long_name: 'S2 albedo band B07'
   units: '-'
   valid_min: 0.0
@@ -733,7 +753,7 @@ albedo_B07:
   FillValue: -32767
 
 albedo_B08:
-  name: albedo B08
+  name: albedo_B08
   long_name: 'S2 albedo band B08'
   units: '-'
   valid_min: 0.0
@@ -741,7 +761,7 @@ albedo_B08:
   FillValue: -32767
 
 albedo_B08A:
-  name: albedo B08A
+  name: albedo_B08A
   long_name: 'S2 albedo band B08A'
   units: '-'
   valid_min: 0.0
@@ -749,7 +769,7 @@ albedo_B08A:
   FillValue: -32767
 
 albedo_B09:
-  name: albedo B09
+  name: albedo_B09
   long_name: 'S2 albedo band B09'
   units: '-'
   valid_min: 0.0
@@ -757,7 +777,7 @@ albedo_B09:
   FillValue: -32767
 
 albedo_B10:
-  name: albedo B10
+  name: albedo_B10
   long_name: 'S2 albedo band B10'
   units: '-'
   valid_min: 0.0
@@ -765,7 +785,7 @@ albedo_B10:
   FillValue: -32767
 
 albedo_B11:
-  name: albedo B11
+  name: albedo_B11
   long_name: 'S2 albedo band B11'
   units: '-'
   valid_min: 0.0
@@ -773,7 +793,7 @@ albedo_B11:
   FillValue: -32767
 
 albedo_B12:
-  name: albedo B12
+  name: albedo_B12
   long_name: 'S2 albedo band B12'
   units: '-'
   valid_min: 0.0
@@ -781,21 +801,21 @@ albedo_B12:
   FillValue: -32767
 
 no2_total_amf:
-  name: no2 total amf
+  name: no2_total_amf
   long_name: 'NO2 total air-mass factor'
   units: '-'
 
 no2_averaging_kernel:
-  name: no2 averaging kernel
+  name: no2_averaging_kernel
   long_name: 'NO2 averaging kernel'
   units: '-'
 
 no2_total_vcd:
-  name: no2 total vcd
+  name: no2_total_vcd
   long_name: 'NO2 total vertical column density'
   units: 'molec./cm2'
 
 no2_total_scd:
-  name: no2 total scd
+  name: no2_total_scd
   long_name: 'NO2 total slant column density'
   units: 'molec./cm2'

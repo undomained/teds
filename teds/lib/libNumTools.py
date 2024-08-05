@@ -203,7 +203,7 @@ def convolution_2d(data, settings):
                             settings['fwhm y'])
 
     kernel = kernel / kernel.sum()
-    return scipy.signal.convolve(data, kernel, mode='same')
+    return scipy.signal.convolve(data, kernel, mode='same',method='direct')
 
 
 def print_attributes(class_object):

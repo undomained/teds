@@ -86,7 +86,7 @@ Start by navigating into the source directory and make a copy of the initial cac
 
 .. code-block:: bash
 
-   cd <teds>/teds/L1AL1B
+   cd <teds>/teds/l1al1b
    cp initial_cache.cmake initial_cache_local.cmake
 
 where ``<teds>`` denotes the root source directory of the TEDS project. Next, edit the initial cache file to reflect your environment, although the default values might already be fine (in which case there is no need to make a local copy of the file). When done editing, create a build directory and run CMake from that using the initial cache file:

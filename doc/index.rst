@@ -22,19 +22,3 @@ Contents
    installation
    running_the_code
    contributing
-
-Terms of use
--------------
-
-TEDS is licensed under the 3-clause BSD license found in the LICENSE file in the root directory of the project.
-
-Contributors
--------------
-
-In order to see a list of contributors, clone the repository and issue
-
-.. code-block:: bash
-
-   git shortlog -s -n --all --no-merges
-
-This prints a list of contributors along with a number of commits by each contributor.

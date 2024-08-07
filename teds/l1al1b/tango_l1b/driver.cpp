@@ -63,6 +63,8 @@ auto driver(const SettingsL1B& settings,
     // Run retrieval
     printHeading("Retrieval");
     std::array<Timer, static_cast<int>(ProcLevel::n_levels)> timers {};
+    Timer timer_total {};
+    timer_total.start();
 #pragma omp parallel for schedule(dynamic)
     for (int i_alt = 0; i_alt < static_cast<int>(l1_products.size()); ++i_alt) {
         printPercentage(i_alt, l1_products.size(), "Processing images");
@@ -152,6 +154,7 @@ auto driver(const SettingsL1B& settings,
             }
         }
     }
+    timer_total.stop();
     spdlog::info("Processing images 100.0%");
     if (settings.reverse_wavelength) {
         for (auto& wavelengths : ckd.wave.wavelength) {
@@ -167,9 +170,10 @@ auto driver(const SettingsL1B& settings,
       settings.io.l1a, settings.io.geometry, settings.image_start, l1_products);
 
     // Write output
-    timers.back().start();
+    Timer timer_output {};
+    timer_output.start();
     writeL1(settings.io.l1b, settings.getConfig(), l1_products, argc, argv);
-    timers.back().stop();
+    timer_output.stop();
 
     // Overview of timings
     spdlog::info("");
@@ -188,7 +192,8 @@ auto driver(const SettingsL1B& settings,
                  timers[static_cast<int>(ProcLevel::swath)].time());
     spdlog::info("         Radiometric: {:8.3f} s",
                  timers[static_cast<int>(ProcLevel::l1b)].time());
-    spdlog::info("      Writing output: {:8.3f} s", timers.back().time());
+    spdlog::info("      Writing output: {:8.3f} s", timer_output.time());
+    spdlog::info("               Total: {:8.3f} s", timer_total.time());
 
     printHeading("Success");
 }

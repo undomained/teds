@@ -87,6 +87,8 @@ auto driver(const SettingsIM& settings,
     // Run the forward model (main loop)
     printHeading("Forward model");
     std::array<Timer, static_cast<int>(ProcLevel::n_levels)> timers {};
+    Timer timer_total {};
+    timer_total.start();
 #pragma omp parallel for schedule(dynamic)
     for (int i_alt = 0; i_alt < static_cast<int>(l1_products.size()); ++i_alt) {
         printPercentage(i_alt, l1_products.size(), "Processing images");
@@ -162,13 +164,15 @@ auto driver(const SettingsIM& settings,
             timers[static_cast<int>(ProcLevel::l1a)].stop();
         }
     }
+    timer_total.stop();
     spdlog::info("Processing images 100.0%");
     // For writing to output switch out the LBL wavelength grid
     *l1_products.front().wavelength = ckd.wave.wavelength;
 
-    timers.back().start();
+    Timer timer_output {};
+    timer_output.start();
     writeL1(settings.io.l1a, settings.getConfig(), l1_products, argc, argv);
-    timers.back().stop();
+    timer_output.stop();
 
     spdlog::info("");
     spdlog::info("Timings:");
@@ -190,7 +194,8 @@ auto driver(const SettingsIM& settings,
                  timers[static_cast<int>(ProcLevel::noise)].time());
     spdlog::info("      ADC conversion: {:8.3f} s",
                  timers[static_cast<int>(ProcLevel::l1a)].time());
-    spdlog::info("      Writing output: {:8.3f} s", timers.back().time());
+    spdlog::info("      Writing output: {:8.3f} s", timer_output.time());
+    spdlog::info("               Total: {:8.3f} s", timer_total.time());
 
     printHeading("Success");
 }

@@ -5,7 +5,7 @@
 cmake_minimum_required(VERSION 3.22)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH}
-  ${CMAKE_CURRENT_SOURCE_DIR}/../L1AL1B/cmake)
+  ${CMAKE_CURRENT_SOURCE_DIR}/../l1al1b/cmake)
 include(Tools)
 
 # Project

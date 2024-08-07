@@ -22,7 +22,7 @@ set(LIBRARY_PATHS /usr/lib64 CACHE STRING "")
 set(LIBRARIES netcdf_c++4 netcdf lapack CACHE STRING "")
 
 # The IM additionally depends on the L1A-L1B processor
-set(TANGO_L1B_PATH ../L1AL1B/build/ CACHE STRING "")
+set(TANGO_L1B_PATH ../l1al1b/build/ CACHE STRING "")
 
 # Like with the L1A-L1B processor, point to where the dependencies are located.
 set(SPDLOG_PATH /usr/local/spdlog CACHE STRING "")

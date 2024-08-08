@@ -45,7 +45,7 @@ class Variable:
         - read(self, parent, name)
     """
 
-    def __init__(self, logger, name, value=None, level='main', dimensions=None, dtype=None, fillvalue=None, attribute_list = None):
+    def __init__(self, logger, name, value=None, level=2, dimensions=None, dtype=None, fillvalue=None, attribute_list = None):
         """
             initialise Variable class
             Arguments: 
@@ -129,10 +129,7 @@ class Variable:
         """
            Human readable printstatement.
         """
-        n_indents = 2
-        if self._level == 'group':
-            n_indents *= 4
-        pre = " "*n_indents
+        pre = " "*self._level
         var_string = f"{pre}- Variable with name: {self._name} with shape of data {self._value.shape}, dtype {self._dtype}, dimensions {self._dimensions}, fill value: {self._fillvalue}\n"
         if len(self._attribute_list)>0:
             var_string += f"{pre}### With attributes:\n"
@@ -157,6 +154,16 @@ class Variable:
 
     def __ne__(self, other):
         return not self.__eq__(other)
+
+    def __del__(self):
+
+        # Delete the corresponding attibutes
+        attr_list = self._attribute_list
+        for item in attr_list:
+           del item
+        self._attribute_list = []
+
+        return
 
     def get_name(self):
         """
@@ -227,6 +234,7 @@ class Variable:
         self._dimensions = variable.dimensions
         nattr = variable.ncattrs()
         self._attribute_list = []
+        level = self._level+4
         for attrname in nattr:
             if attrname == '_FillValue':
                 # Note this is a special attribute, do not add to attribute list but set the
@@ -235,7 +243,7 @@ class Variable:
                 self.set_fillvalue(fillvalue)
             else:
                 # Normal attribute, add to attributelist
-                attr = Attribute(attrname,level='variable')
+                attr = Attribute(attrname,level=level)
                 attr.read(variable)
                 self._attribute_list.append(attr)
 
@@ -284,35 +292,35 @@ class Variable:
             self._attribute_list = []
         return
     
-    def find(self, name):
-        """
-            Get the attribute object corresponding to name name.
-        """
-        search_list = self._attribute_list
-        for item in search_list:
-            if item.get_name() == name:
-                # item found
-                return item
-        #If we get here the item with name name is not found.
-        self._logger.warning(f"Oops attribute with name {name} is not found in variable {self._name}")
-        return None
-
-    def remove(self, name):
-        """
-            remove attribute object corresponding to name name from netcdf file
-        """
-        search_list = self._attribute_list
-
-        found_index = 9999
-        for index, item in enumerate(search_list):
-            if item.get_name() == name:
-                found_index = index
-                break
-        if found_index != 9999:
-            del search_list[found_index]
-            # Todo: Does this also work on original list?
-
-        return
+#    def find(self, name):
+#        """
+#            Get the attribute object corresponding to name name.
+#        """
+#        search_list = self._attribute_list
+#        for item in search_list:
+#            if item.get_name() == name:
+#                # item found
+#                return item
+#        #If we get here the item with name name is not found.
+#        self._logger.warning(f"Oops attribute with name {name} is not found in variable {self._name}")
+#        return None
+#
+#    def remove(self, name):
+#        """
+#            remove attribute object corresponding to name name from netcdf file
+#        """
+#        search_list = self._attribute_list
+#
+#        found_index = 9999
+#        for index, item in enumerate(search_list):
+#            if item.get_name() == name:
+#                found_index = index
+#                break
+#        if found_index != 9999:
+#            del search_list[found_index]
+#            # Todo: Does this also work on original list?
+#
+#        return
 
     def add(self,name, value):
         """

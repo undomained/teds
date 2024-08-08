@@ -20,7 +20,7 @@ class Dimension:
         - read(self, parent)
     """
 
-    def __init__(self, name, value=None, level='main'):
+    def __init__(self, name, value=None, level=2):
         """
             initialise Dimension class
             Arguments: 
@@ -32,9 +32,6 @@ class Dimension:
             - self._value
             - self._level
         """
-#        self._name = name
-#        self._value = value
-#        self._level = level
         self.set_name(name)
         self.set_value(value)
         self.set_level(level)
@@ -43,10 +40,7 @@ class Dimension:
         """
            Human readable printstatement.
         """
-        n_indents = 2
-        if self._level == 'group':
-            n_indents *= 4
-        pre = " "*n_indents
+        pre = " "*self._level
         return f"{pre}-Dimension {self._name} with value {self._value}\n"
 
     def __repr__(self):
@@ -103,7 +97,6 @@ class Dimension:
         self._level = level
         return
 
-
     def write(self, parent):
         """
             Write given dimension belonging to given parent to ntcdf file
@@ -118,5 +111,3 @@ class Dimension:
         self._value = len(parent.dimensions[self._name])
 
         return 
-
-

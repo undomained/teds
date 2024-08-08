@@ -12,65 +12,38 @@ class DataNetCDF:
         The members:
         - self._file_name
         - self._title
-        - self._group_list
-        - self._dimension_list
-        - self._attribute_list
-        - self._variable_list
+        - self._main_group
         Methodes:
-        - __init__(self,file_name, title, mode, group_list, variable_list, dimension_list, attribute_list)
+        - __init__(self,file_name, title, mode, main_group, variable_list, dimension_list, attribute_list)
         - get_file_name(self)
         - get_title(self)
-        - get_attribute_list(self)
-        - get_dimension_list(self)
-        - get_variable_list(self)
-        - get_group_list(self)
+        - get_main_group(self)
         - set_file_name(self, file_name)
         - set_title(self, title)
-        - set_attribute_list(self, attribute_list)
-        - set_dimension_list(self, dimension_list)
-        - set_variable_list(self, variable_list)
-        - set_group_list(self, group_list)
+        - set_main_group(self, main_group)
         - write(self)
         - read(self, file_name)
     """
 
-    def __init__(self, logger, file_name, title='', mode=None, group_list=None, variable_list= None, dimension_list = None, attribute_list = None):
+    def __init__(self, logger, file_name, title='', mode=None, main_group=None, variable_list= None, dimension_list = None, attribute_list = None):
         """
             initialise DataNetCDF class
             Arguments: 
                       - logger:  logger pointer
                       - file_name:  name of the netcdf file
                       - title:  title of the netcdf file
-                      - diminsion_list: list of dimensions of the netcdf file
-                      - attribute_list: attribute list of the netcdf file
-                      - variable_list: variable list of the netcdf file
-                      - group_list: group list of the netcdf file
+                      - main_group: main group of the netcdf file
             Members:
             - self._logger
             - self._file_name
             - self._title
-            - self._group_list
-            - self._attribute_list
-            - self._variable_list
-            - self._dimension_list
+            - self._main_group
         """
 
         self.set_logger(logger)
         self.set_file_name(file_name)
         self.set_title(title)
-        self.set_attribute_list(attribute_list)
-        self.set_dimension_list(dimension_list)
-        self.set_variable_list(variable_list)
-        self.set_group_list(group_list)
-
-        if attribute_list is None:
-            self._attribute_list = []
-        if dimension_list is None:
-            self._dimension_list = []
-        if variable_list is None:
-            self._variable_list = []
-        if group_list is None:
-            self._group_list = []
+        self.set_main_group(main_group)
 
         if mode == 'r':
             self.read(self._file_name)
@@ -81,18 +54,7 @@ class DataNetCDF:
         """
 
         data_string = f"Netcdf data with filename: {self._file_name} and title: {self._title}\n"
-        data_string += "## And dimensions:\n"
-        for dimension in self._dimension_list:
-            data_string += str(dimension)
-        data_string += "## And attributes:\n"
-        for attribute in self._attribute_list:
-            data_string += str(attribute)
-        data_string += "## And variables:\n"
-        for variable in self._variable_list:
-            data_string += str(variable)
-        data_string += "## And the following group information:\n"
-        for group in self._group_list:
-            data_string += str(group)
+        data_string += str(self._main_group)
 
         return data_string
 
@@ -100,7 +62,7 @@ class DataNetCDF:
         """
             A valid Python expression that can be used to recreate the object.
         """
-        return f"DataNetCDF('{self._file_name}', title='{self._title}', group_list={self._group_list}, dimension_list={self._dimension_list}, attribute_list={self._attribute_list}, variable_list={self._variable_list})"
+        return f"DataNetCDF('{self._file_name}', title='{self._title}', main_group={self._main_group})"
 
     def __eq__(self, other):
         if isinstance(other, self.__class__):
@@ -132,32 +94,11 @@ class DataNetCDF:
         self._title = title
         return
 
-    def set_attribute_list(self, attribute_list):
+    def set_main_group(self, main_group):
         """
-            Set attribute list
+            Set main group
         """
-        self._attribute_list = attribute_list
-        return
-
-    def set_dimension_list(self, dimension_list):
-        """
-            Set dimension list
-        """
-        self._dimension_list = dimension_list
-        return
-
-    def set_variable_list(self, variable_list):
-        """
-            Set variable list
-        """
-        self._variable_list = variable_list
-        return
-
-    def set_group_list(self, group_list):
-        """
-            Set group list
-        """
-        self._group_list = group_list
+        self._main_group = main_group
         return
 
     def get_file_name(self):
@@ -172,36 +113,18 @@ class DataNetCDF:
         """
         return self._title
 
-    def get_group_list(self):
+    def get_main_group(self):
         """
-            Retrun the group_list of the netcdf file
+            Retrun the main group of the netcdf file
         """
-        return self._group_list
-
-    def get_attribute_list(self):
-        """
-            Retrun the attribute_list of the netcdf file (main)
-        """
-        return self._attribute_list
-
-    def get_variable_list(self):
-        """
-            Retrun the variable_list of the netcdf file (main)
-        """
-        return self._variable_list
-
-    def get_dimension_list(self):
-        """
-            Retrun the dimension_list of the netcdf file (main)
-        """
-        return self._dimension_list
+        return self._main_group
 
     def write(self, file_name=None):
         """
             Write given all data to given file
             Note: file_name might be different from self._file_name
             if file_name = None, the output will written to self._file_name
-            Also write the groups, attributes, variables and dimensions 
+            Also write the groups, and attributes, variables and dimensions 
         """
         output_file = self._file_name
         if file_name is not None:
@@ -209,105 +132,112 @@ class DataNetCDF:
         self._logger.info(f"Writing to output file: {output_file}")
         with nc.Dataset(output_file, mode="w") as file_handle:
             file_handle.title=self._title
-            for attr in self._attribute_list:
-                attr.write(file_handle)
-            for dim in self._dimension_list:
-                self._logger.debug("writing dimensions...")
-                self._logger.debug(f"...{dim}...")
-                dim.write(file_handle)
-            for var in self._variable_list:
-                self._logger.debug("writing variables...")
-                self._logger.debug(f"...{var}...")
-                var.write(file_handle)
-            for group in self._group_list:
-                self._logger.debug("writing groups...")
-                group.write(file_handle)
+            self._main_group.write(file_handle)
         return 
 
     def read(self, file_name):
         """
             Read data from ntcdf file
+            The main 'directory' in a netcdf file is treated as 
+            a (special) group
         """
         self._file_name = file_name
         with nc.Dataset(file_name) as file_handle:
 
-            # Fill dimension list
-            dimensions = file_handle.dimensions
-            self._dimension_list = []
-            for dimname in dimensions:
-                dim = Dimension(dimname)
-                dim.read(file_handle)
-                self._dimension_list.append(dim)
-    
-    
-            # Fill variable list
-            variables = file_handle.variables
-            self._variable_list = []
-            for varname in variables:
-                if varname == 'configuration':
-                    continue 
-                var = Variable(self._logger, varname)
-                var.read(file_handle)
-                self._variable_list.append(var)
-    
-            # Fill attribute list
-            nattr = file_handle.ncattrs() #???
-            self._attribute_list = []
-            for attrname in nattr:
-                attr = Attribute(attrname)
-                attr.read(file_handle)
-                self._attribute_list.append(attr)
-    
-            # Fill group list
-            groups = file_handle.groups #???
-            self._group_list = []
-            for groupname in groups:
-                group = Group(self._logger, groupname)
-                group.read(file_handle)
-                self._group_list.append(group)
+            # Getting meain stuff
+            print("Getting MAIN stuff...")
+            main = Group(self._logger, 'main')
+            main.read(file_handle)
+#            self._group_list.append(main)
+            self._main_group = main
+            print("Adding GROUP MAIN to GROUP list")
 
         return
 
     def find(self, name, group=None, var=None, kind='variable'):
         """
-            Get the kind of  object (default is variable) corresponding to name in in given group.
-            If group is None the variables in main are searched.
-            Note: if kind is 'attribute' also variable name is needed.
+            Get the kind of  object (default is Variable) corresponding to name in in given group.
+            Variables, dimensions and attributes belong to a group. Attributes can also belong
+            to Variables that belong to a group.
+            If group is None the kind of object is searched in group main.
+            First the group object is found, 
+            Then the requested object list is obtained from the group,
+            Then the list is searched to find the requested object with given name.
+            Note: when kind is 'attribute' it can be an group attribute or a variable attribute.
+            When the latter is the case also var needs to be given (name of the variable)
         """
-        if group is None:
-            if kind == 'variable':
-             search_list = self._variable_list
-            elif kind == 'dimension':
-             search_list = self._dimension_list
-            elif kind == 'attribute':
-             search_list = self._attribute_list
-            elif kind == 'group':
-             search_list = self._group_list
+        found_item = None
+
+        # Find group
+#        if group is None:
+#            groupname = 'main'
+#        else: 
+#            groupname = group
+
+#        grp = self.find_group(name=groupname)
+        grp = self.find_group(name=group)
+
+        if grp is None:
+            self._logger.warning(f"Given group: {groupname} can not be found. So {kind} with name {name} can not be found")
+            return found_item
+
+#        for gr in self._group_list:
+#            if gr.get_name() == groupname:
+#                print(f"In loop group name: {gr.get_name()}")
+#                return gr.find(name, group=group, var=var, kind=kind)
+
+        # Find given object list
+        if kind == 'variable':
+            search_list = grp.get_variable_list()
+        elif kind == 'dimension':
+            search_list = grp.get_dimension_list()
+        elif kind == 'attribute':
+            # Group attribute or variable attribute?
+            if var is not None:
+                # we are looking for a variable attribute!
+                var_list = grp.get_variable_list()
+                for variable in grp.get_variable_list():
+                   if variable.get_name() == var:
+                       search_list = variable.get_attribute_list()
+#                       return variable.find(name)
             else:
-                possible_kinds = ['variable', 'attribute', 'dimension', 'group']
-                self._logger.warning(f"The kind of information that you want to retrieve ({kind}) does not exist in netcdf. Possibilities: {possible_kinds}")
+                # we are looking for a variable attribute!
+                search_list = grp.get_attribute_list()
 
-            for item in search_list:
-                if item.get_name() == name:
-                    # item found
-                    return item
-            #If we get here the item with name name is not found.
-            self._logger.warning(f"Oops {kind} with name {name} is not found in main directory of file {self._file_name}!")
-            return None
+        # Look in list for object with given name
+        for item in search_list:
+            if item.get_name() == name:
+                # item found
+                found_item = item
+    
+        if found_item is None:
+            var_string = ""
+            if var is not None:
+                var_string = f" for given {var}"
+            self._logger.warning(f"{kind} with name {name} can not be found in group {group}{var_string}")
+
+        return found_item
+
+    def find_group(self, name):
+
+        found_group = None
+
+        if name is None:
+            found_group = self._main_group
         else:
-            for gr in self._group_list:
-                if gr.get_name() == group:
-                    return gr.find(name, var=var, kind=kind)
-            #If we get here the group has not been found
-            self._logger.warning(f"Oops group with name {group} is not found in main directory of file {self._file_name}! So {kind} with name {name} can not be found.")
-            return None
+            grp = self._main_group
+            found_group = grp.find_group(name)
 
-        return None
+        if found_group is None:
+            self._logger.warning(f"Group {name} can not be found in netcdf file")
+
+        return found_group
 
     def update(self, name, value, group=None, var=None, kind='variable'):
         """
             Update value for kind of information (default is variable) in a certain group.
-            Note: if kind is 'attribute' also variable name is needed.
+            Note: if kind is 'attribute' it can belong to either the group or a Variable from the group.
+            If latter is the case then also var (variable name) is needed.
         """
 
         item = self.find(name, group=group, var=var, kind=kind)
@@ -338,107 +268,100 @@ class DataNetCDF:
                    the variables that use it. Not sure if that is a good idea.
                    So for the moment it is not possible to remove a dimension
         """
-        if group is None:
-            if kind == 'variable':
-             search_list = self._variable_list
-        #    elif kind == 'dimension':
-        #     search_list = self._dimension_list
-            elif kind == 'attribute':
-             search_list = self._attribute_list
-            elif kind == 'group':
-             search_list = self._group_list
+        if kind == 'dimension':
+            error_msg = "Removing a dimension is tricky. Also the variables that use it would need to be deleted. At the moment this is not possible"
+            self._logger.error(error_msg)
+            sys.exit(error_msg)
+            return
+
+        #Find the group that the item belongs to
+        grp = self.find_group(name=group)
+        # Find the corresponding kind list
+        # Since we do not want to delete dimensions, the only kinds eligable
+        # for removal are variables and attributes
+        if kind == 'variable':
+            search_list = grp.get_variable_list()
+        elif kind == 'attribute':
+            # Group attribute or variable attribute?
+            if var is not None:
+                # we are looking for a variable attribute!
+                var_list = grp.get_variable_list()
+                for variable in grp.get_variable_list():
+                   if variable.get_name() == var:
+                       search_list = variable.get_attribute_list()
+#                       return variable.find(name)
             else:
-        #        possible_kinds = ['variable', 'attribute', 'dimension', 'group']
-                possible_kinds = ['variable', 'attribute', 'group']
-                self._logger.warning(f"The kind of information that you want to remove ({kind}) does not exist in netcdf. Possibilities: {possible_kinds}. Nothing removed.")
-                return
+                # we are looking for a variable attribute!
+                search_list = grp.get_attribute_list()
+#            search_list = grp.get_attribute_list()
 
-            found_index = 9999
-            for index, item in enumerate(search_list):
-                if item.get_name() == name:
-                    found_index = index
-                    break
-            if found_index != 9999:
-                del search_list[found_index]
-                # Todo: Does this also work on original list?
+        # Find item on list and remove from list
+        found_index = 9999
+        for index, item in enumerate(search_list):
+            if item.get_name() == name:
+                found_index = index
+                break
+        if found_index == 9999:
+            var_string = ""
+            if var is not None:
+                var_string = " for variable {var}"
+            self._logger.warning("{kind} with name {name} not found in group {group}{var_string}. Not removed!")
+        if found_index != 9999:
+            found_item = item
+            del search_list[found_index]
+        del found_item
 
+        return
+
+    def add(self, item=None, name=None, value=None, dimensions=None, attribute_list=None, group=None, var=None, kind='variable'):
+
+        #Find the group to which item needs to be added
+        print(f"IN ADD GROUP: {group}")
+        grp = self.find_group(name=group)
+        level = grp.get_level()
+        print(f"FOUND GROUP LEVEL {level}")
+        # Find the list the item needs to be added to
+#            elif item_type == 'Dimensions':
+        item_type = ''
+        if item is not None:
+            item_type = type(item).__name__
+        if (item_type == 'Variable') or (kind == 'variable'):
+            search_list = grp.get_variable_list()
+        elif (item_type == 'Dimension') or (kind == 'dimension'):
+            search_list = grp.get_dimension_list()
+        elif (item_type == 'Group') or (kind == 'group'):
+            print(f"DO I GET HERE????")
+            search_list = grp.get_group_list()
+        elif (item_type == 'Attribute') or (kind == 'attribute'):
+            # Group attribute or variable attribute?
+            if var is not None:
+                # looking for a variable attribute!
+                var_list = grp.get_variable_list()
+                for variable in grp.get_variable_list():
+                   if variable.get_name() == var:
+                       search_list = variable.get_attribute_list()
+            else:
+                # we are looking for a variable attribute!
+                search_list = grp.get_attribute_list()
+
+        if item is not None:
+            item.set_level(level)
+            search_list.append(item)
         else:
-
-            for gr in self._group_list:
-                if gr.get_name() == group:
-                    return gr.remove(name, var=var, kind=kind)
-            #If we get here the group has not been found
-            self._logger.warning(f"Oops group with name {group} is not found in main directory of file {self._file_name}. Not able to remove requested {kind} with name {name}")
-
-        return
-
-    def add(self, name=None, value=None, item=None, group=None, var=None, dimensions=None, attribute_list=None, kind='variable'):
-        """
-           Things that can be added to a main are: groups, variables, dimensions or attributes
-           Can be added as a name,var combination OR as an object
-        """
-
-        if name is None and item is None:
-            self._logger.warning("Both the name and the item arguments are not set so nothing to add")
-            return
-        elif name is not None and item is not None:
-            self._logger.warning("Both the name and the item arguments are set. Not sure what to use so nothing to add")
-            return
-        elif item is not None:
-            if group is not None:
-                for gr in self._group_list:
-                    if gr.get_name() == group:
-                        gr.add(name=name, value=value, item=item, var=var, dimensions=dimensions, attribute_list=attribute_list, kind=kind)
-                        return
-                #If we get here the group has not been found
-                item_type = type(item).__name__
-                item_name = item.get_name()
-                self._logger.warning(f"Oops group with name {group} is not found in main directory of file {self._file_name}. Not able to add requested item of kind {item_type} and name {item_name}")
-            else:
-                # Look in main
-                item_type = type(item).__name__
-                item_name = item.get_name()
-                item.set_level('main')
-                if item_type == 'Variable':
-                    self._variable_list.append(item)
-                elif item_type == 'Dimensions':
-                    self._dimension_list.append(item)
-                elif item_type == 'Attribute':
-                    self._attribute_list.append(item)
-                elif item_type == 'Group':
-                    self._group_list.append(item)
-
-        elif name is not None:
-
-            if group is not None:
-
-                for gr in self._group_list:
-                    if gr.get_name() == group:
-                        gr.add(name, value=value, var=var, dimensions=dimensions, attribute_list=attribute_list, kind=kind)
-                        return
-                #If we get here the group has not been found
-                self._logger.warning(f"Oops group with name {group} is not found in main directory of file {self._file_name}. Not able to add requested {kind} with name {name}")
-
-            else:
-
-                if kind == 'variable':
-                    dtype = value.dtype
-                    var = Variable(self._logger, name, value, dtype=dtype, dimensions=dimensions, attribute_list=attribute_list, level='main')
-                    self._variable_list.append(var)
-                elif kind == 'dimension':
-                    dim = Dimension(name, value, level='main')
-                    self._dimension_list.append(dim)
-                elif kind == 'attribute':
-                    attr = Attribute(name, value, level='main')
-                    self._attribute_list.append(attr)
-                elif kind == 'group':
-                    grpr = Group(self._logger, name, level='main')
-                    self._group_list.append(grpr)
-                else:
-                    possible_kinds = ['variable', 'attribute', 'dimension', 'group']
-                    self._logger.warning(f"The kind of information that you want to add ({kind}) does not exist in netcdf. Possibilities: {possible_kinds}")
+            #First create object, then add it to the list
+            if kind == 'variable':
+                dtype = value.dtype
+                var = Variable(self._logger, name, value, dtype=dtype, dimensions=dimensions, attribute_list=attribute_list, level=level)
+                search_list.append(var)
+            elif kind == 'dimension':
+                dim = Dimension(name, value, level=level)
+                search_list.append(dim)
+            elif kind == 'attribute':
+                attr = Attribute(name, value, level=level)
+                search_list.append(attr)
+            elif kind == 'group':
+                new_group = Group(self._logger, name, level=level+4)
+                search_list.append(new_group)
 
         return
-
-
 

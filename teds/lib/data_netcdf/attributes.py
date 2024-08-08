@@ -21,7 +21,7 @@ class Attribute:
         - read(self, parent)
     """
 
-    def __init__(self, name, value=None, level='main'):
+    def __init__(self, name, value=None, level=2):
         """
             initialise Atrribute class
             Arguments: 
@@ -33,9 +33,6 @@ class Attribute:
             - self._value
             - self._parent
         """
-#        self._name = name
-#        self._value = value
-#        self._level = level
         self.set_name(name)
         self.set_value(value)
         self.set_level(level)
@@ -44,12 +41,7 @@ class Attribute:
         """
            Human readable printstatement.
         """
-        n_indents = 2
-        if self._level == 'group':
-            n_indents *= 4
-        if self._level == 'variable':
-            n_indents *= 8
-        pre = " "*n_indents
+        pre = " "*self._level
         return f"{pre}-Attribute {self._name} with value {self._value}\n"
 
     def __repr__(self):

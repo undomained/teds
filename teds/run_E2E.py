@@ -6,6 +6,8 @@ import subprocess
 import yaml
 import numpy as np
 import os
+import time
+from datetime import timedelta
 
 from teds import log
 import teds.lib.lib_utils as Utils
@@ -383,7 +385,8 @@ def build(config, step, cfg_path, attribute_dict):
 
 if __name__ == "__main__":
 
-
+    startTime = time.time()
+    
     # Get input arguments
     cfgFile, step =  cmdline(sys.argv[1:])
     cfg_path, filename = os.path.split(cfgFile)
@@ -407,3 +410,4 @@ if __name__ == "__main__":
 
     build(config, step, cfg_path, main_attribute_dict)
 
+    log.info(f'E2E calculation finished in {timedelta(seconds=(time.time()-startTime))}')

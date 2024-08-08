@@ -1,0 +1,20 @@
+# List of packages installed by the Spack package manager
+spack:
+  specs:
+    - binutils @2.42 +gas +ld
+    - gcc @13.2
+    - python @3.11.1
+    - hdf5 @1.14.3 -mpi
+    - netcdf-c @4.9.2 -mpi
+    - netcdf-cxx4 @4.3.1 -doc
+    - yaml-cpp @0.7.0
+    - spdlog @1.13.0
+    - ninja @1.11.1
+    - cmake @3.27.9
+    - git @2.45.1
+    - vim @9.0.0045
+  view: /opt/view
+  concretizer:
+    unify: true
+  config:
+    install_tree: /opt/software

@@ -1,8 +1,16 @@
 Contributing
 ==============
 
+In this section, we lay out rules and recommendations for contributing to this project. A set of rules (a coding style guide) is essential for any development team to ensure code readability and integrity. As a developer, you should pause to go through either all of the rules or ones that are relevant to you depending on what you are currently working on, so that when you commit new code it will pass all linter, regression, and other tests.
+
+It is worth mentioning that all guidelines listed in section are quite standard and used by the majority of the software community. Furthermore, we include only a small set here to minimize the learning curve for a new contributor.
+
+
 Git
 ---
+
+This section is a very minimal tutorial on git. It is strictly speaking not part of a coding style but aims to minimize the risk of making bad commits or losing data. Do pay attention to the paragraph on commit messages though -- following the correct style will make the commit history much more readable!
+
 
 Basic usage
 ^^^^^^^^^^^^

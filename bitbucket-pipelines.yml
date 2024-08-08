@@ -1,0 +1,33 @@
+image: raullaasner/tango
+
+definitions:
+  steps:
+    - step: &step-defaults
+        runs-on:
+          - self.hosted
+          - linux
+        size: 8x #  32 GiB
+
+pipelines:
+  default:
+    - step:
+        <<: *step-defaults
+        name: Python
+        script:
+          - . /etc/profile
+          - python -m venv venv
+          - source venv/bin/activate
+          - pip install --upgrade pip
+          - pip install -r requirements.txt
+    - step:
+        <<: *step-defaults
+        name: C++
+        script:
+          - . /etc/profile
+          - bash clang_format_check.sh clang-format-18
+          - mkdir build-l1b
+          - cmake -G Ninja -C CI/initial_cache.cmake -S teds/l1al1b -B build-l1b
+          - cmake --build build-l1b -j 6
+          - mkdir build-im
+          - cmake -G Ninja -C CI/initial_cache.cmake -S teds/im -B build-im
+          - cmake --build build-im -j 6

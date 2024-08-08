@@ -35,4 +35,4 @@ pipelines:
             -D LIBRARIES=netcdf_c++4;netcdf;hdf5_hl;hdf5;z;dl;blas;lapack
             -S .
             -B build
-            - cmake --build build -j 6
+          - cmake --build build -j 6

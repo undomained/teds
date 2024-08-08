@@ -107,5 +107,6 @@ def add_attributes_to_output(output_file, attribute_dict):
 
     with nc.Dataset(output_file, 'a') as file:
         for name, value in attribute_dict.items():
+            # TODO The line below does not seem to be working
             setattr(file, name, str(value))
     return

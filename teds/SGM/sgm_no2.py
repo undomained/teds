@@ -7,7 +7,6 @@
 # =============================================================================
 
 import os
-import pickle
 import sys
 from copy import deepcopy
 import netCDF4 as nc
@@ -19,7 +18,6 @@ import time
 import h5py
 import shutil
 import logging
-from itertools import repeat
 import tqdm
 from scipy.interpolate import RegularGridInterpolator
 import xarray as xr
@@ -626,7 +624,7 @@ def set_disamar_cfg_sim(cfg, dis_cfg, ground_points, atm_disamar, albedo, i_t, i
         if band.band_label == cfg['rtm']['albedo']:
             i_band = index
     if i_band == -99:
-        logging.error(f'Albedo band {cfg['rtm']['albedo']} not found')
+        log.error(f'Albedo band {cfg['rtm']['albedo']} not found')
     albedo_wvl = albedo[i_band].central_wavelength
 
     dis_cfg['SURFACE', 'wavelDependentSim', 'wavelSurfAlbedo'].setvalue(albedo_wvl)

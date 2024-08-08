@@ -180,7 +180,6 @@ IM:
 ############################
 L1AL1B:
     do_python: false
-#    do_python: true
     proctable:
         file: '../cfg/nitro/proctable.yaml'
         algo_list: 'algos_l1b'

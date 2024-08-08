@@ -135,6 +135,7 @@ def download_sentinel2_albedo(config) -> None:
     write_albedo_to_netcdf(config['sentinel2']['albedo_file'], albedos)
 
 
+
 def interp_sentinel2_albedo(s2_albedos: List[DataArray],
                             lat,
                             lon) -> List[DataArray]:

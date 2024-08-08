@@ -3,7 +3,7 @@ import logging
 import subprocess
 import netCDF4 as nc
 
-from teds.IM.Python.input.input_yaml import Input_yaml
+from teds.im.Python.input.input_yaml import Input_yaml
 # import teds.lib.data_netcdf.data_netcdf as dn
 from teds import log
 
@@ -37,7 +37,7 @@ def getConfig(cfgFile):
     """
     cfg_path, filename = os.path.split(cfgFile)
 
-    config_input = Input_yaml(cfgFile)
+    config_input = Input_yaml(log, cfgFile)
     config = config_input.read()
     # print(f"{config_input}")
 

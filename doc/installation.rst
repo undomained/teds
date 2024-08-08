@@ -28,7 +28,7 @@ Set up a virtual environment:
    python -m venv venv
    source venv/bin/activate
    pip install --upgrade pip
-   pip install -r teds/requirements
+   pip install -r requirements.txt
 
 
 C++ code
@@ -86,7 +86,7 @@ Start by navigating into the source directory and make a copy of the initial cac
 
 .. code-block:: bash
 
-   cd <teds>/teds/L1AL1B/tango_l1b
+   cd <teds>/teds/l1al1b
    cp initial_cache.cmake initial_cache_local.cmake
 
 where ``<teds>`` denotes the root source directory of the TEDS project. Next, edit the initial cache file to reflect your environment, although the default values might already be fine (in which case there is no need to make a local copy of the file). When done editing, create a build directory and run CMake from that using the initial cache file:
@@ -137,7 +137,7 @@ If you are not sure which build system you are using, run
 
 from the build directory. If successful, an executable called ``tango_l1b.x`` is produced in the build directory.
 
-Once the L1A-L1B processor has been built, the instrument model can be built similarly. The only difference is that in the initial cache file of the instrument model (example located at ``<teds>/IM/tango_im/initial_cache.cmake``), the ``TANGO_L1B_PATH`` CMake variable must point to the build directory of the L1A-L1B processor.
+Once the L1A-L1B processor has been built, the instrument model can be built similarly. The only difference is that in the initial cache file of the instrument model (example located at ``<teds>/IM/initial_cache.cmake``), the ``TANGO_L1B_PATH`` CMake variable must point to the build directory of the L1A-L1B processor.
 
 .. tip::
 
@@ -145,7 +145,7 @@ Once the L1A-L1B processor has been built, the instrument model can be built sim
 
    .. code-block:: bash
 
-      cmake -G Ninja -C <spexone_cal>/initial_cache.cmake <spexone_cal>
+      cmake -G Ninja -C <im>/initial_cache.cmake <im>
 
    The build command is then
 

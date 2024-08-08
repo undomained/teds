@@ -102,6 +102,9 @@ def ifdoe_run(config, mode='no2'):
         pxlBeg = 0
         pxlEnd = pxlN - 1
 
+    slice_alt = slice(scanBeg,scanEnd+1)
+    slice_act = slice(pxlBeg,pxlEnd+1)
+
 
     # A.5  Initialise output
 
@@ -111,7 +114,7 @@ def ifdoe_run(config, mode='no2'):
 
     # read geometry from L1B
 
-    geo = libDOAS.readGeometry(cfg['io']['l1b'])
+    geo = libDOAS.readGeometry(cfg['io']['l1b'],slice_alt,slice_act)
 
     # B)  Solar spectrum
     # ------------------
@@ -673,6 +676,7 @@ def l1bl2_no2(cfg):
     if cfg['run_doas']:
 
         if os.path.isfile(cfg['io']['l2']):
+            log.warning(f'File {cfg['io']['l2']} already exists, removing')
             os.remove(cfg['io']['l2'])
 
         # use irradiance file from SGM. optional convolving

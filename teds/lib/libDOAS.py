@@ -2000,7 +2000,7 @@ def writeOutput(l2_file,IFDOEconfig,parameterNames,results,geo):
     
     return
 
-def readGeometry(rad_file):
+def readGeometry(rad_file, slice_alt, slice_act):
     # Read geometry from L1B
 
     geo = {}
@@ -2015,6 +2015,6 @@ def readGeometry(rad_file):
     
     with nc.Dataset(rad_file) as f:
         for key in vardict:
-            geo[key] = f['geolocation_data/'+vardict[key]][:]
+            geo[key] = f['geolocation_data/'+vardict[key]][slice_alt,slice_act]
 
     return geo

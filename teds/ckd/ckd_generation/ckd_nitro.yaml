@@ -40,7 +40,8 @@
 
     # Single value parameters
     noise_conversion_gain: 0.023,   # noise_g, src: carbon ckd
-    read_out_noise: 2.56,           # counts^2/e-, src: SNR budget
+    read_out_noise: 2.56,           # e-, src: SNR budget
+    dark_current: 10,               # e/s, at 25C
     prnu: 5,                        # in %, src: SNR budget
     fov: 3.44,                      # in degrees, src: SNR budget
     c_opt_rad_resp: 4.22e+12,       # optical_radiometric_response_constant (temporary)

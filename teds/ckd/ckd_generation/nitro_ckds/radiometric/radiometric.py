@@ -10,7 +10,7 @@ def generate(ncc):
     attr = {
         'long_name': 'Radiometric calibration constant',
         'comment' : 'Single value, will be replaced with \
-            wavelength dependend dispersion and transmission'
+            wavelength dependent dispersion and transmission'
     }
     
     ncc.create_var_auto(dims, rcc, attr, 'f8')

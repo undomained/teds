@@ -25,7 +25,7 @@ import xarray as xr
 from teds import log
 from teds.lib import libATM, libSGM, libRT_no2, libNumTools, constants
 from teds.lib.libWrite import writevariablefromname
-
+from teds.sgm.download_sentinel2_albedo import download_sentinel2_albedo
 
 class Emptyclass:
     """Empty class. Data container."""
@@ -879,7 +879,7 @@ def scene_generation_module_nitro(config):
     # download albedo and store as netcdf
     file_exists = os.path.isfile(config['sentinel2']['albedo_file'])
     if (not file_exists or (config['sentinel2']['forced'])):
-        libSGM.download_sentinel2_albedo(config)
+        download_sentinel2_albedo(config)
 
     # load albedo netcdf
     albedo = get_sentinel2_albedo(config['sentinel2']['albedo_file'])

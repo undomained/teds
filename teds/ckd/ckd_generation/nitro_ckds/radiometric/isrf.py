@@ -6,7 +6,7 @@ import numpy as np
 import os
 import csv
 from scipy.interpolate import CubicSpline
-from teds.CKD.ckd_generation.nitro_ckds.spectral.wavelength import mirror_on_first_row
+from teds.ckd.ckd_generation.nitro_ckds.spectral.wavelength import mirror_on_first_row
 
 def generate(ncc): # Get the data and combine
     cfg = ncc.cfg

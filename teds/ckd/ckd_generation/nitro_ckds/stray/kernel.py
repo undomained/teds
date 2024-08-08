@@ -23,8 +23,6 @@ def generate(ncc):
         eta = f['stray/eta'][:]
         weights = f['stray/weights'][:]
         edges = f['stray/edges'][:]
-    
-    print(len(kernels_fft))
 
     # reshape some variables for the time being
     C = cfg['dimensions']['detector_column']

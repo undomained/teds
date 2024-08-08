@@ -4,7 +4,7 @@ Row index
 import numpy as np
 
 from scipy.interpolate import bisplrep, bisplev
-from teds.CKD.ckd_generation.nitro_ckds.spectral.wavelength import import_spectral_smile_from_excel
+from teds.ckd.ckd_generation.nitro_ckds.spectral.wavelength import import_spectral_smile_from_excel
 
 def generate(ncc):
     cfg = ncc.cfg

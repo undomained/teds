@@ -1,12 +1,14 @@
 """
 TANGO NITRO CKD generator of the TANGO nitro instrument.
+
+Individuals CKD and their calculation can be found in /nitro_ckds/ folder
 """
 
 import os
 import sys
 import yaml
 from glob import glob
-from teds.CKD.ckd_generation.nc_container import *
+from teds.ckd.ckd_generation.nc_container import *
 
 def load_config(config_path):
     with open(config_path) as file:

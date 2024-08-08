@@ -19,8 +19,6 @@ set(LIBRARY_PATHS "" CACHE STRING
   "Directories containing libraries to be linked against")
 set(LIBRARIES "" CACHE STRING "Libraries to be linked against")
 set(TANGO_L1B_PATH "" CACHE STRING "Path to the Tango L1B library")
-# set(SPDLOG_PATH "" CACHE STRING "Path to spdlog installation directory")
-# set(YAML_CPP_PATH "" CACHE STRING "Path to yaml-cpp installation directory")
 option(BUILD_SHARED_LIBS
   "If enabled, dependencies are built as shared libraries by default" OFF)
 
@@ -38,6 +36,7 @@ add_subdirectory(tango_im)
 find_package(OpenMP REQUIRED)
 find_package(Threads)
 find_package(spdlog QUIET)
+find_package(yaml-cpp 0.7 QUIET)
 find_package(tango_l1b REQUIRED HINTS ${TANGO_L1B_PATH})
 target_link_libraries(tango_im.x PRIVATE tango_l1b::tango_l1b)
 

@@ -1,8 +1,6 @@
 import numpy as np
 import os
 import sys
-import inspect
-import logging
 import yaml
 import netCDF4 as nc
 import matplotlib.pyplot as plt
@@ -717,40 +715,9 @@ if __name__ == '__main__':
     # call with:
     # python l1bl2_no2.py l1bl2_no2.yaml
 
-    # or with logging to file:
-    # python l1bl2_no2.py l1bl2_no2.yaml l1bl2_no2.log
-
     # reading yaml config
     cfg = yaml.safe_load(open(sys.argv[1]))
 
-    if cfg['doas']['debug']['log']:
-        loglevel = logging.DEBUG
-    else:
-        loglevel = logging.INFO
-
-    # setup the logging to screen and to file
-    formatter = logging.Formatter('%(asctime)s %(levelname)s: %(message)s')
-
-    if len(sys.argv) > 2:
-        fh = logging.FileHandler(sys.argv[2], mode='w')
-        fh.setLevel(logging.ERROR)
-        fh.setFormatter(formatter)
-
-        ch = logging.StreamHandler()
-        ch.setLevel(loglevel)
-        ch.setFormatter(formatter) 
-
-        logging.basicConfig(level=loglevel, handlers = [ch,fh])
-
-        logging.info(f'Logging to file: {sys.argv[2]}')
-
-    else:
-        ch = logging.StreamHandler()
-        ch.setLevel(loglevel)
-        ch.setFormatter(formatter) 
-        logging.basicConfig(level=loglevel,handlers = [ch])
-    
-    logger = logging.getLogger()
 
     # Python parallises internally with numpy, for single thread optimum is 4 numpy threads
     # for multi-threading use only 1 numpy thread, otherwise slow-down

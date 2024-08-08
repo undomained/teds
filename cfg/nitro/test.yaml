@@ -1,9 +1,13 @@
 # Combined config file for all steps in E2E analysis.
 #
+# This config file is used for E2E testing
+# The scene is 2 pixel along-track and 10 pixels across-track
+# 
+#
 log_level: 'info' # 'info' or 'debug'
 show_progress: True # toggle show progress bars 
 header:
-    file_name: 'full_config.yaml'
+    file_name: 'test.yaml'
     version: '0.000'
 #########################################################
 # General settings. 
@@ -63,11 +67,11 @@ gm:
 #
     sensors:
       sensor_00__00:
-        n_ground_pixels: 100
+        n_ground_pixels: 10
         swath_width: 30.0   # km
         integration_time: 0.04 # seconds
         start_time: 13.73 # minutes wrt orbit epoch
-        end_time: 13.80   # minutes wrt orbit epoch
+        end_time: 13.731 # minutes wrt orbit epoch
         pitch: 0.0
         roll: 0.0
         yaw: 0.0
@@ -111,10 +115,10 @@ sgm:
             # define pixels where to put cloud, default is all pixels
             alt:    
                 start: 0
-                stop: 5
+                stop: 1
             act:
                 start: 0
-                stop: 50
+                stop: 2
 
     rtm:   # disamar (RTM) settings
         tmp_dir:    '../data/no2/tmp/'
@@ -126,7 +130,7 @@ sgm:
         wave_start: 395             #nm
         wave_end:   502             #nm
         dwave:      0.05            #nm
-        cleanup: True              # rm disamartmp directory when finished
+        cleanup: False              # rm disamartmp directory when finished
         o2o2: True                  # add o2-o2 absorption
         albedo: B01
 
@@ -149,8 +153,8 @@ im:
     instrument: 'nitro'
     processing_version: 0.000
     cal_level: 'l1a' # To indicate wether to uncalibrate the whole way (l1a) or to stop at a certain point ('prnu' -> uncalibrate until (NOT INCLUDING) prnu step)
-    # image_start: 0
-    # image_end: 105
+    image_start: 0
+    image_end: 0
     detector:
         binning_table_id: 1         # across track binning
         exposure_time:    0.021     # exposure time [sec]
@@ -185,8 +189,8 @@ l1al1b:
         algo_list: 'algos_l1b'
     instrument: 'nitro'
     processing_version: 0.000
-    # image_start: 0
-    # image_end: 105
+    image_start: 0
+    image_end: 0
     cal_level: 'l1b' # To indicate wether to calibrate the whole way (l1b) or to stop at a certain point ('prnu' -> calibrate until (NOT INCLUDING) prnu step)
 # What about geolocation??????
     noise:

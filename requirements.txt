@@ -19,3 +19,4 @@ Cartopy
 openpyxl== 3.1.2
 piccolo_theme==0.22.0
 Glymur==0.13.2
+flake8==7.1.1

@@ -19,6 +19,7 @@ pipelines:
           - source venv/bin/activate
           - pip install --upgrade pip
           - pip install -r requirements.txt
+          - bash flake8_check.sh
     - step:
         <<: *step-defaults
         name: C++

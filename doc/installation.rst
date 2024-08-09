@@ -25,7 +25,7 @@ Set up a virtual environment:
 
 .. code-block:: bash
 
-   python -m venv venv
+   python -m venv venv  # Last argument can be any name
    source venv/bin/activate
    pip install --upgrade pip
    pip install -r requirements.txt

@@ -30,7 +30,7 @@ def get_im_config(logger, config):
     """
         Get IM specific settings and move them one level up in config
     """
-    im_settings = config['IM']
+    im_settings = config['im']
     for key, value in im_settings.items():
         config[key] = value
     return config
@@ -91,7 +91,7 @@ def  add_main_attributes(out_data, attributes):
         Add attributes to output file
     """
     for name, value in attributes.items():
-        out_data.add(name, value=str(value), kind='attribute')
+        out_data.add(name=name, value=str(value), kind='attribute')
     return
 
 def is_detector_image(algo_name):
@@ -125,7 +125,7 @@ def create_detector_image_output(logger, nc_output, dimensions, image_attribute_
     nc_output.add(name='detector_image', value=output_data, dimensions=('detector_image','row','col'), group='science_data', kind='variable')
 
     nc_output.add(name='name', value='detector_images', var='detector_image', group='science_data', kind='attribute')
-    nc_output.add(name='units', value='counts', var='i', group='science_data',kind='attribute')
+    nc_output.add(name='units', value='counts', var='detector_image', group='science_data',kind='attribute')
 
     if in_between:
         nc_output.add(name='measurement', value=output_data, dimensions=('detector_image','row','col'), kind='variable')
@@ -266,8 +266,12 @@ def instrument_model(config, logger, main_attributes):
     #Note: this is the along track dimension
 #    n_images = radiance_data.shape[0]
     # requested number of images:
-    image_start = config['image_start']
-    image_end = config['image_end']
+    image_start = 0
+    image_end = radiance_data.shape[0] - 1
+    if 'image_start' in config:
+        image_start = config['image_start']
+    if 'image_end' in config:
+        image_end = config['image_end']
     # image_end is up and including
     n_images = image_end+1 - image_start
 
@@ -289,7 +293,6 @@ def instrument_model(config, logger, main_attributes):
     output_datasets = initialize_output(logger, 'l1a', input_data, algo_list, dimensions, main_attributes)
 
     # Loop over images
-#    for img in range(n_images):
     for img in range(image_start, image_end+1):
 
         print(f"Processing image: {img}")

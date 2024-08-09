@@ -11,6 +11,10 @@ class Attribute:
         - self._parent
         Methodes:
         - __init__(self,name, value, level)
+        - __str__(self)
+        - __repr__(self)
+        - __eq__(self)
+        - __ne__(self)
         - get_name(self)
         - get_value(self)
         - get_level(self)

@@ -10,6 +10,10 @@ class Dimension:
         - self._value
         Methodes:
         - __init__(self,name, value, level)
+        - __str__(self)
+        - __repr__(self)
+        - __eq__(self)
+        - __ne__(self)
         - get_name(self)
         - get_value(self)
         - get_level(self)
@@ -58,12 +62,6 @@ class Dimension:
     def __ne__(self, other):
         return not self.__eq__(other)
 
-    def __eq__(self, other):
-        if isinstance(other, self.__class__):
-            return self.__dict__ == other.__dict__
-        else:
-            return False
-
     def get_name(self):
         """
             Retrun the name of the dimension
@@ -75,6 +73,12 @@ class Dimension:
             Retrun the value of the dimension
         """
         return self._value
+
+    def get_level(self):
+        """
+            Retrun the level of the dimension
+        """
+        return self._level
 
     def set_name(self,name):
         """

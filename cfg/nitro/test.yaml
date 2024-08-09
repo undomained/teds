@@ -14,7 +14,7 @@ header:
 # Used by more than one step in the E2E simulator
 #########################################################
 io: 
-    base_dir: '../data/no2/'
+    base_dir: '../data/no2/test'
 ## GM IO
     gm: 'geometry.nc'
 ## SGM IO
@@ -126,7 +126,7 @@ sgm:
         disamar_exe: '../data/no2/disamar/Disamar_old.exe'
         dismas_sim: True
         dismas_fwhm: 0.05           #nm
-        n_threads: 16
+        n_threads: 4
         wave_start: 395             #nm
         wave_end:   502             #nm
         dwave:      0.05            #nm
@@ -153,8 +153,8 @@ im:
     instrument: 'nitro'
     processing_version: 0.000
     cal_level: 'l1a' # To indicate wether to uncalibrate the whole way (l1a) or to stop at a certain point ('prnu' -> uncalibrate until (NOT INCLUDING) prnu step)
-    image_start: 0
-    image_end: 0
+    # image_start: 0
+    # image_end: 0
     detector:
         binning_table_id: 1         # across track binning
         exposure_time:    0.021     # exposure time [sec]
@@ -189,8 +189,8 @@ l1al1b:
         algo_list: 'algos_l1b'
     instrument: 'nitro'
     processing_version: 0.000
-    image_start: 0
-    image_end: 0
+    # image_start: 0
+    # image_end: 0
     cal_level: 'l1b' # To indicate wether to calibrate the whole way (l1b) or to stop at a certain point ('prnu' -> calibrate until (NOT INCLUDING) prnu step)
 # What about geolocation??????
     noise:
@@ -226,7 +226,7 @@ l1l2:
     run_clouds: yes
     run_amf: yes
 
-    threads: 16 # multi-threading for DOAS, on KNMI workstation optimum around 6 threads
+    threads: 4 # multi-threading for DOAS, on KNMI workstation optimum around 6 threads
 
     rad_from_sgm: no
     irr_from_sgm: yes

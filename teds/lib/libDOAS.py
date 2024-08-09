@@ -1662,6 +1662,16 @@ def getDimensionsRad(radFile):
 
     return scanN,pxlN, spectralN
 
+def getDimensionsAtm(atmFile):
+    # Get scanline and groundpixel dimensions from atm file
+
+    with nc.Dataset(atmFile) as src:
+
+        scanN = src.dimensions['along_track'].size
+        pxlN = src.dimensions['across_track'].size
+
+    return scanN,pxlN
+
 def ReadIrrSGM(file, pxlN):
     '''
     Read irradiance from SGM file
@@ -2000,7 +2010,7 @@ def writeOutput(l2_file,IFDOEconfig,parameterNames,results,geo):
     
     return
 
-def readGeometry(rad_file, slice_alt, slice_act):
+def readGeometryL1b(rad_file, slice_alt, slice_act):
     # Read geometry from L1B
 
     geo = {}
@@ -2017,4 +2027,13 @@ def readGeometry(rad_file, slice_alt, slice_act):
         for key in vardict:
             geo[key] = f['geolocation_data/'+vardict[key]][slice_alt,slice_act]
 
+    return geo
+
+
+def readGeometryGm(gm_file, slice_alt, slice_act):
+    # Read geometry from GM file
+    geo = {}
+    with nc.Dataset(gm_file) as f:
+        for key in f.variables.keys():
+            geo[key] = f[key][slice_alt,slice_act]
     return geo

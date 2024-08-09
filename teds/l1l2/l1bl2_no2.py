@@ -87,6 +87,15 @@ def ifdoe_run(config, mode='no2'):
     # A.4  Setup loop bounds
 
     scanN,pxlN,spectralN = libDOAS.getDimensionsRad(cfg['io']['sgm_rad'])
+    scanN_atm,pxlN_atm = libDOAS.getDimensionsAtm(cfg['io']['sgm_atm'])
+    
+    # when using act subset, get pxlN from atm file, rad has full act shape
+    if pxlN_atm < pxlN:
+        pxlN = pxlN_atm
+        act_subset = True
+    else:
+        act_subset = False
+
 
     if 'alt' in cfg:
         scanBeg = cfg['alt']['start']
@@ -112,9 +121,13 @@ def ifdoe_run(config, mode='no2'):
     results['errorFlag'] = np.full((scanN,pxlN),np.nan)
 
 
-    # read geometry from L1B
+    # read geometry
 
-    geo = libDOAS.readGeometry(cfg['io']['l1b'],slice_alt,slice_act)
+    if act_subset: # L1B geometry not working correctly when using act subset
+        geo = libDOAS.readGeometryGm(cfg['io']['gm'],slice_alt,slice_act)
+    
+    else:
+        geo = libDOAS.readGeometryL1b(cfg['io']['l1b'],slice_alt,slice_act)
 
     # B)  Solar spectrum
     # ------------------
@@ -240,7 +253,7 @@ def ifdoe_run(config, mode='no2'):
             rad = radScan[ipxl,:]
             radError = radErrorScan[ipxl,:]
             radWvl = radWvlScan[ipxl,:]
-            
+
             #  skip if error flag is already raised
             if results['errorFlag'][iscan,ipxl] == 1 :
                 log.error('Skipping scanline {}, pixel {}: error flag'.format(iscan,ipxl))

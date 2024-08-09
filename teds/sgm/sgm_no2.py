@@ -727,6 +727,16 @@ def sgm_output_radio(config, rad_output):
 
     dims = ('along_track', 'across_track', 'wavelength')
 
+    # if act pixel subset is used, then expand array to fixed detector act size with zeros
+    nact_fixed = 100
+    if nact < nact_fixed:
+        rad_tmp = np.zeros( (nalt,nact_fixed,nlbl))
+        # start from left (also done in gm)
+        rad_tmp[:,:nact,:] = rad_output['radiance']
+        nact = nact_fixed
+    else:
+        rad_tmp = rad_output['radiance']
+
     output_rad.createDimension(dims[0], nalt)     # along track axis
     output_rad.createDimension(dims[1], nact)     # across track axis
     output_rad.createDimension(dims[2], nlbl)     # spectral axis
@@ -739,7 +749,7 @@ def sgm_output_radio(config, rad_output):
     _ = writevariablefromname(output_rad, 'solarirradiance', ('wavelength',), rad_output['solar_irradiance'])
     
     # radiance
-    _ = writevariablefromname(output_rad, 'radiance_sgm', dims, rad_output['radiance'])
+    _ = writevariablefromname(output_rad, 'radiance_sgm', dims, rad_tmp )
     
     output_rad.close()
 

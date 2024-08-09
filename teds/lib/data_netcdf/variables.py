@@ -25,7 +25,12 @@ class Variable:
         - self._fillvalue
         - self._attribute_list
         Methodes:
-        - __init__(self,name, value)
+        - __init__(self, logger, name, value, level, dimensions, dtype, fillvalue, attribute_list)
+        - __str__(self)
+        - __repr__(self)
+        - __eq__(self)
+        - __ne__(self)
+        - __del__(self)
         - get_name(self)
         - get_value(self)
         - get_level(self)
@@ -43,6 +48,7 @@ class Variable:
         - set_attribute_list(self, attribute_list)
         - write(self, parent)
         - read(self, parent, name)
+        - add(self,name, value)
     """
 
     def __init__(self, logger, name, value=None, level=2, dimensions=None, dtype=None, fillvalue=None, attribute_list = None):
@@ -57,7 +63,7 @@ class Variable:
                       - dtype: type of the variable
                       - fillvalue: fill value for this variable
                       - attribute_list: attribute list of the variable
-            Two members:
+            Members:
             - self._logger
             - self._name
             - self._value
@@ -292,36 +298,6 @@ class Variable:
             self._attribute_list = []
         return
     
-#    def find(self, name):
-#        """
-#            Get the attribute object corresponding to name name.
-#        """
-#        search_list = self._attribute_list
-#        for item in search_list:
-#            if item.get_name() == name:
-#                # item found
-#                return item
-#        #If we get here the item with name name is not found.
-#        self._logger.warning(f"Oops attribute with name {name} is not found in variable {self._name}")
-#        return None
-#
-#    def remove(self, name):
-#        """
-#            remove attribute object corresponding to name name from netcdf file
-#        """
-#        search_list = self._attribute_list
-#
-#        found_index = 9999
-#        for index, item in enumerate(search_list):
-#            if item.get_name() == name:
-#                found_index = index
-#                break
-#        if found_index != 9999:
-#            del search_list[found_index]
-#            # Todo: Does this also work on original list?
-#
-#        return
-
     def add(self,name, value):
         """
             The only thing that can be added to a variable is an attribute

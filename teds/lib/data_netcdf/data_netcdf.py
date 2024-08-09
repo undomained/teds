@@ -14,25 +14,35 @@ class DataNetCDF:
         - self._title
         - self._main_group
         Methodes:
-        - __init__(self,file_name, title, mode, main_group, variable_list, dimension_list, attribute_list)
+        - __init__(self,file_name, title, mode)
+        - __str__(self)
+        - __repr__(self)
+        - __eq__(self)
+        - __ne__(self)
         - get_file_name(self)
         - get_title(self)
         - get_main_group(self)
+        - set_logger(self, logger)
         - set_file_name(self, file_name)
         - set_title(self, title)
-        - set_main_group(self, main_group)
         - write(self)
         - read(self, file_name)
+        - find(self, name, group, var, kind)
+        - find_group(self, name)
+        - update(self, name, value, group, var, kind)
+        - get(self, name, group, var, kind)
+        - remove(self, name, group, var, kind)
+        - add(self, item, name, value, dimensions, attribute_list, group, var, kind)
     """
 
-    def __init__(self, logger, file_name, title='', mode=None, main_group=None, variable_list= None, dimension_list = None, attribute_list = None):
+    def __init__(self, logger, file_name, title='', mode=None):
         """
             initialise DataNetCDF class
             Arguments: 
                       - logger:  logger pointer
                       - file_name:  name of the netcdf file
                       - title:  title of the netcdf file
-                      - main_group: main group of the netcdf file
+                      - mode: of mode is 'r' the given file is readin
             Members:
             - self._logger
             - self._file_name
@@ -43,7 +53,9 @@ class DataNetCDF:
         self.set_logger(logger)
         self.set_file_name(file_name)
         self.set_title(title)
-        self.set_main_group(main_group)
+        # group main is always there
+        main = Group(self._logger, 'main')
+        self._main_group = main
 
         if mode == 'r':
             self.read(self._file_name)
@@ -62,7 +74,7 @@ class DataNetCDF:
         """
             A valid Python expression that can be used to recreate the object.
         """
-        return f"DataNetCDF('{self._file_name}', title='{self._title}', main_group={self._main_group})"
+        return f"DataNetCDF('{self._file_name}', title='{self._title}')"
 
     def __eq__(self, other):
         if isinstance(other, self.__class__):
@@ -92,13 +104,6 @@ class DataNetCDF:
             Set title
         """
         self._title = title
-        return
-
-    def set_main_group(self, main_group):
-        """
-            Set main group
-        """
-        self._main_group = main_group
         return
 
     def get_file_name(self):
@@ -145,12 +150,9 @@ class DataNetCDF:
         with nc.Dataset(file_name) as file_handle:
 
             # Getting meain stuff
-            print("Getting MAIN stuff...")
             main = Group(self._logger, 'main')
             main.read(file_handle)
-#            self._group_list.append(main)
             self._main_group = main
-            print("Adding GROUP MAIN to GROUP list")
 
         return
 
@@ -168,23 +170,11 @@ class DataNetCDF:
         """
         found_item = None
 
-        # Find group
-#        if group is None:
-#            groupname = 'main'
-#        else: 
-#            groupname = group
-
-#        grp = self.find_group(name=groupname)
         grp = self.find_group(name=group)
 
         if grp is None:
             self._logger.warning(f"Given group: {groupname} can not be found. So {kind} with name {name} can not be found")
             return found_item
-
-#        for gr in self._group_list:
-#            if gr.get_name() == groupname:
-#                print(f"In loop group name: {gr.get_name()}")
-#                return gr.find(name, group=group, var=var, kind=kind)
 
         # Find given object list
         if kind == 'variable':
@@ -199,7 +189,6 @@ class DataNetCDF:
                 for variable in grp.get_variable_list():
                    if variable.get_name() == var:
                        search_list = variable.get_attribute_list()
-#                       return variable.find(name)
             else:
                 # we are looking for a variable attribute!
                 search_list = grp.get_attribute_list()
@@ -289,11 +278,9 @@ class DataNetCDF:
                 for variable in grp.get_variable_list():
                    if variable.get_name() == var:
                        search_list = variable.get_attribute_list()
-#                       return variable.find(name)
             else:
                 # we are looking for a variable attribute!
                 search_list = grp.get_attribute_list()
-#            search_list = grp.get_attribute_list()
 
         # Find item on list and remove from list
         found_index = 9999
@@ -315,35 +302,29 @@ class DataNetCDF:
 
     def add(self, item=None, name=None, value=None, dimensions=None, attribute_list=None, group=None, var=None, kind='variable'):
 
+        if item is not None and name is not None:
+            warning_msg = f"Both item ({item}) and name ({name}) are set. I am confused and do not know what to do. No adding is performed"
+            return
+        if item is None and name is None:
+            warning_msg = f"Both item ({item}) and name ({name}) are NOT set. I do not know what to do. No adding is performed"
+            return
+
         #Find the group to which item needs to be added
-        print(f"IN ADD GROUP: {group}")
         grp = self.find_group(name=group)
         level = grp.get_level()
-        print(f"FOUND GROUP LEVEL {level}")
+
         # Find the list the item needs to be added to
-#            elif item_type == 'Dimensions':
-        item_type = ''
         if item is not None:
             item_type = type(item).__name__
-        if (item_type == 'Variable') or (kind == 'variable'):
-            search_list = grp.get_variable_list()
-        elif (item_type == 'Dimension') or (kind == 'dimension'):
-            search_list = grp.get_dimension_list()
-        elif (item_type == 'Group') or (kind == 'group'):
-            print(f"DO I GET HERE????")
-            search_list = grp.get_group_list()
-        elif (item_type == 'Attribute') or (kind == 'attribute'):
-            # Group attribute or variable attribute?
-            if var is not None:
-                # looking for a variable attribute!
-                var_list = grp.get_variable_list()
-                for variable in grp.get_variable_list():
-                   if variable.get_name() == var:
-                       search_list = variable.get_attribute_list()
+            if kind is None:
+                kind = item_type.lower()
             else:
-                # we are looking for a variable attribute!
-                search_list = grp.get_attribute_list()
+                if kind != item_type.lower():
+                    kind = item_type.lower()
 
+        search_list = grp.get_list(kind, var=var)
+
+        # Add to list
         if item is not None:
             item.set_level(level)
             search_list.append(item)
@@ -363,5 +344,7 @@ class DataNetCDF:
                 new_group = Group(self._logger, name, level=level+4)
                 search_list.append(new_group)
 
-        return
+#        # Set new list: should not be needed?????
+#        grp.set_list(kind, search_list, var=var)
 
+        return

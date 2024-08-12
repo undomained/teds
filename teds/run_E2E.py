@@ -115,7 +115,8 @@ def reshape_output(output_key, config):
         print(f"SHAPE of Reshaped data image: {data_reshaped.shape}")
         # Remove the 2D images
         output_data.remove('detector_image', group='science_data', kind='variable')
-        output_data.remove('detector_stdev', group='science_data', kind='variable')
+        if output_data.find('detector_stdev', group='science_data', kind='variable') is not None:
+            output_data.remove('detector_stdev', group='science_data', kind='variable')
 
         print("###################################################################")
         print("###################################################################")
@@ -330,11 +331,11 @@ def build(config, step, cfg_path, attribute_dict):
             # output dataset is 2D. In case of detector image (in case of some inbetween steps 
             # and of the final output) the second dimension is detector_pixels which is too large to view. 
             # Need to reshape to 3D to be able to make sense of this.
-            # temp_output_file = reshape_output('l1a', im_config)
+            temp_output_file = reshape_output('l1a', im_config)
 
             # Add attributes to output file
-            # if temp_output_file is not None:
-                # Utils.add_attributes_to_output(temp_output_file, attribute_dict)
+            if temp_output_file is not None:
+                Utils.add_attributes_to_output(temp_output_file, attribute_dict)
             Utils.add_attributes_to_output(im_config['io']['l1a'], attribute_dict)
         else:
             # run Python code
@@ -359,11 +360,11 @@ def build(config, step, cfg_path, attribute_dict):
             # output dataset is 2D. In case of detector image (in case of inbetween step)
             # the second dimension is detector_pixels which is too large to view. 
             # Need to reshape to 3D to be able to make sense of this.
-            # temp_output_file = reshape_output('l1b', l1b_config)
+            temp_output_file = reshape_output('l1b', l1b_config)
 
             # Add attributes to output file
-            # if temp_output_file is not None:
-                # Utils.add_attributes_to_output(log, temp_output_file, attribute_dict)
+            if temp_output_file is not None:
+                Utils.add_attributes_to_output(log, temp_output_file, attribute_dict)
             Utils.add_attributes_to_output(l1b_config['io']['l1b'], attribute_dict)
         else:
             # run Python code

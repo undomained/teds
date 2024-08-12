@@ -278,6 +278,8 @@ class Group:
         """
         if self._name == 'main':
             group = parent
+            # To be able to deal with string variables (like configuration variable from C++ code)
+            parent.createDimension('str_dim', 1)
         else:
             group = parent.createGroup(self._name)
 

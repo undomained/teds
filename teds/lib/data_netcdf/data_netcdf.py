@@ -173,7 +173,7 @@ class DataNetCDF:
         grp = self.find_group(name=group)
 
         if grp is None:
-            self._logger.warning(f"Given group: {groupname} can not be found. So {kind} with name {name} can not be found")
+            self._logger.warning(f"Given group: {group} can not be found. So {kind} with name {name} can not be found")
             return found_item
 
         # Find given object list

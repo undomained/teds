@@ -136,7 +136,10 @@ class Variable:
            Human readable printstatement.
         """
         pre = " "*self._level
-        var_string = f"{pre}- Variable with name: {self._name} with shape of data {self._value.shape}, dtype {self._dtype}, dimensions {self._dimensions}, fill value: {self._fillvalue}\n"
+        if self._dtype == 'str':
+            var_string = f"{pre}- Variable with name: {self._name} dtype {self._dtype}, dimensions {self._dimensions}, fill value: {self._fillvalue}\n"
+        else: 
+            var_string = f"{pre}- Variable with name: {self._name} with shape of data {self._value.shape}, dtype {self._dtype}, dimensions {self._dimensions}, fill value: {self._fillvalue}\n"
         if len(self._attribute_list)>0:
             var_string += f"{pre}### With attributes:\n"
             for attribute in self._attribute_list:
@@ -223,11 +226,18 @@ class Variable:
             var = parent.createVariable(self._name, self._dtype, self._dimensions, fill_value=self._fillvalue)
         elif self._dimensions is not None:
             var = parent.createVariable(self._name, self._dtype, self._dimensions)
+        elif self._dtype == 'str':
+            var = parent.createVariable(self._name, self._dtype, ('str_dim'))
         else:
             var = parent.createVariable(self._name, self._dtype)
         for attr in self._attribute_list:
             attr.write(var)
-        var[:] = self._value
+
+        if self._dtype == 'str':
+            str_array = np.array([self._value], dtype='object')
+            var[:] = str_array
+        else:
+            var[:] = self._value
         return 
 
     def read(self, parent):
@@ -235,7 +245,10 @@ class Variable:
             Read given variable information belonging to given parent from ntcdf file
         """
         self._value = parent.variables[self._name][:]
-        self._dtype = self._value.dtype
+        if isinstance(self._value, str):
+            self._dtype = 'str'
+        else:
+            self._dtype = self._value.dtype
         variable = parent.variables[self._name] #????
         self._dimensions = variable.dimensions
         nattr = variable.ncattrs()

@@ -33,10 +33,13 @@ def normalize_by_BF(logger, data, input_data):
     """
     det_cols = input_data.get_dataset('detector_column', c_name='ckd', kind='dimension')
     det_rows = input_data.get_dataset('detector_row', c_name='ckd', kind='dimension')
-    bin_id = input_data.get_dataset('binning_table_id', c_name='config', group='detector')
+    bin_id = input_data.get_dataset('binning_table', c_name='measurement', group='image_attributes', kind='variable')[0]
     table = f"Table_{bin_id}" 
     count_table = input_data.get_dataset('count_table', c_name='binning', group=table, kind='variable')
-    normalized_data = np.divide(data,np.reshape(count_table, (det_rows,det_cols)))
+    if data.shape[1] == count_table.shape[0]:
+        normalized_data = np.divide(data,count_table[np.newaxis,...])
+    else:
+        normalized_data = np.divide(data,np.reshape(count_table, (det_rows,det_cols)))
 
     return normalized_data
 
@@ -120,7 +123,7 @@ def  add_main_attributes(out_data, attributes):
         Add attributes to output file
     """
     for name, value in attributes.items():
-        out_data.add(name, value=str(value), kind='attribute')
+        out_data.add(name=name, value=str(value), kind='attribute')
     return
 
 def is_detector_image(algo_name):
@@ -174,7 +177,7 @@ def create_detector_image_output(logger, nc_output, dimensions, image_attribute_
     nc_output.add(name='binning_table', value=image_attribute_data['binning_data'], dimensions=('detector_image'), group='image_attributes', kind='variable')
     nc_output.add(name='exposure_time', value=image_attribute_data['expt_data'], dimensions=('detector_image'), group='image_attributes', kind='variable')
     nc_output.add(name='nr_coadditions', value=image_attribute_data['coadd_data'], dimensions=('detector_image'), group='image_attributes', kind='variable')
-    nc_output.add(name='image_time', value=image_attribute_data['image_time_data'], dimensions=('detector_image'), group='image_attributes', kind='variable')
+    nc_output.add(name='image_time', value=image_attribute_data['image_time'], dimensions=('detector_image'), group='image_attributes', kind='variable')
 
     # TODO need to add more attributes?
     # TODO also add standard deviation data (detector_stdev)?
@@ -211,7 +214,7 @@ def create_observation_data_output(logger, nc_output, dimensions, image_attribut
     nc_output.add(name='binning_table', value=image_attribute_data['binning_data'], dimensions=('along_track'), group='image_attributes', kind='variable')
     nc_output.add(name='exposure_time', value=image_attribute_data['expt_data'], dimensions=('along_track'), group='image_attributes', kind='variable')
     nc_output.add(name='nr_coadditions', value=image_attribute_data['coadd_data'], dimensions=('along_track'), group='image_attributes', kind='variable')
-    nc_output.add(name='image_time', value=image_attribute_data['image_time_data'], dimensions=('along_track'), group='image_attributes', kind='variable')
+    nc_output.add(name='image_time', value=image_attribute_data['image_time'], dimensions=('along_track'), group='image_attributes', kind='variable')
     # TODO add other attributes??????
     # TODO need to add standard deviation data (i_stdev)?
     # TODO Need to add group sensor_bands and wavelength data?
@@ -239,14 +242,17 @@ def initialize_output(logger, kind, input_data, algo_list, dimensions, main_attr
     # For IM get this from config file.
     # For L1B get it from data?
     n_images = dimensions['dim_alt']
-    nr_coads = input_data.get_dataset('nr_coadditions', c_name='config', group='detector')
-    expt = input_data.get_dataset('exposure_time', c_name='config', group='detector')
-    binning = input_data.get_dataset('binning_table_id', c_name='config', group='detector')
+
+    nr_coads = input_data.get_dataset('nr_coadditions', c_name='measurement', group='image_attributes', kind='variable')
+    expt = input_data.get_dataset('exposure_time', c_name='measurement', group='image_attributes', kind='variable')
+    binning = input_data.get_dataset('binning_table', c_name='measurement', group='image_attributes', kind='variable')
+    img_time = input_data.get_dataset('image_time', c_name='measurement', group='image_attributes', kind='variable')
+
     image_attribute_data = {}
-    image_attribute_data['binning_data'] = binning* np.ones((n_images,))
-    image_attribute_data['expt_data'] = expt* np.ones((n_images,))
-    image_attribute_data['coadd_data'] = nr_coads* np.ones((n_images,))
-    image_attribute_data['image_time_data'] = np.zeros((n_images,))
+    image_attribute_data['binning_data'] = binning
+    image_attribute_data['expt_data'] = expt
+    image_attribute_data['coadd_data'] = nr_coads
+    image_attribute_data['image_time'] = img_time
 
     # Check which is last algo in list
     # This is indication of the data are detector images or spectra.
@@ -312,9 +318,7 @@ def l1b_processor(config, logger, main_attributes):
         ckd_data = input_data.get_dataset(ckd_name, c_name='ckd', group=group_name, kind='variable')
         print(f"CKD data found: {ckd_data}")
         binned_data = apply_binning(logger, ckd_data, input_data, apply_norm=True)
-        print(f"Updated CKD data found: {ckd_data}")
         input_data.update_dataset(ckd_name, data=binned_data, c_name='ckd', group=group_name)
-
 
     # Get the list of algorithms from proctable file
     algo_list_input = input_data.get_dataset('algo_list', c_name='config', group='proctable')
@@ -323,14 +327,15 @@ def l1b_processor(config, logger, main_attributes):
 
 #    l1a_data = input_data.get_dataset('l1a', c_name='measurement', kind='variable')
     l1a_data = input_data.get_dataset('detector_image', c_name='measurement', group='science_data', kind='variable')
-    # Normalize by BF
-    l1a_data = normalize_by_BF(logger, l1a_data, input_data)
 
-    #Note: this is the along track dimension
-#    n_images = radiance_data.shape[0]
+    n_image_total = l1a_data.shape[0]
     # requested number of images:
-    image_start = config['image_start']
-    image_end = config['image_end']
+    image_start = 0
+    image_end = l1a_data.shape[0] - 1
+    if 'image_start' in config:
+        image_start = config['image_start']
+    if 'image_end' in config:
+        image_end = config['image_end']
     # image_end is up and including
     n_images = image_end+1 - image_start
 
@@ -339,8 +344,19 @@ def l1b_processor(config, logger, main_attributes):
     dim_spec = input_data.get_dataset('detector_column', c_name='ckd', kind='dimension')
     dim_act = input_data.get_dataset('across_track', c_name='ckd', kind='dimension')
 
+    if len(l1a_data.shape) == 2:
+        # C++ l1a file is 2D: n_images x n_pixels. reshape to 3D (n_images x n_rows x n_cols):
+        l1a_data = np.reshape(l1a_data, (n_image_total, dim_spat,dim_spec))
+
+    # Normalize by BF
+    l1a_data = normalize_by_BF(logger, l1a_data, input_data)
+
+
     # Find binned row dimension
-    bin_id = input_data.get_dataset('binning_table_id', c_name='config', group='detector', kind='variable')
+    # Note: entry for each image. Assume that binning table for each image is the same
+    # If n_pix changes over time because of chaning binning table, then different meadsurement sets.
+    # not able to use one array anyway.
+    bin_id = input_data.get_dataset('binning_table', c_name='measurement', group='image_attributes', kind='variable')[0]
     table = f"Table_{bin_id}"
     nr_binned_pixels = input_data.get_dataset('bins', c_name='binning', group=table, kind='dimension')
     binned_rows = int(nr_binned_pixels/dim_spec)

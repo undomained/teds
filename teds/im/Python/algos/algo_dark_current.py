@@ -44,7 +44,11 @@ class Dark_Current(Algorithm):
             return
 
         dark_current = input_data.get_dataset('current', c_name='ckd', group='dark', kind='variable')
-        exposure_time = input_data.get_dataset('exposure_time', c_name='config', group='detector', kind='variable')
+
+        if kind == 'IM':
+            exposure_time = input_data.get_dataset('exposure_time', c_name='config', group='detector', kind='variable')
+        else:
+            exposure_time = input_data.get_dataset('exposure_time', c_name='measurement', group='image_attributes', kind='variable')[0]
 
         pixel_mask = input_data.get_dataset('pixel_mask', c_name='ckd', kind='variable')
         new_image = copy.deepcopy(image)

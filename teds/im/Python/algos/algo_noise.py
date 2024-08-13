@@ -72,8 +72,13 @@ class Noise(Algorithm):
             bad_pixels = variance < 0.
             pixel_mask[bad_pixels] = 1
             good_pixels = variance >= 0.
-            nr_coadditions = input_data.get_dataset('nr_coadditions', c_name='config', group='detector')
-            bin_id = input_data.get_dataset('binning_table_id', c_name='config', group='detector')
+
+            # For L1B this info comes from l1a netcdf file
+            nr_coadditions = input_data.get_dataset('nr_coadditions', c_name='measurement', group='image_attributes', kind='variable')[0]
+
+            # For L1B this info comes from l1a netcdf file
+            bin_id = input_data.get_dataset('binning_table', c_name='measurement', group='image_attributes', kind='variable')[0]
+
             table = f"Table_{bin_id}" 
             count_table = input_data.get_dataset('count_table', c_name='binning', group=table, kind='variable')
             count_table = np.reshape(count_table, variance.shape)

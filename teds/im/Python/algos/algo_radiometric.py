@@ -35,7 +35,10 @@ class Radiometric(Algorithm):
 
         radiometric = input_data.get_dataset('radiometric', c_name='ckd', group='radiometric', kind='variable')
 
-        exposure_time = input_data.get_dataset('exposure_time', c_name='config', group='detector', kind='variable')
+        if kind == 'IM':
+            exposure_time = input_data.get_dataset('exposure_time', c_name='config', group='detector', kind='variable')
+        else:
+            exposure_time = input_data.get_dataset('exposure_time', c_name='measurement', group='image_attributes', kind='variable')[0]
 
         factor = (1.0/(exposure_time)) * radiometric
         if kind == 'IM':

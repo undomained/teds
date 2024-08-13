@@ -34,7 +34,11 @@ class Binning(Algorithm):
 
         self._logger.debug(f"Execute code from {self._algo_name} class")
 
+        # For IM this info comes from config file
         bin_id = input_data.get_dataset('binning_table_id', c_name='config', group='detector')
+        if bin_id is None:
+            # For L1B this info comes from l1a netcdf file
+            bin_id = input_data.get_dataset('binning_table', c_name='measurement', group='image_attributes', kind='variable')[0]
         table = f"Table_{bin_id}" 
         print(f"Fetching binning table: {table}")
         count_table = input_data.get_dataset('count_table', c_name='binning', group=table, kind='variable')

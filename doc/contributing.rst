@@ -133,8 +133,8 @@ In addition to PEP 8, here are some additional rules specific to the TEDS projec
 
 * Do not use non-ASCII symbols.
 * Do not use an empty class for the purpose of amending it across functions. Use a dictionary or, better, inherit from an existing class.
-* Do not commit commented out code. The code should either be there or not. If not sure, just don't commit that part at all and come back later.
-* Do not commit things like TODO lists unless you are convinced they are informative for everybody. You can keep a TODO comment in the code but there is no need to commit it.
+* Try not to commit commented out code. If it's work in progress, just skip over that part of the code when committing (``git add --patch``) and come back later.
+* Do not commit things like TODO lists unless you are convinced they are informative for everybody.
 * Group imports as follows: standard system libraries followed by local libraries. Separate the groups by blank lines. Within a group, sort the imports alphabetically. This also means that ``from ...`` should come before ``import ...``. Do not import multiple things on one line.
 
 

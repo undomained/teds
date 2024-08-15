@@ -67,6 +67,7 @@ auto driver(const SettingsIM& settings,
     printHeading("Reading CKD and input data");
     const CKD ckd { settings.io.ckd };
 
+    printHeading("Initialize the binning table");
     // Initialize the binning table
     const BinningTable binning_table { ckd.n_detector_rows,
                                        ckd.n_detector_cols,

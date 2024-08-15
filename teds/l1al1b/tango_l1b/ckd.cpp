@@ -23,6 +23,23 @@ static auto getAndReshape(const netCDF::NcVar& nc_var,
     }
 }
 
+static auto getAndReshape3D(const netCDF::NcVar& nc_var,
+                          std::vector<std::vector<std::vector<double>>>& dest) -> void
+{   
+    int dim0 = dest.size();
+    int dim1 = dest.front().size();
+    int dim2 = dest.front().front().size();
+    std::vector<double> buffer(dim0 * dim1 * dim2);
+    nc_var.getVar(buffer.data());
+    for (int i {}; i < dim0; ++i) {
+        for (int j {}; j < dim1; ++j) {
+            for (int k {}; k < dim2; ++k) {
+                dest[i][j][k] = buffer[i * (dim1 * dim2) + j * dim2 + k];
+            } 
+        }
+    }
+}
+
 CKD::CKD(const std::string& filename, const double spectrum_width)
 {
     const netCDF::NcFile nc { filename, netCDF::NcFile::read };
@@ -30,6 +47,7 @@ CKD::CKD(const std::string& filename, const double spectrum_width)
     n_detector_cols = static_cast<int>(nc.getDim("detector_column").getSize());
     npix = n_detector_cols * n_detector_rows;
     n_act = static_cast<int>(nc.getDim("across_track").getSize());
+    n_lbl = static_cast<int>(nc.getDim("lbl_samples").getSize());
     // Read the pixel mask which is possibly not yet in its final
     // state. It may be updated by one or more detector calibration
     // steps.
@@ -129,8 +147,22 @@ CKD::CKD(const std::string& filename, const double spectrum_width)
         !grp.isNull()) {
         spdlog::info("Reading radiometric CKD");
         rad.enabled = true;
-        rad.rad.resize(n_act, std::vector<double>(n_detector_cols));
+        rad.rad.resize(n_act, std::vector<double>(n_lbl));
         getAndReshape(grp.getVar("radiometric"), rad.rad);
+        // Resize 3D ISRF 
+        n_isrf_samples = static_cast<int>(grp.getDim("isrf_samples").getSize());
+        rad.isrf.resize(n_act);
+        rad.isrf_wl.resize(n_act);
+        for (int i = 0; i < n_act; ++i){
+            rad.isrf[i].resize(n_lbl);
+            rad.isrf_wl[i].resize(n_lbl);
+            for (int j = 0; j < n_lbl; ++j){
+                rad.isrf[i][j].resize(n_isrf_samples);
+                rad.isrf_wl[i][j].resize(n_isrf_samples);
+            }
+        }
+        getAndReshape3D(grp.getVar("isrf"), rad.isrf);
+        getAndReshape3D(grp.getVar("isrf_wavelengths"), rad.isrf_wl);
     }
 }
 

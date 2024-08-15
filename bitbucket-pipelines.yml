@@ -4,8 +4,7 @@ definitions:
   steps:
     - step: &step-defaults
         runs-on:
-          - self.hosted
-          - linux
+          - linux.shell
         size: 8x #  32 GiB
 
 pipelines:

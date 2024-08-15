@@ -27,22 +27,18 @@ def get_logger():
 
     return logger
 
-def getConfig(cfgFile):
+def get_config(cfg_file):
     """
         Get the config information from the configuration file
-       - logger: Reference to the program logger
-       - cfgFile: configuration file
+       - cfg_file: configuration file
        return:
        - configuration: configuration info
     """
-    cfg_path, filename = os.path.split(cfgFile)
+    cfg_path, filename = os.path.split(cfg_file)
 
-    config_input = Input_yaml(log, cfgFile)
+    config_input = Input_yaml(log, cfg_file)
     config = config_input.read()
-    # print(f"{config_input}")
 
-#    stream =  open(cfgFile, 'r')
-#    config = yaml.safe_load(stream)
     if 'header' in config.keys():
         config['header']['path']=cfg_path
     else:

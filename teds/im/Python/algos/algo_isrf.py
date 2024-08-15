@@ -3,6 +3,8 @@ import time
 
 from teds.im.Python.algos.algo_base import Algorithm
 
+import matplotlib.pyplot as plt
+
 class ISRF(Algorithm):
     """
         Sub class of base class Algorithm
@@ -17,6 +19,7 @@ class ISRF(Algorithm):
         self._logger = logger
         self._algo_name = algo_name
         self._data = None
+        self._do_wldep_isrf = False
         self._logger.debug("INIT ISRF module")
 
 
@@ -25,8 +28,51 @@ class ISRF(Algorithm):
             Check input data
         """
         self._logger.debug(f"Check INPUT from {self._algo_name} class")
-        # TODO: What would be a usefull check?
 
+        # Check if input image and ISRF CKD have the same wavelength grids
+        image = input_data.get_dataset('image', c_name = 'work')
+        wavelength = input_data.get_dataset('wavelength', c_name='measurement', kind='variable')
+        n_act = image.shape[0]
+        wavelength = np.tile(wavelength, (n_act,1)) # tile wavelengths to act_pos
+
+        # 3D isrf data, one ISRF per wavelength. 
+        # Wavelength grid should be equal to wavelength grid of input radiance.
+        isrf_args = {"c_name" : 'ckd', "group" : 'radiometric', "kind" : 'variable'}
+        isrf    = input_data.get_dataset('isrf', **isrf_args)
+        isrf_wl = input_data.get_dataset('isrf_wavelengths', **isrf_args)
+        
+        # Set correct 
+        dimsizes = np.array(isrf.shape)
+        dim0 = np.flatnonzero(dimsizes == wavelength.shape[0])
+        dim1 = np.flatnonzero(dimsizes == wavelength.shape[1])
+        
+        if not (len(dim0) or not len(dim1)): # no matches in dimensions size
+            msg = f"ISRF CKD wavelength grid does not match input wavelengths, using constant ISRF"
+            self._logger.warning(msg)
+            self._do_wldep_isrf = False
+        else: # put dimensions in correct order
+            isrf = np.transpose(isrf, (dim0[0], dim1[0], 2))
+            isrf_wl = np.transpose(isrf_wl, (dim0[0], dim1[0], 2))
+            input_data.update_dataset('isrf', 'ckd', isrf, group = 'radiometric')
+            input_data.update_dataset('isrf_wavelengths', 'ckd', isrf_wl, group = 'radiometric')
+
+            center_ix = int(isrf_wl.shape[2]/2)
+            isrf_wl_center = isrf_wl[:,:, center_ix] # get center wavelength of ISRF shapes
+
+            # shape wavelength grids are same, now check the values
+            diff_wl = 0
+            for i_act in range(wavelength.shape[1]):
+                # find difference in wavelength up to 3 decimals
+                diff_per_act = np.round(np.abs(isrf_wl_center[:,i_act] - wavelength[:,i_act]), 3)
+                # add sum over the entire act pos
+                diff_wl += np.sum(diff_per_act)
+            if not diff_wl:
+                self._do_wldep_isrf = True
+            else:
+                msg = f"ISRF CKD wavelength values do not match input wavelengths, using constant ISRF"
+                self._logger.warning(msg)
+                self._do_wldep_isrf = False
+    
     def apply_lin_interpol(self, input_data):
         """
             Linearly interpolate the line-by-line spectra onto 
@@ -46,6 +92,48 @@ class ISRF(Algorithm):
             interp_data[i_act,:] = np.interp(wavemap[i_act,:], wavelength, image[i_act,:])
 
         return interp_data
+                         
+
+    def apply_isrf_wldep(self, input_data):
+        """
+            Convolve the radiances with an ISRF from the line-by-line grid
+            onto the target grids taken from the CKD.
+            Using wavelength dependent ISRF shape from CKD
+        """
+        
+        self._logger.debug('Applying wavelength dependent ISRF')
+
+        image = input_data.get_dataset('image', c_name = 'work')
+        wavelength = input_data.get_dataset('wavelength', c_name='measurement', kind='variable')
+        wavelength = np.tile(wavelength, (image.shape[0],1)) # tile wavelengths to act_pos
+
+        # Wavelength grid should be equal to wavelength grid of input radiance.
+        isrf_args = {"c_name" : 'ckd', "group" : 'radiometric', "kind" : 'variable'}
+        isrf = input_data.get_dataset('isrf', **isrf_args)
+        isrf_wl = input_data.get_dataset('isrf_wavelengths', **isrf_args)
+
+        n_actpos = isrf_wl.shape[0]
+        n_wavelengths = isrf_wl.shape[1]
+        n_samples_isrf = isrf_wl.shape[2]
+        center_ix = int(n_samples_isrf/2)
+
+        image_conv = np.zeros(image.shape, dtype = float)
+        for i_act in range(n_actpos):
+            for i_wl in range(n_wavelengths):
+                # left/right part of first/last isrf samples is outside wl range
+                i_isrf_0 = np.max([center_ix - i_wl, 0]) 
+                i_isrf_1 = np.min([n_wavelengths + center_ix - i_wl - 1, n_samples_isrf - 1])
+                i_img_0 = np.max([i_wl - center_ix, 0])
+                i_img_1 = np.min([i_wl + center_ix, n_wavelengths - 1])
+
+                this_isrf = isrf[i_act, i_wl, i_isrf_0:i_isrf_1]
+                weights =  this_isrf / np.sum(this_isrf) 
+
+                # apply convolution
+                image_conv[i_act, i_wl] = np.sum(image[i_act, i_img_0:i_img_1] * weights)
+
+        return image_conv
+
 
 
     def apply_isrf_fancy(self,input_data):
@@ -131,8 +219,8 @@ class ISRF(Algorithm):
         self._logger.debug(f"NEW SHAPE: {wavelength.shape}")
 
         # Wavelength map from ckd
-        wavemap = input_data.get_dataset('wavelength', c_name='ckd', group='spectral', kind='variable')
-        self._logger.debug(f"WAVEMAP SHAPE: {wavemap.shape}")
+        #wavemap = input_data.get_dataset('wavelength', c_name='ckd', group='spectral', kind='variable')
+        #self._logger.debug(f"WAVEMAP SHAPE: {wavemap.shape}")
 
         fwhm_gauss = input_data.get_dataset('fwhm_gauss', c_name='config', group='isrf')
         self._logger.debug(f"input fwhm: {fwhm_gauss}")
@@ -141,7 +229,7 @@ class ISRF(Algorithm):
         n_det_cols = input_data.get_dataset('detector_column', c_name='ckd', kind='dimension')
 
         # Create image with new dimensions
-        image_conv = np.zeros((image.shape[0], n_det_cols))
+        image_conv = np.zeros((image.shape))
 
         # calculate factors to use in gauss calculation
         sigma = fwhm_gauss/(2.*np.sqrt(2.*np.log(2.)))
@@ -191,12 +279,15 @@ class ISRF(Algorithm):
 
         do_isrf = input_data.get_dataset('enabled', c_name='config', group='isrf')
         if do_isrf :
-            image_conv = self.apply_isrf(input_data)
+            if self._do_wldep_isrf:
+                # apply wavelength dependent isrf if isrf-ckd and input matches
+                self._data = self.apply_isrf_wldep(input_data) 
+            else:
+                # apply same isrf shape to every wavelength
+                self._data = self.apply_isrf(input_data)
         else:
-            image_conv = self.apply_lin_interpol(input_data)
-
-        self._data = image_conv
-
+            self._data = self.apply_lin_interpol(input_data)
+        
         return
 
 

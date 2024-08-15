@@ -318,8 +318,9 @@ def instrument_model(config, logger, main_attributes):
 
             logger.debug(f"AFTER RUNNING ALGO SHAPE IMAGE: {image.shape}")
 
-            logger.debug(f"Updating measurement dataset for container {algo_name} with image nr {img}")
-            output_datasets.update_dataset('measurement', data=image, c_name=algo_name, img=img)
+            #TODO: how to adjust dimensions of these containers
+            #logger.debug(f"Updating measurement dataset for container {algo_name} with image nr {img}")
+            #output_datasets.update_dataset('measurement', data=image, c_name=algo_name, img=img)
 
             input_data.update_dataset('image', 'work',image)
             this_dataset = output_datasets.get_dataset('measurement', c_name=algo_name, kind='variable')

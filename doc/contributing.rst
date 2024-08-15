@@ -3,7 +3,7 @@ Contributing
 
 In this section, we lay out rules and recommendations for contributing to this project. A set of rules (a coding style guide) is essential for any development team to ensure code readability and integrity. As a developer, you should pause to go through either all of the rules or ones that are relevant to you depending on what you are currently working on, so that when you commit new code it will pass all linter, regression, and other tests.
 
-It is worth mentioning that all guidelines listed in section are quite standard and used by the majority of the software community. Furthermore, we include only a small set here to minimize the learning curve for a new contributor.
+It is worth mentioning that all guidelines listed in section are quite standard and used by the majority of the Python and C++ communities. Adopting and getting used to these will hopefully also benefit you with any future projects.
 
 
 Git
@@ -116,33 +116,75 @@ If a pull request was created for the ``new-feature`` branch on Bitbucket and yo
 again to update the master branch so that it includes the new feature.
 
 
+Python
+-------
+
+
+Style guide
+^^^^^^^^^^^
+
+This project follows the PEP 8 style guide which is universally adopted by most Python projects. It is also the standard used for the Python standard library development and is described in full here: https://peps.python.org/pep-0008/.
+
+In order to see if your code conforms to the standard, configure your editor to highlights parts of the code that do not conform or use an external tool to do so. One such tool is ``flake8`` which is part of ``requirements.txt`` (the executable is in your path if the virtual environment is activated). You can test the correctness of a source file by running ``flake8 file.py``. This tool compares the source file(s) to a set of rules defined by PEP 8 and generates a report per source file. If everything conforms to the standard there should be no output. Writing readable code is important for *i)* reducing the likelihood of future bugs and *ii)* reducing the time it takes for someone (including yourself) to read and contribute to the code.
+
+``flake8_check.sh``, found in the root source directory, checks all Python source files with some exceptions listed in the script. It is run as one of the steps in the Bitbucket pipeline when new code is pushed. If there are style errors in any of the source files the pipeline fails.
+
+In addition to PEP 8, here are some additional rules specific to the TEDS project:
+
+* Do not use non-ASCII symbols.
+* Do not use an empty class for the purpose of amending it across functions. Use a dictionary or, better, inherit from an existing class.
+* Try not to commit commented out code. If it's work in progress, just skip over that part of the code when committing (``git add --patch``) and come back later.
+* Do not commit things like TODO lists unless you are convinced they are informative for everybody.
+* Group imports as follows: standard system libraries followed by local libraries. Separate the groups by blank lines. Within a group, sort the imports alphabetically. This also means that ``from ...`` should come before ``import ...``. Do not import multiple things on one line.
+
+
+Type hints
+^^^^^^^^^^
+
+*coming soon..*
+
+
+Doc-strings
+^^^^^^^^^^^
+
+*coming soon..*
+
+
 Regression tests
-----------------
+^^^^^^^^^^^^^^^^
 
 When contributing a new feature or fix, it is important not to break anything in other parts of the code. To make sure that previously developed and tested software still performs after a change - in other words that there has not been a regression -  we run *regression tests* before every commit. If any of the tests fail, the conflict must be resolved so that all tests pass.
 
-The tests are written using Catch2 which is a C++ testing framework. Catch2 needs to be separately installed if not already present on your system. Tests can then be run with
+Besides running tests in your development environment, the test suite is run automatically in a *runner* with each push to Bitbucket. The status of the latest run of the test suite is seen at the repository's overview page: https://bitbucket.org/sron_earth/teds (on the right side you will find something like "Pipeline # for master"). Detailed logs of all tests are found by clicking on Pipelines on the left side of the page.
 
-.. code-block:: bash
-
-   cmake --build . --target test
-
-Each test is an executable in ``tests`` in your build directory so you can also run them manually one by one.
-
-In addition to the tests you run in your development environment, the test suite is also run automatically in a *runner* with each push to Bitbucket. The status of the latest run of the test suite is seen at the repository's overview page: https://bitbucket.org/sron_earth/teds (on the right side you will find something like "Pipeline # for master"). Detailed logs of all tests are found by clicking on Pipelines on the left side of the page. Even if the tests passed in your own development environment it is still possible for them to fail in the runner. If so, the cause of the failure(s) should be tracked and resolved.
-
-A new piece of code or a bug fix typically warrants a new test or amendments to existing tests. It is thus normal for tests to keep growing over time and even exceed the amount of normal code.
+A new piece of code or a bug fix typically warrants a new test or amendments to existing tests. It is thus normal for tests to keep growing over time and sometimes even exceed the amount of normal code.
 
 
 C++
 ---
 
-Code linters
-^^^^^^^^^^^^
+Style guide
+^^^^^^^^^^^
 
-Code linting is an automated process that checks code syntax and readability by comparing it to a set of rules. Writing readable and stable code is important for *i)* reducing the likelihood of future bugs and *ii)* reducing the time it takes for someone (including yourself) to read and contribute to the code. In TEDS, we make use of two linters for that purpose.
+In TEDS, we make use of two C++ linters of which only one is mandatory. Code linting is an automated process that checks code syntax and readability by comparing it to a set of rules. It's basically the same thing as what ``flake8`` does for Python.
 
-``clang-tidy`` is a Clang based C++ linter tool for diagnosing style violations, interface misuse, and violations of best practices. Just like with regression tests, before comitting, you should run ``clang-tidy`` on the source code. CMake has built-in support for that so all you need to do is run
+The first tool, called ``clang-format``, checks for formatting violations. You can run it by issuing
+
+.. code-block:: bash
+
+   clang-format file.cpp | diff -u file.cpp -
+
+on a source file or
+
+.. code-block:: bash
+
+   bash clang_format_check.py <clang-format>
+
+in the root source directory where ``<clang-format>`` is the ``clang-format`` executable. If the script returns a diff then there are source code formatting errors which should be resolved before committing.
+
+The second tool, called ``clang-tidy``, is a Clang based C++ linter for diagnosing style violations, interface misuse, and violations of best practices. Just like with regression tests, before comitting, it would be good to run ``clang-tidy`` on the source code but it is not enforced at the moment because it will require some effort to make the code fully compliant.
+
+CMake has built-in support for ``clang-tidy`` so all you need to do is run
 
 .. code-block:: bash
 
@@ -154,15 +196,37 @@ in the build directory and recompile. You can keep this on but if it noticeably 
 
    cmake -U CMAKE_CXX_CLANG_TIDY .
 
-The second code linter used is ``clang-format`` which only checks for formatting violations. You can run it by issuing
+``clang-format`` is run automatically along with regression tests at each push to the repository whereas ``clang-tidy`` is not. We leave it up to the developer to run ``clang-tidy`` and inspect its output manually for now.
+
+
+Coding rules
+^^^^^^^^^^^^
+
+The general rule is to follow the C++20 standard. Other than that we don't list the rules in detail because ``clang-tidy`` and ``clang-format`` are already quite exhaustive. If those pass then normally the code is correctly formatted.
+
+That said, here is a small selection of rules we want to draw the contributor's attention to:
+
+* The line limit is 80 characters.
+* Never use ``use namespace``.
+* Use camel case for function and class names and underscores otherwise.
+* When writing comments follow the rules of English grammar. Start all comments, if possible, with capitalization. If the comment is one or more whole sentences use normal punctuation. However, if the comment is a single sentence that fits into one line, do not end with a period. Do not end non-sentences with a period.
+* Use spaces in argument lists and with most binary operations.
+* Always use signed integers - ideally the default ``int`` - over unsigned ones unless there is a compelling reason to do otherwise like if you read or write a NetCDF4 variable that is defined to be unsigned. When using integer types other than the default one, use fixed-width ones. For example, if you need to represent a value larger than 2^31, prefer the 64-bit type ``int64_t``.
+
+Most of those rules are already covered by the aforementioned code linters. For further tips on the best practices of C++ coding, here is an excellent source: https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines
+
+
+Regression tests
+^^^^^^^^^^^^^^^^
+
+The C++ tests are written using the Catch2 testing framework. Catch2 needs to be separately installed if not already present on your system. Tests can then be run with
 
 .. code-block:: bash
 
-   bash clang_format_check.py <clang-format>
+   cmake --build . --target test
 
-in the root source directory where ``<clang-format>`` is the ``clang-format`` executable. If there are no source code formatting errors the script will report so. Otherwise, the error should be resolved before committing. This requirement does not hold for the tests directory.
+in either the IM or L1A-L1B processor build directory. Each test is an executable in ``tests`` in the build directory so you can also run them manually one by one.
 
-``clang-format`` is run automatically along with regression tests at each push to the repository whereas ``clang-tidy`` is not. We leave it up to the developer to run ``clang-tidy`` and inspect its output manually for now.
 
 Code coverage
 ^^^^^^^^^^^^^^^
@@ -177,66 +241,50 @@ then turn it off again:
    cmake --build . --target coverage
    cmake -DINCLUDE_COVERAGE=OFF .
 
-Coding rules
-^^^^^^^^^^^^
+From the report you can see the percentage of code lines covered by tests and also a breakdown per source file. Ideally, we should strive for 100% code coverage but in practice that's rarely achieved. Getting to 90% is already pretty good.
 
-The general rule is to follow the C++20 standard. Other than that we don't list here every small rule because ``clang-tidy`` and ``clang-format`` are already quite exhaustive. If those pass then normally you're good to go.
 
-That said, here is a small selection of rules we want to draw the contributor's attention to:
+Bitbucket pipelines
+-------------------
 
-* The line limit is 80 characters.
-* Never use ``use namespace``.
-* Use camel case for function and class names and underscores otherwise.
-* When writing comments follow the rules of English grammar. Start all comments, if possible, with capitalization. If the comment is one or more whole sentences use normal punctuation. However, if the comment is a single sentence that fits into one line, do not end with a period. Do not end non-sentences with a period.
-* Use spaces in argument lists and with most binary operations.
-* Always use signed integers - ideally the default ``int`` - over unsigned ones unless there is a compelling reason to do otherwise, for instance if you read or write a NetCDF4 variable that is defined to be unsigned. When using integer types other than the default one, use fixed-width ones. For example, if you need to represent a value larger than 2^31, prefer the 64-bit type ``int64_t``.
+All tests (e.g. code analysis and regression) are run in a Docker container each time new code is pushed to the repository. As a developer, there is normally no need to run the container yourself. You might wish to do so, however, if the regression tests pass on your computer but fail in the runner. Then entering the container allows you to debug the issue in the exact same environment as where the tests are run.
 
-Most of those rules are already covered by the aforementioned code linters. For further tips on the best practices of C++ coding, here is an excellent source: https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines
+The recipe for how the Docker image is built is found in ``CI/docker_image/Dockerfile``. You can build it yourself, if you wish, by issuing
+
+.. code-block:: bash
+
+   cd CI/docker_image
+   sudo docker build -t tango .
+
+or just pull the latest copy of the image from Docker Hub:
+
+.. code-block:: bash
+
+   sudo docker pull raullaasner/tango
+
+The image presents a minimal environment, based on Ubuntu 24.04, with all the TEDS prerequisites installed. You can generate a container from the image and enter it via
+
+.. code-block:: bash
+
+   sudo docker run -it --rm raullaasner/tango
+
+When done, issue ``Ctrl+D`` to exit and delete the container.
+
+Commands that are run inside the container each time new code is pushed are found in ``bitbucket-pipelines.yml`` in the root source directory. Those steps constitute the so-called pipeline. You can see the status of each pipeline at https://bitbucket.org/sron_earth/teds/pipelines. If the pipeline succeeded then on the main repository page, https://bitbucket.org/sron_earth/teds, you can find a green tick mark (usually lower right corner of the page). If the latest pipeline failed then there is a red cross mark. That is a signal to other developers and users that there could be issues with the code and they should not use the most recent version until the issues are resolved.
 
 
 Contributing to this document
 -------------------------------
 
-This documentation is hosted by Read the Docs service and is generated using the Sphinx documentation tool. The markup language used for writing the documentation is reStructuredText. It is recommended to go through at least one reStructuredText tutorial and look at the ``rst`` files that make up this documentation before contributing.
+This documentation is hosted by Read the Docs service and is generated using the Sphinx documentation tool. The markup language used for writing the documentation is called reStructuredText. It is advisable to work through a reStructuredText tutorial and look at the ``rst`` files that make up this documentation before contributing.
 
-In order to contribute, clone the public repository where this documentation is hosted:
-
-.. code-block:: bash
-
-   git clone git@bitbucket.org:sron_earth/teds.git
-
-Sphinx is a Python package and in order to ensure compatibility with the correct Python packages, it is important to work in a Python virtual environment. You can create a virtual environment with
-
-.. code-block:: bash
-
-   python -m venv venv
-
-and activate it with
-
-.. code-block:: bash
-
-   source venv/bin/activate
-
-You will notice that the shell's prompt has changed to remind you that you are in a virtual environment. Any packages installed with the Python ``pip`` command are now part of the current project only. Correct versions of packages that are required for this project are listed in ``requirements.txt``. Install them all by issuing
-
-.. code-block:: bash
-
-   pip install --upgrade pip
-   pip install -r requirements.txt
-
-When making changes to the documentation you can view the result by running
+When making changes to the documentation, you can view the result by running
 
 .. code-block:: bash
 
    make html
 
-in the root directory and opening ``build/html/index.html`` in a web browser. When done editing, commit and push to the repository,
-
-.. code-block:: bash
-
-   git push
-
-Read the Docs service will automatically pick up the changes and update https://teds.rtfd.io/ within minutes.
+in the root directory and opening ``build/html/index.html`` in a web browser. When done editing, commit and push to the repository. Read the Docs service will automatically pick up the changes and update https://teds.rtfd.io/ within minutes.
 
 
 Debugging with GDB
@@ -303,7 +351,7 @@ A debugger is a tool to run the target program under controlled conditions that 
 
   .. code-block:: bash
 
-     print ckd.dim_fov
+     print ckd.n_act
 
 - Display a stack trace of the function calls that lead to a segmentation fault,
 
@@ -328,7 +376,7 @@ A debugger is a tool to run the target program under controlled conditions that 
 Performance profiling with Perf
 --------------------------------
 
-The IM and L1A-L1B processor are applications of high performance computing with a focus on translating scientific equations into code and optimizing it for speed and memory. While both are important, typically more time is spent on the speed (timing) analysis which means identifying hotspots in the code and attempting to improve the performance in those regions.
+This section is optional and only useful if you're optimizing the C++ code. The IM and L1A-L1B processor are applications of high performance computing with a focus on translating scientific equations into code and optimizing it for speed and memory. While both are important, typically more time is spent on the speed (timing) analysis which means identifying hotspots in the code and attempting to improve the performance in those regions.
 
 The most basic form of timings analysis is looking at the total time it takes for a calculation to run or looking at the timings of individual components as seen in the output of the code. For a more in-depth understanding of where the bottlenecks occur it is better to use a profiling tool. This section describes how to use the Perf tool.
 
@@ -343,7 +391,7 @@ In this section, we present a few example commands to get you started with using
 .. code-block:: bash
 
    perf stat -e cycles,instructions,cache-references,cache-misses,L1-dcache-loads,\
-   L1-dcache-load-misses,branches,branch-misses tango_l1b.x cfg.cfg
+   L1-dcache-load-misses,branches,branch-misses tango_l1b.x im.yaml
 
 where the ``-e`` flag specifies which events are measured, will output something like::
 
@@ -366,7 +414,7 @@ In order to identify the hotspots, i.e. to measure events attributed to a specif
 .. code-block:: bash
 
    perf record -e cycles,instructions,cache-references,cache-misses,branches,\
-   branch-misses,L1-dcache-loads,L1-dcache-load-misses tango_l1b cfg.cfg
+   branch-misses,L1-dcache-loads,L1-dcache-load-misses tango_l1b im.yaml
 
 Then analyze the results using ``perf report``:
 

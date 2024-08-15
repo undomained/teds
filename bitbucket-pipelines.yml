@@ -12,7 +12,6 @@ pipelines:
         <<: *step-defaults
         name: Python
         script:
-          - . /etc/profile
           - python -m venv venv
           - source venv/bin/activate
           - pip install --upgrade pip
@@ -22,7 +21,6 @@ pipelines:
         <<: *step-defaults
         name: C++
         script:
-          - . /etc/profile
           - bash clang_format_check.sh clang-format-18
           - mkdir build-l1b
           - cmake -G Ninja -C CI/initial_cache.cmake -S teds/l1al1b -B build-l1b

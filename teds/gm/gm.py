@@ -109,16 +109,30 @@ def get_single_swath(config):
     return vza, vaa, sza, saa, lat_grid, lon_grid
 
 def get_orbit(config):
-    """
-        Generate the gm output for an orbit
-        configure satellite and propagate orbit
+    """Generate the gm output for an orbit.
 
-        return vza : viewing zentih angle; numpy array
-               vaa : viewing azimuth angle; numpy array
-               sza : solar zenith angle; numpy array
-               saa : solar azimuth angle; numpy array
-               lat_grid : pixel latitude grid; numpy array
-               lon_grid: pixel_longitude grid, numpy array
+    Simulate orbit and sensor
+    and calculate ground pixel information
+
+    Parameters
+    ----------
+        config: dict
+            gm config from YAML file
+
+    Returns
+    ----------
+        vza: np.array
+            Viewing zenith angle (deg)
+        vaa: np.array
+            Viewing azimuth angle (deg)         
+        sza: np.array
+            Solar zenith angle (deg)
+        saa: np.array
+            Solar azimuth angle (deg)
+        lat_grid: np.array
+            Latitude (deg)                 
+        lon_grid: np.array
+            Longitude (deg)     
     """
 
     sat = orbit_simulation(config)

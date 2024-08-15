@@ -21,4 +21,5 @@ Contents
    downloading
    installation
    running_the_code
+   documentation
    contributing

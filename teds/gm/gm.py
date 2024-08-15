@@ -449,7 +449,7 @@ if __name__ == '__main__' :
 
     # Get configuration info
     cfgFile = sys.argv[1]
-    config = Utils.getConfig(cfgFile)
+    config = Utils.get_config(cfgFile)
     # Get information (like git hash and config file name and version (if available) 
     # that will be added to the output file as attributes
     main_attribute_dict = Utils.get_main_attributes(config, config_attributes_name='GM_configuration')

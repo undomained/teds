@@ -1,51 +1,67 @@
-import os, sys
+# pylint: disable=unused-import, fixme, logging-fstring-interpolation
+"""Providing code to run the Tango E2E processor"""
+
 import argparse
-import logging
-import importlib
-import subprocess
-import yaml
-import numpy as np
-import os
-import time
 from datetime import timedelta
+import importlib
+import logging
+import os
+import subprocess
+import sys
+import time
+import numpy as np
+import yaml
 
 from teds import log
 import teds.lib.lib_utils as Utils
 import teds.lib.data_netcdf.data_netcdf as dn
 
 def cmdline(arguments):
-    """             
+    """
         Get the command line arguments
-        - arguments: command line arguments
-                
-        return: 
-        - cfgFile: the configuration file
-    """         
-                
+
+        : param arguments: command line arguments
+        : type arguments: List
+
+        :return: cfg_file: the configuration file path
+        :rtype:  cfg_file: String
+        :return: step: the step of the E2E which needs to be run
+        :rtype:  step: String
+    """
     usage = """Run the TANGO E2E processor.
                The configuration file contains the settings for each step in the E2E processor."""
 
-    cfgHelp = """The configuration file needed to run the E2E processor. Possible choices: Geomery
+    cfg_help = """The configuration file needed to run the E2E processor. Possible choices: Geomery
               (gm), Scene Generation (sgm), Instrument model (im), L1A to L1B (l1al1b), L1B to L2
               (l1l2) or all steps (all)."""
     parser = argparse.ArgumentParser(description= usage)
-    parser.add_argument( "cfgFile", metavar="FILE", help=cfgHelp)
-    parser.add_argument( "step", metavar='STEP', choices=['gm','sgm','im','l1al1b','l1l2','pam','all'],
-                       help="The steps that the E2E processor has to run.")
-                    
+    parser.add_argument( "cfg_file", metavar="FILE", help=cfg_help)
+    parser.add_argument( "step", metavar='STEP',
+                         choices=['gm','sgm','im','l1al1b','l1l2','pam','all'],
+                         help="The steps that the E2E processor has to run.")
+
     args = parser.parse_args(arguments)
-    cfgFile = args.cfgFile
+    cfg_file = args.cfg_file
     step = args.step
-    
-    return cfgFile, step
+
+    return cfg_file, step
 
 def reshape_output(output_key, config):
     """
+        Reshape the output dataset
         Note: output dataset is 2D. When it is on detector level
         these dimensions are: along track and pixels.
         This second dimension is too big (det_row x det_col)
         This makes viewing difficult.
         Read in the data and reshape to 3D in case of detector level
+
+        :param output_key: key to use to find output file in configuration
+        :type output_key: String
+        :param config: configuration
+        :type config: Dictionary
+
+        :return temp_output_file: file name of the output file which stores the reshaped data
+        :rtype temp_output_file: String
     """
     temp_output_file = None
     # readin output file
@@ -55,15 +71,14 @@ def reshape_output(output_key, config):
     # cal_level determines until which step IM and L1B are run.
     # A check on cal_level can be used to determine whether or not reshaping is needed.
 
-    # TODO: check if this works for both L1B and IM and possible in between steps
     if config['cal_level'] == 'rad':
-        print("Not detector image. No need to reshape and create temporary output file")
+        log.info("Not detector image. No need to reshape and create temporary output file")
         return temp_output_file
     elif output_key=='l1b' and config['cal_level'] == 'swath':
-        print("Not detector image. No need to reshape and create temporary output file")
+        log.info("Not detector image. No need to reshape and create temporary output file")
         return temp_output_file
     elif config['cal_level'] == 'l1b':
-        print("Not detector image. No need to reshape and create temporary output file")
+        log.info("Not detector image. No need to reshape and create temporary output file")
         return temp_output_file
     else:
         # Get data
@@ -76,19 +91,18 @@ def reshape_output(output_key, config):
         det_rows = ckd_data.get('detector_row', kind='dimension')
         det_cols = ckd_data.get('detector_column', kind='dimension')
 
-        # At them to the output    
+        # At them to the output
         output_data.add(name='detector_row', value=det_rows, kind='dimension')
         output_data.add(name='detector_column', value=det_cols, kind='dimension')
         output_data.add(name='along_track', value=data.shape[0], kind='dimension')
-   
-        # Data might be binned 
+
+        # Data might be binned
         # How do I get the right dimensions when binning has been applied?
         # For now stupidly devide det_rows by table_id
         bin_file = config['io']['binning_table']
         bin_data = dn.DataNetCDF(log, bin_file, mode='r')
         bin_id = config['detector']['binning_table_id']
         table = f"Table_{bin_id}"
-        print(f"Binning table: {table}")
         binned_pixels = bin_data.get('bins', group=table, kind='dimension')
         binned_rows = int(binned_pixels/det_cols)
         output_data.add(name='binned_row', value=binned_rows, kind='dimension')
@@ -98,34 +112,37 @@ def reshape_output(output_key, config):
         if int(n_pixels/det_cols) == det_rows:
             # detector image
             data_reshaped = np.reshape(data, (data.shape[0], det_rows, det_cols))
-            output_data.add(name='detector_image_3d', value=data_reshaped, group='science_data', dimensions=('along_track','detector_row','detector_column'), kind='variable')
+            output_data.add(name='detector_image_3d', value=data_reshaped, group='science_data',
+                            dimensions=('along_track','detector_row','detector_column'),
+                            kind='variable')
             # standard deviation data is not always present. Check
             if std_data is not None:
                 std_data_reshaped = np.reshape(std_data, (std_data.shape[0], det_rows, det_cols))
-                output_data.add(name='detector_stdev_3d', value=std_data_reshaped, group='science_data', dimensions=('along_track','detector_row','detector_column'), kind='variable')
+                output_data.add(name='detector_stdev_3d', value=std_data_reshaped,
+                                group='science_data',
+                                dimensions=('along_track','detector_row','detector_column'),
+                                kind='variable')
         elif int(n_pixels/det_cols) == binned_rows:
             # binned detector image
             data_reshaped = np.reshape(data, (data.shape[0], binned_rows, det_cols))
-            output_data.add(name='detector_image_3d', value=data_reshaped, group='science_data', dimensions=('along_track','binned_row','detector_column'), kind='variable')
+            output_data.add(name='detector_image_3d', value=data_reshaped, group='science_data',
+                            dimensions=('along_track','binned_row','detector_column'),
+                            kind='variable')
             # standard deviation data is not always present. Check
             if std_data is not None:
                 std_data_reshaped = np.reshape(std_data, (data.shape[0], binned_rows, det_cols))
-                output_data.add(name='detector_stdev_3d', value=std_data_reshaped, group='science_data', dimensions=('along_track','binned_row','detector_column'), kind='variable')
+                output_data.add(name='detector_stdev_3d', value=std_data_reshaped,
+                                group='science_data',
+                                dimensions=('along_track','binned_row','detector_column'),
+                                kind='variable')
 
-        print(f"SHAPE of Reshaped data image: {data_reshaped.shape}")
         # Remove the 2D images
         output_data.remove('detector_image', group='science_data', kind='variable')
         if output_data.find('detector_stdev', group='science_data', kind='variable') is not None:
             output_data.remove('detector_stdev', group='science_data', kind='variable')
 
-        print("###################################################################")
-        print("###################################################################")
-        print(f"{output_data}")
-        print("###################################################################")
-        print("###################################################################")
         # write to temp output file
         temp_output_file = f"{output_file[:-3]}_temp.nc"
-        print(f"temp_output: {temp_output_file}")
         output_data.write(temp_output_file)
 
     return temp_output_file
@@ -134,8 +151,16 @@ def get_file_name(config, step):
     """
         Determine output/input file path.
         When it is a nominal run it is just base_path
-        When it concerns a scenarion and a step is required to be rerun 
+        When it concerns a scenarion and a step is required to be rerun
         for this scenario it is base_path/scenarios/scenario_subdir
+
+        :param: config: the configuration
+        :type:  config: Dictionary
+        :param: step: the step of the E2E which needs to be run
+        :type:  step: String
+
+        :return file_path: Path to requested file
+        :rtype: file_path: String
     """
     file_path = ''
     base_path = config['io']['base_dir']
@@ -150,12 +175,21 @@ def get_file_name(config, step):
         file_path = output_path
     else:
         file_path = base_path
-       
-    return file_path 
+
+    return file_path
 
 def get_specific_config(orig_config, kind):
     """
         Obtain module specific configuration from full configuration
+        Possible module names: gm, sgm, im, l1al1b, l1l2, pam
+
+        :param: orig_config: original full configuration
+        :type: orig_config: Dictionary
+        :param: kind: the name of the module
+        :type: kind: String
+
+        :return specific_config: Configuration specific for given module
+        :rtype specific_config: Dictionary
     """
     if kind not in orig_config:
         error_msg = f"Unknown module {kind}. Unable to fetch corresponding config. Exiting!"
@@ -178,7 +212,8 @@ def get_specific_config(orig_config, kind):
         # Combine path and file name
         output_path = get_file_name(orig_config, 'sgm')
         specific_config['io']['sgm_rad'] = os.path.join(output_path, orig_config['io']['sgm_rad'])
-        specific_config['io']['sgm_atm_raw'] = os.path.join(output_path, orig_config['io']['sgm_atm_raw'])
+        specific_config['io']['sgm_atm_raw'] = os.path.join(output_path, \
+            orig_config['io']['sgm_atm_raw'])
         specific_config['io']['sgm_atm'] = os.path.join(output_path, orig_config['io']['sgm_atm'])
         specific_config['io']['gm'] = os.path.join(output_path, orig_config['io']['gm'])
 
@@ -192,11 +227,10 @@ def get_specific_config(orig_config, kind):
         l1a_file_name = orig_config['io']['l1a']
         if do_python:
             l1a_file_name_python = f"{l1a_file_name[0:-3]}_python.nc"
-            print(f"l1a python file name: {l1a_file_name_python}")
             specific_config['io']['l1a'] = os.path.join(output_path, l1a_file_name_python)
-            specific_config['io']['im_algo_output'] = os.path.join(output_path, orig_config['io']['im_algo_output'])
+            specific_config['io']['im_algo_output'] = os.path.join(output_path, \
+                orig_config['io']['im_algo_output'])
         else:
-#            specific_config['io']['l1a'] = os.path.join(output_path, orig_config['io']['l1a'])
             specific_config['io']['l1a'] = os.path.join(output_path, l1a_file_name)
 
         # Input to IM
@@ -213,17 +247,14 @@ def get_specific_config(orig_config, kind):
         if do_python:
             l1b_file_name_python = f"{l1b_file_name[0:-3]}_python.nc"
             specific_config['io']['l1b'] = os.path.join(output_path, l1b_file_name_python)
-            specific_config['io']['l1b_algo_output'] = os.path.join(output_path, orig_config['io']['l1b_algo_output'])
+            specific_config['io']['l1b_algo_output'] = os.path.join(output_path, \
+                orig_config['io']['l1b_algo_output'])
         else:
             specific_config['io']['l1b'] = os.path.join(output_path, l1b_file_name)
-
-#        specific_config['io']['l1b'] = os.path.join(output_path, orig_config['io']['l1b'])
 
         # Input to L1B
         output_path = get_file_name(orig_config, 'im')
         l1a_file_name = orig_config['io']['l1a']
-
-#        specific_config['io']['l1a'] = os.path.join(output_path, orig_config['io']['l1a'])
 
         # Note: if IM was run using the python code, the l1a python output needs to be readin
         do_python = orig_config['im']['do_python']
@@ -274,6 +305,16 @@ def get_specific_config(orig_config, kind):
 def add_module_specific_attributes(config, attribute_dict, step):
     """
         Add the module specific settings to the attribute_dict
+
+        :param: config: configuration
+        :type:  config: Dictionary
+        :param: attribute_dict: dictionary of file attributes
+        :type:  attribute_dict: Dictionary
+        :param: step: name of the module
+        :type:  step: String
+
+        :return: new_attribute_dict: new dictionary of file attributes
+        :rtype:  new_attribute_dict: Dictionary
     """
     new_attribute_dict = attribute_dict.copy()
 
@@ -287,34 +328,39 @@ def add_module_specific_attributes(config, attribute_dict, step):
 def build(config, step, cfg_path, attribute_dict):
     """
         Run E2E processor.
-        - config: configuration file containing the settings for the different steps in the E2E processor
-        - step: indicating which step in the E2E processor to run. 
-        - cfg_path: configuration path
-        - attribute_dict: Dictionary with attributes to be added to main of output netCDF files
+        :param: config: configuration file containing the settings for the different
+                steps in the E2E processor
+        :type:  config: Dictionary
+        :param: step: indicating which step in the E2E processor to run.
+        :type:  step: String
+        :param: cfg_path: configuration path
+        :type:  cfg_path: String
+        :param: attribute_dict: Dictionary with attributes to be added to main of output netCDF file
+        :type:  attribute_dict: Dictionary
     """
 
     # Make a copy of the full config file.
     configuration = config.copy()
 
-    if step == 'gm' or step == 'all':
+    if step in ['gm','all']:
 
         gm_config = get_specific_config(configuration, 'gm')
         attribute_dict = add_module_specific_attributes(gm_config, attribute_dict, 'gm')
-        E2EModule = importlib.import_module("gm.gm")
-        E2EModule.geometry_module(gm_config)
+        e2e_module = importlib.import_module("gm.gm")
+        e2e_module.geometry_module(gm_config)
         # add attributes to the output file
         Utils.add_attributes_to_output(gm_config['io']['gm'], attribute_dict)
 
-    if step == 'sgm' or step == 'all':
+    if step in ['sgm','all']:
         sgm_config = get_specific_config(configuration, 'sgm')
         attribute_dict = add_module_specific_attributes(sgm_config, attribute_dict, 'sgm')
-        E2EModule = importlib.import_module("sgm.sgm_no2")
-        E2EModule.scene_generation_module_nitro(sgm_config)
+        e2e_module = importlib.import_module("sgm.sgm_no2")
+        e2e_module.scene_generation_module_nitro(sgm_config)
         Utils.add_attributes_to_output(sgm_config['io']['sgm_rad'], attribute_dict)
         Utils.add_attributes_to_output(sgm_config['io']['sgm_atm'], attribute_dict)
         Utils.add_attributes_to_output(sgm_config['io']['sgm_atm_raw'], attribute_dict)
 
-    if step == 'im' or step == 'all':
+    if step in ['im','all']:
 
         im_config = get_specific_config(configuration, 'im')
         attribute_dict = add_module_specific_attributes(im_config, attribute_dict, 'im')
@@ -326,10 +372,12 @@ def build(config, step, cfg_path, attribute_dict):
         if not im_config['do_python']:
             # Run C++ IM code
             # Need to call C++ using the IM specific config_file
-            subprocess.run(["im/build/tango_im.x", im_config_file])
+            # TODO: Should check be set to True
+            subprocess.run(["im/build/tango_im.x", im_config_file], check=False)
 
-            # output dataset is 2D. In case of detector image (in case of some inbetween steps 
-            # and of the final output) the second dimension is detector_pixels which is too large to view. 
+            # output dataset is 2D. In case of detector image (in case of some inbetween steps
+            # and of the final output) the second dimension is detector_pixels which is too
+            # large to view.
             # Need to reshape to 3D to be able to make sense of this.
             temp_output_file = reshape_output('l1a', im_config)
 
@@ -339,11 +387,11 @@ def build(config, step, cfg_path, attribute_dict):
             Utils.add_attributes_to_output(im_config['io']['l1a'], attribute_dict)
         else:
             # run Python code
-            E2EModule = importlib.import_module("im.Python.instrument_model")
-            E2EModule.instrument_model(im_config, log, attribute_dict)
+            e2e_module = importlib.import_module("im.Python.instrument_model")
+            e2e_module.instrument_model(im_config, attribute_dict)
             # No need to reshape because Python output is already 3D
 
-    if step == 'l1al1b' or step == 'all':
+    if step in ['l1al1b','all']:
 
         l1b_config = get_specific_config(configuration, 'l1al1b')
         attribute_dict = add_module_specific_attributes(l1b_config, attribute_dict, 'l1al1b')
@@ -355,60 +403,60 @@ def build(config, step, cfg_path, attribute_dict):
         if not l1b_config['do_python']:
 
             # Need to call C++ with L1B specific config file
-            subprocess.run(["l1al1b/build/tango_l1b.x", l1b_config_file])
+            subprocess.run(["l1al1b/build/tango_l1b.x", l1b_config_file], check=False)
 
             # output dataset is 2D. In case of detector image (in case of inbetween step)
-            # the second dimension is detector_pixels which is too large to view. 
+            # the second dimension is detector_pixels which is too large to view.
             # Need to reshape to 3D to be able to make sense of this.
             temp_output_file = reshape_output('l1b', l1b_config)
 
             # Add attributes to output file
             if temp_output_file is not None:
-                Utils.add_attributes_to_output(log, temp_output_file, attribute_dict)
+                Utils.add_attributes_to_output(temp_output_file, attribute_dict)
             Utils.add_attributes_to_output(l1b_config['io']['l1b'], attribute_dict)
         else:
             # run Python code
-            E2EModule = importlib.import_module("l1al1b.Python.l1b_processor")
-            E2EModule.l1b_processor(l1b_config, log, attribute_dict)
+            e2e_module = importlib.import_module("l1al1b.Python.l1b_processor")
+            e2e_module.l1b_processor(l1b_config, log, attribute_dict)
 
-    if step == 'l1l2' or step == 'all':
+    if step in ['l1l2','all']:
         l2_config = get_specific_config(configuration, 'l1l2')
         attribute_dict = add_module_specific_attributes(l2_config, attribute_dict, 'l1l2')
-        E2EModule = importlib.import_module("l1l2.l1bl2_no2")
-        E2EModule.l1bl2_no2(l2_config)
+        e2e_module = importlib.import_module("l1l2.l1bl2_no2")
+        e2e_module.l1bl2_no2(l2_config)
         Utils.add_attributes_to_output(l2_config['io']['l2'], attribute_dict)
 
-    if step == 'pam' or step == 'all':
+    if step in ['pam','all']:
         pam_config = get_specific_config(configuration, 'pam')
         attribute_dict = add_module_specific_attributes(pam_config, attribute_dict, 'pam')
-        E2EModule = importlib.import_module("pam.pam")
-        E2EModule.pam_nitro(pam_config)
+        e2e_module = importlib.import_module("pam.pam")
+        e2e_module.pam_nitro(pam_config)
 
 if __name__ == "__main__":
 
     startTime = time.time()
-    
+
     # Get input arguments
-    cfgFile, step =  cmdline(sys.argv[1:])
-    cfg_path, filename = os.path.split(cfgFile)
+    e2e_cfg_file, e2e_step =  cmdline(sys.argv[1:])
+    e2e_cfg_path, filename = os.path.split(e2e_cfg_file)
 
     # Get configuration info
-    config = Utils.getConfig(cfgFile)
-    config['header']['path'] = cfg_path
+    e2e_config = Utils.get_config(e2e_cfg_file)
+    e2e_config['header']['path'] = e2e_cfg_path
 
-    if config['log_level'] == 'debug':
+    if e2e_config['log_level'] == 'debug':
         log.setLevel(logging.DEBUG)
     else:
         log.setLevel(logging.INFO)
 
-    if not config['show_progress']:
+    if not e2e_config['show_progress']:
         os.environ['TQDM_DISABLE']='1'
 
 
-    # Get information (like git hash and config file name and version (if available) 
+    # Get information (like git hash and config file name and version (if available)
     # that will be added to the output files as attributes
-    main_attribute_dict = Utils.get_main_attributes(config)
+    main_attribute_dict = Utils.get_main_attributes(e2e_config)
 
-    build(config, step, cfg_path, main_attribute_dict)
+    build(e2e_config, e2e_step, e2e_cfg_path, main_attribute_dict)
 
-    log.info(f'E2E calculation finished in {timedelta(seconds=(time.time()-startTime))}')
+    log.info(f'E2E calculation finished in {timedelta(seconds=time.time()-startTime)}')

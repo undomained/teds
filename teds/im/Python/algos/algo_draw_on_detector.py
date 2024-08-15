@@ -31,37 +31,38 @@ class Draw_On_Detector(Algorithm):
         image = input_data.get_dataset('image', c_name='work')
         self._data = image
 
+        wl_img = input_data.get_dataset('wavelength', c_name='measurement', kind='variable')
+        
         n_act = input_data.get_dataset('across_track', c_name='ckd', kind='dimension')
         n_row = input_data.get_dataset('detector_row', c_name='ckd', kind='dimension')
         n_col = input_data.get_dataset('detector_column', c_name='ckd', kind='dimension')
+        
+        
+        wl_per_col = input_data.get_dataset('wavelength', c_name = 'ckd', group = 'spectral', kind = 'variable')
         row_indices = input_data.get_dataset('row_index', c_name='ckd', group='swath', kind='variable')
-        # Note: is exected to be increasing
-        if row_indices[-1,0] < row_indices[0,0]:
-            # Need to reverse
-            # Maybe also need to reverse image???????????????
-            row_indices = np.flip(row_indices,axis=0)
-
-        det_ispat = np.arange(n_row)
-
-        detector_data = np.zeros((n_row, n_col))
-
-        #When we CAN NOT assume row_indices to be the same for all ispec:
-        for i_spec in range(n_col):
-            x = row_indices[:,i_spec]
-            y = image[:,i_spec]
-            cs = CubicSpline(x,y, bc_type='natural')
-            xs = det_ispat
-            detector_data[:,i_spec] = cs(xs)
-
-#        #When we can assume row_indices to be the same for all ispec:
-#        cs = CubicSpline(row_indices[:,0], image,axis=0)
-#        y = cs(det_ispat)
-#        detector_data = y
-
-        self._data = detector_data
-
+        
+        # First convert wavelengths to columns
+        lbl_in_cols = np.zeros((n_act, n_col))
+        for i_act in range(n_act):
+            spl_wl_to_col = CubicSpline(wl_per_col[i_act], np.arange(n_col))
+            col_ix = spl_wl_to_col(wl_img) # decimal col indices of scene samples
+            
+            lbl = image[i_act] # line-by-line spectrum
+            # Interpolate lbl to integer col indices
+            spl_lbl_vs_col = CubicSpline(col_ix, lbl) 
+            lbl_in_cols[i_act] = spl_lbl_vs_col(np.arange(n_col))
+        
+        # Now per column interpolate the rows
+        det_img = np.zeros((n_row, n_col))
+        for i_col in range(n_col):            
+            lbl = lbl_in_cols[:, i_col] # scene per column
+            spl_lbl_vs_row = CubicSpline(row_indices[:,i_col], lbl)
+            # interpolate to integer rows
+            det_img[:, i_col] = spl_lbl_vs_row(np.arange(n_row))
+            
+        self._data = det_img
+        
         return
-
 
 
 

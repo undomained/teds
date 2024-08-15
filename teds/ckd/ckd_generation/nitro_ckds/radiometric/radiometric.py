@@ -5,7 +5,7 @@ def generate(ncc):
     Radiometric Calibration Constant
     """
     cfg = ncc.cfg
-    dims = ['across_track', 'detector_column']
+    dims = ['across_track', 'lbl_samples']
     rcc = np.ones(ncc.get_shape(dims)) * cfg['rcc']
     attr = {
         'long_name': 'Radiometric calibration constant',

@@ -4,7 +4,7 @@
     paths : {
         'dir_nitro'             : './nitro_ckds',
         'dir_external'          : './data_external/',
-        'ckd_nitro'             : '../ckd_nitro.nc', 
+        'ckd_nitro'             : '../../../data/no2/ckd/ckd_nitro.nc', 
    },
 
     # Dimensions
@@ -12,6 +12,7 @@
         detector_row : 2870,  # n_rows
         detector_column : 1681,  # n_cols
         across_track : 100,
+        lbl_samples : 2141, # number of wavelength samples in scene
         vector       : 3,
         number_of_views         : 1,
         single_double           : 1, 
@@ -51,7 +52,6 @@
     detector_pixel_size: 0.00345,   # in mm
     lbl_min_wl: 395,                # nm, line by line spectrum minimum wavelength
     lbl_max_wl: 502,                # nm, line by line spectrum maximum wavelength
-    lbl_resolution: 0.05,           # nm, line by line spectrum resolution 
     rcc: 4222381848451.05,          # radiometric calibration constant
 }
 

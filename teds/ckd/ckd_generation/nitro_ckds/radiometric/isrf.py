@@ -45,12 +45,13 @@ def generate(ncc): # Get the data and combine
 
     min_wl = cfg['lbl_min_wl']
     max_wl = cfg['lbl_max_wl']
-    res = cfg['lbl_resolution']
+    n_wl = cfg['dimensions']['lbl_samples']
+    res = (max_wl - min_wl) / (n_wl - 1)
 
     d_spectral_out = np.arange(0, 0.8 + res, step = res)
     d_spectral_out = mirror_on_first_row(d_spectral_out, neg = True)
 
-    X = int((max_wl - min_wl) / res)  # samples in spectral direction
+    X = n_wl  # samples in spectral direction
     Y = cfg['dimensions']['across_track'] # samples in spatial direction
     N = len(d_spectral_out)  # output number of samples of ISRF shape
 
@@ -82,10 +83,13 @@ def generate(ncc): # Get the data and combine
         for j in range(len(ap_out)):
             isrf_wl[i, j] = d_spectral_out + wl
     
+    isrf_out = np.transpose(isrf_out,(1, 0, 2))
+    isrf_wl = np.transpose(isrf_wl, (1, 0, 2))
+
     # Create ISRF ckd
-    newdims = {'isrf_wavelengths' : X, 'isrf_samples' : N}
+    newdims = {'isrf_samples' : N}
     ncc.create_dims_auto(newdims)
-    dims = ['isrf_wavelengths', 'across_track', 'isrf_samples']
+    dims = ['across_track', 'lbl_samples', 'isrf_samples']
     attr = {
         'source': 'TANGO_Nitro_011_ISRF_SonyTolerancedMp2S_LowResSampling (TNO)',
         'comment' : '[!] Make sure the isrf_sample increments agree with the increments in the line-by-line spectra for correction convolution'

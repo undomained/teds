@@ -4,7 +4,10 @@
 #include "uncalibration.h"
 
 #include <algorithm>
+#include <iostream>
 #include <random>
+#include <ranges>
+#include <spdlog/spdlog.h>
 #include <tango_l1b/binning_table.h>
 #include <tango_l1b/ckd.h>
 #include <tango_l1b/cubic_spline.h>
@@ -34,45 +37,126 @@ auto applyISRF(const CKD& ckd,
         }
         return;
     }
-    // Convolve the radiances with an ISRF from the line-by-line grid
-    // onto the target grids taken from the CKD.
-    const double sigma { fwhm_gauss / (2.0 * sqrt(2.0 * log(2.0))) };
-    const double sigma_inv { 1.0 / (2.0 * sigma * sigma) };
-    const double norm_inv { 1.0 / (sigma * std::sqrt(2 * std::numbers::pi)) };
-    for (int i_act {}; i_act < ckd.n_act; ++i_act) {
-        const auto& lbl_wave { (*l1.wavelength)[i_act] };
-        std::vector<double> signal_conv(ckd.n_detector_cols, 0.0);
-        for (int i_wave {}; i_wave < ckd.n_detector_cols; ++i_wave) {
-            for (int i_lbl {}; i_lbl < static_cast<int>(lbl_wave.size());
-                 ++i_lbl) {
-                // Convolution result for this CKD wavelength
-                double conv { ckd.wave.wavelength[i_act][i_wave]
-                              - lbl_wave[i_lbl] };
-                // Reduce the computational cost by considering the
-                // limited extent of the Gaussian.
-                constexpr double wave_rel_threshold { 3.0 };
-                if (std::abs(conv) > wave_rel_threshold * fwhm_gauss) {
-                    continue;
+
+    // Check if isrf wavelengths match with input wavelengths. If so, wavelength dependend ISRF can be applied
+    double wl_differ = 0.0;
+    int n_wl_input = (*l1.wavelength).front().size();
+    int n_wl_isrf = (ckd.n_lbl);
+    int center_ix = (ckd.n_isrf_samples - 1) / 2;
+    if (n_wl_input == n_wl_isrf) {
+        // sizes match, now look for matching wavelengths
+        if ((*l1.wavelength).front()[0]
+            == ckd.rad.isrf_wl.front().front()[center_ix]) {
+            // first wavelength matches as well, now look at increments
+            for (int i_act {}; i_act < ckd.n_act; ++i_act) {
+                std::vector<double> inc_isrf(n_wl_isrf - 1);
+                std::vector<double> inc_input(n_wl_input - 1);
+                for (int i_wl {}; i_wl < n_wl_input - 1; ++i_wl) {
+                    inc_isrf[i_wl] = ckd.rad.isrf_wl[0][i_wl + 1][center_ix]
+                                     - ckd.rad.isrf_wl[0][i_wl][center_ix];
+                    inc_input[i_wl] = (*l1.wavelength)[i_act][i_wl + 1]
+                                      - (*l1.wavelength)[i_act][i_wl];
                 }
-                conv *= conv * sigma_inv;
-                conv = norm_inv * std::exp(-conv);
-                double delta_lambda;
-                if (i_lbl == 0) {
-                    delta_lambda = lbl_wave[i_lbl + 1] - lbl_wave[i_lbl];
-                } else if (i_lbl == static_cast<int>(lbl_wave.size()) - 1) {
-                    delta_lambda =
-                      lbl_wave.back() - lbl_wave[lbl_wave.size() - 2];
-                } else {
-                    delta_lambda =
-                      0.5 * (lbl_wave[i_lbl + 1] - lbl_wave[i_lbl - 1]);
-                }
-                conv *= delta_lambda;
-                signal_conv[i_wave] += conv * l1.spectra[i_act].signal[i_lbl];
+                double mean_inc_isrf =
+                  std::accumulate(inc_isrf.begin(), inc_isrf.end(), 0.0)
+                  / (inc_isrf.size());
+                double mean_inc_input =
+                  std::accumulate(inc_input.begin(), inc_input.end(), 0.0)
+                  / (inc_input.size());
+                wl_differ += std::abs(mean_inc_input - mean_inc_isrf);
             }
+        } else {
+            wl_differ = 1;
         }
-        l1.spectra[i_act].signal = std::move(signal_conv);
+    }
+
+    // If the wavelength dependend ISRF ckd matches the input scene, we apply
+    // the wavelength dependend ISRF Otherwise a constant gaussian distribution
+    // will be used
+    if (!wl_differ) {
+        spdlog::info("Applying wavelength dependend ISRF");
+        for (int i_act {}; i_act < ckd.n_act; ++i_act) {
+            std::vector<double> signal_conv(ckd.n_lbl, 0.0);
+            for (int i_wl {}; i_wl < ckd.n_lbl; ++i_wl) {
+                // Left and right bounds of isrf samples, convolution kernel
+                int i_isrf_0 = std::max(center_ix - i_wl, 0);
+                int i_isrf_1 = std::min(ckd.n_lbl + center_ix - i_wl - 1,
+                                        ckd.n_isrf_samples - 1);
+                // Left and right bounds of wavelengths,
+                int i_input_0 = std::max(i_wl - center_ix, 0);
+                int i_input_1 = std::min(i_wl + center_ix, ckd.n_lbl - 1);
+
+                std::vector<double> this_isrf(
+                  ckd.rad.isrf[i_act][i_wl].begin() + i_isrf_0,
+                  ckd.rad.isrf[i_act][i_wl].begin() + i_isrf_1);
+                double norm_inv =
+                  1
+                  / (std::accumulate(this_isrf.begin(), this_isrf.end(), 0.0));
+
+                std::vector<double> this_signal(
+                  l1.spectra[i_act].signal.begin() + i_input_0,
+                  l1.spectra[i_act].signal.begin() + i_input_1);
+                for (int k {}; k < this_isrf.size(); ++k) {
+                    signal_conv[i_wl] +=
+                      norm_inv * this_isrf[k] * this_signal[k];
+                }
+            }
+            l1.spectra[i_act].signal = std::move(signal_conv);
+        } 
+    } else {
+        spdlog::warn("Input scene and ISRF CKD have different wavelength "
+                     "grids, using a constant ISRF");
+        // Convolve the radiances with an ISRF from the line-by-line grid
+        const double sigma { fwhm_gauss / (2.0 * sqrt(2.0 * log(2.0))) };
+        const double sigma_inv { 1.0 / (2.0 * sigma * sigma) }; // norm of exponent
+        const double norm_inv { 1.0 / (sigma * std::sqrt(2 * M_PI)) }; // norm 
+        std::vector<double> inc_input(n_wl_input - 1);
+        for (int i_act {}; i_act < ckd.n_act; ++i_act) {
+            std::vector<double> signal_conv(ckd.n_lbl, 0.0); // convolution result
+            // Create normal distribution array with same increments as lbl spectrum
+            for (int i_wl {}; i_wl < n_wl_input - 1; ++i_wl) {
+                inc_input[i_wl] = (*l1.wavelength)[i_act][i_wl + 1]
+                                      - (*l1.wavelength)[i_act][i_wl];
+            }
+            double inc =
+                  std::accumulate(inc_input.begin(), inc_input.end(), 0.0)
+                  / (inc_input.size());
+            // set mu = 0, always center at current evaluated wavelength
+            // set limits of the normal distribution at 3 times FWHM
+            int n_wings = std::ceil(3.0 * fwhm_gauss / inc) - 1; // samples in wings            
+            int n_gauss = 2 * n_wings + 1; // total samples in gauss
+            
+            // now create distribution
+            std::vector<double> gauss(n_gauss);
+            for (int i {}; i < n_gauss; ++ i){
+                double x = (i - n_wings) * inc;
+                // make sure to multiply with the stepsize because its not a continuous function
+                gauss[i] = norm_inv * std::exp(-sigma_inv * x * x) * inc;
+            }
+            // Carry out convolution
+            for (int i_wl {}; i_wl < ckd.n_lbl; ++i_wl) {
+                // set left and right bounds for input (lbl) and gauss to prevent out-of-bounds
+                int i_lbl_0 = std::max(i_wl - n_wings, 0);
+                int i_lbl_1 = std::min(i_wl + n_wings, ckd.n_lbl - 1);
+                int i_gau_0 = std::max(n_wings - i_wl, 0);
+                int i_gau_1 = std::min(ckd.n_lbl + n_wings - i_wl - 1,
+                                        n_gauss - 1);
+                std::vector<double> this_gauss(gauss.begin() + i_gau_0, gauss.begin() + i_gau_1);
+                double norm_gauss = // to make the sum unity for left and right bounds
+                  1 / (std::accumulate(this_gauss.begin(), this_gauss.end(), 0.0));
+                std::vector<double> this_signal(
+                  l1.spectra[i_act].signal.begin() + i_lbl_0,
+                  l1.spectra[i_act].signal.begin() + i_lbl_1);
+                for (int k {}; k < this_gauss.size(); ++k) {
+                    signal_conv[i_wl] +=
+                      norm_gauss * this_gauss[k] * this_signal[k];
+                    }
+                }
+            l1.spectra[i_act].signal = std::move(signal_conv);
+        }
     }
 }
+
 
 auto radiometric(const CKD& ckd, const bool enabled, L1& l1) -> void
 {
@@ -81,7 +165,7 @@ auto radiometric(const CKD& ckd, const bool enabled, L1& l1) -> void
     }
     const double exposure_time_inv { 1.0 / l1.exposure_time };
     for (int i_act {}; i_act < ckd.n_act; i_act++) {
-        for (int i {}; i < ckd.n_detector_cols; ++i) {
+        for (int i {}; i < ckd.n_lbl; ++i) {
             l1.spectra[i_act].signal[i] /=
               ckd.rad.rad[i_act][i] * exposure_time_inv;
         }
@@ -96,12 +180,13 @@ auto drawOnDetector(const CKD& ckd, L1& l1) -> void
     std::vector<double> y_values(ckd.n_act);
     for (int i_wave {}; i_wave < ckd.n_detector_cols; ++i_wave) {
         bool needReverse = false;
-        if (ckd.swath.row_indices[ckd.n_act - 1 ][i_wave] < ckd.swath.row_indices[0][i_wave]){
+        if (ckd.swath.row_indices[ckd.n_act - 1][i_wave]
+            < ckd.swath.row_indices[0][i_wave]) {
             needReverse = true;
         }
         for (int i_act {}; i_act < ckd.n_act; ++i_act) {
             const int act_idx { static_cast<int>(i_act) };
-            if (needReverse){
+            if (needReverse) {
                 const int act_idx { static_cast<int>(ckd.n_act - 1 - i_act) };
             }
             x_values[i_act] = ckd.swath.row_indices[act_idx][i_wave];
@@ -252,9 +337,10 @@ auto digitalToAnalog(const BinningTable& binning_table, L1& l1) -> void
     for (double& val : l1.image) {
         val *= l1.nr_coadditions;
     }
-    // Note: The next line of code seems to be taking the information of binning table into account,
-    // but at the end it divides by count_table (BF)
-    // That is why in netxt steps there is a loop where multiplication by binSize (BF) takes place
+    // Note: The next line of code seems to be taking the information of binning
+    // table into account, but at the end it divides by count_table (BF) That is
+    // why in netxt steps there is a loop where multiplication by binSize (BF)
+    // takes place
     binning_table.bin(l1.image);
     l1.image_i32.resize(binning_table.nBins());
     for (int i {}; i < binning_table.nBins(); ++i) {

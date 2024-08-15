@@ -33,6 +33,9 @@ public:
     int npix {};
     // Number of L1B spectra (spatial samples across track)
     int n_act {};
+    // Number of samples per L1B (spectral samples)
+    int n_lbl {};
+    int n_isrf_samples;
 
     // Bad pixel mask
     std::vector<bool> pixel_mask {};
@@ -134,6 +137,8 @@ public:
         // Radiometric calibration constants
         // Dimensions: (n_act, n_detector_cols).
         std::vector<std::vector<double>> rad {};
+        std::vector<std::vector<std::vector<double>>> isrf {};
+        std::vector<std::vector<std::vector<double>>> isrf_wl {};
     } rad;
 
     ~CKD() = default;

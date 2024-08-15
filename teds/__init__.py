@@ -2,7 +2,7 @@
 # the LICENSE file in the root directory of this project.
 
 import logging as _logging
-
+import sys
 
 # Set up the default logger for this project
 class TedsFormatter(_logging.Formatter):
@@ -32,9 +32,10 @@ class TedsFormatter(_logging.Formatter):
         return formatter.format(record)
 
 
-_handler = _logging.StreamHandler()
+_handler = _logging.StreamHandler(sys.stdout)
 _handler.setFormatter(TedsFormatter())
 
 log = _logging.getLogger(__name__)
 log.addHandler(_handler)
+# Do we want DEBUG as the default???????
 log.setLevel(_logging.DEBUG)

@@ -1,15 +1,15 @@
 # Combined config file for all steps in E2E analysis.
 #
 log_level: 'info' # 'info' or 'debug'
-show_progress: True # toggle show progress bars 
+show_progress: True # toggle show progress bars
 header:
     file_name: 'full_config.yaml'
     version: '0.000'
 #########################################################
-# General settings. 
+# General settings.
 # Used by more than one step in the E2E simulator
 #########################################################
-io: 
+io:
     base_dir: '../data/no2/'
 ## GM IO
     gm: 'geometry.nc'
@@ -42,14 +42,14 @@ io:
     l2: 'l2.nc'
 #########################################################
 #
-# GM 
+# GM
 # Configuration file for running the geometry module
 #
 #########################################################
 #
-gm: 
+gm:
     profile: orbit
-#        
+#
     orbit:
       epoch: 2022-08-12T12:00:00
       sat_height: 500.0     # km
@@ -73,7 +73,7 @@ gm:
         yaw: 0.0
 #########################################################
 #
-# SGM nitro 
+# SGM nitro
 # Configuration file for running the SGM nitro module
 #
 #########################################################
@@ -83,7 +83,7 @@ sgm:
         fwhm_x:  300                #FWHM in ACT direction
         fwhm_y:  300                #FWHM in flight direction
         size_factor: 2              #the size of the convolution kernel in units of fwhm
-    
+
     atm: # atm simulation settings
         type: cams                  # cams or afgl atmosphere
         gases: [no2, o3]            # for now only no2 and o3
@@ -109,7 +109,7 @@ sgm:
             cloud_bottom_pressure: 900 # hPa
             cloud_top_pressure: 800 # hPa
             # define pixels where to put cloud, default is all pixels
-            alt:    
+            alt:
                 start: 0
                 stop: 5
             act:
@@ -133,7 +133,7 @@ sgm:
     sentinel2: # albedo download
         band_section: [B01,B02]
         albedo_file: '../data/no2/albedo.nc'
-        forced: True     
+        forced: True
 #########################################################
 #
 # IM specific
@@ -174,7 +174,7 @@ im:
 #########################################################
 #
 # L1AL1B specific
-# Configuration file for running the L1AL1B module 
+# Configuration file for running the L1AL1B module
 #
 #########################################################
 ############################
@@ -202,10 +202,10 @@ l1al1b:
         van_cittert_steps: 0  #van Citter iteration for stray light correction (0=no correction)
     rad:
         enabled: true      # apply radiometric correction (true) or not (false)
-#############################    
+#############################
 #########################################################
 #
-# L1L2 nitro 
+# L1L2 nitro
 # Configuration file for running the L1L2 nitro module
 #
 #########################################################
@@ -239,7 +239,7 @@ l1l2:
 
     no2:
         # The window for the DOAS fit.
-        fit_window: [405.0, 465.0] 
+        fit_window: [405.0, 465.0]
 
         #The number of coefficients of the DOAS polynomial (which is the degree of the polynomial + 1)# minimum is 3, maximum is 10.
         polynomial_coefs: 6
@@ -252,9 +252,9 @@ l1l2:
         # Specify whether and if so how to fit the Ring spectrum:
         #    No  = do not apply Ring correction
         #    Iring = use the non-linear Ring correction approach,
-        #            based on the Ring radiance spectrun Iring   
-        #    sigma = use the linear Ring correction approach,    
-        #            based on the differential Ring spectrum     
+        #            based on the Ring radiance spectrun Iring
+        #    sigma = use the linear Ring correction approach,
+        #            based on the differential Ring spectrum
         ring_fit_term: No
 
         # Number of intensity offset correction coefficients:
@@ -272,7 +272,7 @@ l1l2:
 
         # Spike removal: off/on
         spike_removal: off
-        
+
         #Max number of outliers that iis accepted
         max_outliers: 10
 
@@ -296,7 +296,7 @@ l1l2:
         wlcal_solar_stretch: off
         wlcal_earth_stretch: off
 
-        # window to use for the calibration, but use the full  
+        # window to use for the calibration, but use the full
         #                   fit window if wlcal_[solar/earth]_stretch = 1
         wlcal_window: [405.0, 465.0]
 
@@ -320,7 +320,7 @@ l1l2:
                 O3: [3.6e-1, 5.0]
                 H20vap: [1.5e+3, 1.0e+4]
                 H20liq: [0.0, 20.0]
-            
+
             wvl_cal: # ws = shift, wq = stretch/squeeze, error: 1/3th of spacing of nominal grid: sigma=dlambda/3
                 ws: [0.0, 0.07]
                 wq: [0.0, 0.07]
@@ -329,9 +329,9 @@ l1l2:
                 P2: [0.01, 0.01]
                 Cring: [0.06, 0.06]
                 Dring: [0.06, 0.06]
-    
+
     o2o2:
-        fit_window: [460.0, 490.0] 
+        fit_window: [460.0, 490.0]
         polynomial_coefs: 3
         trace_gas_list: [O2O2, NO2, O3]
         ring_fit_term: No
@@ -349,7 +349,7 @@ l1l2:
         wlcal_earth: off
         wlcal_solar_stretch: off
         wlcal_earth_stretch: off
-        wlcal_window: [460.0, 490.0] 
+        wlcal_window: [460.0, 490.0]
         prior:
             doas:
                 P0: [1.0, 1.0]
@@ -364,7 +364,7 @@ l1l2:
                 O3: [3.6e-1, 5.0]
                 H20vap: [1.5e+3, 1.0e+4]
                 H20liq: [0.0, 20.0]
-            wvl_cal: 
+            wvl_cal:
                 ws: [0.0, 0.07]
                 wq: [0.0, 0.07]
                 P0: [1.0, 1.0]

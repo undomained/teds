@@ -5,7 +5,6 @@ definitions:
     - step: &step-defaults
         runs-on:
           - linux.shell
-        size: 2x #  32 GiB
 
 pipelines:
   default:

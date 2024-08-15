@@ -449,7 +449,7 @@ if __name__ == '__main__' :
 
     # Get configuration info
     cfgFile = sys.argv[1]
-    config = Utils.getConfig(l1b_logger, cfgFile)
+    config = Utils.get_config(l1b_logger, cfgFile)
 
     config = get_l1b_config(l1b_logger, config)
 

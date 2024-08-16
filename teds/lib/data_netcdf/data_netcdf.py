@@ -1,5 +1,7 @@
 import numpy as np
 import netCDF4 as nc
+import sys
+
 from .variables import Variable
 from .groups import Group
 from .dimensions import Dimension

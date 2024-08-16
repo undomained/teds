@@ -24,8 +24,9 @@ static auto getAndReshape(const netCDF::NcVar& nc_var,
 }
 
 static auto getAndReshape3D(const netCDF::NcVar& nc_var,
-                          std::vector<std::vector<std::vector<double>>>& dest) -> void
-{   
+                            std::vector<std::vector<std::vector<double>>>& dest)
+  -> void
+{
     int dim0 = dest.size();
     int dim1 = dest.front().size();
     int dim2 = dest.front().front().size();
@@ -35,7 +36,7 @@ static auto getAndReshape3D(const netCDF::NcVar& nc_var,
         for (int j {}; j < dim1; ++j) {
             for (int k {}; k < dim2; ++k) {
                 dest[i][j][k] = buffer[i * (dim1 * dim2) + j * dim2 + k];
-            } 
+            }
         }
     }
 }
@@ -149,14 +150,14 @@ CKD::CKD(const std::string& filename, const double spectrum_width)
         rad.enabled = true;
         rad.rad.resize(n_act, std::vector<double>(n_lbl));
         getAndReshape(grp.getVar("radiometric"), rad.rad);
-        // Resize 3D ISRF 
+        // Resize 3D ISRF
         n_isrf_samples = static_cast<int>(grp.getDim("isrf_samples").getSize());
         rad.isrf.resize(n_act);
         rad.isrf_wl.resize(n_act);
-        for (int i = 0; i < n_act; ++i){
+        for (int i = 0; i < n_act; ++i) {
             rad.isrf[i].resize(n_lbl);
             rad.isrf_wl[i].resize(n_lbl);
-            for (int j = 0; j < n_lbl; ++j){
+            for (int j = 0; j < n_lbl; ++j) {
                 rad.isrf[i][j].resize(n_isrf_samples);
                 rad.isrf_wl[i][j].resize(n_isrf_samples);
             }

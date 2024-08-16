@@ -186,10 +186,10 @@ auto strayLight(const CKD& ckd,
                 const bool binned_detector_image,
                 L1& l1) -> void
 {
-//    if (n_van_cittert == 0) {
-//        return;
-//    }
-//  Better check enabled and not rely on n_van_citter to be set to zero
+    //    if (n_van_cittert == 0) {
+    //        return;
+    //    }
+    //  Better check enabled and not rely on n_van_citter to be set to zero
     if (!enabled) {
         return;
     }

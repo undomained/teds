@@ -22,8 +22,9 @@ auto Spectrum::extract(const CKD& ckd,
         for (int i_ind {}; i_ind < ckd.swath.n_indices; ++i_ind) {
             const int idx { i * ckd.swath.n_indices + i_ind };
             const int& ipix { ckd.swath.pix_indices[i_act][idx] };
-            // Protection against ipix values that are outside the pixel_mask dimension
-            if ((ipix > 0) && (ipix <  pixel_mask.size())){
+            // Protection against ipix values that are outside the pixel_mask
+            // dimension
+            if ((ipix > 0) && (ipix < pixel_mask.size())) {
                 if (!pixel_mask[ipix]) {
                     const double& w { ckd.swath.weights[i_act][idx] };
                     signal[i] += image[ipix] * w;

@@ -38,7 +38,8 @@ auto applyISRF(const CKD& ckd,
         return;
     }
 
-    // Check if isrf wavelengths match with input wavelengths. If so, wavelength dependend ISRF can be applied
+    // Check if isrf wavelengths match with input wavelengths. If so, wavelength
+    // dependend ISRF can be applied
     double wl_differ = 0.0;
     int n_wl_input = (*l1.wavelength).front().size();
     int n_wl_isrf = (ckd.n_lbl);
@@ -102,61 +103,70 @@ auto applyISRF(const CKD& ckd,
                 }
             }
             l1.spectra[i_act].signal = std::move(signal_conv);
-        } 
+        }
     } else {
         spdlog::warn("Input scene and ISRF CKD have different wavelength "
                      "grids, using a constant ISRF");
         // Convolve the radiances with an ISRF from the line-by-line grid
         const double sigma { fwhm_gauss / (2.0 * sqrt(2.0 * log(2.0))) };
-        const double sigma_inv { 1.0 / (2.0 * sigma * sigma) }; // norm of exponent
-        const double norm_inv { 1.0 / (sigma * std::sqrt(2 * M_PI)) }; // norm 
+        const double sigma_inv { 1.0
+                                 / (2.0 * sigma * sigma) }; // norm of exponent
+        const double norm_inv { 1.0 / (sigma * std::sqrt(2 * M_PI)) }; // norm
         std::vector<double> inc_input(n_wl_input - 1);
         for (int i_act {}; i_act < ckd.n_act; ++i_act) {
-            std::vector<double> signal_conv(ckd.n_lbl, 0.0); // convolution result
-            // Create normal distribution array with same increments as lbl spectrum
+            std::vector<double> signal_conv(ckd.n_lbl,
+                                            0.0); // convolution result
+            // Create normal distribution array with same increments as lbl
+            // spectrum
             for (int i_wl {}; i_wl < n_wl_input - 1; ++i_wl) {
                 inc_input[i_wl] = (*l1.wavelength)[i_act][i_wl + 1]
-                                      - (*l1.wavelength)[i_act][i_wl];
+                                  - (*l1.wavelength)[i_act][i_wl];
             }
             double inc =
-                  std::accumulate(inc_input.begin(), inc_input.end(), 0.0)
-                  / (inc_input.size());
+              std::accumulate(inc_input.begin(), inc_input.end(), 0.0)
+              / (inc_input.size());
             // set mu = 0, always center at current evaluated wavelength
             // set limits of the normal distribution at 3 times FWHM
-            int n_wings = std::ceil(3.0 * fwhm_gauss / inc) - 1; // samples in wings            
-            int n_gauss = 2 * n_wings + 1; // total samples in gauss
-            
+            int n_wings =
+              std::ceil(3.0 * fwhm_gauss / inc) - 1; // samples in wings
+            int n_gauss = 2 * n_wings + 1;           // total samples in gauss
+
             // now create distribution
             std::vector<double> gauss(n_gauss);
-            for (int i {}; i < n_gauss; ++ i){
+            for (int i {}; i < n_gauss; ++i) {
                 double x = (i - n_wings) * inc;
-                // make sure to multiply with the stepsize because its not a continuous function
+                // make sure to multiply with the stepsize because its not a
+                // continuous function
                 gauss[i] = norm_inv * std::exp(-sigma_inv * x * x) * inc;
             }
             // Carry out convolution
             for (int i_wl {}; i_wl < ckd.n_lbl; ++i_wl) {
-                // set left and right bounds for input (lbl) and gauss to prevent out-of-bounds
+                // set left and right bounds for input (lbl) and gauss to
+                // prevent out-of-bounds
                 int i_lbl_0 = std::max(i_wl - n_wings, 0);
                 int i_lbl_1 = std::min(i_wl + n_wings, ckd.n_lbl - 1);
                 int i_gau_0 = std::max(n_wings - i_wl, 0);
-                int i_gau_1 = std::min(ckd.n_lbl + n_wings - i_wl - 1,
-                                        n_gauss - 1);
-                std::vector<double> this_gauss(gauss.begin() + i_gau_0, gauss.begin() + i_gau_1);
-                double norm_gauss = // to make the sum unity for left and right bounds
-                  1 / (std::accumulate(this_gauss.begin(), this_gauss.end(), 0.0));
+                int i_gau_1 =
+                  std::min(ckd.n_lbl + n_wings - i_wl - 1, n_gauss - 1);
+                std::vector<double> this_gauss(gauss.begin() + i_gau_0,
+                                               gauss.begin() + i_gau_1);
+                double norm_gauss = // to make the sum unity for left and right
+                                    // bounds
+                  1
+                  / (std::accumulate(
+                    this_gauss.begin(), this_gauss.end(), 0.0));
                 std::vector<double> this_signal(
                   l1.spectra[i_act].signal.begin() + i_lbl_0,
                   l1.spectra[i_act].signal.begin() + i_lbl_1);
                 for (int k {}; k < this_gauss.size(); ++k) {
                     signal_conv[i_wl] +=
                       norm_gauss * this_gauss[k] * this_signal[k];
-                    }
                 }
+            }
             l1.spectra[i_act].signal = std::move(signal_conv);
         }
     }
 }
-
 
 auto radiometric(const CKD& ckd, const bool enabled, L1& l1) -> void
 {

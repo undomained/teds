@@ -47,8 +47,8 @@ namespace tango {
 // Instruct YAML how to print the value field of a parameter of type
 // std::optional.
 template <typename T>
-auto operator<<(YAML::Emitter& out,
-                const std::optional<T> value) -> YAML::Emitter&
+auto operator<<(YAML::Emitter& out, const std::optional<T> value)
+  -> YAML::Emitter&
 {
     if (value) {
         out << value.value();
@@ -58,8 +58,8 @@ auto operator<<(YAML::Emitter& out,
     return out;
 }
 
-auto operator<<(YAML::Emitter& out,
-                const ProcLevel proc_level) -> YAML::Emitter&;
+auto operator<<(YAML::Emitter& out, const ProcLevel proc_level)
+  -> YAML::Emitter&;
 
 auto operator<<(YAML::Emitter& out, const Unbin unbin) -> YAML::Emitter&;
 

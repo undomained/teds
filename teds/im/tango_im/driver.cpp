@@ -35,8 +35,8 @@ static auto inverseNonlinearity(const std::string& ckd_file)
 // user settings. The L1A-L1B processor, however, only reads from the
 // input file because after the IM run these parameter should be
 // fixed.
-static auto setL1Meta(const SettingsIM& settings,
-                      std::vector<L1>& l1_products) -> void
+static auto setL1Meta(const SettingsIM& settings, std::vector<L1>& l1_products)
+  -> void
 {
     for (auto& l1 : l1_products) {
         l1.binning_table_id =
@@ -132,9 +132,11 @@ auto driver(const SettingsIM& settings,
             timers[static_cast<int>(ProcLevel::nonlin)].start();
             // For undoing nonlinearity calibration we need the inverse of the
             // nonlinearity spline from the CKD.
-            // Extra protection. Only do the inverseNonlinearity when non lin ckd actually exists
-            if (ckd.nonlin.enabled){
-                const LinearSpline nonlin_spline { inverseNonlinearity(settings.io.ckd) };
+            // Extra protection. Only do the inverseNonlinearity when non lin
+            // ckd actually exists
+            if (ckd.nonlin.enabled) {
+                const LinearSpline nonlin_spline { inverseNonlinearity(
+                  settings.io.ckd) };
                 nonlinearity(ckd, settings.nonlin.enabled, nonlin_spline, l1);
             }
             timers[static_cast<int>(ProcLevel::nonlin)].stop();

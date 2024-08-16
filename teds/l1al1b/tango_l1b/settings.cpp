@@ -73,8 +73,8 @@ auto Settings::c_str(const bool verbose) -> const char*
 // Set a YAML node to a default (reference) value or keep the current
 // value. It merges two YAML nodes by overriding the reference node if
 // the corresponding key is present in the input node.
-static auto setDefaultOrKeep(const YAML::Node& ref,
-                             const YAML::Node& input) -> YAML::Node
+static auto setDefaultOrKeep(const YAML::Node& ref, const YAML::Node& input)
+  -> YAML::Node
 {
     if (!input.IsMap()) {
         return input;

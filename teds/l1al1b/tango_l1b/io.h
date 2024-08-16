@@ -41,8 +41,8 @@ auto initLogging(const bool set_debug_level) -> void;
 // ######################
 // # CKD initialization #
 // ######################
-auto printHeading(const std::string& heading,
-                  const bool incl_empty_line = true) -> void;
+auto printHeading(const std::string& heading, const bool incl_empty_line = true)
+  -> void;
 
 // Print information about the host system and how the executable or
 // library was built and some runtime options.
@@ -69,8 +69,8 @@ auto checkPresenceOfFile(const Setting<std::string>& setting,
 // Check if destination is writable
 auto checkFileWritable(const std::string& filename) -> void;
 
-auto splitString(const std::string& list,
-                 const char delimiter) -> std::vector<std::string>;
+auto splitString(const std::string& list, const char delimiter)
+  -> std::vector<std::string>;
 
 // Convert a process level enum to string suitable for displaying in
 // output.

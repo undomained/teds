@@ -23,7 +23,6 @@ auto SettingsL1B::scanKeys() -> void
 
     scan(nonlin.enabled);
 
-
     scan(prnu.enabled);
 
     scan(stray.enabled);

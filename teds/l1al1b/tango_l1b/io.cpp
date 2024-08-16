@@ -68,8 +68,8 @@ auto initLogging(const bool set_debug_level) -> void
     }
 }
 
-auto printHeading(const std::string& heading,
-                  const bool incl_empty_line) -> void
+auto printHeading(const std::string& heading, const bool incl_empty_line)
+  -> void
 {
     if (incl_empty_line) {
         spdlog::get("plain")->info("");
@@ -176,8 +176,8 @@ auto checkFileWritable(const std::string& filename) -> void
     }
 }
 
-auto splitString(const std::string& list,
-                 const char delimiter) -> std::vector<std::string>
+auto splitString(const std::string& list, const char delimiter)
+  -> std::vector<std::string>
 {
     std::stringstream ss { list };
     std::string name {};
@@ -397,10 +397,10 @@ auto writeL1(const std::string& filename,
     };
     nc.putAtt("Conventions", "CF-1.11");
     if (level == ProcLevel::l1b) {
-//        nc.putAtt("title", "Tango Carbon level 1B data");
+        //        nc.putAtt("title", "Tango Carbon level 1B data");
         nc.putAtt("title", "Tango " + instrument + " level 1B data");
     } else {
-//        nc.putAtt("title", "Tango Carbon level 1A data");
+        //        nc.putAtt("title", "Tango Carbon level 1A data");
         nc.putAtt("title", "Tango " + instrument + " level 1A data");
     }
     if (level == ProcLevel::l1a || level == ProcLevel::l1b) {
@@ -410,11 +410,11 @@ auto writeL1(const std::string& filename,
         nc.putAtt("l1x_level", netCDF::ncInt, static_cast<int>(level));
     }
     nc.putAtt("project", "TANGO");
-//    nc.putAtt("instrument", "TANGO");
-//    Should read instrument from config file
+    //    nc.putAtt("instrument", "TANGO");
+    //    Should read instrument from config file
     nc.putAtt("instrument", instrument);
     nc.putAtt("product_name", filename);
-// update creator name??????
+    // update creator name??????
     nc.putAtt("creator_name", "SRON/Earth Science");
     nc.putAtt("creator_url", "https://www.sron.nl/missions-earth");
     nc.putAtt("date_created", getDateAndTime());
@@ -684,8 +684,7 @@ auto writeL1(const std::string& filename,
         nc_var.putAtt("units", "m");
         nc_var.putVar(height.data());
 
-        nc_var =
-          nc_grp.addVar("vza", netCDF::ncFloat, geometry_shape);
+        nc_var = nc_grp.addVar("vza", netCDF::ncFloat, geometry_shape);
         nc_var.putAtt("long_name", "sensor zenith angle at bin locations");
         nc_var.putAtt("_FillValue", netCDF::ncFloat, fill::f);
         nc_var.putAtt("valid_min", netCDF::ncFloat, -90.0f);
@@ -693,8 +692,7 @@ auto writeL1(const std::string& filename,
         nc_var.putAtt("units", "degrees");
         nc_var.putVar(vza.data());
 
-        nc_var =
-          nc_grp.addVar("vaa", netCDF::ncFloat, geometry_shape);
+        nc_var = nc_grp.addVar("vaa", netCDF::ncFloat, geometry_shape);
         nc_var.putAtt("long_name", "sensor azimuth angle at bin locations");
         nc_var.putAtt("_FillValue", netCDF::ncFloat, fill::f);
         nc_var.putAtt("valid_min", netCDF::ncFloat, -180.0f);
@@ -710,8 +708,7 @@ auto writeL1(const std::string& filename,
         nc_var.putAtt("units", "degrees");
         nc_var.putVar(sza.data());
 
-        nc_var =
-          nc_grp.addVar("saa", netCDF::ncFloat, geometry_shape);
+        nc_var = nc_grp.addVar("saa", netCDF::ncFloat, geometry_shape);
         nc_var.putAtt("long_name", "solar azimuth angle at bin locations");
         nc_var.putAtt("_FillValue", netCDF::ncFloat, fill::f);
         nc_var.putAtt("valid_min", netCDF::ncFloat, -180.0f);

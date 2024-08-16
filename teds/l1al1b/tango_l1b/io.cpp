@@ -660,7 +660,7 @@ auto writeL1(const std::string& filename,
 
         nc_grp = nc.addGroup("geolocation_data");
 
-        nc_var = nc_grp.addVar("latitude", netCDF::ncFloat, geometry_shape);
+        nc_var = nc_grp.addVar("lat", netCDF::ncFloat, geometry_shape);
         nc_var.putAtt("long_name", "latitude at bin locations");
         nc_var.putAtt("_FillValue", netCDF::ncFloat, fill::f);
         nc_var.putAtt("valid_min", netCDF::ncFloat, -90.0f);
@@ -668,7 +668,7 @@ auto writeL1(const std::string& filename,
         nc_var.putAtt("units", "degrees_north");
         nc_var.putVar(lat.data());
 
-        nc_var = nc_grp.addVar("longitude", netCDF::ncFloat, geometry_shape);
+        nc_var = nc_grp.addVar("lon", netCDF::ncFloat, geometry_shape);
         nc_var.putAtt("long_name", "longitude at bin locations");
         nc_var.putAtt("_FillValue", netCDF::ncFloat, fill::f);
         nc_var.putAtt("valid_min", netCDF::ncFloat, -180.0f);
@@ -685,7 +685,7 @@ auto writeL1(const std::string& filename,
         nc_var.putVar(height.data());
 
         nc_var =
-          nc_grp.addVar("sensor_zenith", netCDF::ncFloat, geometry_shape);
+          nc_grp.addVar("vza", netCDF::ncFloat, geometry_shape);
         nc_var.putAtt("long_name", "sensor zenith angle at bin locations");
         nc_var.putAtt("_FillValue", netCDF::ncFloat, fill::f);
         nc_var.putAtt("valid_min", netCDF::ncFloat, -90.0f);
@@ -694,7 +694,7 @@ auto writeL1(const std::string& filename,
         nc_var.putVar(vza.data());
 
         nc_var =
-          nc_grp.addVar("sensor_azimuth", netCDF::ncFloat, geometry_shape);
+          nc_grp.addVar("vaa", netCDF::ncFloat, geometry_shape);
         nc_var.putAtt("long_name", "sensor azimuth angle at bin locations");
         nc_var.putAtt("_FillValue", netCDF::ncFloat, fill::f);
         nc_var.putAtt("valid_min", netCDF::ncFloat, -180.0f);
@@ -702,7 +702,7 @@ auto writeL1(const std::string& filename,
         nc_var.putAtt("units", "degrees");
         nc_var.putVar(vaa.data());
 
-        nc_var = nc_grp.addVar("solar_zenith", netCDF::ncFloat, geometry_shape);
+        nc_var = nc_grp.addVar("sza", netCDF::ncFloat, geometry_shape);
         nc_var.putAtt("long_name", "solar zenith angle at bin locations");
         nc_var.putAtt("_FillValue", netCDF::ncFloat, fill::f);
         nc_var.putAtt("valid_min", netCDF::ncFloat, -90.0f);
@@ -711,7 +711,7 @@ auto writeL1(const std::string& filename,
         nc_var.putVar(sza.data());
 
         nc_var =
-          nc_grp.addVar("solar_azimuth", netCDF::ncFloat, geometry_shape);
+          nc_grp.addVar("saa", netCDF::ncFloat, geometry_shape);
         nc_var.putAtt("long_name", "solar azimuth angle at bin locations");
         nc_var.putAtt("_FillValue", netCDF::ncFloat, fill::f);
         nc_var.putAtt("valid_min", netCDF::ncFloat, -180.0f);

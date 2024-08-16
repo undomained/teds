@@ -2012,21 +2012,10 @@ def writeOutput(l2_file,IFDOEconfig,parameterNames,results,geo):
 
 def readGeometryL1b(rad_file, slice_alt, slice_act):
     # Read geometry from L1B
-
     geo = {}
-
-    vardict = { 'vza':'sensor_zenith',
-                'sza':'solar_zenith',
-                'vaa':'sensor_azimuth',
-                'saa':'solar_azimuth',
-                'lat':'latitude',
-                'lon':'longitude',
-                'height':'height'}
-    
     with nc.Dataset(rad_file) as f:
-        for key in vardict:
-            geo[key] = f['geolocation_data/'+vardict[key]][slice_alt,slice_act]
-
+        for key in f['geolocation_data'].variables.keys():
+            geo[key] = f[key][slice_alt,slice_act]
     return geo
 
 

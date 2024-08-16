@@ -65,8 +65,7 @@ auto operator<<(YAML::Emitter& out,
     return out;
 }
 
-auto operator<<(YAML::Emitter& out,
-                const Unbin unbin) -> YAML::Emitter&
+auto operator<<(YAML::Emitter& out, const Unbin unbin) -> YAML::Emitter&
 {
     const auto it { std::ranges::find_if(
       unbin_to_enum,

@@ -68,8 +68,8 @@ auto initLogging(const bool set_debug_level) -> void
     }
 }
 
-auto printHeading(const std::string& heading, const bool incl_empty_line)
-  -> void
+auto printHeading(const std::string& heading,
+                  const bool incl_empty_line) -> void
 {
     if (incl_empty_line) {
         spdlog::get("plain")->info("");
@@ -176,8 +176,8 @@ auto checkFileWritable(const std::string& filename) -> void
     }
 }
 
-auto splitString(const std::string& list, const char delimiter)
-  -> std::vector<std::string>
+auto splitString(const std::string& list,
+                 const char delimiter) -> std::vector<std::string>
 {
     std::stringstream ss { list };
     std::string name {};

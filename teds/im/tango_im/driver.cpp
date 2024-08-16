@@ -35,8 +35,8 @@ static auto inverseNonlinearity(const std::string& ckd_file)
 // user settings. The L1A-L1B processor, however, only reads from the
 // input file because after the IM run these parameter should be
 // fixed.
-static auto setL1Meta(const SettingsIM& settings, std::vector<L1>& l1_products)
-  -> void
+static auto setL1Meta(const SettingsIM& settings,
+                      std::vector<L1>& l1_products) -> void
 {
     for (auto& l1 : l1_products) {
         l1.binning_table_id =

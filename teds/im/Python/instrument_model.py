@@ -165,8 +165,8 @@ def create_observation_data_output(nc_output, dimensions, image_attribute_data, 
     # Observation data
     nc_output.add(name='along_track', value=dimensions['dim_alt'], kind='dimension')
     nc_output.add(name='across_track', value=dimensions['dim_act'], kind='dimension')
-    nc_output.add(name='wavelength', value=dimensions['dim_spec'], kind='dimension')
-    output_data = np.zeros((dimensions['dim_alt'], dimensions['dim_act'], dimensions['dim_spec']))
+    nc_output.add(name='wavelength', value=dimensions['dim_wave'], kind='dimension')
+    output_data = np.zeros((dimensions['dim_alt'], dimensions['dim_act'], dimensions['dim_wave']))
 
     nc_output.add(name='observation_data', kind='group')
     nc_output.add(name='i', value=output_data,
@@ -291,7 +291,6 @@ def instrument_model(config, attributes):
     radiance_data = input_data.get_dataset('radiance', c_name='measurement', kind='variable')
 
     #Note: this is the along track dimension
-#    n_images = radiance_data.shape[0]
     # requested number of images:
     image_start = 0
     image_end = radiance_data.shape[0] - 1
@@ -303,6 +302,7 @@ def instrument_model(config, attributes):
     n_images = image_end+1 - image_start
 
     dim_alt = n_images
+    dim_wave = input_data.get_dataset('lbl_samples', c_name='ckd', kind='dimension')
     dim_spat = input_data.get_dataset('detector_row', c_name='ckd', kind='dimension')
     dim_spec = input_data.get_dataset('detector_column', c_name='ckd', kind='dimension')
     dim_act = input_data.get_dataset('across_track', c_name='ckd', kind='dimension')
@@ -316,7 +316,7 @@ def instrument_model(config, attributes):
     binned_rows = int(nr_binned_pixels/dim_spec)
 
     log.info(f"Found dim_spec: {dim_spec} and dim_spat: {dim_spat} and dim_act: {dim_act}, and binned_rows: {binned_rows}")
-    dimensions = {'dim_act':dim_act,'dim_spec': dim_spec, 'dim_spat': dim_spat,
+    dimensions = {'dim_act':dim_act,'dim_spec': dim_spec, 'dim_wave': dim_wave, 'dim_spat': dim_spat,
                   'dim_alt': dim_alt, 'dim_binned_rows': binned_rows}
 
     # Get the output data into list of data containers

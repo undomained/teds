@@ -1,5 +1,5 @@
 latitude:
-  name: lat
+  name: latitude
   long_name: latitude
   units: degree
   valid_min: -90.0
@@ -7,7 +7,7 @@ latitude:
   FillValue: -32767
 
 longitude:
-  name: lon
+  name: longitude
   long_name: longitude 
   units: degree
   valid_min: -180.0
@@ -16,7 +16,7 @@ longitude:
 
 # GM module
 solarzenithangle:
-  name: sza
+  name: solarzenithangle
   long_name: solar zenith angle
   units: degree
   valid_min: 0.0
@@ -24,7 +24,7 @@ solarzenithangle:
   FillValue: -32767
 
 solarazimuthangle:
-  name: saa
+  name: solarazimuthangle
   long_name: solar azimuth angle
   units: degree
   valid_min: -180.0
@@ -32,7 +32,7 @@ solarazimuthangle:
   FillValue: -32767
 
 viewingzenithangle:
-  name: vza
+  name: viewingzenithangle
   long_name: viewing zenith angle
   units: degree
   valid_min: 0.0
@@ -40,7 +40,7 @@ viewingzenithangle:
   FillValue: -32767
 
 viewingazimuthangle:
-  name: vaa
+  name: viewingazimuthangle
   long_name: viewing azimuth angle
   units: degree
   valid_min: -180.0

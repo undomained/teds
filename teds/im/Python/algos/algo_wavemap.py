@@ -1,14 +1,14 @@
 import numpy as np
 
 from teds.im.Python.algos.algo_base import Algorithm
+from teds import log
 
 class Wavemap(Algorithm):
 
-    def __init__(self, logger, algo_name="Wavemap"):
-        self._logger = logger
+    def __init__(self, algo_name="Wavemap"):
+        
         self._algo_name = algo_name
         self._data = None
-        print("INIT Wavemap module")
 
 
 #    def check_input(self, image, ckd, wavelength):
@@ -20,10 +20,8 @@ class Wavemap(Algorithm):
 #    def execute(self, **input_data):
     def execute(self, input_data):
 
-        print(f"INPUT_DATA: {input_data}")
+        #print(f"INPUT_DATA: {input_data}")  # for the love of god
         self._data = input_data.get_dataset('wavelength', c_name='measurement', kind='variable')
-        print(f"Execute code from {self._algo_name} class")
-        print(f"Found wavelength data: {self._data}")
 
         return
 

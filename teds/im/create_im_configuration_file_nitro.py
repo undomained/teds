@@ -5,6 +5,7 @@
 #==============================================================================
 import sys
 import yaml
+from teds import log
 
 def im_configuration(local_config):     
     # using the local and global configs from the yaml files we setup the IM config file of the c++ code
@@ -12,7 +13,7 @@ def im_configuration(local_config):
     #modify it accordingly to the yaml file   
     #ckd
 
-    print("Running im_configuration to create config file for IM executable")
+    log.info("Running im_configuration to create config file for IM executable")
     lines = []
     lines.append('# Configuration file for running the instrument model\n\n')
 
@@ -79,7 +80,7 @@ def im_configuration(local_config):
     new_config = open(local_config['IM_cfg_path']+'im_config.cfg','w')
     new_config.writelines(lines)
     new_config.close()
-    print("DONE running im_configuration to create config file for IM executable")
+    log.info("DONE running im_configuration to create config file for IM executable")
     return
 
 

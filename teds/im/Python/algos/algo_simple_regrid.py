@@ -2,11 +2,12 @@ import numpy as np
 from scipy.interpolate import CubicSpline
 
 from teds.im.Python.algos.algo_base import Algorithm
+from teds import log
 
 class Simple_Regrid(Algorithm):
 
-    def __init__(self, logger, algo_name="Simple_Regrid"):
-        self._logger = logger
+    def __init__(self, algo_name="Simple_Regrid"):
+        
         self._algo_name = algo_name
         self._data = None
 #        print("INIT Simple_Regrid module")

@@ -1,34 +1,16 @@
 import sys, os
-import logging
+from teds import log
 import numpy as np
 import math
 import teds.lib.data_netcdf.data_netcdf as dn
 
-def get_logger():
-    """
-       Gets or creates a logger
-    """
 
-    log_level = logging.INFO
-    log_format = '%(asctime)s : %(name)s : %(module)s : %(lineno)d : %(levelname)s : %(message)s'
-    log_formatter = logging.Formatter(log_format)
-    date_format = '%d/%m/%Y %H:%M:%S'
-
-    logger = logging.getLogger(__name__)
-    logger.setLevel(logging.INFO)
-
-    c_handler = logging.StreamHandler(sys.stdout)
-    c_handler.setFormatter(log_formatter)
-    logger.addHandler(c_handler)
-
-    return logger
-
-def build_simple(logger, bin_file, nrows, ncols, row_binning, col_factor=1):
+def build_simple(bin_file, nrows, ncols, row_binning, col_factor=1):
     """
         Creating simple binning tables for given binning factors.
     """
     # Creating data_netcdf object to hold all the binning data information
-    bin_data = dn.DataNetCDF(logger, bin_file)
+    bin_data = dn.DataNetCDF(bin_file)
 
     # Add dimension scales
     bin_data.add(name='column', value=ncols, kind='dimension') 
@@ -38,7 +20,7 @@ def build_simple(logger, bin_file, nrows, ncols, row_binning, col_factor=1):
 
     # Create the binning tables for the different row binnings
     for row_factor in row_binning:
-        table_name = f"Table_{row_factor}"
+        table_name = f"Table_{int(row_factor)}"
         #create group
         bin_data.add(name=table_name, kind='group') 
 
@@ -70,7 +52,7 @@ def build_simple(logger, bin_file, nrows, ncols, row_binning, col_factor=1):
 
         # create number of binned pixels dimension
         bins = n_binned_rows_total * n_binned_cols_total
-        logger.info(f"Creating binning Table: {table_name} with number of  binned pixels: {bins}, n_binned_rows_total: {n_binned_rows_total} and n_bined_cols_total: {n_binned_cols_total}")
+        log.info(f"Creating binning Table: {table_name} with number of  binned pixels: {bins}, n_binned_rows_total: {n_binned_rows_total} and n_bined_cols_total: {n_binned_cols_total}")
         bin_data.add(name='bins', value=bins, group=table_name, kind='dimension') 
 
         # Note: SRON IM code kinda assumes no binning in spectral dimension since there is only one count_table table that
@@ -121,15 +103,13 @@ def build_simple(logger, bin_file, nrows, ncols, row_binning, col_factor=1):
 
     # Done creating binning tables. Write data to file
     bin_data.write()
-    logger.info(f"Done creating and writing binning tables")
+    log.info(f"Done creating and writing binning tables")
 
     return
 
 if __name__ == '__main__' and __package__ is None:
 
     sys.path.append( os.path.dirname( os.path.dirname( os.path.abspath(__file__) ) ) )
-
-    build_logger = get_logger()
 
     binning_table_file_name = "../data/no2/ckd/binning_table_no2.nc"
     # For now:
@@ -140,5 +120,5 @@ if __name__ == '__main__' and __package__ is None:
     row_binnings = [1,2,3,4,5,6]
     col_factor = 1
     # TODO test case when col_factor != 1
-    build_simple(build_logger, binning_table_file_name, nrows, ncols, row_binnings, col_factor)
+    build_simple(binning_table_file_name, nrows, ncols, row_binnings, col_factor)
 

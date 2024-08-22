@@ -1,31 +1,11 @@
 import os, sys
-import logging
+from teds import log
 import subprocess
 import netCDF4 as nc
 
 from teds.im.Python.input.input_yaml import Input_yaml
 # import teds.lib.data_netcdf.data_netcdf as dn
 from teds import log
-
-def get_logger():
-    """
-       Initialise logger with name 'E2E'.
-       Logger can be obtained in other modules with:
-            logger = logging.getLogger('E2E')
-    """
-
-    log_level = logging.INFO
-    log_format = '%(asctime)s : %(name)s : %(module)s : %(lineno)d : %(levelname)s : %(message)s'
-    log_formatter = logging.Formatter(log_format)
-
-    logger = logging.getLogger('E2E')
-    logger.setLevel(log_level)
-
-    c_handler = logging.StreamHandler(sys.stdout)
-    c_handler.setFormatter(log_formatter)
-    logger.addHandler(c_handler)
-
-    return logger
 
 def get_config(cfg_file):
     """
@@ -36,7 +16,7 @@ def get_config(cfg_file):
     """
     cfg_path, filename = os.path.split(cfg_file)
 
-    config_input = Input_yaml(log, cfg_file)
+    config_input = Input_yaml(cfg_file)
     config = config_input.read()
 
     if 'header' in config.keys():
@@ -60,7 +40,7 @@ def get_config(cfg_file):
 
 
     config_string = config_input.print()
-    log.info(config_string)
+    log.debug(config_string)
 
     return config
 
@@ -95,7 +75,7 @@ def add_attributes_to_output(output_file, attribute_dict):
         Add attributes to the output file
     """
 
-    # out_data = dn.DataNetCDF(logger, output_file, mode='r')
+    # out_data = dn.DataNetCDF(output_file, mode='r')
     # for name, value in attribute_dict.items():
     #     out_data.add(name, value=str(value), kind='attribute')
     # out_data.write()

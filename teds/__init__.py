@@ -38,4 +38,4 @@ _handler.setFormatter(TedsFormatter())
 log = _logging.getLogger(__name__)
 log.addHandler(_handler)
 # Do we want DEBUG as the default???????
-log.setLevel(_logging.DEBUG)
+log.setLevel(_logging.INFO)

@@ -1,6 +1,6 @@
 import numpy as np
 from scipy.interpolate import CubicSpline
-
+from teds import log
 from teds.im.Python.algos.algo_base import Algorithm
 
 class Draw_On_Detector(Algorithm):
@@ -10,8 +10,8 @@ class Draw_On_Detector(Algorithm):
 
     """
 
-    def __init__(self, logger, algo_name="Draw_On_Detector"):
-        self._logger = logger
+    def __init__(self, algo_name="Draw_On_Detector"):
+        
         self._algo_name = algo_name
         self._data = None
 
@@ -19,8 +19,8 @@ class Draw_On_Detector(Algorithm):
         """
             Check input data
         """
-        self._logger.debug(f"Check INPUT from {self._algo_name} class")
-        # TODO: What would be a usefull check?
+        log.debug(f"Check INPUT from {self._algo_name} class")
+        # TODO: What would be a useful check?
 
     def execute(self, input_data):
         """
@@ -36,7 +36,6 @@ class Draw_On_Detector(Algorithm):
         n_act = input_data.get_dataset('across_track', c_name='ckd', kind='dimension')
         n_row = input_data.get_dataset('detector_row', c_name='ckd', kind='dimension')
         n_col = input_data.get_dataset('detector_column', c_name='ckd', kind='dimension')
-        
         
         wl_per_col = input_data.get_dataset('wavelength', c_name = 'ckd', group = 'spectral', kind = 'variable')
         row_indices = input_data.get_dataset('row_index', c_name='ckd', group='swath', kind='variable')

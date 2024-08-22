@@ -3,13 +3,14 @@ import netCDF4 as nc
 from .dimensions import Dimension
 from .variables import Variable
 from .attributes import Attribute
+from teds import log
 
 class Group:
     """
         The Group class deals with netcdf groups
 
         Members:
-        - self._logger
+        - log
         - self._name
         - self._group_list
         - self._dimension_list
@@ -42,11 +43,10 @@ class Group:
         - find_group(self, name)
     """
 
-    def __init__(self, logger, name, level=2, variable_list=None, dimension_list=None, attribute_list=None, group_list=None):
+    def __init__(self, name, level=2, variable_list=None, dimension_list=None, attribute_list=None, group_list=None):
         """
             initialise Group class
             Arguments: 
-                      - logger:  logger pointer
                       - name:  name of the group
                       - level:  level of the group
                       - diminsion_list: list of dimensions of the group
@@ -54,7 +54,6 @@ class Group:
                       - variable_list: variable list of the group
                       - group_list: group list of the group
             Members:
-            - self._logger
             - self._name
             - self._level
             - self._attribute_list
@@ -62,7 +61,6 @@ class Group:
             - self._dimension_list
             - self._group_list
         """
-        self.set_logger(logger)
         self.set_name(name)
         self.set_level(level)
         self.set_attribute_list(attribute_list)
@@ -214,13 +212,6 @@ class Group:
 
         return None
 
-    def set_logger(self,logger):
-        """
-            Set the logger of the group to the given logger
-        """
-        self._logger = logger
-        return
-
     def set_name(self,name):
         """
             Set the name of the group to the given name
@@ -283,18 +274,18 @@ class Group:
         else:
             group = parent.createGroup(self._name)
 
-        self._logger.debug(f"wrting group: {self._name} to file")
+        log.debug(f"wrting group: {self._name} to file")
         for attr in self._attribute_list:
-            self._logger.debug(f"wrting attributes: for this group")
+            log.debug(f"wrting attributes: for this group")
             attr.write(group)
         for dim in self._dimension_list:
-            self._logger.debug(f"wrting dimensions: for this group")
+            log.debug(f"wrting dimensions: for this group")
             dim.write(group)
         for var in self._variable_list:
-            self._logger.debug(f"wrting variables: for this group")
+            log.debug(f"wrting variables: for this group")
             var.write(group)
         for group_group in self._group_list:
-            self._logger.debug("writing groups...")
+            log.debug("writing groups...")
             group_group.write(group)
 
         return 
@@ -321,7 +312,7 @@ class Group:
         variables = group.variables
         self._variable_list = []
         for varname in variables:
-            var = Variable(self._logger, varname, level=level)
+            var = Variable(varname, level=level)
             var.read(group)
             self._variable_list.append(var)
 
@@ -339,7 +330,7 @@ class Group:
         level = self._level+4
         # Dive deeper if needed
         for groupname in group_groups:
-            group_group = Group(self._logger, groupname, level=level)
+            group_group = Group(groupname, level=level)
             group_group.read(group)
             self._group_list.append(group_group)
 
@@ -365,7 +356,7 @@ class Group:
                 search_list = self._attribute_list
         else:
             possible_kinds = ['variable', 'attribute', 'dimension']
-            self._logger.warning(f"The kind of information that you want to retrieve ({kind}) does not exist in netcdf. Possibilities: {possible_kinds}")
+            log.warning(f"The kind of information that you want to retrieve ({kind}) does not exist in netcdf. Possibilities: {possible_kinds}")
             return None
 
         for item in search_list:
@@ -373,7 +364,7 @@ class Group:
                 # item found
                 return item
         #If we get here the item with name name is not found.
-        self._logger.warning(f"Oops {kind} with name {name} is not found in group {self._name}!")
+        log.warning(f"Oops {kind} with name {name} is not found in group {self._name}!")
         return None
 
 

@@ -45,17 +45,17 @@ def get_input_data(config):
         return them in input_data dictionary
     """
 
-    input_data = Datasets(log, 'input_data')
+    input_data = Datasets( 'input_data')
 
     # Proctable
     proctable_file = config['proctable']['file']
-    proctable_input = Input_yaml(log, proctable_file)
+    proctable_input = Input_yaml( proctable_file)
     proctable = proctable_input.read()
     input_data.add_container('proctable', proctable)
 
     # CKD
     ckd_file = config['io']['ckd']
-    ckd_input = Input_netcdf(log,ckd_file)
+    ckd_input = Input_netcdf(ckd_file)
     ckd = ckd_input.read()
     #Note: ckd is an data_netcdf object
     # It contains several groups and datasets
@@ -64,13 +64,13 @@ def get_input_data(config):
     # Binning Tables
     binning_file = config['io']['binning_table']
     print(f"binning file: {binning_file}")
-    binning_tables = Input_netcdf(log,binning_file)
+    binning_tables = Input_netcdf(binning_file)
     binning_table_datasets = binning_tables.read()
     input_data.add_container('binning', binning_table_datasets)
 
     input_file = config['io']['sgm']
     # input_file = config['io']['l1b']
-    data_input = Input_netcdf(log,input_file)
+    data_input = Input_netcdf(input_file)
     #Note: data_input is an data_netcdf object
     # It contains several groups and datasets
     input_datasets = data_input.read()
@@ -103,7 +103,7 @@ def is_detector_image(algo_name):
     """
     is_a_detector_image = False
     # TODO. This is now hard coded. Need to do this differently
-    detector_image_algos = ['Draw_On_Detector', 'PRNU','Non_Linearity','Straylight',
+    detector_image_algos = ['Draw_On_Detector', 'Radiometric', 'PRNU','Non_Linearity','Straylight',
                             'Dark_Current', 'Noise', 'Dark_Offset','Coadding','Binning','ADC']
     if algo_name in detector_image_algos:
         is_a_detector_image = True
@@ -203,13 +203,13 @@ def initialize_output(kind, input_data, algo_list, dimensions, attributes):
         kind is l1a or l1b
     """
 
-    output_datasets = Datasets(log, 'output_data')
+    output_datasets = Datasets( 'output_data')
 
-# Final output file
+    # Final output file
     # Create and initialize the final output
     output_file_name = input_data.get_dataset(kind, c_name='config', group='io')
-    output = dn.DataNetCDF(log, output_file_name)
-    add_main_attributes(output, attributes)
+    output = dn.DataNetCDF( output_file_name)
+    add_main_attributes(output, attributes  )
 
     # Output file also needs image_time, binning_table (=id) nr_coadditions, exposure_time
     # all as fct of image_nr
@@ -228,7 +228,6 @@ def initialize_output(kind, input_data, algo_list, dimensions, attributes):
     # It also indicates if output is integer and binned
     last_algo = algo_list[-1]
     if is_detector_image(last_algo):
-
         is_binned = False
         if 'Binning' in algo_list:
             is_binned = True
@@ -239,20 +238,18 @@ def initialize_output(kind, input_data, algo_list, dimensions, attributes):
 
     output_datasets.add_container('final',output)
 
-# Inbetween output
-
+    # Inbetween output
     for algo_name in algo_list:
-
         # These are the inbetween output files
         # Maybe add some switch if we want them or not.
-#        algo_output = input_data.get_dataset('im_algo_output', c_name='config', group='io')
+        # algo_output = input_data.get_dataset('im_algo_output', c_name='config', group='io')
         if kind == 'l1a':
             algo_output = input_data.get_dataset('im_algo_output', c_name='config', group='io')
         else:
             algo_output = input_data.get_dataset('l1b_algo_output', c_name='config', group='io')
 
         algo_file = algo_output.format(algo_name=algo_name)
-        output_algo = dn.DataNetCDF(log, algo_file)
+        output_algo = dn.DataNetCDF( algo_file)
         add_main_attributes(output_algo, attributes)
 
         if is_detector_image(algo_name):
@@ -266,7 +263,7 @@ def initialize_output(kind, input_data, algo_list, dimensions, attributes):
             create_observation_data_output(output_algo, dimensions, image_attribute_data,
                                            in_between=True)
 
-        output_datasets.add_container(algo_name,output_algo)
+        output_datasets.add_container(algo_name, output_algo)
 
     return output_datasets
 
@@ -310,7 +307,7 @@ def instrument_model(config, attributes):
     # Find binned row dimension
     bin_id = input_data.get_dataset('binning_table_id', c_name='config',
                                     group='detector', kind='variable')
-    table = f"Table_{bin_id}"
+    table = f"Table_{int(bin_id)}"
     nr_binned_pixels = input_data.get_dataset('bins', c_name='binning',
                                               group=table, kind='dimension')
     binned_rows = int(nr_binned_pixels/dim_spec)

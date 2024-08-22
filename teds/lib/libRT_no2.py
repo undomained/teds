@@ -565,13 +565,12 @@ Parameters:
         else:
             self.config = RT_dict(comment=comment)
 
-        self.logger = log
-        self.logger.debug("Initializing {0}".format(self.__class__.__name__))
+        log.debug("Initializing {0}".format(self.__class__.__name__))
 
         if not (self._file is None or (config is not None and type(config) == type(self))):
-            self.logger.debug("Reading config from {0}.".format(self._file))
+            log.debug("Reading config from {0}.".format(self._file))
             self.read()
-        self.logger.debug("Created {0}".format(self.__class__.__name__))
+        log.debug("Created {0}".format(self.__class__.__name__))
 
     def dictionary(self):
         '''Return a copy of the underlying dictionary'''
@@ -588,31 +587,31 @@ Parameters:
     def sections(self):
         '''Obtain a list of sections'''
         sections = list(self.config.keys())
-        self.logger.debug("Sections in object: '{0}'.".format("', '".join(sections)))
+        log.debug("Sections in object: '{0}'.".format("', '".join(sections)))
         return sections
 
     def subsections(self, section):
         '''Obtain a list of subsections'''
         subsections = list(self[section].keys())
-        self.logger.debug("Subsections in section '{1}': '{0}'.".format("', '".join(subsections), section))
+        log.debug("Subsections in section '{1}': '{0}'.".format("', '".join(subsections), section))
         return subsections
 
     def keys(self, section, subsection):
         '''Obtain a list of keys in a particular subsection'''
         keys = list(self[section, subsection].keys())
-        self.logger.debug("Keys in section '{1}', subsection {2}: '{0}'.".format("', '".join(keys), section, subsection))
+        log.debug("Keys in section '{1}', subsection {2}: '{0}'.".format("', '".join(keys), section, subsection))
         return keys
 
     def items(self, section, subsection):
         '''Obtain a list of key-value pairs for a particular subsection'''
         items = list(self[section, subsection].items())
-        self.logger.debug("Items in section '{1}', subsection {2}: {{{0}}}.".format(
+        log.debug("Items in section '{1}', subsection {2}: {{{0}}}.".format(
                 ", ".join(["'{0}': '{1}'".format(k,v) for k,v in items]), section, subsection))
         return items
 
     def values(self, section, subsection):
         '''Return the values in the subsection'''
-        self.logger.debug("Values for SECTION '{0}', subsection '{1}'".format(section, subsection))
+        log.debug("Values for SECTION '{0}', subsection '{1}'".format(section, subsection))
         val = []
         for key in list(self[section, subsection].keys()):
             val.append(self[section, subsection, key])
@@ -630,12 +629,12 @@ Parameters:
             rval =  1 if ((item[0] in self.config) and
                 (item[1] in self.config[item[0]]) and
                 (item[2] in self.config[item[0]][item[1]])) else 0
-        self.logger.debug('__contains__({0}): {1}'.format(item, 'True' if rval else 'False'))
+        log.debug('__contains__({0}): {1}'.format(item, 'True' if rval else 'False'))
         return rval
 
     def __delitem__(self, key):
         '''Remove sections, subsections, and keys'''
-        self.logger.debug('__delitem__: {0}'.format(key))
+        log.debug('__delitem__: {0}'.format(key))
         if type(key) == type(''):
             del self.config[key]
         elif len(key) == 1:
@@ -651,7 +650,7 @@ Parameters:
 Key can be a string or a tuple.
 If value is a tuple, then it is assumed that the real value is the first element,
 and the second element contains a comment'''
-        self.logger.debug('__getitem__: {0}'.format(key))
+        log.debug('__getitem__: {0}'.format(key))
         if isinstance(key, string_types):
             return self.config[key]
         elif len(key) == 1:
@@ -670,7 +669,7 @@ there, then new subsections are merged, same for subsections and keys.
 
 If a key is already there, then the new items extend the existing list,
 or the single item is turned into a list, and the new value is appended.'''
-        self.logger.debug('__setitem__: [{0}] = {1}'.format(key, value))
+        log.debug('__setitem__: [{0}] = {1}'.format(key, value))
         # split the value into a value and a comment
         if type(value) == type(tuple()):
             comment = str(value[1])
@@ -685,7 +684,7 @@ or the single item is turned into a list, and the new value is appended.'''
 
         if type(key) == type(''):
             if type(value) == type({}) or type(value) == type(RT_dict()):
-                self.logger.debug("Inserting whole section at '{0}'.".format(key))
+                log.debug("Inserting whole section at '{0}'.".format(key))
                 if key in self.config:
                     self.config[key].update(value)
                 else:
@@ -695,12 +694,12 @@ or the single item is turned into a list, and the new value is appended.'''
                         self.config[key] = RT_dict(comment=comment)
                 return
             else:
-                self.logger.error('Value must be a dictionary if used in this way')
+                log.error('Value must be a dictionary if used in this way')
                 raise ValueError('Value must be a dictionary if used in this way')
 
         # Key is a tuple with two items. Insert a whole subsection at once.
         if len(key) == 2:
-            self.logger.debug("Inserting whole section at '{0[0]}.{0[1]}'.".format(key))
+            log.debug("Inserting whole section at '{0[0]}.{0[1]}'.".format(key))
             if type(value) == type({}) or type(value) == type(RT_dict()):
                 if key[0] not in self.config:
                     self.config[key[0]] = RT_dict()
@@ -713,42 +712,42 @@ or the single item is turned into a list, and the new value is appended.'''
                         self.config[key[0]][key[1]] = RT_dict(comment=comment)
                 return
             else:
-                self.logger.error('Value must be a dictionary if used in this way')
+                log.error('Value must be a dictionary if used in this way')
                 raise ValueError('Value must be a dictionary if used in this way')
 
         # Key is a tuple with three items. This fully qualifies a single key item
         if len(key) == 3 and (type(value) != type({})
                          and type(value) != type(RT_dict())):
-            self.logger.debug("Inserting item at '{0[0]}.{0[1]}.{0[2]}'.".format(key))
+            log.debug("Inserting item at '{0[0]}.{0[1]}.{0[2]}'.".format(key))
             if key[0] not in self.config:
-                self.logger.debug("Creating section '{0[0]}'.".format(key))
+                log.debug("Creating section '{0[0]}'.".format(key))
                 self.config[key[0]] = RT_dict()
             if key[1] not in self.config[key[0]]:
-                self.logger.debug("Creating subsection '{0[0]}.{0[1]}'.".format(key))
+                log.debug("Creating subsection '{0[0]}.{0[1]}'.".format(key))
                 self.config[key[0]][key[1]] = RT_dict()
             if key[2] in self.config[key[0]][key[1]]:
-                self.logger.debug("Appending to value '{0[2]}'.".format(key))
+                log.debug("Appending to value '{0[2]}'.".format(key))
                 self.config[key[0]][key[1]][key[2]].append(key[2], value, comment)
             else:
-                self.logger.debug("Creating item '{0[0]}.{0[1]}.{0[2]}'.".format(key))
+                log.debug("Creating item '{0[0]}.{0[1]}.{0[2]}'.".format(key))
                 self.config[key[0]][key[1]][key[2]] = RT_item(key=key[2],
                                                               value=value, comment=comment)
         else:
-            self.logger.error('Value can not be a dictionary if used in this way')
+            log.error('Value can not be a dictionary if used in this way')
             raise ValueError('Value can not be a dictionary if used in this way')
 
     def __str__(self):
         '''Create a string representation for writing to file.'''
         out = []
 
-        self.logger.debug("Entering {0}.{1}".format(self.__class__.__name__, whoami()))
+        log.debug("Entering {0}.{1}".format(self.__class__.__name__, whoami()))
         file_comment = self.config.blockcomment()
         if file_comment:
             out.append('# {0}\n'.format(file_comment))
 
         # obtain the sections
         sections = self.sections()
-        self.logger.debug(", ".join(sections))
+        log.debug(", ".join(sections))
 
         # loop over the sections
         for section in sections:
@@ -782,7 +781,7 @@ or the single item is turned into a list, and the new value is appended.'''
                 # loop over the keys in this subsection
                 for key in list(self[section, subsection].keys()):
                     out.append("{0!s}\n".format(self[section, subsection, key]))
-        self.logger.debug("Exit {0}.{1}".format(self.__class__.__name__, whoami()))
+        log.debug("Exit {0}.{1}".format(self.__class__.__name__, whoami()))
         return ''.join(out)
 
     def write(self, filename=None):
@@ -862,7 +861,7 @@ or the single item is turned into a list, and the new value is appended.'''
                 line = re_linebreaks.sub('', line)
                 search = re_control.search(line)
                 if search:
-                    self.logger.debug('Line: {0} ("{1}") matched re_control'.format(linecount, line.replace('\n', '').replace('\r', '')))
+                    log.debug('Line: {0} ("{1}") matched re_control'.format(linecount, line.replace('\n', '').replace('\r', '')))
                     if search.group(1).lower() == 'replace_section':
                         replace_section = (search.group(2).lower() == 'true')
                     elif search.group(1).lower() == 'replace_subsection':
@@ -883,11 +882,11 @@ or the single item is turned into a list, and the new value is appended.'''
                     continue
                 search = re_empty.search(line)
                 if search:
-                    self.logger.debug('Line: {0} matched re_empty'.format(linecount))
+                    log.debug('Line: {0} matched re_empty'.format(linecount))
                     continue
                 search = re_section.search(line)
                 if search:
-                    self.logger.debug('Line: {0} ("{1}") matched re_section'.format(linecount, line))
+                    log.debug('Line: {0} ("{1}") matched re_section'.format(linecount, line))
                     section = search.group(1)
                     subsection = None
                     if replace_section and section in self:
@@ -896,7 +895,7 @@ or the single item is turned into a list, and the new value is appended.'''
                     continue
                 search = re_subsection.search(line)
                 if search:
-                    self.logger.debug('Line: {0} ("{1}") matched re_subsection'.format(linecount, line))
+                    log.debug('Line: {0} ("{1}") matched re_subsection'.format(linecount, line))
                     subsection = search.group(1)
                     if replace_subsection and (section, subsection) in self:
                         del self[section, subsection]
@@ -904,7 +903,7 @@ or the single item is turned into a list, and the new value is appended.'''
                     continue
                 search = re_comment.search(line)
                 if search:
-                    self.logger.debug('Line: {0} ("{1}") matched re_comment'.format(linecount, line))
+                    log.debug('Line: {0} ("{1}") matched re_comment'.format(linecount, line))
                     if section:
                         if subsection:
                             self[section, subsection].setblockcomment(' ' + search.group(1))
@@ -915,7 +914,7 @@ or the single item is turned into a list, and the new value is appended.'''
                     continue
                 search = re_key.search(line)
                 if search:
-                    self.logger.debug('Line: {0} ("{1}") matched re_key'.format(linecount, line))
+                    log.debug('Line: {0} ("{1}") matched re_key'.format(linecount, line))
                     key = search.group(1)
                     valstr = search.group(2)
                     comment = search.group(3)
@@ -926,7 +925,7 @@ or the single item is turned into a list, and the new value is appended.'''
                     continue
                 search = re_continue.search(line)
                 if search and next_continues:
-                    self.logger.debug('Line: {0} ("{1}")\nmatched re_continue'.format(linecount, line))
+                    log.debug('Line: {0} ("{1}")\nmatched re_continue'.format(linecount, line))
                     valstr = search.group(1)
                     comment = search.group(2)
                     next_continues = bool(search.group(3))

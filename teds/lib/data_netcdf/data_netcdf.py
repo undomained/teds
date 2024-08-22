@@ -2,6 +2,7 @@ import numpy as np
 import netCDF4 as nc
 import sys
 
+from teds import log
 from .variables import Variable
 from .groups import Group
 from .dimensions import Dimension
@@ -24,7 +25,6 @@ class DataNetCDF:
         - get_file_name(self)
         - get_title(self)
         - get_main_group(self)
-        - set_logger(self, logger)
         - set_file_name(self, file_name)
         - set_title(self, title)
         - write(self)
@@ -37,26 +37,24 @@ class DataNetCDF:
         - add(self, item, name, value, dimensions, attribute_list, group, var, kind)
     """
 
-    def __init__(self, logger, file_name, title='', mode=None):
+    def __init__(self, file_name, title='', mode=None):
         """
             initialise DataNetCDF class
             Arguments: 
-                      - logger:  logger pointer
                       - file_name:  name of the netcdf file
                       - title:  title of the netcdf file
                       - mode: of mode is 'r' the given file is readin
             Members:
-            - self._logger
+            - log
             - self._file_name
             - self._title
             - self._main_group
         """
 
-        self.set_logger(logger)
         self.set_file_name(file_name)
         self.set_title(title)
         # group main is always there
-        main = Group(self._logger, 'main')
+        main = Group('main')
         self._main_group = main
 
         if mode == 'r':
@@ -86,13 +84,6 @@ class DataNetCDF:
 
     def __ne__(self, other):
         return not self.__eq__(other)
-
-    def set_logger(self, logger):
-        """
-            Set logger
-        """
-        self._logger = logger
-        return
 
     def set_file_name(self, file_name):
         """
@@ -136,7 +127,7 @@ class DataNetCDF:
         output_file = self._file_name
         if file_name is not None:
             output_file = file_name
-        self._logger.info(f"Writing to output file: {output_file}")
+        log.info(f"Writing to output file: {output_file}")
         with nc.Dataset(output_file, mode="w") as file_handle:
             file_handle.title=self._title
             self._main_group.write(file_handle)
@@ -152,7 +143,7 @@ class DataNetCDF:
         with nc.Dataset(file_name) as file_handle:
 
             # Getting meain stuff
-            main = Group(self._logger, 'main')
+            main = Group('main')
             main.read(file_handle)
             self._main_group = main
 
@@ -175,7 +166,7 @@ class DataNetCDF:
         grp = self.find_group(name=group)
 
         if grp is None:
-            self._logger.warning(f"Given group: {group} can not be found. So {kind} with name {name} can not be found")
+            log.warning(f"Given group: {group} can not be found. So {kind} with name {name} can not be found")
             return found_item
 
         # Find given object list
@@ -205,7 +196,7 @@ class DataNetCDF:
             var_string = ""
             if var is not None:
                 var_string = f" for given {var}"
-            self._logger.warning(f"{kind} with name {name} can not be found in group {group}{var_string}")
+            log.warning(f"{kind} with name {name} can not be found in group {group}{var_string}")
 
         return found_item
 
@@ -220,7 +211,7 @@ class DataNetCDF:
             found_group = grp.find_group(name)
 
         if found_group is None:
-            self._logger.warning(f"Group {name} can not be found in netcdf file")
+            log.warning(f"Group {name} can not be found in netcdf file")
 
         return found_group
 
@@ -235,7 +226,7 @@ class DataNetCDF:
         if item is not None:
             item.set_value(value)
         else:
-            self._logger.warning(f"{kind} with name {name} not found in group {group}. Value can not be changed")
+            log.warning(f"{kind} with name {name} not found in group {group}. Value can not be changed")
         return
 
     def get(self, name, group=None, var=None, kind='variable'):
@@ -248,7 +239,7 @@ class DataNetCDF:
         if item is not None:
             return item.get_value()
         else:
-            self._logger.warning(f"{kind} with name {name} not found in group {group}. Value can not be returned")
+            log.warning(f"{kind} with name {name} not found in group {group}. Value can not be returned")
         return None
 
     def remove(self, name, group=None, var=None, kind='variable'):
@@ -261,7 +252,7 @@ class DataNetCDF:
         """
         if kind == 'dimension':
             error_msg = "Removing a dimension is tricky. Also the variables that use it would need to be deleted. At the moment this is not possible"
-            self._logger.error(error_msg)
+            log.error(error_msg)
             sys.exit(error_msg)
             return
 
@@ -294,7 +285,7 @@ class DataNetCDF:
             var_string = ""
             if var is not None:
                 var_string = " for variable {var}"
-            self._logger.warning("{kind} with name {name} not found in group {group}{var_string}. Not removed!")
+            log.warning("{kind} with name {name} not found in group {group}{var_string}. Not removed!")
         if found_index != 9999:
             found_item = item
             del search_list[found_index]
@@ -334,7 +325,7 @@ class DataNetCDF:
             #First create object, then add it to the list
             if kind == 'variable':
                 dtype = value.dtype
-                var = Variable(self._logger, name, value, dtype=dtype, dimensions=dimensions, attribute_list=attribute_list, level=level)
+                var = Variable(name, value, dtype=dtype, dimensions=dimensions, attribute_list=attribute_list, level=level)
                 search_list.append(var)
             elif kind == 'dimension':
                 dim = Dimension(name, value, level=level)
@@ -343,7 +334,7 @@ class DataNetCDF:
                 attr = Attribute(name, value, level=level)
                 search_list.append(attr)
             elif kind == 'group':
-                new_group = Group(self._logger, name, level=level+4)
+                new_group = Group(name, level=level+4)
                 search_list.append(new_group)
 
 #        # Set new list: should not be needed?????

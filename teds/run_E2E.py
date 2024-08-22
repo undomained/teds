@@ -4,7 +4,7 @@
 import argparse
 from datetime import timedelta
 import importlib
-import logging
+from teds import log
 import os
 import subprocess
 import sys
@@ -15,6 +15,7 @@ import yaml
 from teds import log
 import teds.lib.lib_utils as Utils
 import teds.lib.data_netcdf.data_netcdf as dn
+import logging as _logging
 
 def cmdline(arguments):
     """
@@ -66,7 +67,7 @@ def reshape_output(output_key, config):
     temp_output_file = None
     # readin output file
     output_file = config['io'][output_key]
-    output_data = dn.DataNetCDF(log, output_file, mode='r')
+    output_data = dn.DataNetCDF(output_file, mode='r')
 
     # cal_level determines until which step IM and L1B are run.
     # A check on cal_level can be used to determine whether or not reshaping is needed.
@@ -87,7 +88,7 @@ def reshape_output(output_key, config):
 
         # Get dimensions from ckd?
         ckd_file = config['io']['ckd']
-        ckd_data = dn.DataNetCDF(log, ckd_file, mode='r')
+        ckd_data = dn.DataNetCDF(ckd_file, mode='r')
         det_rows = ckd_data.get('detector_row', kind='dimension')
         det_cols = ckd_data.get('detector_column', kind='dimension')
 
@@ -100,8 +101,8 @@ def reshape_output(output_key, config):
         # How do I get the right dimensions when binning has been applied?
         # For now stupidly devide det_rows by table_id
         bin_file = config['io']['binning_table']
-        bin_data = dn.DataNetCDF(log, bin_file, mode='r')
-        bin_id = config['detector']['binning_table_id']
+        bin_data = dn.DataNetCDF(bin_file, mode='r')
+        bin_id = int(config['detector']['binning_table_id'])
         table = f"Table_{bin_id}"
         binned_pixels = bin_data.get('bins', group=table, kind='dimension')
         binned_rows = int(binned_pixels/det_cols)
@@ -361,7 +362,6 @@ def build(config, step, cfg_path, attribute_dict):
         Utils.add_attributes_to_output(sgm_config['io']['sgm_atm_raw'], attribute_dict)
 
     if step in ['im','all']:
-
         im_config = get_specific_config(configuration, 'im')
         attribute_dict = add_module_specific_attributes(im_config, attribute_dict, 'im')
         # write config to temp yaml file with IM values filled in
@@ -417,7 +417,7 @@ def build(config, step, cfg_path, attribute_dict):
         else:
             # run Python code
             e2e_module = importlib.import_module("l1al1b.Python.l1b_processor")
-            e2e_module.l1b_processor(l1b_config, log, attribute_dict)
+            e2e_module.l1b_processor(l1b_config, attribute_dict)
 
     if step in ['l1l2','all']:
         l2_config = get_specific_config(configuration, 'l1l2')
@@ -445,9 +445,9 @@ if __name__ == "__main__":
     e2e_config['header']['path'] = e2e_cfg_path
 
     if e2e_config['log_level'] == 'debug':
-        log.setLevel(logging.DEBUG)
+        log.setLevel(_logging.DEBUG)
     else:
-        log.setLevel(logging.INFO)
+        log.setLevel(_logging.INFO)
 
     if not e2e_config['show_progress']:
         os.environ['TQDM_DISABLE']='1'

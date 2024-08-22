@@ -1,9 +1,10 @@
 import time
+from teds import log
 
 class Datasets:
 
-    def __init__(self, logger, list_name):
-        self._logger = logger
+    def __init__(self, list_name):
+        
         self._list_name = list_name
         self._datasets = []
 
@@ -24,13 +25,13 @@ class Datasets:
         data_container = self.find_container( c_name)
         if data_container is None:
             # container does not yet exist, can be added.
-            print(f"In ADD_CONTAINER {c_name}: c_type: {c_type}")
-            data_container = Data_Container(self._logger, c_name, container, c_type)
+            #print(f"In ADD_CONTAINER {c_name}: c_type: {c_type}")
+            data_container = Data_Container(c_name, container, c_type)
             self._datasets.append(data_container)
         else:
             # This container already exists.
             # overwrite 
-            print(f"WARNING: there exists already a container with name {c_name}. It will be overwritten")
+            log.warning(f"WARNING: there exists already a container with name {c_name}. It will be overwritten")
             data_container.set_container(container)
 
         return
@@ -50,7 +51,7 @@ class Datasets:
 #                data_container = container
 #                break
         if container is None:
-            self._logger.warning(f"Given data container {c_name} can not be found.")
+            #log.warning(f"Given data container {c_name} can not be found.")
             return None
 
         data_container = container.get_container()
@@ -62,16 +63,16 @@ class Datasets:
         else:
             if group is not None:
                 if group not in data_container:
-                    self._logger.warning(f"Given group  {group} can not be found in given data container {c_name}.")
+                    log.warning(f"Given group  {group} can not be found in given data container {c_name}.")
                     return None
                 if ds_name not in data_container[group]:
-                    self._logger.warning(f"Given dataset {ds_name} can not be found in group  {group} in given data container {c_name}.")
+                    log.warning(f"Given dataset {ds_name} can not be found in group  {group} in given data container {c_name}.")
                     return None
                 ds = data_container[group][ds_name]
                 return ds
             else:
                 if ds_name not in data_container:
-                    self._logger.warning(f"Given dataset {ds_name} can not be found in given data container {c_name}.")
+                    log.warning(f"Given dataset {ds_name} can not be found in given data container {c_name}.")
                     return None
                 ds = data_container[ds_name]
                 return ds
@@ -91,7 +92,7 @@ class Datasets:
             else:
                 dataset = ds
         else:
-            self._logger.warning(f"Dataset {ds_name} in data container {c_name} not found.")
+            log.warning(f"Dataset {ds_name} in data container {c_name} not found.")
 
         return dataset
 
@@ -102,8 +103,8 @@ class Datasets:
             if container.get_name() == c_name:
                 data_container = container
                 break
-        if data_container is None:
-            self._logger.warning(f"Given data container {c_name} can not be found.")
+        #if data_container is None:
+        #    log.warning(f"Given data container {c_name} can not be found.")
 
         return data_container
 
@@ -111,7 +112,7 @@ class Datasets:
 
         container = self.find_container( c_name)
         if container is None:
-            self._logger.warning(f"Given data container {c_name} can not be found. Dataset {ds_name} can not be added to it.")
+            log.warning(f"Given data container {c_name} can not be found. Dataset {ds_name} can not be added to it.")
             return None
 
         data_container = container.get_container()
@@ -120,15 +121,15 @@ class Datasets:
         else:
             if group is not None:
                 if group not in data_container:
-                    self._logger.warning(f"Given group  {group} can not be found in given data container {c_name}. Dataset {ds_name} can not be added.")
+                    log.warning(f"Given group  {group} can not be found in given data container {c_name}. Dataset {ds_name} can not be added.")
                     return None
                 if ds_name in data_container[group]:
-                    self._logger.warning(f"Given dataset {ds_name} already exists in group  {group} in given data container {c_name}. Dataset {ds_name} can not be added.")
+                    log.warning(f"Given dataset {ds_name} already exists in group  {group} in given data container {c_name}. Dataset {ds_name} can not be added.")
                     return None
                 data_container[group][ds_name] = data
             else:
                 if ds_name in data_container:
-                    self._logger.warning(f"Given dataset {ds_name} already exists in given data container {c_name}. Dataset {ds_name} can not be added.")
+                    log.warning(f"Given dataset {ds_name} already exists in given data container {c_name}. Dataset {ds_name} can not be added.")
                     return None
                 data_container[ds_name] = data
         return
@@ -138,7 +139,7 @@ class Datasets:
 
         container = self.find_container( c_name)
         if container is None:
-            self._logger.warning(f"Given data container {c_name} can not be found. Dataset {ds_name} can not be found and updated.")
+            log.warning(f"Given data container {c_name} can not be found. Dataset {ds_name} can not be found and updated.")
             return None
 
         data_container = container.get_container()
@@ -157,15 +158,15 @@ class Datasets:
         else:
             if group is not None:
                 if group not in data_container:
-                    self._logger.warning(f"Given group  {group} can not be found in given data container {c_name}. Dataset {ds_name} can not be found and updated.")
+                    log.warning(f"Given group  {group} can not be found in given data container {c_name}. Dataset {ds_name} can not be found and updated.")
                     return None
                 if ds_name not in data_container[group]:
-                    self._logger.warning(f"Given dataset {ds_name} can not be found in group  {group} in given data container {c_name}. Dataset {ds_name} can not be found and updated.")
+                    log.warning(f"Given dataset {ds_name} can not be found in group  {group} in given data container {c_name}. Dataset {ds_name} can not be found and updated.")
                     return None
                 data_container[group][ds_name] = data
             else:
                 if ds_name not in data_container:
-                    self._logger.warning(f"Given dataset {ds_name} can not be found in given data container {c_name}. Dataset {ds_name} can not be found and updated.")
+                    log.warning(f"Given dataset {ds_name} can not be found in given data container {c_name}. Dataset {ds_name} can not be found and updated.")
                     return None
                 data_container[ds_name] = data
         return
@@ -174,12 +175,12 @@ class Datasets:
         for container in self._datasets:
             data_container = container.get_container()
             c_name = container.get_name()
-            self._logger.info(f"Writing for container {c_name}") 
+            log.info(f"Writing for container {c_name}") 
             if container.get_type() == 'DataNetCDF':
                 start_time_writing = time.perf_counter()
-                self._logger.debug(f"{data_container}")
-                self._logger.debug("#############")
-                self._logger.debug("#############")
+                log.debug(f"{data_container}")
+                log.debug("#############")
+                log.debug("#############")
 
                 data_container.write()
                 end_time_writing = time.perf_counter()
@@ -188,8 +189,8 @@ class Datasets:
 
 class Data_Container:
 
-    def __init__(self, logger, name, container, c_type):
-        self._logger = logger
+    def __init__(self, name, container, c_type):
+        
         self._name = name
         self._container = container
         self._type = c_type

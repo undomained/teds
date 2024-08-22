@@ -1,6 +1,7 @@
 import copy
 
 from teds.im.Python.algos.algo_base import Algorithm
+from teds import log
 
 class Dark_Offset(Algorithm):
     """
@@ -9,8 +10,8 @@ class Dark_Offset(Algorithm):
 
     """
 
-    def __init__(self, logger, algo_name='Dark_Offset'):
-        self._logger = logger
+    def __init__(self, algo_name='Dark_Offset'):
+        
         self._algo_name = algo_name
         self._data = None
         self._stdev = None
@@ -20,7 +21,7 @@ class Dark_Offset(Algorithm):
         """
             Check input data
         """
-        self._logger.debug(f"Check INPUT from {self._algo_name} class")
+        log.debug(f"Check INPUT from {self._algo_name} class")
         # TODO: What would be a usefull check?
 
     def execute(self, input_data, kind='IM'):
@@ -30,7 +31,7 @@ class Dark_Offset(Algorithm):
             Only if enabled.
             Only for good pixels
         """
-        self._logger.debug(f"Execute code from {self._algo_name} class")
+        log.debug(f"Execute code from {self._algo_name} class")
 
         image = input_data.get_dataset('image', c_name='work')
         stdev = input_data.get_dataset('stdev', c_name='work')
@@ -40,13 +41,10 @@ class Dark_Offset(Algorithm):
         enabled = input_data.get_dataset('enabled', c_name='config', group='dark')
         if not enabled:
             # Algorithm will not be run
-            self._logger.info(f"Algorithm {self._name} will not ne run because enabled is set to {enabled} in configuration file")
+            log.info(f"Algorithm {self._name} will not ne run because enabled is set to {enabled} in configuration file")
             return
         dark_offset = input_data.get_dataset('offset', c_name='ckd', group='dark', kind='variable')
         pixel_mask = input_data.get_dataset('pixel_mask', c_name='ckd', kind='variable')
-        print(f"image: {image}")
-        print(f"dark_offset: {dark_offset}")
-        print(f"pixel_mask: {pixel_mask}")
         new_image = copy.deepcopy(image)
         good_pixels = pixel_mask==0
         if kind == 'IM':

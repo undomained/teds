@@ -1,8 +1,8 @@
 
+
 class Input:
 
-    def __init__(self, logger, file_name):
-        self._logger = logger
+    def __init__(self, file_name):
         self._file_name = file_name
 
     def __str__(self):
@@ -10,7 +10,7 @@ class Input:
             Human readable printstatement
         """
         input_string = f"Input file {self._file_name} is used\n"
-        input_string += self.print()
+        #input_string += self.print()
 
         return input_string
        

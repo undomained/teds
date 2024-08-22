@@ -240,7 +240,7 @@ def get_amf_iter(cfg, doas, atm):
 
         results['no2_averaging_kernel'][idx,idy,:] = boxamf_clear * cl  / results['no2_total_amf'][idx,idy]
 
-        # logger.info('Processed pixel alt {}/{} act {}/{} in {}s'.format(idx,doas['lat'].shape[0],idy,doas['lat'].shape[1],np.round((time.time() - start_time_pixel),2) ))
+        # log.info('Processed pixel alt {}/{} act {}/{} in {}s'.format(idx,doas['lat'].shape[0],idy,doas['lat'].shape[1],np.round((time.time() - start_time_pixel),2) ))
     return results
 
 def get_tcorr(t):

@@ -2,6 +2,7 @@ import numpy as np
 #from scipy.interpolate import CubicSpline
 
 from teds.im.Python.algos.algo_base import Algorithm
+from teds import log
 
 class Swath(Algorithm):
     """
@@ -10,8 +11,8 @@ class Swath(Algorithm):
 
     """
 
-    def __init__(self, logger, algo_name="Swath"):
-        self._logger = logger
+    def __init__(self, algo_name="Swath"):
+        
         self._algo_name = algo_name
         self._data = None
         self._stdev = None
@@ -21,7 +22,7 @@ class Swath(Algorithm):
         """
             Check input data
         """
-        self._logger.debug(f"Check INPUT from {self._algo_name} class")
+        log.debug(f"Check INPUT from {self._algo_name} class")
         # TODO: What would be a usefull check?
 
     def calculate_pixel_indices_and_weights(self,input_data, spectrum_width = 1):

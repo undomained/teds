@@ -1,4 +1,4 @@
-import logging
+from teds import log
 import sys
 import time
 import numpy as np
@@ -27,14 +27,14 @@ from teds.im.Python.algos.algo_coadding import Coadding
 from teds.im.Python.algos.algo_binning import Binning
 from teds.im.Python.algos.algo_adc import ADC
 
-def normalize_by_BF(logger, data, input_data):
+def normalize_by_BF(data, input_data):
     """
         Normalize data by BF
     """
     det_cols = input_data.get_dataset('detector_column', c_name='ckd', kind='dimension')
     det_rows = input_data.get_dataset('detector_row', c_name='ckd', kind='dimension')
     bin_id = input_data.get_dataset('binning_table', c_name='measurement', group='image_attributes', kind='variable')[0]
-    table = f"Table_{bin_id}" 
+    table = f"Table_{int(bin_id)}" 
     count_table = input_data.get_dataset('count_table', c_name='binning', group=table, kind='variable')
     if data.shape[1] == count_table.shape[0]:
         normalized_data = np.divide(data,count_table[np.newaxis,...])
@@ -43,20 +43,20 @@ def normalize_by_BF(logger, data, input_data):
 
     return normalized_data
 
-def apply_binning(logger, data, input_data, apply_norm=False):
+def apply_binning(data, input_data, apply_norm=False):
     """
         Apply binning and normalize by binning factor if requested
     """
-    algo = Binning(logger)
+    algo = Binning()
     algo.execute( input_data, other_data=data)
     binned_data = algo.get_data()
 
     if apply_norm:
-        binned_data = normalize_by_BF(logger, binned_data, input_data)
+        binned_data = normalize_by_BF(binned_data, input_data)
         
     return binned_data
 
-def get_l1b_config(logger, config):
+def get_l1b_config(config):
     """
         Get L1B specific settings and move them one level up in config
     """
@@ -65,24 +65,24 @@ def get_l1b_config(logger, config):
         config[key] = value
     return config
 
-def get_input_data(logger, config):
+def get_input_data(config):
     """
         Get the input data.
         ckd, proctable, L1A, wavelength,...
         return them in input_data dictionary
     """
 
-    input_data = Datasets(logger, 'input_data')
+    input_data = Datasets('input_data')
 
     # Proctable
     proctable_file = config['proctable']['file']
-    proctable_input = Input_yaml(logger, proctable_file)
+    proctable_input = Input_yaml(proctable_file)
     proctable = proctable_input.read()
     input_data.add_container('proctable', proctable)
 
     # CKD
     ckd_file = config['io']['ckd']
-    ckd_input = Input_netcdf(logger,ckd_file)
+    ckd_input = Input_netcdf(ckd_file)
     ckd = ckd_input.read()
     #Note: ckd is an data_netcdf object
     # It contains several groups and datasets
@@ -91,7 +91,7 @@ def get_input_data(logger, config):
     # Binning Tables
     binning_file = config['io']['binning_table']
     print(f"binning file: {binning_file}")
-    binning_tables = Input_netcdf(logger,binning_file)
+    binning_tables = Input_netcdf(binning_file)
     binning_table_datasets = binning_tables.read()
     input_data.add_container('binning', binning_table_datasets)
 
@@ -99,7 +99,7 @@ def get_input_data(logger, config):
     print(f"############################")
     print(f"L1A INPUT FILE: {input_file}")
     print(f"############################")
-    data_input = Input_netcdf(logger,input_file)
+    data_input = Input_netcdf(input_file)
     #Note: data_input is an data_netcdf object
     # It contains several groups and datasets
     input_datasets = data_input.read()
@@ -107,7 +107,7 @@ def get_input_data(logger, config):
 
 #    # Find the wavelength map corresponding to this temperature.
 #    # Not yet implemented
-#    wavemapping = Wavemap(logger)
+#    wavemapping = Wavemap()
 #    wavemapping.check_input(input_data)
 #    wavemapping.execute(input_data)
 #    wavemap = wavemapping.get_data()
@@ -137,7 +137,7 @@ def is_detector_image(algo_name):
         is_detector_image = True
     return is_detector_image
 
-def create_detector_image_output(logger, nc_output, dimensions, image_attribute_data, kind, is_binned=False, in_between=False):
+def create_detector_image_output(nc_output, dimensions, image_attribute_data, kind, is_binned=False, in_between=False):
     """
         Create detector image dimensions and dataset and attributes
     """
@@ -184,7 +184,7 @@ def create_detector_image_output(logger, nc_output, dimensions, image_attribute_
 
     return
 
-def create_observation_data_output(logger, nc_output, dimensions, image_attribute_data, kind, in_between=False):
+def create_observation_data_output(nc_output, dimensions, image_attribute_data, kind, in_between=False):
     """
         Create observation data dimensions and dataset and attributes
     """
@@ -222,19 +222,19 @@ def create_observation_data_output(logger, nc_output, dimensions, image_attribut
     return
 
 
-def initialize_output(logger, kind, input_data, algo_list, dimensions, main_attributes):
+def initialize_output(kind, input_data, algo_list, dimensions, main_attributes):
     """
         Initialize the final output file.
         Add dimensions and output dataset
         kind is l1a or l1b
     """
 
-    output_datasets = Datasets(logger, 'output_data')
+    output_datasets = Datasets('output_data')
 
 # Final output file
     # Create and initialize the final output
     output_file_name = input_data.get_dataset(kind, c_name='config', group='io')
-    output = dn.DataNetCDF(logger, output_file_name)
+    output = dn.DataNetCDF(output_file_name)
     add_main_attributes(output, main_attributes)
 
     # Output file also needs image_time, binning_table (=id) nr_coadditions, exposure_time
@@ -263,10 +263,10 @@ def initialize_output(logger, kind, input_data, algo_list, dimensions, main_attr
         is_binned = False
         if 'Binning' in algo_list:
             is_binned = True
-        create_detector_image_output(logger, output, dimensions, image_attribute_data, kind, is_binned=is_binned)
+        create_detector_image_output(output, dimensions, image_attribute_data, kind, is_binned=is_binned)
 
     else:
-        create_observation_data_output(logger, output, dimensions, image_attribute_data, kind)
+        create_observation_data_output(output, dimensions, image_attribute_data, kind)
 
     output_datasets.add_container('final',output)
 
@@ -283,24 +283,24 @@ def initialize_output(logger, kind, input_data, algo_list, dimensions, main_attr
             algo_output = input_data.get_dataset('l1b_algo_output', c_name='config', group='io')
 
         algo_file = algo_output.format(algo_name=algo_name)
-        output_algo = dn.DataNetCDF(logger, algo_file)
+        output_algo = dn.DataNetCDF(algo_file)
         add_main_attributes(output_algo, main_attributes)
 
         if is_detector_image(algo_name):
             is_binned = False
             if algo_name in ['Binning','ADC']:
                 is_binned = True
-            create_detector_image_output(logger, output_algo, dimensions, image_attribute_data, kind, is_binned=is_binned, in_between=True)
+            create_detector_image_output(output_algo, dimensions, image_attribute_data, kind, is_binned=is_binned, in_between=True)
 
         else:
-            create_observation_data_output(logger, output_algo, dimensions, image_attribute_data, kind, in_between=True)
+            create_observation_data_output(output_algo, dimensions, image_attribute_data, kind, in_between=True)
 
         output_datasets.add_container(algo_name,output_algo)
 
     return output_datasets
 
 
-def l1b_processor(config, logger, main_attributes):
+def l1b_processor(config, main_attributes):
     """
         L1B procesor.
         Apply corrrections to the detector image data
@@ -309,21 +309,20 @@ def l1b_processor(config, logger, main_attributes):
     start_time_L1B = time.perf_counter()
 
     # Get the input data into list of data containers
-    input_data = get_input_data(logger, config)
+    input_data = get_input_data(config)
 
 #    bin and normalize some ckd data: prnu, dark offset, dark current, noise g and n(2), pixel mask
     ckds_to_bin = {'prnu': 'prnu', 'current':'dark', 'offset': 'dark', 'g': 'noise', 'n': 'noise','pixel_mask':None}
     for ckd_name, group_name in ckds_to_bin.items():
-        print(f"Processing ckd dataset: {ckd_name} with group: {group_name}")
+        log.info(f"Processing ckd dataset: {ckd_name} with group: {group_name}")
         ckd_data = input_data.get_dataset(ckd_name, c_name='ckd', group=group_name, kind='variable')
-        print(f"CKD data found: {ckd_data}")
-        binned_data = apply_binning(logger, ckd_data, input_data, apply_norm=True)
+        binned_data = apply_binning(ckd_data, input_data, apply_norm=True)
         input_data.update_dataset(ckd_name, data=binned_data, c_name='ckd', group=group_name)
 
     # Get the list of algorithms from proctable file
     algo_list_input = input_data.get_dataset('algo_list', c_name='config', group='proctable')
     algo_list = input_data.get_dataset(algo_list_input, c_name='proctable')
-    logger.info(f"NOW algo_list: {algo_list}")
+    log.info(f"NOW algo_list: {algo_list}")
 
 #    l1a_data = input_data.get_dataset('l1a', c_name='measurement', kind='variable')
     l1a_data = input_data.get_dataset('detector_image', c_name='measurement', group='science_data', kind='variable')
@@ -349,7 +348,7 @@ def l1b_processor(config, logger, main_attributes):
         l1a_data = np.reshape(l1a_data, (n_image_total, dim_spat,dim_spec))
 
     # Normalize by BF
-    l1a_data = normalize_by_BF(logger, l1a_data, input_data)
+    l1a_data = normalize_by_BF(l1a_data, input_data)
 
 
     # Find binned row dimension
@@ -357,25 +356,25 @@ def l1b_processor(config, logger, main_attributes):
     # If n_pix changes over time because of chaning binning table, then different meadsurement sets.
     # not able to use one array anyway.
     bin_id = input_data.get_dataset('binning_table', c_name='measurement', group='image_attributes', kind='variable')[0]
-    table = f"Table_{bin_id}"
+    table = f"Table_{int(bin_id)}"
     nr_binned_pixels = input_data.get_dataset('bins', c_name='binning', group=table, kind='dimension')
     binned_rows = int(nr_binned_pixels/dim_spec)
 
-    logger.info(f"Found dim_spec: {dim_spec} and dim_spat: {dim_spat} and dim_act: {dim_act}, and binned_rows: {binned_rows}")
+    log.info(f"Found dim_spec: {dim_spec} and dim_spat: {dim_spat} and dim_act: {dim_act}, and binned_rows: {binned_rows}")
     dimensions = {'dim_act':dim_act,'dim_spec': dim_spec, 'dim_spat': dim_spat, 'dim_alt': dim_alt, 'dim_binned_rows': binned_rows}
 
     # Get the output data into list of data containers
-    output_datasets = initialize_output(logger, 'l1b', input_data, algo_list, dimensions, main_attributes)
+    output_datasets = initialize_output('l1b', input_data, algo_list, dimensions, main_attributes)
 
     # Loop over images
     for img in range(image_start, image_end+1):
 
-        print(f"Processing image: {img}")
+        log.info(f"Processing image: {img}")
         start_time_image = time.perf_counter()
 
         image = l1a_data[img,:,:]
         stdev = np.zeros((image.shape))
-        print(f" img: {img} and image: {image}")
+
         # Have to temporary store the image somewhere for acces later on in algos.
         input_data.add_container('work', {'image': image, 'stdev': stdev})
 #        input_data.add_container('work', {'stdev': stdev})
@@ -384,12 +383,12 @@ def l1b_processor(config, logger, main_attributes):
             start_time_algo = time.perf_counter()
 
             # TODO in principle this works. Check if more complicated stuff also works
-            logger.debug(f"IMG: {img} running algo {algo_name}")
+            log.debug(f"IMG: {img} running algo {algo_name}")
 
-            algo = globals()[algo_name](logger)
+            algo = globals()[algo_name]()
             algo.check_input(input_data)
 
-            logger.debug(f"BEFORE RUNNING ALGO SHAPE IMAGE: {image.shape}")
+            log.debug(f"BEFORE RUNNING ALGO SHAPE IMAGE: {image.shape}")
 
             algo.execute( input_data, kind='L1AL1B')
             image = algo.get_data()
@@ -399,9 +398,9 @@ def l1b_processor(config, logger, main_attributes):
 #            if new_stdev is not None:
 #                stdev = new_stdev
 
-            logger.debug(f"AFTER RUNNING ALGO SHAPE IMAGE: {image.shape}")
+            log.debug(f"AFTER RUNNING ALGO SHAPE IMAGE: {image.shape}")
 
-            logger.debug(f"Updating measurement dataset for container {algo_name} with image nr {img}")
+            log.debug(f"Updating measurement dataset for container {algo_name} with image nr {img}")
             output_datasets.update_dataset('measurement', data=image, c_name=algo_name, img=img)
             output_datasets.update_dataset('stdev', data=stdev, c_name=algo_name, img=img)
 
@@ -409,13 +408,13 @@ def l1b_processor(config, logger, main_attributes):
             input_data.update_dataset('stdev', 'work',stdev)
 #            this_dataset = output_datasets.get_dataset('measurement', c_name=algo_name, kind='variable')
 #
-#            logger.debug(f"{algo_name} SHAPE : {this_dataset.shape}")
+#            log.debug(f"{algo_name} SHAPE : {this_dataset.shape}")
 
             end_time_algo = time.perf_counter()
-            logger.info(f"Processing algorithm {algo_name} for image {img} took {(end_time_algo - start_time_algo):.6f}s")
+            log.info(f"Processing algorithm {algo_name} for image {img} took {(end_time_algo - start_time_algo):.6f}s")
 
         end_time_image = time.perf_counter()
-        logger.info(f"Processing image {img} took {(end_time_image - start_time_image):.6f}seconds")
+        log.info(f"Processing image {img} took {(end_time_image - start_time_image):.6f}seconds")
 
         for algo_name in algo_list:
             algo_dataset = output_datasets.get_dataset('measurement', c_name=algo_name, kind='variable')
@@ -438,30 +437,28 @@ def l1b_processor(config, logger, main_attributes):
 
     output_datasets.write()
     end_time_L1B = time.perf_counter()
-    logger.info(f"L1B Processor Processing took {(end_time_L1B - start_time_L1B):.6f}seconds")
+    log.info(f"L1B Processor Processing took {(end_time_L1B - start_time_L1B):.6f}seconds")
 
-    logger.info("Succes")
+    log.info("Succes")
 
 if __name__ == '__main__' :
 
-    # Get logger for L1B
-    l1b_logger = Utils.get_logger()
 
     # Get configuration info
     cfgFile = sys.argv[1]
-    config = Utils.get_config(l1b_logger, cfgFile)
+    config = Utils.get_config(cfgFile)
 
-    config = get_l1b_config(l1b_logger, config)
+    config = get_l1b_config(config)
 
     # Get information (like git hash and config file name and version (if available) 
     # that will be added to the output file as attributes
     main_attribute_dict = Utils.get_main_attributes(config, config_attributes_name='L1B_configuration')
 
     # Also get some other attributes?
-    l1b_config = get_specific_config(l1b_logger, config, 'L1AL1B')
-    attribute_dict = add_module_specific_attributes(l1b_logger, l1b_config, main_attribute_dict, 'l1al1b')
+    l1b_config = get_specific_config(config, 'L1AL1B')
+    attribute_dict = add_module_specific_attributes(l1b_config, main_attribute_dict, 'l1al1b')
 
     # Get started
-    l1b_processor(l1b_config, l1b_logger, attribute_dict)
+    l1b_processor(l1b_config, attribute_dict)
 
 

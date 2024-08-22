@@ -17,7 +17,7 @@ import datetime
 import time
 import h5py
 import shutil
-import logging
+from teds import log
 import tqdm
 from scipy.interpolate import RegularGridInterpolator
 import xarray as xr

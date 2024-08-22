@@ -47,7 +47,7 @@ def get_individual_spectra(config):
 
     nn = len(config['scene_spec']['sza'])
 
-    check_input(log, nn, ['sza','saa','vza','vaa','albedo'], "code 1")
+    check_input(nn, ['sza','saa','vza','vaa','albedo'], "code 1")
 
     # here we use the 2-dimensional data structure in an artificial way
     nact = nn
@@ -292,7 +292,7 @@ def gm_output_via_object(config, vza, vaa, sza, saa, lat_grid, lon_grid):
     nact = len(lat_grid[0,:])
     nalt = len(lat_grid[:,0])
 
-    gm_data = dn.DataNetCDF(log, filename, title=title)
+    gm_data = dn.DataNetCDF(filename, title=title)
     gm_data.add('E2E_configuration', value=str(config), kind='attribute')
 
     dims = ('bins_along_track', 'bins_across_track')
@@ -311,7 +311,7 @@ def orbit_simulation(config):
     """
         define the orbit
     """
-    sat = Satellite(log, config['orbit'])
+    sat = Satellite(config['orbit'])
 
     # propagate the orbit
     log.info('propagate orbit...')
@@ -356,7 +356,7 @@ def sensor_simulation(config, sat):
                     config['sensors'][key]['integration_time']]
 
         # make and propage the sensor
-        sensor = Sensor(log, act_angle_range[0], act_angle_range[1], act_angle_range[2])
+        sensor = Sensor(act_angle_range[0], act_angle_range[1], act_angle_range[2])
         sensor.compute_groundpoints(sat['sat_pos'], pitch=config['sensors'][key]['pitch'],
                                     yaw=config['sensors'][key]['yaw'], roll=config['sensors'][key]['roll'])
 

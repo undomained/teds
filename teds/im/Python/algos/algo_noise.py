@@ -2,6 +2,7 @@ import copy
 import numpy as np
 
 from teds.im.Python.algos.algo_base import Algorithm
+from teds import log
 
 class Noise(Algorithm):
     """
@@ -10,8 +11,8 @@ class Noise(Algorithm):
 
     """
 
-    def __init__(self, logger, algo_name='Noise'):
-        self._logger = logger
+    def __init__(self, algo_name='Noise'):
+        
         self._algo_name = algo_name
         self._data = None
         self._stdev = None
@@ -21,7 +22,7 @@ class Noise(Algorithm):
         """
             Check input data
         """
-        self._logger.debug(f"Check INPUT from {self._algo_name} class")
+        log.debug(f"Check INPUT from {self._algo_name} class")
         # TODO: What would be a usefull check?
 
     def execute(self, input_data, kind='IM'):
@@ -30,7 +31,7 @@ class Noise(Algorithm):
             Only if enabled.
             Only for good pixels
         """
-        self._logger.debug(f"Execute code from {self._algo_name} class")
+        log.debug(f"Execute code from {self._algo_name} class")
 
         image = input_data.get_dataset('image', c_name='work')
         stdev = input_data.get_dataset('stdev', c_name='work')
@@ -45,7 +46,7 @@ class Noise(Algorithm):
                 stdev = np.ones(image.shape)
                 self._stdev = stdev
             # Algorithm will not be run
-            self._logger.info(f"Algorithm {self._name} will not ne run because enabled is set to {enabled} in configuration file")
+            log.info(f"Algorithm {self._name} will not ne run because enabled is set to {enabled} in configuration file")
             return
 
         noise_n2 = input_data.get_dataset('n', c_name='ckd', group='noise', kind='variable')
@@ -79,7 +80,7 @@ class Noise(Algorithm):
             # For L1B this info comes from l1a netcdf file
             bin_id = input_data.get_dataset('binning_table', c_name='measurement', group='image_attributes', kind='variable')[0]
 
-            table = f"Table_{bin_id}" 
+            table = f"Table_{int(bin_id)}" 
             count_table = input_data.get_dataset('count_table', c_name='binning', group=table, kind='variable')
             count_table = np.reshape(count_table, variance.shape)
             new_stdev = np.sqrt(np.divide(variance,np.multiply(count_table, nr_coadditions)))

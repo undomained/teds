@@ -3,8 +3,7 @@ import teds.lib.data_netcdf.data_netcdf as dn
 
 class Input_netcdf(Input):
 
-    def __init__(self, logger, file_name):
-        self._logger = logger
+    def __init__(self, file_name):
         self._file_name = file_name
 
 
@@ -12,7 +11,7 @@ class Input_netcdf(Input):
         """
             Read data from netcdf file and return netcdf_data object
         """
-        netcdf_data = dn.DataNetCDF(self._logger, self._file_name, mode='r')
+        netcdf_data = dn.DataNetCDF(self._file_name, mode='r')
         return netcdf_data
 
     def print(self):

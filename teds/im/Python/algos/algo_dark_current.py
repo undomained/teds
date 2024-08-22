@@ -1,6 +1,7 @@
 import copy
 
 from teds.im.Python.algos.algo_base import Algorithm
+from teds import log
 
 class Dark_Current(Algorithm):
     """
@@ -9,8 +10,8 @@ class Dark_Current(Algorithm):
 
     """
 
-    def __init__(self, logger, algo_name='Dark_Current'):
-        self._logger = logger
+    def __init__(self, algo_name='Dark_Current'):
+        
         self._algo_name = algo_name
         self._data = None
         self._stdev = None
@@ -20,7 +21,7 @@ class Dark_Current(Algorithm):
         """
             Check input data
         """
-        self._logger.debug(f"Check INPUT from {self._algo_name} class")
+        log.debug(f"Check INPUT from {self._algo_name} class")
         # TODO: What would be a usefull check?
 
     def execute(self, input_data, kind='IM'):
@@ -30,7 +31,7 @@ class Dark_Current(Algorithm):
             Only if enabled.
             Only for good pixels
         """
-        self._logger.debug(f"Execute code from {self._algo_name} class")
+        log.debug(f"Execute code from {self._algo_name} class")
 
         image = input_data.get_dataset('image', c_name='work')
         stdev = input_data.get_dataset('stdev', c_name='work')
@@ -40,7 +41,7 @@ class Dark_Current(Algorithm):
         enabled = input_data.get_dataset('enabled', c_name='config', group='dark')
         if not enabled:
             # Algorithm will not be run
-            self._logger.info(f"Algorithm {self._name} will not ne run because enabled is set to {enabled} in configuration file")
+            log.info(f"Algorithm {self._name} will not ne run because enabled is set to {enabled} in configuration file")
             return
 
         dark_current = input_data.get_dataset('current', c_name='ckd', group='dark', kind='variable')

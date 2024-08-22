@@ -3,6 +3,7 @@ import netCDF4 as nc
 from importlib.resources import files
 from yaml import safe_load
 from .attributes import Attribute
+from teds import log
 
 consts_file = files("teds.lib").joinpath("constants_outputvariables.yaml")
 with open(consts_file, "r") as file:
@@ -16,7 +17,6 @@ class Variable:
         The Variable class deals with netcdf variables
 
         Members:
-        - self._logger
         - self._name
         - self._value
         - self._level
@@ -25,7 +25,7 @@ class Variable:
         - self._fillvalue
         - self._attribute_list
         Methodes:
-        - __init__(self, logger, name, value, level, dimensions, dtype, fillvalue, attribute_list)
+        - __init__(self, name, value, level, dimensions, dtype, fillvalue, attribute_list)
         - __str__(self)
         - __repr__(self)
         - __eq__(self)
@@ -38,7 +38,6 @@ class Variable:
         - get_dtype(self)
         - get_fillvalue(self)
         - get_attribute_list(self)
-        - set_logger(self, logger)
         - set_name(self, name)
         - set_value(self, value)
         - set_level(self, level)
@@ -51,11 +50,10 @@ class Variable:
         - add(self,name, value)
     """
 
-    def __init__(self, logger, name, value=None, level=2, dimensions=None, dtype=None, fillvalue=None, attribute_list = None):
+    def __init__(self, name, value=None, level=2, dimensions=None, dtype=None, fillvalue=None, attribute_list = None):
         """
             initialise Variable class
             Arguments: 
-                      - logger:  logger pointer
                       - name:  name of the variable
                       - value: value of the variable
                       - level: indicates whether variable is attached to main or to a group
@@ -64,7 +62,6 @@ class Variable:
                       - fillvalue: fill value for this variable
                       - attribute_list: attribute list of the variable
             Members:
-            - self._logger
             - self._name
             - self._value
             - self._level
@@ -73,7 +70,6 @@ class Variable:
             - self._fillvalue
             - self._attribute_list
         """
-        self.set_logger(logger)
         self.set_name(name)
         self.set_value(value)
         self.set_level(level)
@@ -96,7 +92,7 @@ class Variable:
                     warning_msg = f"A fill value was provided for initialization, but there is "\
                                   f"also a FillValue provided as attribute in the file {consts_file}! "\
                                   f"The init fill value takes precedent!"
-                    self.logger.warning(warning_msg)
+                    log.warning(warning_msg)
 
             # Now make Atrributes of the remaining attributes
             attributes.pop('name',None)
@@ -118,7 +114,7 @@ class Variable:
                     warning_msg = f"A fill value was provided for initialization, but there is "\
                                   f"also a FillValue provided as attribute in the file {consts_ckd_file}! "\
                                   f"The init fill value takes precedent!"
-                    self.logger.warning(warning_msg)
+                    log.warning(warning_msg)
 
             # Now make Atrributes of the remaining attributes
             attributes_ckd.pop('name',None)
@@ -128,7 +124,7 @@ class Variable:
                 atr = Attribute(attribute, value)
                 self._attribute_list.append(atr)
 
-        self._logger.debug(f"INIT var {self.__dict__}")
+        log.debug(f"INIT var {self.__dict__}")
 
 
     def __str__(self):
@@ -266,13 +262,6 @@ class Variable:
                 attr.read(variable)
                 self._attribute_list.append(attr)
 
-        return
-
-    def set_logger(self,logger):
-        """
-            Set the logger of the varibale to the given logger
-        """
-        self._logger = logger
         return
 
     def set_name(self,name):

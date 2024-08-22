@@ -1,6 +1,7 @@
 import sys
 import numpy as np
 from teds.im.Python.algos.algo_base import Algorithm
+from teds import log
 
 class Binning(Algorithm):
     """
@@ -8,8 +9,8 @@ class Binning(Algorithm):
         Base class methods check_input and execute are overwritten with Binning algoritm specific code
     """
 
-    def __init__(self, logger, algo_name="Binning"):
-        self._logger = logger
+    def __init__(self, algo_name="Binning"):
+        
         self._algo_name = algo_name
         self._data = None
 
@@ -18,7 +19,7 @@ class Binning(Algorithm):
         """
             Check on input data.
         """
-        self._logger.debug(f"Check INPUT from {self._algo_name} class")
+        log.debug(f"Check INPUT from {self._algo_name} class")
         return
 
     def execute(self, input_data, other_data=None):
@@ -32,15 +33,14 @@ class Binning(Algorithm):
             image = input_data.get_dataset('image', c_name='work')
             self._data = image
 
-        self._logger.debug(f"Execute code from {self._algo_name} class")
-
+        log.debug(f"Execute code from {self._algo_name} class")
         # For IM this info comes from config file
         bin_id = input_data.get_dataset('binning_table_id', c_name='config', group='detector')
         if bin_id is None:
             # For L1B this info comes from l1a netcdf file
-            bin_id = input_data.get_dataset('binning_table', c_name='measurement', group='image_attributes', kind='variable')[0]
+            bin_id = int(input_data.get_dataset('binning_table', c_name='measurement', group='image_attributes', kind='variable')[0])
         table = f"Table_{bin_id}" 
-        print(f"Fetching binning table: {table}")
+        log.debug(f"Fetching binning table: {table}")
         count_table = input_data.get_dataset('count_table', c_name='binning', group=table, kind='variable')
         binning_table = input_data.get_dataset('binning_table', c_name='binning', group=table, kind='variable')
         binned_pixels = input_data.get_dataset('bins', c_name='binning', group=table, kind='dimension')
@@ -49,7 +49,7 @@ class Binning(Algorithm):
         binned_rows = int(binned_pixels/det_cols)
 
         binned_image = np.zeros((binned_rows, self._data.shape[1]))
-        print(f"SHAPE OF BINNED IMAGE: {binned_image.shape}")
+        log.debug(f"SHAPE OF BINNED IMAGE: {binned_image.shape}")
 
         # Note: nrs in binning-table are pixel numbers!
         for det_row in range(binning_table.shape[0]):

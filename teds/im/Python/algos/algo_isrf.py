@@ -1,9 +1,6 @@
 import numpy as np
-import time
-
+from teds import log
 from teds.im.Python.algos.algo_base import Algorithm
-
-import matplotlib.pyplot as plt
 
 class ISRF(Algorithm):
     """
@@ -15,19 +12,19 @@ class ISRF(Algorithm):
 
     """
 
-    def __init__(self, logger, algo_name="ISRF"):
-        self._logger = logger
+    def __init__(self, algo_name="ISRF"):
+        
         self._algo_name = algo_name
         self._data = None
         self._do_wldep_isrf = False
-        self._logger.debug("INIT ISRF module")
+        log.debug("INIT ISRF module")
 
 
     def check_input(self, input_data):
         """
             Check input data
         """
-        self._logger.debug(f"Check INPUT from {self._algo_name} class")
+        log.debug(f"Check INPUT from {self._algo_name} class")
 
         # Check if input image and ISRF CKD have the same wavelength grids
         image = input_data.get_dataset('image', c_name = 'work')
@@ -48,7 +45,7 @@ class ISRF(Algorithm):
         
         if not (len(dim0) or not len(dim1)): # no matches in dimensions size
             msg = f"ISRF CKD wavelength grid does not match input wavelengths, using constant ISRF"
-            self._logger.warning(msg)
+            log.warning(msg)
             self._do_wldep_isrf = False
         else: # put dimensions in correct order
             isrf = np.transpose(isrf, (dim0[0], dim1[0], 2))
@@ -70,7 +67,7 @@ class ISRF(Algorithm):
                 self._do_wldep_isrf = True
             else:
                 msg = f"ISRF CKD wavelength values do not match input wavelengths, using constant ISRF"
-                self._logger.warning(msg)
+                log.warning(msg)
                 self._do_wldep_isrf = False
     
     def apply_lin_interpol(self, input_data):
@@ -101,7 +98,7 @@ class ISRF(Algorithm):
             Using wavelength dependent ISRF shape from CKD
         """
         
-        self._logger.debug('Applying wavelength dependent ISRF')
+        log.debug('Applying wavelength dependent ISRF')
 
         image = input_data.get_dataset('image', c_name = 'work')
         wavelength = input_data.get_dataset('wavelength', c_name='measurement', kind='variable')
@@ -149,17 +146,17 @@ class ISRF(Algorithm):
 
         # Wavelength that belongs to the image.
         wavelength = input_data.get_dataset('wavelength', c_name='measurement', kind='variable')
-        self._logger.debug(f"WAVELENGTH SHAPE At THE MOMENT: {wavelength.shape}")
+        log.debug(f"WAVELENGTH SHAPE At THE MOMENT: {wavelength.shape}")
         n_act = image.shape[0]
         wavelength = np.tile(wavelength, (n_act,1))
-        self._logger.debug(f"NEW SHAPE: {wavelength.shape}")
+        log.debug(f"NEW SHAPE: {wavelength.shape}")
 
         # Wavelength map from ckd
         wavemap = input_data.get_dataset('wavelength', c_name='ckd', group='spectral', kind='variable')
-        self._logger.debug(f"WAVEMAP SHAPE: {wavemap.shape}")
+        log.debug(f"WAVEMAP SHAPE: {wavemap.shape}")
 
         fwhm_gauss = input_data.get_dataset('fwhm_gauss', c_name='config', group='isrf')
-        self._logger.debug(f"input fwhm: {fwhm_gauss}")
+        log.debug(f"input fwhm: {fwhm_gauss}")
 
         # number of detector columns obtained from ckd
         n_det_cols = input_data.get_dataset('detector_column', c_name='ckd', kind='dimension')
@@ -213,17 +210,17 @@ class ISRF(Algorithm):
 
         # Wavelength that belongs to the image.
         wavelength = input_data.get_dataset('wavelength', c_name='measurement', kind='variable')
-        self._logger.debug(f"WAVELENGTH SHAPE At THE MOMENT: {wavelength.shape}")
+        log.debug(f"WAVELENGTH SHAPE At THE MOMENT: {wavelength.shape}")
         n_act = image.shape[0]
         wavelength = np.tile(wavelength, (n_act,1))
-        self._logger.debug(f"NEW SHAPE: {wavelength.shape}")
+        log.debug(f"NEW SHAPE: {wavelength.shape}")
 
         # Wavelength map from ckd
-        #wavemap = input_data.get_dataset('wavelength', c_name='ckd', group='spectral', kind='variable')
-        #self._logger.debug(f"WAVEMAP SHAPE: {wavemap.shape}")
+        wavemap = input_data.get_dataset('wavelength', c_name='ckd', group='spectral', kind='variable')
+        #log.debug(f"WAVEMAP SHAPE: {wavemap.shape}")
 
         fwhm_gauss = input_data.get_dataset('fwhm_gauss', c_name='config', group='isrf')
-        self._logger.debug(f"input fwhm: {fwhm_gauss}")
+        log.debug(f"input fwhm: {fwhm_gauss}")
 
         # number of detector columns obtained from ckd
         n_det_cols = input_data.get_dataset('detector_column', c_name='ckd', kind='dimension')
@@ -275,7 +272,7 @@ class ISRF(Algorithm):
             When enabled is set to 1 (True) wavelength concolution is performed
         """
 
-        self._logger.debug(f"Execute code from {self._algo_name} class")
+        log.debug(f"Execute code from {self._algo_name} class")
 
         do_isrf = input_data.get_dataset('enabled', c_name='config', group='isrf')
         if do_isrf :

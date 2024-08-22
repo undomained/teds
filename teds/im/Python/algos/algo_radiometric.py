@@ -2,6 +2,7 @@ import numpy as np
 #from scipy.interpolate import CubicSpline
 
 from teds.im.Python.algos.algo_base import Algorithm
+from teds import log
 
 class Radiometric(Algorithm):
     """
@@ -10,8 +11,8 @@ class Radiometric(Algorithm):
 
     """
 
-    def __init__(self, logger, algo_name="Radiometric"):
-        self._logger = logger
+    def __init__(self, algo_name="Radiometric"):
+        
         self._algo_name = algo_name
         self._data = None
         self._stdev = None
@@ -20,7 +21,7 @@ class Radiometric(Algorithm):
         """
             Check input data
         """
-        self._logger.debug(f"Check INPUT from {self._algo_name} class")
+        log.debug(f"Check INPUT from {self._algo_name} class")
         # TODO: What would be a usefull check?
 
     def execute(self, input_data, kind='IM'):
@@ -40,7 +41,7 @@ class Radiometric(Algorithm):
         else:
             exposure_time = input_data.get_dataset('exposure_time', c_name='measurement', group='image_attributes', kind='variable')[0]
 
-        factor = (1.0/(exposure_time)) * radiometric
+        factor = (1.0/(exposure_time)) * radiometric[0,0]  
         if kind == 'IM':
             new_image = np.divide(image,factor)
         else:

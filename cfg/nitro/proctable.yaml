@@ -1,7 +1,7 @@
 algos_im:
     - ISRF
-    - Radiometric
     - Draw_On_Detector
+    - Radiometric
     - PRNU
     - Dark_Current
     - Noise

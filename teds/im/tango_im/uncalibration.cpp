@@ -21,7 +21,7 @@ auto applyISRF(const CKD& ckd,
                const double fwhm_gauss,
                L1& l1) -> void
 {
-    l1.level = ProcLevel::l1b;
+    
     // If this process is disabled then linearly interpolate the
     // line-by-line spectra onto the CKD wavelength grids. We cannot
     // simply return like the other processes.
@@ -164,52 +164,83 @@ auto applyISRF(const CKD& ckd,
                 }
             }
             l1.spectra[i_act].signal = std::move(signal_conv);
-        }
-    }
-}
-
-auto radiometric(const CKD& ckd, const bool enabled, L1& l1) -> void
-{
-    if (!enabled) {
-        return;
-    }
-    const double exposure_time_inv { 1.0 / l1.exposure_time };
-    for (int i_act {}; i_act < ckd.n_act; i_act++) {
-        for (int i {}; i < ckd.n_lbl; ++i) {
-            l1.spectra[i_act].signal[i] /=
-              ckd.rad.rad[i_act][i] * exposure_time_inv;
+            
         }
     }
     l1.level = ProcLevel::swath;
 }
 
+
 auto drawOnDetector(const CKD& ckd, L1& l1) -> void
 {
-    l1.image.assign(ckd.npix, 0.0);
-    std::vector<double> x_values(ckd.n_act);
-    std::vector<double> y_values(ckd.n_act);
-    for (int i_wave {}; i_wave < ckd.n_detector_cols; ++i_wave) {
-        bool needReverse = false;
-        if (ckd.swath.row_indices[ckd.n_act - 1][i_wave]
-            < ckd.swath.row_indices[0][i_wave]) {
-            needReverse = true;
+    int n_pixels = ckd.n_detector_rows * ckd.n_detector_cols;
+    l1.image.assign(n_pixels, 0.0);
+
+    // Create a range for columns and rows
+    std::vector<double> cols(ckd.n_detector_cols);
+    for (int i_col {}; i_col < ckd.n_detector_cols; ++i_col) {
+        cols[i_col] = i_col;
+    }
+
+    // First convert wavelengths to columns
+    std::vector<std::vector<double>> lbl_in_cols(
+        ckd.n_act, std::vector<double>(ckd.n_detector_cols, 0.0)); 
+    for (int i_act {}; i_act < ckd.n_act; ++i_act) {
+        std::vector<double> wl = ckd.wave.wavelength[i_act];
+        const CubicSpline spl_wl_to_col { wl, cols };
+
+        std::vector<double> lbl = (l1.spectra[i_act].signal);
+        std::vector<double> lbl_wavelengths =( *l1.wavelength)[i_act];
+        std::vector<double> col_ix(lbl_wavelengths.size(), 0.0); 
+        // Calculate decimal col indices of line-by-line spectrum
+        for (int i_wave {}; i_wave < (lbl_wavelengths.size()); ++i_wave) {
+            col_ix[i_wave] = spl_wl_to_col.eval(lbl_wavelengths[i_wave]);
         }
-        for (int i_act {}; i_act < ckd.n_act; ++i_act) {
-            const int act_idx { static_cast<int>(i_act) };
-            if (needReverse) {
-                const int act_idx { static_cast<int>(ckd.n_act - 1 - i_act) };
-            }
-            x_values[i_act] = ckd.swath.row_indices[act_idx][i_wave];
-            y_values[i_act] = l1.spectra[act_idx].signal[i_wave];
-        }
-        const CubicSpline spline { x_values, y_values };
-        for (int i_spat {}; i_spat < ckd.n_detector_rows; ++i_spat) {
-            l1.image[i_spat * ckd.n_detector_cols + i_wave] =
-              spline.eval(i_spat);
+
+        // Interpolate line-by-line spectrum to integer (detector) column range
+        const CubicSpline spl_lbl_vs_col {col_ix, lbl};
+        for (int i_col {}; i_col < ckd.n_detector_cols; ++i_col){
+            lbl_in_cols[i_act][i_col] = spl_lbl_vs_col.eval(i_col);
         }
     }
+
+    // Now per column interpolate act_pos to rows
+    for (int i_col {}; i_col < ckd.n_detector_cols; ++i_col){
+        std::vector<double> lbl_this_col(ckd.n_act, 0.0);
+        std::vector<double> row_this_col(ckd.n_act, 0.0);
+        for (int i_act {}; i_act < ckd.n_act; ++i_act){
+            lbl_this_col[i_act] = lbl_in_cols[i_act][i_col];
+            row_this_col[i_act] = ckd.swath.row_indices[i_act][i_col];
+        }
+
+        const CubicSpline spl_lbl_vs_row {row_this_col, lbl_this_col};
+        // Interpolate lbl spectrum to integer (detector) rows
+        for (int i_row{}; i_row< ckd.n_detector_rows; ++i_row){
+            l1.image[i_row * ckd.n_detector_cols + i_col] =
+                spl_lbl_vs_row.eval(i_row);
+        }
+    }   
+
+    l1.level = ProcLevel::l1b;
+}
+
+
+auto radiometric(const CKD& ckd, const bool enabled, L1& l1) -> void
+{   
+    if (!enabled) {
+        return;
+    }
+    const double exposure_time_inv { 1.0 / l1.exposure_time };
+    for (int i_row {}; i_row < ckd.n_detector_rows; i_row++) {
+        for (int i_col {}; i_col < ckd.n_detector_cols; ++i_col) {
+            l1.image[i_row*ckd.n_detector_cols + i_col] /=
+              ckd.rad.rad[i_row][i_col] * exposure_time_inv;
+        }        
+    }
+    
     l1.level = ProcLevel::stray;
 }
+
 
 auto strayLight(const CKD& ckd, const bool enabled, L1& l1) -> void
 {

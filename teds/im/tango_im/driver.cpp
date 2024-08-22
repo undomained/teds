@@ -99,12 +99,7 @@ auto driver(const SettingsIM& settings,
             applyISRF(ckd, settings.isrf.enabled, settings.isrf.fwhm_gauss, l1);
             timers[static_cast<int>(ProcLevel::sgm)].stop();
         }
-        // Radiometric
-        if (l1.level >= ProcLevel::l1b && settings.cal_level < ProcLevel::l1b) {
-            timers[static_cast<int>(ProcLevel::l1b)].start();
-            radiometric(ckd, settings.rad.enabled, l1);
-            timers[static_cast<int>(ProcLevel::l1b)].stop();
-        }
+
         // Swath (draw on detector)
         if (l1.level >= ProcLevel::swath
             && settings.cal_level < ProcLevel::swath) {
@@ -112,6 +107,14 @@ auto driver(const SettingsIM& settings,
             drawOnDetector(ckd, l1);
             timers[static_cast<int>(ProcLevel::swath)].stop();
         }
+
+        // Radiometric
+        if (l1.level >= ProcLevel::l1b && settings.cal_level < ProcLevel::l1b) {
+            timers[static_cast<int>(ProcLevel::l1b)].start();
+            radiometric(ckd, settings.rad.enabled, l1);
+            timers[static_cast<int>(ProcLevel::l1b)].stop();
+        }
+
         // Stray light
         if (l1.level >= ProcLevel::stray
             && settings.cal_level < ProcLevel::stray) {
@@ -184,10 +187,10 @@ auto driver(const SettingsIM& settings,
     spdlog::info("Timings:");
     spdlog::info("    ISRF convolution: {:8.3f} s",
                  timers[static_cast<int>(ProcLevel::sgm)].time());
-    spdlog::info("         Radiometric: {:8.3f} s",
-                 timers[static_cast<int>(ProcLevel::l1b)].time());
     spdlog::info("    Draw on detector: {:8.3f} s",
                  timers[static_cast<int>(ProcLevel::swath)].time());
+    spdlog::info("         Radiometric: {:8.3f} s",
+                 timers[static_cast<int>(ProcLevel::l1b)].time());
     spdlog::info("         Stray light: {:8.3f} s",
                  timers[static_cast<int>(ProcLevel::stray)].time());
     spdlog::info("                PRNU: {:8.3f} s",

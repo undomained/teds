@@ -4,7 +4,6 @@
 import argparse
 from datetime import timedelta
 import importlib
-from teds import log
 import os
 import subprocess
 import sys
@@ -47,6 +46,31 @@ def cmdline(arguments):
 
     return cfg_file, step
 
+def is_reshape_needed(output_key, config):
+    """
+        Check if reshaping of the data from 2D to 3D is needed.
+
+        :param output_key: key to use to find output file in configuration
+        :type output_key: String
+        :param config: configuration
+        :type config: Dictionary
+
+        :return reshape_needed: to indicated if reshaping is needed
+        :rtype reshape_needed: Boolean
+    """
+    reshape_needed = True
+    if config['cal_level'] == 'rad':
+        log.info("Radiometric level. Not detector image. No need to reshape and create temporary output file")
+        reshape_needed = False
+    elif output_key=='l1b' and config['cal_level'] == 'swath':
+        log.info("L1B and Swath. Still detector image. No need to reshape and create temporary output file")
+        reshape_needed = False
+    elif config['cal_level'] == 'l1b':
+        log.info("L1B level. Not detector image. No need to reshape and create temporary output file")
+        reshape_needed = False
+
+    return reshape_needed
+
 def reshape_output(output_key, config):
     """
         Reshape the output dataset
@@ -64,31 +88,20 @@ def reshape_output(output_key, config):
         :return temp_output_file: file name of the output file which stores the reshaped data
         :rtype temp_output_file: String
     """
+    # TODO. Ik zou ook evt een check kunnen doen op bestaan van detector image of science_data ???????
     temp_output_file = None
-    # readin output file
-    output_file = config['io'][output_key]
-    output_data = dn.DataNetCDF(output_file, mode='r')
+    if is_reshape_needed(output_key, config):
+        # readin output file
+        output_file = config['io'][output_key]
+        output_data = dn.DataNetCDF(log, output_file, mode='r')
 
-    # cal_level determines until which step IM and L1B are run.
-    # A check on cal_level can be used to determine whether or not reshaping is needed.
-
-    if config['cal_level'] == 'rad':
-        log.info("Not detector image. No need to reshape and create temporary output file")
-        return temp_output_file
-    elif output_key=='l1b' and config['cal_level'] == 'swath':
-        log.info("Not detector image. No need to reshape and create temporary output file")
-        return temp_output_file
-    elif config['cal_level'] == 'l1b':
-        log.info("Not detector image. No need to reshape and create temporary output file")
-        return temp_output_file
-    else:
         # Get data
         data = output_data.get('detector_image',  group='science_data', kind = 'variable')
         std_data = output_data.get('detector_stdev',  group='science_data', kind = 'variable')
 
         # Get dimensions from ckd?
         ckd_file = config['io']['ckd']
-        ckd_data = dn.DataNetCDF(ckd_file, mode='r')
+        ckd_data = dn.DataNetCDF(log, ckd_file, mode='r')
         det_rows = ckd_data.get('detector_row', kind='dimension')
         det_cols = ckd_data.get('detector_column', kind='dimension')
 
@@ -101,8 +114,8 @@ def reshape_output(output_key, config):
         # How do I get the right dimensions when binning has been applied?
         # For now stupidly devide det_rows by table_id
         bin_file = config['io']['binning_table']
-        bin_data = dn.DataNetCDF(bin_file, mode='r')
-        bin_id = int(config['detector']['binning_table_id'])
+        bin_data = dn.DataNetCDF(log, bin_file, mode='r')
+        bin_id = config['detector']['binning_table_id']
         table = f"Table_{bin_id}"
         binned_pixels = bin_data.get('bins', group=table, kind='dimension')
         binned_rows = int(binned_pixels/det_cols)

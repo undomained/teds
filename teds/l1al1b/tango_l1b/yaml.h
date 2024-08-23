@@ -8,12 +8,27 @@
 
 #include "constants.h"
 #include "setting.h"
-
 #include <yaml-cpp/yaml.h>
-
+#include <string>
+#include <unordered_map>
+#include <spdlog/spdlog.h>
 // Instruct YAML how to read values into non-standard types, e.g., how
 // to read into a parameter of type std::optional.
 namespace YAML {
+
+
+// Structure to hold map data
+struct MapResult {
+    std::map<std::string, std::string> map;
+    // Function to get the value by key
+    // You can enter the key as: "nest1.nest2.key"
+    std::string getVal(const std::string& key) const;
+};
+
+// Function to get all keys and values with nested keys as full path
+// You can get the values in the map by using getVal() method
+MapResult getMap(const YAML::Node& node, const std::string& prefix = "");
+
 
 template <typename T>
 struct convert<std::optional<T>>

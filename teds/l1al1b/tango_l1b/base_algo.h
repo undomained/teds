@@ -5,14 +5,20 @@
 
 #pragma once
 
+#include <string>
+#include <map>
+
 namespace tango {
+
+class CKD;
+class L1;
 
 /// Each algorithm will inherit from this class and only has to implement
 /// the algoCheckInput function to check for necessary data and the algoExecute
 /// function which performs the actual algorithm.
 ///
-class BaseAlgo: 
-{
+
+class BaseAlgo {
 public:
     /// Constructor.
     BaseAlgo();
@@ -27,17 +33,16 @@ public:
     /// inherits from BaseAlgo. In this function algorithm-specific code
     /// should be placed which checks for the availability of necessary data
     /// needed by the algorithm.
-    virtual void algoCheckInput(const CKD& ckd, const bool enabled, L1& l1);
+    virtual void algoCheckInput(const CKD& ckd, L1& l1);
 
     /// Virtual function to be implemented by each algorithm which
     /// inherits from BaseAlgorithm. In this function algorithm-specific code
     /// should be placed which implements the intended correction.
-    /// \param [in] measurement The measurement.
-    virtual void algoExecute(CORE::Measurement *measurement);
+    virtual void algoExecute(const CKD& ckd, const bool enabled, L1& l1);
 
-    // TODO do we need this unload?
-    /// Set all data pointers to NULL.
-    virtual void unloadData();
+//    // TODO do we need this unload?
+//    /// Set all data pointers to NULL.
+//    virtual void unloadData() = 0;
 
 };
 

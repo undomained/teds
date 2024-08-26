@@ -4,6 +4,7 @@
 target_sources(tango_l1b PRIVATE
   # Entry points
   driver.cpp
+  driver_nitro.cpp
   # IO
   io.cpp
   time.cpp
@@ -26,6 +27,7 @@ target_sources(tango_l1b PRIVATE
   prnu_correction.cpp
 )
 target_sources(tango_l1b.x PRIVATE main.cpp)
+#target_sources(tango_l1b.x PRIVATE main_nitro.cpp)
 
 # C++20 features
 target_compile_features(tango_l1b PUBLIC cxx_std_20)

@@ -182,7 +182,8 @@ l1al1b:
     do_python: false
     proctable:
         file: '../cfg/nitro/proctable.yaml'
-        algo_list: 'algos_l1b'
+#        algo_list: 'algos_l1b'
+        algo_list: 'test'
     instrument: 'nitro'
     processing_version: 0.000
     # image_start: 0

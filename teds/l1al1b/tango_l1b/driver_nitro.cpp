@@ -18,7 +18,7 @@
 
 namespace tango {
 
-auto driver(const SettingsL1B& settings,
+auto driver_nitro(const SettingsL1B& settings,
             const int argc,
             const char* const argv[]) -> void
 {

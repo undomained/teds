@@ -11,7 +11,7 @@ namespace tango {
 class SettingsL1B;
 
 // argc and argv are for generating the NetCDF history attribute
-auto driver(const SettingsL1B& settings,
+auto driver_nitro(const SettingsL1B& settings,
             const int argc = 0,
             const char* const argv[] = nullptr) -> void;
 

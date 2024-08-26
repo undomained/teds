@@ -16,6 +16,8 @@ auto SettingsL1B::scanKeys() -> void
     scan(image_start);
     scan(image_end);
     scan(unbinning);
+    scan(proctable.file);
+    scan(proctable.algo_list);
 
     scan(dark.enabled);
 

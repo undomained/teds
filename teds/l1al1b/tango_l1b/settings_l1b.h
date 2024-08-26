@@ -65,6 +65,12 @@ public:
 
     struct
     {
+        Setting<std::string> file { { "proctable", "file" }, {}, "proctable file path"};
+        Setting<std::string> algo_list { { "proctable", "algo_list" }, {}, "list of algorithm names"};
+    } proctable;
+
+    struct
+    {
         Setting<bool> enabled {
             { "dark", "enabled" },
             true,

@@ -21,6 +21,9 @@ target_sources(tango_l1b PRIVATE
   calibration.cpp
   ckd.cpp
   spectrum.cpp
+  base_algo.cpp
+  dummy_correction.cpp
+  prnu_correction.cpp
 )
 target_sources(tango_l1b.x PRIVATE main.cpp)
 

@@ -1,0 +1,41 @@
+// This source code is licensed under the 3-clause BSD license found
+// in the LICENSE file in the root directory of this project.
+
+#include "prnu.h"
+#include <cstdint>
+#include <spdlog/spdlog.h>
+
+namespace tango {
+
+//PRNU::PRNU() {
+//}
+
+//PRNU::~PRNU() {
+//}
+
+std::string PRNU::getName() const {
+    return std::string("PRNU");
+}
+
+void PRNU::algoCheckInput(const CKD& ckd, L1& l1)
+{
+    spdlog::info("PRNU algoCheckInput fct still to be filled in");
+}
+
+//void PRNU::unloadData() {
+////    m_prnuBinned = NULL;
+////    BaseAlgorithm::unloadData();
+//    spdlog::info("PRNU unload fct still to be filled in");
+//}
+
+void PRNU::algoExecute(const CKD& ckd, L1& l1)
+{
+    for (int i {}; i < static_cast<int>(l1.image.size()); ++i) {
+        if (!l1.pixel_mask[i]) {
+            l1.image[i] /= ckd.prnu.prnu[i];
+            l1.stdev[i] /= ckd.prnu.prnu[i];
+        }
+    }
+}
+
+} // namespace tango

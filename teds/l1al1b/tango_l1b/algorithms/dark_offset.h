@@ -10,16 +10,16 @@ namespace tango {
 class CKD;
 class L1;
 
-/// Dummy Correction class
+/// Dark Offset class
 
-class DummyCorrection : public BaseAlgo {
+class DarkOffset : public BaseAlgo {
 public:
 
     /// Constructor.
-    DummyCorrection() = default;
+    DarkOffset() = default;
 
     /// Destructor.
-    ~DummyCorrection() = default;
+    ~DarkOffset() = default;
 
     /// Return the name of the class.
     std::string getName() const override;
@@ -28,7 +28,7 @@ public:
     void algoCheckInput(const CKD& ckd, L1& l1) override;
 
 //    /// Set all loaded data to null.
-//    virtusl void unloadData();
+//    virtusl void unloadData() override;
 
     /// Perform the algorithm
     void algoExecute(const CKD& ckd, L1& l1) override;

@@ -13,30 +13,30 @@ class CKD;
 class L1;
 
 
-/// PRNUCorrection class
+/// PRNU class
 
-class PRNUCorrection: public BaseAlgo
+class PRNU: public BaseAlgo
 {
 public:
 
     /// Constructor.
-    PRNUCorrection() = default;
+    PRNU() = default;
 
     /// Destructor.
-    virtual ~PRNUCorrection() = default;
+    ~PRNU() = default;
 
     /// Return the name of the class.
-    virtual std::string getName() const;
+    std::string getName() const override;
 
     /// Retrieve the required datasets
-    virtual void algoCheckInput(const CKD& ckd, L1& l1);
+    void algoCheckInput(const CKD& ckd, L1& l1) override;
 
 //    /// \brief Set all loaded data to null.
 //    void unloadData() override;
 
     /// \brief Perform the algorithm
     /// \param [in] measurement The measurement.
-    virtual void algoExecute(const CKD& ckd, const bool enabled, L1& l1);
+    void algoExecute(const CKD& ckd, L1& l1) override;
 };
 
 } // namespace tango

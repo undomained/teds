@@ -4,14 +4,20 @@
 /// Build class for the algorithms.
 #include "build_algo.h"
 
-#include "prnu_correction.h"
-#include "dummy_correction.h"
+#include "dummy_correction.cpp"
+#include "prnu.h"
+#include "dark_offset.h"
 
 namespace tango {
 
+
+// Constructor with dictionary. 
+// Left: algo name defined in proctable
+// Right: algo name defined in cpp file. 
 BuildAlgo::BuildAlgo() {
     algo_map["DummyCorrection"] = []() -> BaseAlgo* { return new DummyCorrection(); };
-    algo_map["PRNUCorrection"] = []() -> BaseAlgo* { return new PRNUCorrection(); };
+    algo_map["PRNU"] = []() -> BaseAlgo* { return new PRNU(); };
+    algo_map["Dark_Offset"] = []() -> BaseAlgo* { return new DarkOffset(); };
 }
 
 BuildAlgo::~BuildAlgo() = default;

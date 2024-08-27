@@ -3,8 +3,8 @@
 
 #include "driver_nitro.h"
 
-#include "build_algo.h"
-#include "base_algo.h"
+#include "algorithms/build_algo.h"
+#include "algorithms/base_algo.h"
 #include "binning_table.h"
 #include "calibration.h"
 #include "ckd.h"
@@ -69,8 +69,6 @@ auto driver_nitro(const SettingsL1B& settings,
     timer_total.start();
 
     const std::string& config = settings.getConfig();
-//    spdlog::info("config: {}", settings.getConfig());
-    spdlog::info("config: {}", config);
 
     const std::string& proctable_file = settings.proctable.file;
     spdlog::info("proctable_file: {} ", proctable_file);
@@ -80,17 +78,16 @@ auto driver_nitro(const SettingsL1B& settings,
 
 
     YAML::Node proctable = YAML::LoadFile(proctable_file);
-//    spdlog::info("proctable settings: {}",proctable.as<std::string>());
-////    std::list<std::string> algo_list = proctable[algo_list_name];
     YAML::Node algo_list = proctable[algo_list_name];
-//    for (std::size_t i=algo_list.begin(); i<algo_list.size();i++){
-//        spdlog::info("algorithm name: {}", algo_list[i].as<std::string>());
-//    }
 
-//#pragma omp parallel for schedule(dynamic)
+    #pragma omp parallel for schedule(dynamic)
     for (int i_alt = 0; i_alt < static_cast<int>(l1_products.size()); ++i_alt) {
         printPercentage(i_alt, l1_products.size(), "Processing images");
         auto& l1 { l1_products[i_alt] };
+        
+        // Initialize pixel mask
+        l1.pixel_mask = ckd.pixel_mask;
+
         spdlog::info("Processing i_alt: {}", i_alt);
         for (YAML::const_iterator it=algo_list.begin(); it!=algo_list.end();it++){
             spdlog::info("***algorithm name: ---{}---", it->as<std::string>());

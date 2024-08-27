@@ -6,43 +6,25 @@
 #pragma once
 
 #include <string>
-
 #include "base_algo.h"
-#include "prnu_correction.h"
-#include "dummy_correction.h"
+#include <unordered_map>
+#include <functional>
+
 
 namespace tango {
 
 //class PRNUCorrection;
 //class DummyCorrection;
 
-class BuildAlgo
-{
+class BuildAlgo {
 public:
-    /// Constructor.
-    BuildAlgo() = default;
+    BuildAlgo();
+    ~BuildAlgo();
 
-    /// Destructor.
-    ~BuildAlgo() = default;
+    BaseAlgo* CreateAlgo(const std::string& name);
 
-    BaseAlgo* BuildMethod(){
-        if(name == "DummyCorrection") {
-            return new DummyCorrection();
-        }
-        else if(name == "PRNUCorrection") {
-            return new PRNUCorrection();
-        } else {
-            return nullptr;
-        }
-    }
-
-    BaseAlgo* CreateAlgo(std::string name) {
-        this->name = name;
-        BaseAlgo* ptr = this->BuildMethod();
-        return ptr;
-    }
-
-    std::string name;
+private:
+    std::unordered_map<std::string, std::function<BaseAlgo*()>> algo_map;
 };
 
 } // namespace tango

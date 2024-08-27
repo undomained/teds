@@ -148,7 +148,7 @@ CKD::CKD(const std::string& filename, const double spectrum_width)
         !grp.isNull()) {
         spdlog::info("Reading radiometric CKD");
         rad.enabled = true;
-        rad.rad.resize(n_act, std::vector<double>(n_lbl));
+        rad.rad.resize(n_detector_rows, std::vector<double>(n_detector_cols));
         getAndReshape(grp.getVar("radiometric"), rad.rad);
         // Resize 3D ISRF
         n_isrf_samples = static_cast<int>(grp.getDim("isrf_samples").getSize());

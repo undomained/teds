@@ -1,31 +1,9 @@
 # This source code is licensed under the 3-clause BSD license found in
 # the LICENSE file in the root directory of this project.
 
-target_sources(tango_l1b PRIVATE
-  # Entry points
-  driver.cpp
-  driver_nitro.cpp
-  # IO
-  io.cpp
-  time.cpp
-  timer.cpp
-  settings.cpp
-  settings_l1b.cpp
-  yaml.cpp
-  # Math
-  algorithm.cpp
-  linear_spline.cpp
-  cubic_spline.cpp
-  fourier.cpp
-  # Processing
-  binning_table.cpp
-  calibration.cpp
-  ckd.cpp
-  spectrum.cpp
-  base_algo.cpp
-  dummy_correction.cpp
-  prnu_correction.cpp
-)
+file(GLOB_RECURSE SOURCES "*.cpp")
+
+target_sources(tango_l1b PRIVATE ${SOURCES})
 target_sources(tango_l1b.x PRIVATE main.cpp)
 #target_sources(tango_l1b.x PRIVATE main_nitro.cpp)
 

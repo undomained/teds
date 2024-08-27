@@ -8,7 +8,7 @@
 // available to the user user. Otherwise run the processor with
 // settings read from a YAML configuration file.
 
-#include "driver_nitro.h"
+#include "driver.h"
 #include "settings_l1b.h"
 
 #include <iostream>

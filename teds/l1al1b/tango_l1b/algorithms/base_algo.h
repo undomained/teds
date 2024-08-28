@@ -9,6 +9,7 @@
 #include <map>
 #include "../ckd.h"
 #include "../l1.h"
+#include <spdlog/spdlog.h>
 
 namespace tango {
 

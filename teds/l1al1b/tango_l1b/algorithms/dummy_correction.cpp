@@ -18,7 +18,7 @@ std::string DummyCorrection::getName() const {
 }
 
 bool DummyCorrection::algoCheckInput(const CKD& ckd, L1& l1) {
-    spdlog::info("DummyCorrection algoCheckInput fct still to be filled in");
+    spdlog::warn("DummyCorrection algoCheckInput fct still to be filled in");
 
     return true;
 }

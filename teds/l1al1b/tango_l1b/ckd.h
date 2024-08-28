@@ -136,7 +136,7 @@ public:
         bool enabled { false };
         // Radiometric calibration constants
         // Dimensions: (n_act, n_detector_cols).
-        std::vector<std::vector<double>> rad {};
+        std::vector<double> rad {};
         std::vector<std::vector<std::vector<double>>> isrf {};
         std::vector<std::vector<std::vector<double>>> isrf_wl {};
     } rad;

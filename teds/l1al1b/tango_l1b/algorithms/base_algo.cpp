@@ -3,8 +3,6 @@
 //
 #include "base_algo.h"
 
-#include <spdlog/spdlog.h>
-
 namespace tango {
 
 BaseAlgo::BaseAlgo()

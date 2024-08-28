@@ -21,26 +21,31 @@ auto tango_formatter_flag::format(const spdlog::details::log_msg& log_msg,
                                   spdlog::memory_buf_t& dest) -> void
 {
     std::string text {};
+    std::string color;
+
     switch (log_msg.level) {
     case spdlog::level::info:
+        color = "\033[37m";  // White for info
+        text = "";
         break;
     case spdlog::level::warn:
+        color = "\033[33m";  // Yellow for warn
         text = " [warning]";
         break;
     case spdlog::level::err:
+        color = "\033[31m";  // Red for error
         text = " [error]";
         break;
     case spdlog::level::debug:
+        color = "\033[36m";  // Cyan for debug
         text = " [debug]";
         break;
-    case spdlog::level::off:
-    case spdlog::level::trace:
-    case spdlog::level::critical:
-    case spdlog::level::n_levels:
     default:
+        color = "\033[0m";   // Reset color for unknown levels
         text = " [unknown]";
     }
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+    // Append color and text
+    dest.append(color.data(), color.data() + color.size());
     dest.append(text.data(), text.data() + text.size());
 }
 
@@ -56,11 +61,12 @@ auto initLogging(const bool set_debug_level) -> void
     if (!spdlog::get("plain")) {
         auto formatter { std::make_unique<spdlog::pattern_formatter>() };
         formatter->add_flag<tango_formatter_flag>('*').set_pattern(
-          "[%H:%M:%S]%* %v");
+          "[%H:%M:%S] %^%* %v%$");
         spdlog::set_formatter(std::move(formatter));
         spdlog::stdout_color_mt("plain");
         spdlog::get("plain")->set_pattern("%v");
     }
+
     if (set_debug_level) {
         spdlog::set_level(spdlog::level::debug);
     } else {

@@ -18,4 +18,10 @@ algos_l1b:
     - Radiometric
 test:
     - Dark_Offset
+    - Noise
+    - Dark_Current
+    # Non linearity
     - PRNU
+    - Straylight
+    - Radiometric
+    

@@ -2,8 +2,6 @@
 // in the LICENSE file in the root directory of this project.
 
 #include "prnu.h"
-#include <cstdint>
-#include <spdlog/spdlog.h>
 
 namespace tango {
 

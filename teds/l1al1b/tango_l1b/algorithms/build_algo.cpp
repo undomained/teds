@@ -12,6 +12,8 @@
 #include "noise.h"
 #include "straylight.h"
 #include "radiometric.h"
+#include "dac.h"
+#include "coaddition.h"
 
 namespace tango {
 
@@ -27,6 +29,8 @@ BuildAlgo::BuildAlgo() {
     algo_map["Noise"] = []() -> BaseAlgo* { return new Noise(); };
     algo_map["Straylight"] = []() -> BaseAlgo* { return new Straylight(); };
     algo_map["Radiometric"] = []() -> BaseAlgo* { return new Radiometric(); };
+    algo_map["DAC"] = []() -> BaseAlgo* { return new DAC(); };
+    algo_map["Coaddition"] = []() -> BaseAlgo* { return new Coaddition(); };
 }
 
 BuildAlgo::~BuildAlgo() = default;

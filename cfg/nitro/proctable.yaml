@@ -6,7 +6,7 @@ algos_im:
     - Dark_Current
     - Noise
     - Dark_Offset
-    - Coadding
+    - Coaddition
     - Binning
     - ADC
 algos_l1b:
@@ -17,11 +17,14 @@ algos_l1b:
     - Swath
     - Radiometric
 test:
+    - Coaddition
+    - DAC
     - Dark_Offset
     - Noise
     - Dark_Current
-    # Non linearity
+    - Non_Linearity
     - PRNU
+    - Exposure_Time
     - Straylight
     - Radiometric
     

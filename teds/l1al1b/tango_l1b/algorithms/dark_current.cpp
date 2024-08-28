@@ -2,12 +2,6 @@
 // in the LICENSE file in the root directory of this project.
 
 #include "dark_current.h"
-#include <cstdint>
-#include <spdlog/spdlog.h>
-
-
-#include <concepts>
-#include <iostream>
 
 namespace tango {
 

@@ -2,9 +2,6 @@
 // in the LICENSE file in the root directory of this project.
 
 #include "straylight.h"
-#include <cstdint>
-#include <spdlog/spdlog.h>
-#include <ranges>
 
 namespace tango {
 

@@ -87,10 +87,11 @@ auto driver_nitro(const SettingsL1B& settings,
         
         // Initialize pixel mask
         l1.pixel_mask = ckd.pixel_mask;
-
-        spdlog::info("Processing i_alt: {}", i_alt);
+        
+        std::string i_alt_msg = " Processing image [" + std::to_string(i_alt) +  "] ";
+        spdlog::info("{:=^30}", i_alt_msg);
         for (YAML::const_iterator it=algo_list.begin(); it!=algo_list.end();it++){
-            spdlog::info("***algorithm name: ---{}---", it->as<std::string>());
+            spdlog::info("{: ^30}", it->as<std::string>());
             BuildAlgo algo_builder;
             BaseAlgo* algo = algo_builder.CreateAlgo(it->as<std::string>());
             if (algo->algoCheckInput(ckd, l1)) {

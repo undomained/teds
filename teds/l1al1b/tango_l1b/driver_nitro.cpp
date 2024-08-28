@@ -80,6 +80,11 @@ auto driver_nitro(const SettingsL1B& settings,
     YAML::Node proctable = YAML::LoadFile(proctable_file);
     YAML::Node algo_list = proctable[algo_list_name];
 
+    const int algo_list_length = algo_list.size();
+// For some reason array is not happy with algo_list_length
+//    std::array<Timer, algo_list_length> timers {};
+    std::array<Timer, 20> timers {};
+
     #pragma omp parallel for schedule(dynamic)
     for (int i_alt = 0; i_alt < static_cast<int>(l1_products.size()); ++i_alt) {
         printPercentage(i_alt, l1_products.size(), "Processing images");
@@ -90,20 +95,35 @@ auto driver_nitro(const SettingsL1B& settings,
         
         std::string i_alt_msg = " Processing image [" + std::to_string(i_alt) +  "] ";
         spdlog::info("{:=^30}", i_alt_msg);
+        int i_algo = 0;
         for (YAML::const_iterator it=algo_list.begin(); it!=algo_list.end();it++){
             spdlog::info("{: ^30}", it->as<std::string>());
             BuildAlgo algo_builder;
             BaseAlgo* algo = algo_builder.CreateAlgo(it->as<std::string>());
             if (algo) {
+                timers[static_cast<int>(i_algo)].start();
                 if (algo->algoCheckInput(ckd, l1)) {
                     algo->algoExecute(ckd, l1);
                 }
+                timers[static_cast<int>(i_algo)].stop();
             }
-            
+            i_algo+=1;    
         }
     }
     timer_total.stop();
     spdlog::info("Processing images 100.0%");
+
+    // Overview of timings
+    spdlog::info("");
+    spdlog::info("Timings:");
+    int i_algo = 0;
+    for (YAML::const_iterator it=algo_list.begin(); it!=algo_list.end();it++){
+        std::string my_name = it->as<std::string>();
+        spdlog::info("   {:20}: {:8.3f} s",
+                    my_name, timers[static_cast<int>(i_algo)].time());
+        i_algo += 1;
+    }
+    spdlog::info("   {:20}: {:8.3f} s", "Total",timer_total.time());
 
     printHeading("Success");
 }

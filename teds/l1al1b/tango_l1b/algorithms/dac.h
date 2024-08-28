@@ -1,0 +1,37 @@
+// This source code is licensed under the 3-clause BSD license found
+// in the LICENSE file in the root directory of this project.
+
+#pragma once
+
+#include "base_algo.h"
+
+namespace tango {
+
+class CKD;
+class L1;
+
+/// Dummy Correction class
+
+class DAC : public BaseAlgo {
+public:
+
+    /// Constructor.
+    DAC() = default;
+
+    /// Destructor.
+    ~DAC() = default;
+
+    /// Return the name of the class.
+    std::string getName() const override;
+
+    /// Retrieve the required datasets
+    bool algoCheckInput(const CKD& ckd, L1& l1) override;
+
+//    /// Set all loaded data to null.
+//    virtusl void unloadData();
+
+    /// Perform the algorithm
+    void algoExecute(const CKD& ckd, L1& l1) override;
+
+};
+} // namespace tango

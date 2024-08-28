@@ -18,9 +18,11 @@ __pycache__/
 
 # all .files
 .*~
-
-teds/L1AL1B/tango_l1b/build/
-teds/L1AL1B/tango_l1b/manual/*
+cfg/nitro/im_config_temp.yaml
+cfg/nitro/l1b_config_temp.yaml
+teds/im/build/
+teds/l1al1b/build/
+teds/l1al1b/tango_l1b/manual/*
 teds/ckd/ckd_generation/data_external/ckd_stray.nc
 teds/ckd/ckd_nitro.nc
 data

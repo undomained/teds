@@ -17,5 +17,5 @@ algos_l1b:
     - Swath
     - Radiometric
 test:
-    - DummyCorrection
-    - PRNUCorrection
+    - Dark_Offset
+    - PRNU

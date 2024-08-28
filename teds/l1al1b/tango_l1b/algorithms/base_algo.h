@@ -35,7 +35,7 @@ public:
     /// inherits from BaseAlgo. In this function algorithm-specific code
     /// should be placed which checks for the availability of necessary data
     /// needed by the algorithm.
-    virtual void algoCheckInput(const CKD& ckd, L1& l1);
+    virtual bool algoCheckInput(const CKD& ckd, L1& l1);
 
     /// Virtual function to be implemented by each algorithm which
     /// inherits from BaseAlgorithm. In this function algorithm-specific code

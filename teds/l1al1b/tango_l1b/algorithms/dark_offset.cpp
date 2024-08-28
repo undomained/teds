@@ -21,8 +21,14 @@ std::string DarkOffset::getName() const {
     return std::string("DarkOffset");
 }
 
-void DarkOffset::algoCheckInput(const CKD& ckd, L1& l1) {
-    spdlog::info("DarkOffset algoCheckInput fct still to be filled in");
+bool DarkOffset::algoCheckInput(const CKD& ckd, L1& l1) {
+    // Check if image and ckd have the same dimensions
+    if (l1.image.size() == ckd.dark.offset.size()) {
+        return true;
+    } else {
+        spdlog::warn("Image and CKD dimensions do not match, skipping");
+        return false;
+    }
 }
 
 //void DarkOffset::unloadData() {

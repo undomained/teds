@@ -17,9 +17,15 @@ std::string PRNU::getName() const {
     return std::string("PRNU");
 }
 
-void PRNU::algoCheckInput(const CKD& ckd, L1& l1)
+bool PRNU::algoCheckInput(const CKD& ckd, L1& l1)
 {
-    spdlog::info("PRNU algoCheckInput fct still to be filled in");
+    // Check if image and ckd have the same dimensions
+    if (l1.image.size() == ckd.prnu.prnu.size()) {
+        return true;
+    } else {
+        spdlog::warn("Image and CKD dimensions do not match, skipping");
+        return false;
+    }
 }
 
 //void PRNU::unloadData() {

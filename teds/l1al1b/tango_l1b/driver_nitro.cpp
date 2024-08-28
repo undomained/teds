@@ -93,8 +93,10 @@ auto driver_nitro(const SettingsL1B& settings,
             spdlog::info("***algorithm name: ---{}---", it->as<std::string>());
             BuildAlgo algo_builder;
             BaseAlgo* algo = algo_builder.CreateAlgo(it->as<std::string>());
-            algo->algoCheckInput(ckd, l1);
-            algo->algoExecute(ckd, l1);
+            if (algo->algoCheckInput(ckd, l1)) {
+                algo->algoExecute(ckd, l1);
+            }
+            
         }
     }
     timer_total.stop();

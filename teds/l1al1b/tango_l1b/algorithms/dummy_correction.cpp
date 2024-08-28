@@ -17,8 +17,10 @@ std::string DummyCorrection::getName() const {
     return std::string("DummyCorrection");
 }
 
-void DummyCorrection::algoCheckInput(const CKD& ckd, L1& l1) {
+bool DummyCorrection::algoCheckInput(const CKD& ckd, L1& l1) {
     spdlog::info("DummyCorrection algoCheckInput fct still to be filled in");
+
+    return true;
 }
 
 //void DummyCorrection::unloadData() {

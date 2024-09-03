@@ -18,43 +18,37 @@ atmosphere:
 
 std_atm: 'prof.AFGL.US.std'     #path to AFGL model atmosphere
 
-sgm_input: '../data/sgm_atmosphere.nc'
-
-l1b_input: '../data/l1b.nc'
-
-afgl_input: '../data/prof.AFGL.US.std'
-
-sun_reference: '../data/solar_spectrum.nc'
-
-hapi_path: '../data/hapi/'
-
-xsec_dump: '../data/xsec_dump_L2.pkl'
-
-l2_output: '../data/l2.nc'
-
 filename:
-    level2:       'Tango_Carbon_l2'       #output file for geophysical scene
-    level1b:      'Tango_Carbon_l1b'      #gm output file
-    pixel_mask:   'level1b_pixel_mask'    #pixel mask
+  level2: 'Tango_Carbon_l2' # output file for geophysical scene
+  level1b: 'Tango_Carbon_l1b' # gm output file
+  pixel_mask: 'level1b_pixel_mask'
 
-spec_settings:              #settings for line-by-line spectra
-    wavestart:   1590       #initial wavelength (indicator)
-    waveend:     1675       #final wavlength of measurement
-    wave_extend: 2.0        #shortwave and longwave extension of the measurement grid [nm]
-    dwave:       0.002      #nm
+# settings for line-by-line spectra
+spec_settings:
+  # initial wavelength (indicator)
+  wavestart:   1590
+  # final wavlength of measurement
+  waveend:     1664
+  # shortwave and longwave extension of the measurement grid [nm]
+  wave_extend: 2.0
+  dwave:       0.002 # nm
 
 isrf_settings:
-    type:       'generalized_normal'               #type of ISRF, currently only Gaussian or generalized_normal
-    fwhm:       0.45                               #fwhm  [nm]
-    bcoeff:     0.2                                #only for generalized_normal, bcoeff=1/2 means Gaussian
-
-#isrf_settings:
-#    type:       'Gaussian'                         #type of ISRF, currently only Gaussian or generalized_normal
-#    fwhm:       0.45                               #fwhm  [nm]
-#    bcoeff:     0.45                                #only for generalized_normal, bcoeff=1/2 means Gaussian
+  type: Gaussian
+  fwhm: 0.45
 
 surface:
-    wave_alb: [1600, 1650]  #wavelengths at which the surface albedo is specified in the output
+  # wavelengths at which the surface albedo is specified in the output
+  wave_alb: [1600, 1650]
 
-xsec_forced: False          #flag to force new cross section calculation
+# force new cross section calculation
+xsec_forced: False
 
+io_files:
+  input_l1b: l1b.nc
+  input_sgm: sgm_atmosphere.nc
+  input_afgl: prof.AFGL.US.std
+  input_sun_reference: solar_spectrum/solar_spectrum.nc
+  input_hapi: xsec/
+  dump_xsec: xsec_dump_L2.pkl
+  output_l2: l2.nc

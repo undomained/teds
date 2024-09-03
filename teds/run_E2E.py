@@ -93,7 +93,7 @@ def reshape_output(output_key, config):
     if is_reshape_needed(output_key, config):
         # readin output file
         output_file = config['io'][output_key]
-        output_data = dn.DataNetCDF(log, output_file, mode='r')
+        output_data = dn.DataNetCDF(output_file, mode='r')
 
         # Get data
         data = output_data.get('detector_image',  group='science_data', kind = 'variable')
@@ -101,7 +101,7 @@ def reshape_output(output_key, config):
 
         # Get dimensions from ckd?
         ckd_file = config['io']['ckd']
-        ckd_data = dn.DataNetCDF(log, ckd_file, mode='r')
+        ckd_data = dn.DataNetCDF(ckd_file, mode='r')
         det_rows = ckd_data.get('detector_row', kind='dimension')
         det_cols = ckd_data.get('detector_column', kind='dimension')
 
@@ -114,7 +114,7 @@ def reshape_output(output_key, config):
         # How do I get the right dimensions when binning has been applied?
         # For now stupidly devide det_rows by table_id
         bin_file = config['io']['binning_table']
-        bin_data = dn.DataNetCDF(log, bin_file, mode='r')
+        bin_data = dn.DataNetCDF(bin_file, mode='r')
         bin_id = config['detector']['binning_table_id']
         table = f"Table_{bin_id}"
         binned_pixels = bin_data.get('bins', group=table, kind='dimension')

@@ -21,6 +21,7 @@ from teds import log
 import tqdm
 from scipy.interpolate import RegularGridInterpolator
 import xarray as xr
+import logging
 
 from teds import log
 from teds.lib import libATM, libSGM, libRT_no2, libNumTools, constants
@@ -42,12 +43,12 @@ class Dict2Class:
 def get_gm_data(filename):
     with nc.Dataset(filename, mode='r') as data:
         gm_data = {}
-        gm_data['sza'] = deepcopy(data['sza'][:, :])
-        gm_data['saa'] = deepcopy(data['saa'][:, :])
-        gm_data['vza'] = deepcopy(data['vza'][:, :])
-        gm_data['vaa'] = deepcopy(data['vaa'][:, :])
-        gm_data['lat'] = deepcopy(data['lat'][:, :])
-        gm_data['lon'] = deepcopy(data['lon'][:, :])
+        gm_data['sza'] = deepcopy(data['solarzenithangle'][:, :])
+        gm_data['saa'] = deepcopy(data['solarazimuthangle'][:, :])
+        gm_data['vza'] = deepcopy(data['viewingzenithangle'][:, :])
+        gm_data['vaa'] = deepcopy(data['viewingazimuthangle'][:, :])
+        gm_data['lat'] = deepcopy(data['latitude'][:, :])
+        gm_data['lon'] = deepcopy(data['longitude'][:, :])
     return gm_data
 
 def get_sentinel2_albedo(filename):

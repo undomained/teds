@@ -666,7 +666,7 @@ auto writeL1(const std::string& filename,
 
         nc_grp = nc.addGroup("geolocation_data");
 
-        nc_var = nc_grp.addVar("lat", netCDF::ncFloat, geometry_shape);
+        nc_var = nc_grp.addVar("latitude", netCDF::ncFloat, geometry_shape);
         nc_var.putAtt("long_name", "latitude at bin locations");
         nc_var.putAtt("_FillValue", netCDF::ncFloat, fill::f);
         nc_var.putAtt("valid_min", netCDF::ncFloat, -90.0f);
@@ -674,7 +674,7 @@ auto writeL1(const std::string& filename,
         nc_var.putAtt("units", "degrees_north");
         nc_var.putVar(lat.data());
 
-        nc_var = nc_grp.addVar("lon", netCDF::ncFloat, geometry_shape);
+        nc_var = nc_grp.addVar("longitude", netCDF::ncFloat, geometry_shape);
         nc_var.putAtt("long_name", "longitude at bin locations");
         nc_var.putAtt("_FillValue", netCDF::ncFloat, fill::f);
         nc_var.putAtt("valid_min", netCDF::ncFloat, -180.0f);
@@ -690,7 +690,7 @@ auto writeL1(const std::string& filename,
         nc_var.putAtt("units", "m");
         nc_var.putVar(height.data());
 
-        nc_var = nc_grp.addVar("vza", netCDF::ncFloat, geometry_shape);
+        nc_var = nc_grp.addVar("viewingzenithangle", netCDF::ncFloat, geometry_shape);
         nc_var.putAtt("long_name", "sensor zenith angle at bin locations");
         nc_var.putAtt("_FillValue", netCDF::ncFloat, fill::f);
         nc_var.putAtt("valid_min", netCDF::ncFloat, -90.0f);
@@ -698,7 +698,7 @@ auto writeL1(const std::string& filename,
         nc_var.putAtt("units", "degrees");
         nc_var.putVar(vza.data());
 
-        nc_var = nc_grp.addVar("vaa", netCDF::ncFloat, geometry_shape);
+        nc_var = nc_grp.addVar("viewingazimuthangle", netCDF::ncFloat, geometry_shape);
         nc_var.putAtt("long_name", "sensor azimuth angle at bin locations");
         nc_var.putAtt("_FillValue", netCDF::ncFloat, fill::f);
         nc_var.putAtt("valid_min", netCDF::ncFloat, -180.0f);
@@ -706,7 +706,7 @@ auto writeL1(const std::string& filename,
         nc_var.putAtt("units", "degrees");
         nc_var.putVar(vaa.data());
 
-        nc_var = nc_grp.addVar("sza", netCDF::ncFloat, geometry_shape);
+        nc_var = nc_grp.addVar("solarzenithangle", netCDF::ncFloat, geometry_shape);
         nc_var.putAtt("long_name", "solar zenith angle at bin locations");
         nc_var.putAtt("_FillValue", netCDF::ncFloat, fill::f);
         nc_var.putAtt("valid_min", netCDF::ncFloat, -90.0f);
@@ -714,7 +714,7 @@ auto writeL1(const std::string& filename,
         nc_var.putAtt("units", "degrees");
         nc_var.putVar(sza.data());
 
-        nc_var = nc_grp.addVar("saa", netCDF::ncFloat, geometry_shape);
+        nc_var = nc_grp.addVar("solarazimuthangle", netCDF::ncFloat, geometry_shape);
         nc_var.putAtt("long_name", "solar azimuth angle at bin locations");
         nc_var.putAtt("_FillValue", netCDF::ncFloat, fill::f);
         nc_var.putAtt("valid_min", netCDF::ncFloat, -180.0f);
@@ -750,12 +750,12 @@ auto copyGeometry(const std::string& l1a_filename,
     std::vector<double> vaa(n_alt * n_act);
     std::vector<double> sza(n_alt * n_act);
     std::vector<double> saa(n_alt * n_act);
-    nc_geo.getVar("lat").getVar(lat.data());
-    nc_geo.getVar("lon").getVar(lon.data());
-    nc_geo.getVar("vza").getVar(vza.data());
-    nc_geo.getVar("vaa").getVar(vaa.data());
-    nc_geo.getVar("sza").getVar(sza.data());
-    nc_geo.getVar("saa").getVar(saa.data());
+    nc_geo.getVar("latitude").getVar(lat.data());
+    nc_geo.getVar("longitude").getVar(lon.data());
+    nc_geo.getVar("viewingzenithangle").getVar(vza.data());
+    nc_geo.getVar("viewingazimuthangle").getVar(vaa.data());
+    nc_geo.getVar("solarzenithangle").getVar(sza.data());
+    nc_geo.getVar("solarazimuthangle").getVar(saa.data());
     i_alt_start += getIMImageStart(l1a_filename);
     for (int i_alt {}; i_alt < static_cast<int>(l1_products.size()); ++i_alt) {
         const auto copy { [i_alt_start, i_alt, n_act](

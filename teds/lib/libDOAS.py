@@ -2014,8 +2014,12 @@ def readGeometryL1b(rad_file, slice_alt, slice_act):
     # Read geometry from L1B
     geo = {}
     with nc.Dataset(rad_file) as f:
-        for key in f['geolocation_data'].variables.keys():
-            geo[key] = f[key][slice_alt,slice_act]
+        geo['sza'] = f['geolocation_data/solarzenithangle'][slice_alt,slice_act]
+        geo['saa'] = f['geolocation_data/solarazimuthangle'][slice_alt,slice_act]
+        geo['vza'] = f['geolocation_data/viewingzenithangle'][slice_alt,slice_act]
+        geo['vaa'] = f['geolocation_data/viewingazimuthangle'][slice_alt,slice_act]
+        geo['lat'] = f['geolocation_data/latitude'][slice_alt,slice_act]
+        geo['lon'] = f['geolocation_data/longitude'][slice_alt,slice_act]
     return geo
 
 
@@ -2023,6 +2027,10 @@ def readGeometryGm(gm_file, slice_alt, slice_act):
     # Read geometry from GM file
     geo = {}
     with nc.Dataset(gm_file) as f:
-        for key in f.variables.keys():
-            geo[key] = f[key][slice_alt,slice_act]
+        geo['sza'] = f['solarzenithangle'][slice_alt,slice_act]
+        geo['saa'] = f['solarazimuthangle'][slice_alt,slice_act]
+        geo['vza'] = f['viewingzenithangle'][slice_alt,slice_act]
+        geo['vaa'] = f['viewingazimuthangle'][slice_alt,slice_act]
+        geo['lat'] = f['latitude'][slice_alt,slice_act]
+        geo['lon'] = f['longitude'][slice_alt,slice_act]
     return geo

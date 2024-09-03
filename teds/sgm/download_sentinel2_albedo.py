@@ -102,8 +102,8 @@ def write_albedo_to_netcdf(albedo_file: str, albedos: List[DataArray]) -> None:
 
 def download_sentinel2_albedo(config) -> None:
     nc = Dataset(config['io']['gm'])
-    lat = nc['lat'][:]
-    lon = nc['lon'][:]
+    lat = nc['latitude'][:]
+    lon = nc['longitude'][:]
     collection = generate_geometry(lat, lon)
     # Extract the high resolution albedo map of selected wavelength bands
     albedos = []

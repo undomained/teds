@@ -231,11 +231,11 @@ auto radiometric(const CKD& ckd, const bool enabled, L1& l1) -> void
         return;
     }
     const double exposure_time_inv { 1.0 / l1.exposure_time };
-    for (int i_row {}; i_row < ckd.n_detector_rows; i_row++) {
-        for (int i_col {}; i_col < ckd.n_detector_cols; ++i_col) {
-            l1.image[i_row*ckd.n_detector_cols + i_col] /=
-              ckd.rad.rad[i_row][i_col] * exposure_time_inv;
-        }        
+
+    for (int i {}; i < ckd.npix; ++i) {
+        if (!ckd.pixel_mask[i]) {
+            l1.image[i] /= ckd.rad.rad[i] * exposure_time_inv;
+        }
     }
     
     l1.level = ProcLevel::stray;

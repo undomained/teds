@@ -71,7 +71,150 @@ def is_reshape_needed(output_key, config):
 
     return reshape_needed
 
+def detector_image_dimensions(output_data, data, config ):
+    """
+        :param output_data: netcdf data
+        :type output_data: dataNetcdf
+        :param config: configuration
+        :type config: Dictionary
+
+        :return : List of detector row, detector columns and binned_rows
+        :rtype  : List
+    """
+
+    # Get dimensions from ckd?
+    ckd_file = config['io']['ckd']
+    ckd_data = dn.DataNetCDF(ckd_file, mode='r')
+    det_rows = ckd_data.get('detector_row', kind='dimension')
+    det_cols = ckd_data.get('detector_column', kind='dimension')
+
+    # At them to the output
+    output_data.add(name='detector_row', value=det_rows, kind='dimension')
+    output_data.add(name='detector_column', value=det_cols, kind='dimension')
+    output_data.add(name='along_track', value=data.shape[0], kind='dimension')
+
+    # Data might be binned
+    # How do I get the right dimensions when binning has been applied?
+    # For now stupidly devide det_rows by table_id
+    bin_file = config['io']['binning_table']
+    bin_data = dn.DataNetCDF(bin_file, mode='r')
+    if 'detector' in config:
+        bin_id = config['detector']['binning_table_id']
+    else:
+        binning_ids = output_data.get('binning_table',  group='image_attributes', kind = 'variable')
+        bin_id = binning_ids[0]
+
+    table = f"Table_{bin_id}"
+    binned_pixels = bin_data.get('bins', group=table, kind='dimension')
+    binned_rows = int(binned_pixels/det_cols)
+    output_data.add(name='binned_row', value=binned_rows, kind='dimension')
+
+    return [det_rows, det_cols, binned_rows]
+
+def check_if_binned(detector_dims):
+    """
+        Check if data is binned
+
+        :param detector_dims: detector dimensions
+        :type detector_dims: List
+
+        :return is_binned: to indicated if data is binned or not
+        :rtype is_binned: Boolean
+    """
+    is_binned = False
+    det_rows = detector_dims[0]
+    binned_rows = detector_dims[2]
+    if det_rows != binned_rows:
+        is_binned = True
+    return is_binned
+
+def add_3d_detector_image_data(data, std_data, detector_dims, output_data):
+    """
+        Reshape the data and add them to the netcdf output
+
+        :param data: The data to be reshaped
+        :type data: Numpy array
+        :param std_data: The std data to be reshaped
+        :type std data: Numpy array
+        :param detector_dims: detector dimensions
+        :type detector_dims: List
+        :param output_data: the netcdf output
+        :type output_data: dataNetcdf object
+    """
+
+    # Check if the binned row dimension is needed
+    is_binned = check_if_binned(detector_dims)
+
+    cols = detector_dims[1]
+    rows = detector_dims[0]
+    dimensions=('along_track','detector_row','detector_column')
+    if is_binned:
+        rows = detector_dims[2]
+        dimensions=('along_track','binned_row','detector_column')
+
+
+    data_reshaped = np.reshape(data, (data.shape[0], rows, cols))
+    output_data.add(name='detector_image_3d', value=data_reshaped, group='science_data',
+                    dimensions=dimensions,
+                    kind='variable')
+    # standard deviation data is not always present. Check
+    if std_data is not None:
+        std_data_reshaped = np.reshape(std_data, (std_data.shape[0], rows, cols))
+        output_data.add(name='detector_stdev_3d', value=std_data_reshaped,
+                        group='science_data',
+                        dimensions=dimensions,
+                        kind='variable')
+
+    return
+
+
 def reshape_output(output_key, config):
+    """
+        Reshape the output dataset
+        Note: output dataset is 2D. When it is on detector level
+        these dimensions are: along track and pixels.
+        This second dimension is too big (det_row x det_col)
+        This makes viewing difficult.
+        Read in the data and reshape to 3D in case of detector level
+
+        :param output_key: key to use to find output file in configuration
+        :type output_key: String
+        :param config: configuration
+        :type config: Dictionary
+
+        :return temp_output_file: file name of the output file which stores the reshaped data
+        :rtype temp_output_file: String
+    """
+    # readin output file
+    output_file = config['io'][output_key]
+    output_data = dn.DataNetCDF(output_file, mode='r')
+
+    # Get data
+    data = output_data.get('detector_image',  group='science_data', kind = 'variable')
+    if data is None:
+        # No detector image. No need to reshape
+        log.info("Not detector image present. No need to reshape and create temporary output file")
+        return
+
+    std_data = output_data.get('detector_stdev',  group='science_data', kind = 'variable')
+
+    # Get the dimensions for the detector image and add them to the output_data
+    detector_dims = detector_image_dimensions(output_data, data, config )
+
+    add_3d_detector_image_data(data, std_data, detector_dims, output_data)
+
+    # Remove the 2D images
+    output_data.remove('detector_image', group='science_data', kind='variable')
+    if output_data.find('detector_stdev', group='science_data', kind='variable') is not None:
+        output_data.remove('detector_stdev', group='science_data', kind='variable')
+
+    # write to temp output file
+    temp_output_file = f"{output_file[:-3]}_temp.nc"
+    output_data.write(temp_output_file)
+
+    return
+
+def reshape_output2(output_key, config):
     """
         Reshape the output dataset
         Note: output dataset is 2D. When it is on detector level

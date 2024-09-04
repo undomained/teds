@@ -8,7 +8,6 @@
 
 #include <filesystem>
 #include <fstream>
-#include <netcdf>
 #include <omp.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>
@@ -25,7 +24,7 @@ auto tango_formatter_flag::format(const spdlog::details::log_msg& log_msg,
 
     switch (log_msg.level) {
     case spdlog::level::info:
-        color = "\033[37m";  // White for info
+        color = "\033[0m";  // White for info
         text = "";
         break;
     case spdlog::level::warn:
@@ -255,7 +254,7 @@ auto readL1(const std::string& filename,
     // products and detector_image otherwise.
     const std::string alt_dim_name { level <= ProcLevel::stray
                                        ? "detector_image"
-                                       : "along_track" };
+                                        : "along_track" };
     const size_t alt_beg { static_cast<size_t>(image_start) };
     const size_t alt_end { image_end == fill::i
                              ? nc.getDim(alt_dim_name).getSize()
@@ -773,5 +772,179 @@ auto copyGeometry(const std::string& l1a_filename,
         l1_products[i_alt].geo.height = std::vector<float>(n_act, 0.0);
     }
 }
+
+
+// ==============================================================================
+// ==============================write functions without ProcLevel===========
+
+
+void writeL1product(
+    const std::string& filename, 
+    const std::string& level,
+    const std::string& config, 
+    const std::vector<L1>& l1_products, 
+    const int argc, const char* const argv[]) 
+    {
+    spdlog::info("writeL1");
+    std::cout << filename << std::endl;
+    
+    netCDF::NcFile nc { filename, netCDF::NcFile::replace };
+    spdlog::info("Output data calibration level: {}", level);
+
+    writeGlobalAttributes(nc, level, config,argc, argv);
+    writeImageAttributes(nc, l1_products);
+
+    if (level == "SGM"){
+        writeObservationData(nc, l1_products);
+    } else {
+        writeScienceData(nc, l1_products);
+    }
+
+    spdlog::warn("Geolocation data needs to be implemented");
+    // writeGeolocation data
+}
+
+void writeGlobalAttributes(netCDF::NcFile& nc, const std::string& level, const std::string& config, const int argc, const char* const argv[]) {
+    spdlog::info("writing Global Attributes");
+    const std::string instrument { YAML::Load(config)["instrument"].as<std::string>() };
+    nc.putAtt("Conventions", "CF-1.11");
+    nc.putAtt("title", "Tango " + instrument + " " + level + " data");
+    nc.putAtt("product_type", level);
+    nc.putAtt("project", "TANGO");
+    nc.putAtt("instrument", instrument);
+    nc.putAtt("creator_name", "SRON/Earth Science");
+    nc.putAtt("creator_url", "https://www.sron.nl/missions-earth");
+    nc.putAtt("date_created", getDateAndTime());
+
+    if (TANGO_GIT_COMMIT_ABBREV != "GITDIR-N") {
+        nc.putAtt("git_commit", TANGO_GIT_COMMIT_ABBREV);
+    }
+
+    std::string command_line { argc > 0 ? argv[0] : "" };
+    for (int i { 1 }; i < argc; ++i) {
+        command_line += ' ' + std::string(argv[i]);
+    }
+    nc.putAtt("history", command_line);
+    const std::string processing_version { YAML::Load(config)["processing_version"].as<std::string>() };
+    nc.putAtt("processing_version", processing_version);
+}
+
+
+void writeImageAttributes(netCDF::NcFile& nc, const std::vector<L1>& l1_products) {
+    spdlog::info("Writing Image Attributes");
+    const auto n_images { l1_products.size() };
+    const auto nc_images { nc.addDim("scanline", n_images) };
+
+    auto nc_grp { nc.addGroup("image_attributes") };
+
+    NcVar nc_img_time = addVariable(nc_grp, "image_time", "image time", "seconds since 2022-03-21", fill::d, 0.0, 92304.0, {nc_images});
+    std::vector<double> buf {};
+    buf.assign(n_images, 0.0);
+    nc_img_time.putVar(buf.data());
+
+    auto nc_var = nc_grp.addVar("binning_table", netCDF::ncByte, { nc_images });
+    nc_var.putAtt("long_name", "binning table");
+    buf.assign(n_images, l1_products.front().binning_table_id);
+    nc_var.putVar(buf.data());
+
+    nc_var = nc_grp.addVar("nr_coadditions", netCDF::ncUshort, { nc_images });
+    nc_var.putAtt("long_name", "number of coadditions");
+    buf.assign(n_images, l1_products.front().nr_coadditions);
+    nc_var.putVar(buf.data());
+
+    nc_var = nc_grp.addVar("exposure_time", netCDF::ncDouble, { nc_images });
+    nc_var.putAtt("long_name", "exposure time");
+    buf.assign(n_images, l1_products.front().exposure_time);
+    nc_var.putVar(buf.data());
+}
+
+void writeScienceData(netCDF::NcFile& nc, const std::vector<L1>& l1_products) {
+    spdlog::info("Writing Science Data");
+    const auto n_images { l1_products.size() };
+    const auto n_bins { l1_products.front().image.size() };
+    const auto nc_images = nc.getDim("scanline");;
+    const auto nc_detector_bin { nc.addDim("detector_bin", n_bins) };
+    const std::vector<netCDF::NcDim> nc_flatimg_shape { nc_images, nc_detector_bin };
+    
+    auto nc_grp { nc.addGroup("science_data") };
+
+    // add image
+    NcVar nc_img = addVariable(nc_grp, "detector_image", "detector images", "counts" , fill::d, -1e100, 1e100, nc_flatimg_shape);
+    std::vector<double> buf(n_images * n_bins);
+    for (size_t i {}; i < n_images; ++i) {
+        for (size_t j {}; j < n_bins; ++j) {
+            buf[i * n_bins + j] = l1_products[i].image[j];
+        }
+    }
+    nc_img.putVar(buf.data());
+
+    // add stdev
+    NcVar nc_std = addVariable(nc_grp, "detector_stdev", "standard deviation of detector bin","counts", fill::d, 0.0,1e100, nc_flatimg_shape);
+    for (size_t i {}; i < n_images; ++i) {
+        for (size_t j {}; j < n_bins; ++j) {
+            buf[i * n_bins + j] = l1_products[i].stdev[j];
+        }
+    }
+    nc_std.putVar(buf.data());
+}
+
+void writeObservationData(netCDF::NcFile& nc, const std::vector<L1>& l1_products) {
+    spdlog::info("Writing Observation Data");
+    const auto n_across_track { l1_products.front().spectra.size() };    
+    const auto nc_across_track { nc.addDim("across_track", n_across_track) };
+    const auto nc_images = nc.getDim("scanline");
+    const auto wavelengths { *l1_products.front().wavelength };
+    const auto n_wavelength { wavelengths.front().size() };
+    const auto nc_wavelength { nc.addDim("wavelength", n_wavelength) };
+    
+    
+    auto nc_grp { nc.addGroup("observation_data") };
+
+    // add wavelength
+    std::cout << "wavelength" << std::endl;
+    NcVar nc_wl = addVariable(nc_grp, "wavelength", "radiance wavelengths", "nm", fill::f, 0.0f, 999.0f, {nc_across_track, nc_wavelength});
+    std::vector<float> buf(n_across_track * n_wavelength);
+    for (size_t i {}; i < n_across_track; ++i) {
+        for (size_t j {}; j < n_wavelength; ++j) {
+            buf[i * n_wavelength + j] =
+                static_cast<float>(wavelengths[i][j]);
+        }
+    }
+    nc_wl.putVar(buf.data());
+
+    // add radiance
+    std::cout << "radiance" << std::endl;
+    const auto flatsignal { [&](auto& buf) {
+        for (size_t i {}; i < l1_products.size(); ++i) {
+            for (size_t j {}; j < l1_products.front().observation.size(); ++j) {
+                    buf[(i * n_across_track + j) * n_wavelength] = static_cast<float>(l1_products[i].observation[j]);
+            }
+        }
+    }};
+    NcVar nc_rad = addVariable(nc_grp, "radiance", "radiance", "ph nm-1 s-1 sr-1 m-2", fill::f, 0.0f, 1e20f, {nc_images, nc_across_track, nc_wavelength});
+    flatsignal(buf);
+    nc_rad.putVar(buf.data());
+
+    // add radiance std
+    std::cout << "std" << std::endl;
+    const auto flatstd { [&](auto& buf) {
+        for (size_t i {}; i < l1_products.size(); ++i) {
+            for (size_t j {}; j < l1_products.front().observation.size(); ++j) {
+                    buf[(i * n_across_track + j) * n_wavelength] = static_cast<float>(l1_products[i].observation_stdev[j]);
+            }
+        }
+    }}; 
+    
+    NcVar nc_std = addVariable(nc_grp, "radiance_stdev", "standard deviation of radiance in bin", "ph nm-1 s-1 sr-1 m-2", fill::f, 0.0f, 1e20f, {nc_images, nc_across_track, nc_wavelength});
+    flatstd(buf);
+    nc_std.putVar(buf.data());
+
+}
+
+void writeGeolocationData(netCDF::NcFile& nc, const std::vector<L1>& l1_products) {
+    spdlog::info("writeGeolocationData");
+
+}
+
 
 } // namespace tango

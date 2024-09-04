@@ -10,51 +10,55 @@
 //   spectra - detector spectra for levels [swath, l1b]
 //   wavelength - corresponding wavelengths [swath, l1b]
 
-#pragma once
-
 // #include "binning_table.h"
 
 #include "constants.h"
-// #include "settings_l1b.h"
 #include "spectrum.h"
-
 #include <memory>
+
+
+struct Spectrum {}; // Assuming Spectrum is defined somewhere
+enum class ProcLevel { l1b }; // Assuming ProcLevel is defined somewhere
+
 
 namespace tango {
 
-struct L1
-{
+struct L1 {
     // Science data
-    std::vector<bool> pixel_mask {};
-    std::vector<double> image {};
-    std::vector<int> image_i32 {};
-    std::vector<double> stdev {};
-    std::vector<Spectrum> spectra {};
-    // Wavelength grid currently associated with the spectra (either
-    // line-by-line or that of the CKD). It is the same for all
-    // images.
-    std::shared_ptr<std::vector<std::vector<double>>> wavelength {};
+    std::vector<bool> pixel_mask;
+    std::vector<double> image;
+    std::vector<double> noise2; // squared to indicate variance
+    std::vector<int> image_i32;
+    std::vector<double> stdev; // stdev is a statistical property, using noise2
+    std::vector<double> observation;
+    std::vector<double> observation_stdev;
+
+    std::vector<Spectrum> spectra;
+    std::shared_ptr<std::vector<std::vector<double>>> wavelength;
 
     // Geolocation data
-    struct
-    {
-        std::vector<float> lat {};
-        std::vector<float> lon {};
-        std::vector<float> height {};
-        std::vector<float> vza {}; // Viewing zenith angle
-        std::vector<float> vaa {}; // Viewing azimuth angle
-        std::vector<float> sza {}; // Solar zenith angle
-        std::vector<float> saa {}; // Solar azimuth angle
+    struct {
+        std::vector<float> lat;
+        std::vector<float> lon;
+        std::vector<float> height;
+        std::vector<float> vza; // Viewing zenith angle
+        std::vector<float> vaa; // Viewing azimuth angle
+        std::vector<float> sza; // Solar zenith angle
+        std::vector<float> saa; // Solar azimuth angle
     } geo;
 
     // Detector image meta data
-    double image_time {};
-    uint8_t binning_table_id {};
-    uint16_t nr_coadditions {};
-    double exposure_time {};
+    double image_time;
+    uint8_t binning_table_id;
+    uint16_t nr_coadditions;
+    double exposure_time;
 
     // Current calibration level
-    ProcLevel level { ProcLevel::l1b };
+    ProcLevel level;
+
+    // Constructor
+    L1();
 };
+
 
 } // namespace tango

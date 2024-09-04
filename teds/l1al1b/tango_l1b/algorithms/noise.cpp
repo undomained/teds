@@ -16,6 +16,10 @@ std::string Noise::getName() const {
 }
 
 bool Noise::algoCheckInput(const CKD& ckd, L1& l1) {
+    // Fill noise2 if needed
+    if ((l1.noise2.size()) != l1.image.size()) {
+        l1.noise2.resize(l1.image.size());
+    }
     // Check if image and ckd have the same dimensions
     if ((l1.image.size() != ckd.noise.g.size()) && (l1.image.size() != ckd.noise.n2.size())) {
         spdlog::warn("Image and CKD dimensions do not match, skipping");
@@ -30,21 +34,22 @@ bool Noise::algoCheckInput(const CKD& ckd, L1& l1) {
 //}
 
 void Noise::algoExecute(const CKD& ckd, L1& l1) {
-    spdlog::warn("Noise algoExecute fct still to be filled in");
+    spdlog::warn("Noise, binning not yet taken into account");
     for (int i {}; i < static_cast<int>(l1.image.size()); ++i) {
         if (l1.pixel_mask[i]) {
             continue;
         }
-        const double noise2 { ckd.noise.g[i] * l1.image[i] + ckd.noise.n2[i] };
+
+        // Not sure if this is the right order of calculations
+        double noise2 { ckd.noise.g[i] * l1.image[i] + ckd.noise.n2[i] };
+        noise2 /= l1.nr_coadditions; 
         
-        //if (noise2 <= 0.0) {
-        //    l1.pixel_mask[i] = true;
-        //} else if (binned_detector_image) {
-        //    l1.stdev[i] +=
-        //      std::sqrt(noise2 / (l1.nr_coadditions * binning_table.binSize(i)));
-        //} else {
-        //    l1.stdev[i] = std::sqrt(noise2 / l1.nr_coadditions);
-        //}
+        if (noise2 <= 0.0) {
+            l1.pixel_mask[i] = true;
+        } else {
+            l1.noise2[i] = noise2; 
+        }
+        // another option for binned images has to be added here 
     }
 }
 

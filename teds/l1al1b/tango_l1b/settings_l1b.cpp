@@ -2,7 +2,6 @@
 // in the LICENSE file in the root directory of this project.
 
 #include "settings_l1b.h"
-
 #include "io.h"
 
 namespace tango {

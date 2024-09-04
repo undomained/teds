@@ -800,8 +800,7 @@ void writeL1product(
         writeScienceData(nc, l1_products);
     }
 
-    spdlog::warn("Geolocation data needs to be implemented");
-    // writeGeolocation data
+    writeGeolocationData(nc, l1_products);
 }
 
 void writeGlobalAttributes(netCDF::NcFile& nc, const std::string& level, const std::string& config, const int argc, const char* const argv[]) {
@@ -861,7 +860,7 @@ void writeScienceData(netCDF::NcFile& nc, const std::vector<L1>& l1_products) {
     spdlog::info("Writing Science Data");
     const auto n_images { l1_products.size() };
     const auto n_bins { l1_products.front().image.size() };
-    const auto nc_images = nc.getDim("scanline");;
+    const auto nc_images = nc.getDim("scanline");
     const auto nc_detector_bin { nc.addDim("detector_bin", n_bins) };
     const std::vector<netCDF::NcDim> nc_flatimg_shape { nc_images, nc_detector_bin };
     
@@ -911,7 +910,7 @@ void writeObservationData(netCDF::NcFile& nc, const std::vector<L1>& l1_products
     }
     nc_wl.putVar(buf.data());
 
-    // add radiance
+    // add radiance, flatten first
     std::cout << "radiance" << std::endl;
     const auto flatsignal { [&](auto& buf) {
         for (size_t i {}; i < l1_products.size(); ++i) {
@@ -924,7 +923,7 @@ void writeObservationData(netCDF::NcFile& nc, const std::vector<L1>& l1_products
     flatsignal(buf);
     nc_rad.putVar(buf.data());
 
-    // add radiance std
+    // add radiance std, flatten first
     std::cout << "std" << std::endl;
     const auto flatstd { [&](auto& buf) {
         for (size_t i {}; i < l1_products.size(); ++i) {
@@ -941,7 +940,53 @@ void writeObservationData(netCDF::NcFile& nc, const std::vector<L1>& l1_products
 }
 
 void writeGeolocationData(netCDF::NcFile& nc, const std::vector<L1>& l1_products) {
-    spdlog::info("writeGeolocationData");
+    spdlog::info("Writing Geolocation Data");
+
+    const auto n_across_track { l1_products.front().spectra.size() };
+    const auto nc_across_track { nc.addDim("across_track", n_across_track) };
+    const auto n_images { l1_products.size() };
+    const auto nc_images = nc.getDim("scanline");
+    const std::vector<netCDF::NcDim> geometry_shape { nc_images, nc_across_track };
+
+    std::vector<float> lat(n_images * n_across_track);
+    std::vector<float> lon(n_images * n_across_track);
+    std::vector<float> height(n_images * n_across_track);
+    std::vector<float> vza(n_images * n_across_track);
+    std::vector<float> vaa(n_images * n_across_track);
+    std::vector<float> sza(n_images * n_across_track);
+    std::vector<float> saa(n_images * n_across_track);
+    for (int i_alt {}; i_alt < n_images; ++i_alt) {
+        const auto copy { [i_alt](const std::vector<float>& in,
+                                    std::vector<float>& out) {
+            std::copy(
+                in.cbegin(), in.cend(), out.begin() + i_alt * in.size());
+        } };
+        copy(l1_products[i_alt].geo.lat, lat);
+        copy(l1_products[i_alt].geo.lon, lon);
+        copy(l1_products[i_alt].geo.height, height);
+        copy(l1_products[i_alt].geo.vza, vza);
+        copy(l1_products[i_alt].geo.vaa, vaa);
+        copy(l1_products[i_alt].geo.sza, sza);
+        copy(l1_products[i_alt].geo.saa, saa);
+    }
+
+    auto nc_grp = nc.addGroup("geolocation_data");
+
+    NcVar nc_lat = addVariable(nc_grp, "latitude", "latitude at bin locations", "degrees_north", fill::f, -90.0f, 90.0f, geometry_shape);
+    NcVar nc_lon = addVariable(nc_grp, "longitude", "longitude at bin locations", "degrees_east", fill::f, -180.0f, 180.0f, geometry_shape);
+    NcVar nc_hei = addVariable(nc_grp, "height", "height at bin locations", "m", fill::f, -1000.0f, 1000.0f, geometry_shape);
+    NcVar nc_vza = addVariable(nc_grp, "viewingzenithangle", "sensor zenith angle at bin locations", "degrees", fill::f, -90.0f, 90.0f, geometry_shape);
+    NcVar nc_vaa = addVariable(nc_grp, "viewingazimuthangle", "sensor azimuth angle at bin locations", "degrees", fill::f, -180.0f, 180.0f, geometry_shape);
+    NcVar nc_sza = addVariable(nc_grp, "solarzenithangle", "solar zenith angle at bin locations", "degrees", fill::f, -90.0f, 90.0f, geometry_shape);
+    NcVar nc_saa = addVariable(nc_grp, "solarazimuthangle", "solar azimuth angle at bin locations", "degrees", fill::f, -180.0f, 180.0f, geometry_shape);
+    
+    nc_lon.putVar(lat.data());
+    nc_lat.putVar(lat.data());
+    nc_hei.putVar(height.data());
+    nc_vza.putVar(vza.data());
+    nc_vaa.putVar(vaa.data());
+    nc_sza.putVar(sza.data());
+    nc_saa.putVar(saa.data());
 
 }
 

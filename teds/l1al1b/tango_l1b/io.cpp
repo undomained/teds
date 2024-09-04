@@ -829,7 +829,6 @@ void writeGlobalAttributes(netCDF::NcFile& nc, const std::string& level, const s
     nc.putAtt("processing_version", processing_version);
 }
 
-
 void writeImageAttributes(netCDF::NcFile& nc, const std::vector<L1>& l1_products) {
     spdlog::info("Writing Image Attributes");
     const auto n_images { l1_products.size() };

@@ -12,13 +12,11 @@
 
 // #include "binning_table.h"
 
+#pragma once
 #include "constants.h"
 #include "spectrum.h"
 #include <memory>
 
-
-struct Spectrum {}; // Assuming Spectrum is defined somewhere
-enum class ProcLevel { l1b }; // Assuming ProcLevel is defined somewhere
 
 
 namespace tango {

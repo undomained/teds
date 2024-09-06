@@ -8,10 +8,12 @@
 // available to the user user. Otherwise run the processor with
 // settings read from a YAML configuration file.
 
+#include "driver.h"
 #include "driver_nitro.h"
 #include "settings_l1b.h"
 
 #include <iostream>
+#include <string.h>
 
 auto main(int argc, char* argv[]) -> int
 {
@@ -24,7 +26,15 @@ auto main(int argc, char* argv[]) -> int
         // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
         tango::SettingsL1B settings { argv[1] };
         settings.init();
-        driver_nitro(settings, argc, argv);
+        const std::string instrument = settings.instrument;
+        const std::string nitro = "nitro";
+        if (instrument.compare(nitro) == 0){
+            std::cout << "NITRO DRIVER" << std::endl;
+            driver_nitro(settings, argc, argv);
+        } else {
+            std::cout << "CARBO DRIVER" << std::endl;
+            driver(settings, argc, argv);
+        }
     }
     return 0;
 }

@@ -253,6 +253,21 @@ cloud_optical_thickness:
   long_name: 'Cloud optical thickness'
   units: '1'
 
+cloud_optical_thickness_error:
+  name: cloud_optical_thickness_error
+  long_name: 'Cloud optical thickness uncertainty'
+  units: '1'
+
+cloud_optical_thickness_error_albedo:
+  name: cloud_optical_thickness_error_albedo
+  long_name: 'Cloud optical thickness uncertainty due to albedo'
+  units: '1'
+
+cloud_optical_thickness_error_reflectance:
+  name: cloud_optical_thickness_error_reflectance
+  long_name: 'Cloud optical thickness uncertainty due to reflectance'
+  units: '1'
+
 cloud_bottom_pressure:
   name: cloud_bottom_pressure
   long_name: 'Pressure of bottom of cloud layer'
@@ -261,6 +276,16 @@ cloud_bottom_pressure:
 cloud_top_pressure:
   name: cloud_top_pressure
   long_name: 'Pressure of top of cloud layer'
+  units: 'hPa'
+
+cloud_bottom_pressure_error:
+  name: cloud_bottom_pressure_error
+  long_name: 'Uncertainty in pressure of bottom of cloud layer'
+  units: 'hPa'
+
+cloud_top_pressure_error:
+  name: cloud_top_pressure_error
+  long_name: 'Uncertainty in pressure of top of cloud layer'
   units: 'hPa'
 
 # level 2 output
@@ -819,3 +844,18 @@ no2_total_scd:
   name: no2_total_scd
   long_name: 'NO2 total slant column density'
   units: 'molec./cm2'
+
+no2_total_vcd_error:
+  name: no2_total_vcd_error
+  long_name: 'NO2 total vertical column density uncertainty'
+  units: 'molec./cm2'
+
+no2_total_scd_error:
+  name: no2_total_scd_error
+  long_name: 'NO2 total slant column density uncertainty'
+  units: 'molec./cm2'
+
+no2_total_amf_error:
+  name: no2_total_amf_error
+  long_name: 'NO2 total air-mass factor uncertainty'
+  units: '-'

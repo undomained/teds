@@ -18,6 +18,7 @@ def read_doas(file_doas, slice_alt, slice_act):
     doas = {}
     with nc.Dataset(file_doas) as f:
         doas['no2_scd'] = f['doas/no2/nitrogendioxide_slant_column_density'][slice_alt,slice_act]
+        doas['no2_scd_error'] = f['doas/no2/nitrogendioxide_slant_column_density_precision'][slice_alt,slice_act]
         doas['lat'] = f['lat'][slice_alt,slice_act]
         doas['lon'] = f['lon'][slice_alt,slice_act]
         doas['sza'] = f['sza'][slice_alt,slice_act]
@@ -30,8 +31,11 @@ def read_cloud(file_cloud, slice_alt, slice_act):
     cloud = {}
     with nc.Dataset(file_cloud) as f:
         if 'cloud_fraction' in f.variables:
-            cloud['cloud_optical_thickness'] = f['cloud_optical_thickness'][slice_alt,slice_act]
+            cloud['cot'] = f['cloud_optical_thickness'][slice_alt,slice_act]
+            cloud['cot_error_alb'] = f['cloud_optical_thickness_error_albedo'][slice_alt,slice_act]
+            cloud['cot_error_R'] = f['cloud_optical_thickness_error_reflectance'][slice_alt,slice_act]
             cloud['cloud_bottom_pressure'] = f['cloud_bottom_pressure'][slice_alt,slice_act]
+            cloud['cloud_bottom_pressure_error'] = f['cloud_bottom_pressure_error'][slice_alt,slice_act]
             cloud['cloud_fraction'] = f['cloud_fraction'][slice_alt,slice_act]
         else:
             cloud['cloud_fraction'] = np.zeros_like(f['lat'][slice_alt,slice_act])
@@ -41,12 +45,21 @@ def get_amf(cfg, doas, atm, cloud):
     # -----------------------------------------------------------------
     # - Calculate NO2 AMF using AMF LUT NN
     # - Vectorised
-    # - for now: either fully cloud or fully clear
+    # - TODO:
+    #   - trop-strat separation
+    #   - cloud radiance fraction
+    #   - albedo error estimate
     # -----------------------------------------------------------------
-    # create output fields
 
+    #### placeholder for albedo error
+    error_albedo = 0.015 # assumed albedo error
+    ###
+
+    # create output fields
     results = {}
-    dictnames = ['no2_total_amf','no2_total_vcd','no2_total_scd']
+    dictnames = ['no2_total_amf','no2_total_amf_error',
+                 'no2_total_vcd','no2_total_vcd_error',
+                 'no2_total_scd','no2_total_scd_error' ]
 
     for name in dictnames:
         results[name] = np.ma.masked_all_like(doas['lat'])
@@ -80,52 +93,17 @@ def get_amf(cfg, doas, atm, cloud):
 
 
     # clear-sky
-    point_clear =  np.array([wvl, surface_pressure, atm['albedo_B01'], mu0, mu, dphi, np.zeros_like(doas['lat']) ])
-
-    point_clear = np.tile(point_clear[...,np.newaxis],pressure_levels_midpoint.shape[-1])
-    point_clear[-1,:,:,:] = pressure_levels_midpoint
-    
-    # try calculating amf vectorised, otherwise loop over pixels
-    try:
-        boxamf_clear= predict_NN_vector_3D(point_clear, amf_clear_NN)
-    except MemoryError as e:
-        log.error(e)
-        log.error('Not enough memory for vectorised approach, falling back to pixel by pixel approach')
-        boxamf_clear = np.ma.masked_all_like(pressure_levels_midpoint)
-        iterlist = tqdm.tqdm(np.ndindex(doas['lat'].shape), total=doas['lat'].size)
-        for idx,idy in iterlist:
-            for idz in range(pressure_levels_midpoint.shape[-1]):
-                boxamf_clear[idx,idy,idz]= predict_NN(point_clear[:,idx,idy,idz], amf_clear_NN)
-
-    # multiply with amf geo
-    amf_geo = 1/mu + 1/mu0
-    boxamf_clear*= amf_geo[...,np.newaxis]
-
-    boxamf_clear[boxamf_clear<0.0] = 0.0
+    vector_clear =  np.array([wvl, surface_pressure, atm['albedo_B01'], mu0, mu, dphi, np.zeros_like(doas['lat']) ])
+    boxamf_clear = get_boxamf_NN(vector_clear, amf_clear_NN, pressure_levels_midpoint, doas, mu, mu0)
 
     # skip if no cloudy pixels
     if cloud['cloud_fraction'].sum()>0.0:
+
         # cloud
-        point_cloud =  np.array([wvl, surface_pressure, atm['albedo_B01'], cloud['cloud_optical_thickness'], cloud['cloud_bottom_pressure'], mu0, mu, dphi, np.zeros_like(doas['lat']) ])
-        point_cloud = np.tile(point_cloud[...,np.newaxis],pressure_levels_midpoint.shape[-1])
-        point_cloud[-1,:,:,:] = pressure_levels_midpoint
-        
-        # try calculating amf vectorised, otherwise loop over pixels
-        try:
-            boxamf_cloud= predict_NN_vector_3D(point_cloud, amf_cloud_NN)
-        except MemoryError as e:
-            log.error(e)
-            log.error('Not enough memory for vectorised approach, falling back to pixel by pixel approach')
-            boxamf_cloud = np.ma.masked_all_like(pressure_levels_midpoint)
-            iterlist = tqdm.tqdm(np.ndindex(doas['lat'].shape), total=doas['lat'].size)
-            for idx,idy in iterlist:
-                for idz in range(pressure_levels_midpoint.shape[-1]):
-                    boxamf_cloud[idx,idy,idz]= predict_NN(boxamf_cloud[:,idx,idy,idz], amf_cloud_NN)
+        vector_cloud =  np.array([wvl, surface_pressure, atm['albedo_B01'], cloud['cot'],
+                                  cloud['cloud_bottom_pressure'], mu0, mu, dphi, np.zeros_like(doas['lat']) ])
+        boxamf_cloud = get_boxamf_NN(vector_cloud, amf_cloud_NN, pressure_levels_midpoint, doas, mu, mu0)
 
-        # multiply with amf geo
-        boxamf_cloud*= amf_geo[...,np.newaxis]
-
-        boxamf_cloud[boxamf_cloud<0.0] = 0.0
     else:
         boxamf_cloud = np.zeros_like(boxamf_clear)
 
@@ -138,6 +116,7 @@ def get_amf(cfg, doas, atm, cloud):
     # no2_profile_strat[:(tropopause_layer_index+1)] = 0
 
     results['no2_total_scd'] = doas['no2_scd']
+    results['no2_total_scd_error'] = doas['no2_scd_error']
 
     # calculate total amf
     results['no2_total_amf_clear']= np.sum(boxamf_clear*no2_profile*f_tcorr, axis=-1) / np.sum(no2_profile, axis=-1)
@@ -152,7 +131,94 @@ def get_amf(cfg, doas, atm, cloud):
     # results_scan['tropopause_layer_index'][iscan,ipxl] = tropopause_layer_index
 
     # averaging kernel:  ak =  box_amf * temperature_correction / total_amf
-    results['no2_averaging_kernel'] = (cloud['cloud_fraction'][...,np.newaxis]*boxamf_cloud + (1-cloud['cloud_fraction'][...,np.newaxis])*boxamf_clear) * f_tcorr  / results['no2_total_amf'][...,np.newaxis]
+    results['no2_averaging_kernel'] = (cloud['cloud_fraction'][...,np.newaxis]*boxamf_cloud + (1-cloud['cloud_fraction'][...,np.newaxis])*boxamf_clear)* f_tcorr  / results['no2_total_amf'][...,np.newaxis]
+
+
+
+    ##### error propagation
+
+    # boxamf clear with +/- albedo error
+
+    vector_clear_error_alb_min =  np.array([wvl, surface_pressure, np.clip(atm['albedo_B01']-error_albedo,a_min=0, a_max=None), mu0, mu, dphi, np.zeros_like(doas['lat']) ])
+    boxamf_clear_error_alb_min = get_boxamf_NN(vector_clear_error_alb_min, amf_clear_NN, pressure_levels_midpoint, doas, mu, mu0)
+
+    vector_clear_error_alb_plus =  np.array([wvl, surface_pressure, np.clip(atm['albedo_B01']-error_albedo,a_min=0, a_max=None), mu0, mu, dphi, np.zeros_like(doas['lat']) ])
+    boxamf_clear_error_alb_plus = get_boxamf_NN(vector_clear_error_alb_plus, amf_clear_NN, pressure_levels_midpoint, doas, mu, mu0)
+
+    amf_total_clear_error_alb_min = np.sum(boxamf_clear_error_alb_min*no2_profile*f_tcorr, axis=-1) / np.sum(no2_profile, axis=-1)
+    amf_total_clear_error_alb_plus = np.sum(boxamf_clear_error_alb_plus*no2_profile*f_tcorr, axis=-1) / np.sum(no2_profile, axis=-1)
+
+    # boxamf cloud with +/- albedo,R and scd errors.
+
+    # albedo error
+    vector_cloud_error_alb_min =  np.array([wvl, surface_pressure, np.clip(atm['albedo_B01']-error_albedo,a_min=0, a_max=None),
+                                            np.clip(cloud['cot']-cloud['cot_error_alb'],a_min=0, a_max=256),
+                                            cloud['cloud_bottom_pressure'],
+                                            mu0, mu, dphi, np.zeros_like(doas['lat']) ])
+    boxamf_cloud_error_alb_min = get_boxamf_NN(vector_cloud_error_alb_min, amf_cloud_NN, pressure_levels_midpoint, doas, mu, mu0)
+
+    vector_cloud_error_alb_plus =  np.array([wvl, surface_pressure, np.clip(atm['albedo_B01']-error_albedo,a_min=0, a_max=None),
+                                            np.clip(cloud['cot']+cloud['cot_error_alb'],a_min=0, a_max=256),
+                                            cloud['cloud_bottom_pressure'], mu0, mu, dphi, np.zeros_like(doas['lat']) ])
+    boxamf_cloud_error_alb_plus = get_boxamf_NN(vector_cloud_error_alb_plus, amf_cloud_NN, pressure_levels_midpoint, doas, mu, mu0)
+
+    # reflectance error
+    vector_cloud_error_R_min =  np.array([wvl, surface_pressure, atm['albedo_B01'],
+                                          np.clip(cloud['cot']-cloud['cot_error_R'],a_min=0, a_max=256),
+                                          cloud['cloud_bottom_pressure'], mu0, mu, dphi, np.zeros_like(doas['lat']) ])
+    boxamf_cloud_error_R_min = get_boxamf_NN(vector_cloud_error_R_min, amf_cloud_NN, pressure_levels_midpoint, doas, mu, mu0)
+
+    vector_cloud_error_R_plus =  np.array([wvl, surface_pressure, atm['albedo_B01'],
+                                           np.clip(cloud['cot']+cloud['cot_error_R'],a_min=0, a_max=256),
+                                           cloud['cloud_bottom_pressure'],
+                                           mu0, mu, dphi, np.zeros_like(doas['lat']) ])
+    boxamf_cloud_error_R_plus = get_boxamf_NN(vector_cloud_error_R_plus, amf_cloud_NN, pressure_levels_midpoint, doas, mu, mu0)
+
+    # SCD error
+    vector_cloud_error_scd_min =  np.array([wvl, surface_pressure, atm['albedo_B01'],
+                                          cloud['cot'],
+                                          cloud['cloud_bottom_pressure']-cloud['cloud_bottom_pressure_error'], mu0, mu, dphi, np.zeros_like(doas['lat']) ])
+    boxamf_cloud_error_scd_min = get_boxamf_NN(vector_cloud_error_scd_min, amf_cloud_NN, pressure_levels_midpoint, doas, mu, mu0)
+
+    vector_cloud_error_scd_plus =  np.array([wvl, surface_pressure, atm['albedo_B01'],
+                                           cloud['cot'],
+                                           cloud['cloud_bottom_pressure']+cloud['cloud_bottom_pressure_error'],
+                                           mu0, mu, dphi, np.zeros_like(doas['lat']) ])
+    boxamf_cloud_error_scd_plus = get_boxamf_NN(vector_cloud_error_scd_plus, amf_cloud_NN, pressure_levels_midpoint, doas, mu, mu0)
+
+
+    # take average of + and - error
+    amf_total_cloudy_error_alb_min = np.sum(boxamf_cloud_error_alb_min*no2_profile*f_tcorr, axis=-1) / np.sum(no2_profile, axis=-1)
+    amf_total_cloudy_error_alb_plus = np.sum(boxamf_cloud_error_alb_plus*no2_profile*f_tcorr, axis=-1) / np.sum(no2_profile, axis=-1)
+    
+    amf_total_cloudy_error_R_min = np.sum(boxamf_cloud_error_R_min*no2_profile*f_tcorr, axis=-1) / np.sum(no2_profile, axis=-1)
+    amf_total_cloudy_error_R_plus = np.sum(boxamf_cloud_error_R_plus*no2_profile*f_tcorr, axis=-1) / np.sum(no2_profile, axis=-1)
+    
+    amf_total_cloudy_error_scd_min = np.sum(boxamf_cloud_error_scd_min*no2_profile*f_tcorr, axis=-1) / np.sum(no2_profile, axis=-1)
+    amf_total_cloudy_error_scd_plus = np.sum(boxamf_cloud_error_scd_plus*no2_profile*f_tcorr, axis=-1) / np.sum(no2_profile, axis=-1)
+
+    amf_total_error_alb_min = results['no2_total_amf'] - (cloud['cloud_fraction']*amf_total_cloudy_error_alb_min+ (1 - cloud['cloud_fraction']) *amf_total_clear_error_alb_min )
+    amf_total_error_alb_plus = results['no2_total_amf'] - (cloud['cloud_fraction']*amf_total_cloudy_error_alb_plus+ (1 - cloud['cloud_fraction']) *amf_total_clear_error_alb_plus )
+    amf_total_error_alb = (np.abs(amf_total_error_alb_min)+np.abs(amf_total_error_alb_plus))/2
+
+    amf_total_error_R_min = results['no2_total_amf'] - (cloud['cloud_fraction']*amf_total_cloudy_error_R_min+ (1 - cloud['cloud_fraction']) *results['no2_total_amf_clear'] )
+    amf_total_error_R_plus = results['no2_total_amf'] - (cloud['cloud_fraction']*amf_total_cloudy_error_R_plus+ (1 - cloud['cloud_fraction']) *results['no2_total_amf_clear'] )
+    amf_total_error_R = (np.abs(amf_total_error_R_min)+np.abs(amf_total_error_R_plus))/2
+
+    amf_total_error_scd_min = results['no2_total_amf'] - (cloud['cloud_fraction']*amf_total_cloudy_error_scd_min+ (1 - cloud['cloud_fraction']) *results['no2_total_amf_clear'] )
+    amf_total_error_scd_plus = results['no2_total_amf'] - (cloud['cloud_fraction']*amf_total_cloudy_error_scd_plus+ (1 - cloud['cloud_fraction']) *results['no2_total_amf_clear'] )
+    amf_total_error_scd = (np.abs(amf_total_error_scd_min)+np.abs(amf_total_error_scd_plus))/2
+
+
+    # total amf total error
+    results['no2_total_amf_error'] = np.sqrt(amf_total_error_alb**2 + amf_total_error_R**2 + amf_total_error_scd**2 )
+    
+    # total vcd error
+    results['no2_total_vcd_error'] = np.sqrt( (results['no2_total_scd_error']/results['no2_total_amf'])**2 + 
+                                                     (results['no2_total_amf_error']*results['no2_total_vcd']/results['no2_total_amf'])**2 )
+
+    # copy mask
+    results['no2_total_amf_error'].mask +=  results['no2_total_vcd_error'].mask
 
     return results
 
@@ -388,6 +454,31 @@ def predict_NN_vector_2D(input_vector, NN):
     return output[:,:,0]
 
 
+def get_boxamf_NN(vector, NN, pressure_levels, doas, mu, mu0):
+
+    # repear vector along pressure dim
+    vector = np.tile(vector[...,np.newaxis],pressure_levels.shape[-1])
+    vector[-1,:,:,:] = pressure_levels
+
+    # try calculating amf vectorised, otherwise loop over pixels
+    try:
+        boxamf= predict_NN_vector_3D(vector, NN)
+    except MemoryError as e:
+        log.error(e)
+        log.error('Not enough memory for vectorised approach, falling back to pixel by pixel approach')
+        boxamf = np.ma.masked_all_like(pressure_levels)
+        iterlist = tqdm.tqdm(np.ndindex(doas['lat'].shape), total=doas['lat'].size)
+        for idx,idy in iterlist:
+            for idz in range(pressure_levels.shape[-1]):
+                boxamf[idx,idy,idz]= predict_NN(vector[:,idx,idy,idz], NN)
+
+    # multiply with amf geo
+    amf_geo = 1/mu + 1/mu0
+    boxamf*= amf_geo[...,np.newaxis]
+    boxamf[boxamf<0.0] = 0.0
+
+    return boxamf
+
 def write_amf(cfg, amf, slice_alt, slice_act):
 
     # convert units
@@ -412,10 +503,11 @@ def write_amf(cfg, amf, slice_alt, slice_act):
         
         return
     
-    for var in ['no2_total_vcd','no2_total_scd']:
+    for var in ['no2_total_vcd','no2_total_scd','no2_total_vcd_error','no2_total_scd_error']:
         amf[var] = molm2_to_moleccm2(amf[var])
 
-    varlist = ['pressure_layers', 'no2_averaging_kernel', 'no2_total_amf', 'no2_total_vcd', 'no2_total_scd' ]
+    varlist = ['pressure_layers', 'no2_averaging_kernel', 'no2_total_amf', 'no2_total_vcd', 'no2_total_scd',
+                'no2_total_vcd_error','no2_total_scd_error','no2_total_amf_error']
 
     with nc.Dataset(cfg['io']['l2'], 'a') as dst:
         

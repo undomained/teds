@@ -20,7 +20,9 @@ def read_doas(file_doas, slice_alt, slice_act):
     doas = {}
     with nc.Dataset(file_doas) as f:
         doas['o2o2_scd'] = f['doas/o2o2/oxygen_oxygen_dimer_slant_column_density'][slice_alt,slice_act]
+        doas['o2o2_scd_error'] = f['doas/o2o2/oxygen_oxygen_dimer_slant_column_density_precision'][slice_alt,slice_act]
         doas['o2o2_R'] = f['doas/o2o2/O2O2_continuum_reflectance_at_reference_wavelength'][slice_alt,slice_act]
+        doas['o2o2_R_error'] = f['doas/o2o2/O2O2_continuum_reflectance_at_reference_wavelength_precision'][slice_alt,slice_act]
         doas['lat'] = f['lat'][slice_alt,slice_act]
         doas['lon'] = f['lon'][slice_alt,slice_act]
         doas['sza'] = f['sza'][slice_alt,slice_act]
@@ -41,6 +43,13 @@ def get_cloud_parameters(cfg, doas, atm, cld_results):
     # retrieve scattering cloud parameters
     # for now: assume binary cloud mask, no cloud fraction
 
+    # cld pres error: scd, neglect R and albedo (negligible)
+    # cot error: R and albedo
+
+    #### placeholder for albedo error
+    error_albedo = 0.015 # assumed albedo error
+    ####
+
     ### algo settings
     cld_pres_first_guess = 500 # [hPa] -  first guess of the cloud bottom pressure before iteration
     max_iter = 2 # max number of iterations
@@ -49,7 +58,9 @@ def get_cloud_parameters(cfg, doas, atm, cld_results):
     cld_thickness = 1000.0 # [m] - fixed from AMF radiative transfer
 
     # init output
-    dictnames = ['cot','cld_top_pres','cld_bot_pres']
+    dictnames = ['cot','cld_top_pres','cld_bot_pres',
+                 'cot_error','cot_error_alb','cot_error_R',
+                 'cld_bot_pres_error', 'cld_top_pres_error']
 
     for name in dictnames:
         cld_results[name] = np.ma.masked_all_like(doas['lat'])
@@ -86,6 +97,26 @@ def get_cloud_parameters(cfg, doas, atm, cld_results):
         cld_results['cot'] = np.ma.masked_where(cld_results['cloud_fraction']== 0.0, cld_results['cot'])
         cld_results['cot'] = np.ma.masked_invalid(cld_results['cot'])
 
+        if i==max_iter-1:
+            # COT error propagation:
+            # albedo error and R error
+
+            vector_cot_NN_error_alb = np.array([surface_pressure, atm['albedo_B01']+error_albedo, doas['o2o2_R'], cld_results['cld_bot_pres'], mu0, mu, scat])
+            vector_cot_NN_error_R = np.array([surface_pressure, atm['albedo_B01'], doas['o2o2_R']+doas['o2o2_R_error'], cld_results['cld_bot_pres'], mu0, mu, scat])
+
+            cot_alb = libAMF.predict_NN_vector_2D(vector_cot_NN_error_alb, cot_NN)
+            cot_R = libAMF.predict_NN_vector_2D(vector_cot_NN_error_R, cot_NN)
+
+            # apply NN bounds
+            cot_alb[cot_alb< 0.0] = 0.0
+            cot_alb[cot_alb> 256.0] = 256.0
+            cot_R[cot_R< 0.0] = 0.0
+            cot_R[cot_R> 256.0] = 256.0
+
+            cld_results['cot_error_alb'] = cot_alb - cld_results['cot']
+            cld_results['cot_error_R'] = cot_R - cld_results['cot']
+            cld_results['cot_error'] = np.sqrt(cld_results['cot_error_R']**2 + cld_results['cot_error_alb'][idx,idy]**2 )
+
         # NN for cloud bottom pressure - iterate over pixels, as each pixel has a cloud pressure iteration
 
         iterlist = tqdm.tqdm(np.ndindex(doas['lat'].shape), total=doas['lat'].size)
@@ -96,13 +127,14 @@ def get_cloud_parameters(cfg, doas, atm, cld_results):
                 continue
 
             #### using bisection method.
-            point_cloud = [wvl_o2o2_amf, surface_pressure[idx,idy], atm['albedo_B01'][idx,idy], cld_results['cot'][idx,idy], 0, mu0[idx,idy], mu[idx,idy], dphi[idx,idy] , 0]
+            point_cloud = [wvl_o2o2_amf, surface_pressure[idx,idy], atm['albedo_B01'][idx,idy],
+                            cld_results['cot'][idx,idy], 0, mu0[idx,idy], mu[idx,idy], dphi[idx,idy] , 0]
             scd_O2O2_cld_list = bisection_o2o2(amf_scm_NN, point_cloud, play[idx,idy], tlay[idx,idy], doas['o2o2_scd'][idx,idy])
-
+            
             # filter out nans
             interp_subset = np.isnan(scd_O2O2_cld_list)==0
 
-            if interp_subset.sum() == 0:
+            if interp_subset.sum() == 1:
                 cld_results['cld_bot_pres'][idx,idy] = np.ma.masked
                 cld_results['cld_top_pres'][idx,idy] = np.ma.masked
                 break
@@ -112,9 +144,50 @@ def get_cloud_parameters(cfg, doas, atm, cld_results):
             cld_pres_interpolator = scipy.interpolate.interp1d(scd_O2O2_cld_list[interp_subset],play[idx,idy,interp_subset],bounds_error=False, fill_value=(np.nan,np.nan))
             cld_results['cld_bot_pres'][idx,idy] = cld_pres_interpolator(doas['o2o2_scd'][idx,idy]) #[hPa]
 
+
             # only in last iteration
             if np.isnan(cld_results['cld_bot_pres'][idx,idy]) == False and i==max_iter-1:
-                # calculate cloud top pressure 
+
+                # error propagation
+
+                # scd error - up
+
+                scd_O2O2_cld_list_error_scd_up = bisection_o2o2(amf_scm_NN, point_cloud, play[idx,idy], tlay[idx,idy],
+                                                              doas['o2o2_scd'][idx,idy]-doas['o2o2_scd_error'][idx,idy])
+                # filter out nans
+                interp_subset_error_scd_up = np.isnan(scd_O2O2_cld_list_error_scd_up)==0
+                if interp_subset_error_scd_up.sum() > 1:
+                    # # interpolate
+                    cld_pres_error_scd_up_interpolator = scipy.interpolate.interp1d(scd_O2O2_cld_list_error_scd_up[interp_subset_error_scd_up],
+                                                                                play[idx,idy,interp_subset_error_scd_up],
+                                                                                bounds_error=False, fill_value=(np.nan,np.nan))
+                    cld_bot_pres_scd_up = cld_pres_error_scd_up_interpolator(doas['o2o2_scd'][idx,idy]-doas['o2o2_scd_error'][idx,idy]) #[hPa]
+                else:
+                    cld_bot_pres_scd_up = np.nan
+
+                # scd error - down
+
+                scd_O2O2_cld_list_error_scd_down = bisection_o2o2(amf_scm_NN, point_cloud, play[idx,idy], tlay[idx,idy],
+                                                              doas['o2o2_scd'][idx,idy]+doas['o2o2_scd_error'][idx,idy])
+                # filter out nans
+                interp_subset_error_scd_down = np.isnan(scd_O2O2_cld_list_error_scd_down)==0
+                if interp_subset_error_scd_down.sum() > 1:
+                    # # interpolate
+                    cld_pres_error_scd_down_interpolator = scipy.interpolate.interp1d(scd_O2O2_cld_list_error_scd_down[interp_subset_error_scd_down],
+                                                                                play[idx,idy,interp_subset_error_scd_down],
+                                                                                bounds_error=False, fill_value=(np.nan,np.nan))
+                    cld_bot_pres_scd_down = cld_pres_error_scd_down_interpolator(doas['o2o2_scd'][idx,idy]+doas['o2o2_scd_error'][idx,idy]) #[hPa]
+                else:
+                    cld_bot_pres_scd_down = np.nan
+
+                cld_bot_pres_scd = np.nanmean(np.abs([cld_bot_pres_scd_up,cld_bot_pres_scd_down]))
+
+                # take mean of up and down
+                cld_results['cld_bot_pres_error'][idx,idy] = cld_results['cld_bot_pres'][idx,idy] - cld_bot_pres_scd
+
+
+                #### calculate cloud top pressure 
+
                 # option 1
                 # use barometric equation to calculate cld_pres + (cloud thickness in m)
                 # assume cloud is in troposphere:
@@ -126,6 +199,18 @@ def get_cloud_parameters(cfg, doas, atm, cld_results):
 
                 cld_results['cld_top_pres'][idx,idy] = cld_results['cld_bot_pres'][idx,idy] * \
                     ((T_cldpres+ cld_thickness*lapserate)/T_cldpres)**(-constants.g0*constants.MDRYAIR/(constants.Rgas*lapserate))
+                
+
+                # error cloud top pressure
+                T_cldpres_error_up = pt_spline(np.log(cld_results['cld_bot_pres'][idx,idy]-cld_results['cld_bot_pres_error'][idx,idy]))
+                cld_pres_top_error_up = (cld_results['cld_bot_pres'][idx,idy]-cld_results['cld_bot_pres_error'][idx,idy]) * \
+                                        ((T_cldpres_error_up+ cld_thickness*lapserate)/T_cldpres_error_up)**(-constants.g0*constants.MDRYAIR/(constants.Rgas*lapserate))
+
+                T_cldpres_error_down = pt_spline(np.log(cld_results['cld_bot_pres'][idx,idy]+cld_results['cld_bot_pres_error'][idx,idy]))
+                cld_pres_top_error_down = (cld_results['cld_bot_pres'][idx,idy]+cld_results['cld_bot_pres_error'][idx,idy]) * \
+                                        ((T_cldpres_error_down+ cld_thickness*lapserate)/T_cldpres_error_down)**(-constants.g0*constants.MDRYAIR/(constants.Rgas*lapserate))
+
+                cld_results['cld_top_pres_error'][idx,idy] = (cld_pres_top_error_down-cld_pres_top_error_up) / 2.0
 
     return cld_results
 
@@ -280,7 +365,13 @@ def write_cloud(cfg, cloud, slice_alt, slice_act):
     vardict = {'cloud_fraction':'cloud_fraction',
                'cot':'cloud_optical_thickness',
                'cld_top_pres':'cloud_top_pressure',
-               'cld_bot_pres':'cloud_bottom_pressure'}
+               'cld_bot_pres':'cloud_bottom_pressure',
+               'cot_error':'cloud_optical_thickness_error',
+               'cot_error_alb':'cloud_optical_thickness_error_albedo',
+               'cot_error_R':'cloud_optical_thickness_error_reflectance',
+               'cld_top_pres_error':'cloud_top_pressure_error',
+               'cld_bot_pres_error':'cloud_bottom_pressure_error'
+    }
     
 
     with nc.Dataset(cfg['io']['l2'], 'a') as dst:

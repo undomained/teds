@@ -14,6 +14,8 @@
 #include "radiometric.h"
 #include "dac.h"
 #include "coaddition.h"
+#include "ISRF.h"
+#include "draw_on_detector.h"
 
 namespace tango {
 
@@ -31,6 +33,8 @@ BuildAlgo::BuildAlgo() {
     algo_map["Radiometric"] = []() -> BaseAlgo* { return new Radiometric(); };
     algo_map["DAC"] = []() -> BaseAlgo* { return new DAC(); };
     algo_map["Coaddition"] = []() -> BaseAlgo* { return new Coaddition(); };
+    algo_map["ISRF"] = []() -> BaseAlgo* { return new ISRF(); };
+    algo_map["Draw_On_Detector"] = []() -> BaseAlgo* { return new DrawOnDetector(); };
 }
 
 BuildAlgo::~BuildAlgo() = default;

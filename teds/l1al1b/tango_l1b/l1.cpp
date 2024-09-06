@@ -14,10 +14,8 @@ L1::L1():
     noise2(),
     image_i32(),
     stdev(),
-    observation(2848, 0.0), // test initialization shoudl be in readL1
-    observation_stdev(2848, 0.0),
-    wavelength(),
     geo(),
+
     image_time(0.0),
     binning_table_id(0),
     nr_coadditions(0),

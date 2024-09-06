@@ -28,11 +28,14 @@ struct L1 {
     std::vector<double> noise2; // squared to indicate variance
     std::vector<int> image_i32;
     std::vector<double> stdev; // stdev is a statistical property, using noise2
-    std::vector<double> observation;
-    std::vector<double> observation_stdev;
 
-    std::vector<Spectrum> spectra;
-    std::shared_ptr<std::vector<std::vector<double>>> wavelength;
+    std::vector<Spectrum> spectra; // for carbon
+
+    std::vector<std::vector<double>> observation_sig; // spectra.signal alternative for nitro
+    std::vector<std::vector<double>> observation_std; // spectra.stdev alternative for nitro
+
+    // shared pointer between all instances of l1 because they are all the same for every along track
+    std::shared_ptr<std::vector<std::vector<double>>> wavelength; //2D array (act, wl)
 
     // Geolocation data
     struct {

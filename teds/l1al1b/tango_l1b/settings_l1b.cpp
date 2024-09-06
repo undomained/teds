@@ -3,6 +3,7 @@
 
 #include "settings_l1b.h"
 #include "io.h"
+#include "io_nitro.h"
 
 namespace tango {
 

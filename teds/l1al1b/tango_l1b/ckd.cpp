@@ -142,8 +142,11 @@ CKD::CKD(const std::string& filename, const double spectrum_width)
         spdlog::info("Reading spectral CKD");
         wave.enabled = true;
         wave.wavelength.resize(n_act, std::vector<double>(n_detector_cols));
+        wave.wave_map.resize(n_detector_rows, std::vector<double>(n_detector_cols));
         getAndReshape(grp.getVar("wavelength"), wave.wavelength);
+        getAndReshape(grp.getVar("wave_map"), wave.wave_map);
     }
+
     if (const netCDF::NcGroup grp { nc.getGroup("radiometric") };
         !grp.isNull()) {
         spdlog::info("Reading radiometric CKD");

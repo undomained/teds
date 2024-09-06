@@ -18,6 +18,8 @@ auto SettingsIM::scanKeys() -> void
     scan(detector.binning_table_id);
     scan(detector.exposure_time);
     scan(detector.nr_coadditions);
+    scan(proctable.file);
+    scan(proctable.algo_list);
 
     scan(isrf.enabled);
     scan(isrf.fwhm_gauss);
@@ -47,7 +49,6 @@ auto SettingsIM::checkParameters() -> void
     checkPresenceOfFile(io.ckd, true);
     checkPresenceOfFile(io.binning_table, true);
     checkPresenceOfFile(io.sgm, true);
-
     checkFileWritable(io.l1a);
 }
 

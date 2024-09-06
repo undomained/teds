@@ -7,6 +7,7 @@
 #include "calibration.h"
 #include "ckd.h"
 #include "io.h"
+#include "io_nitro.h"
 #include "l1.h"
 #include "settings_l1b.h"
 #include "timer.h"

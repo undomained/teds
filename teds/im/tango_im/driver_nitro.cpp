@@ -2,27 +2,48 @@
 // in the LICENSE file in the root directory of this project.
 
 #include "driver_nitro.h"
-#include "algorithms/build_algo.h"
-#include "algorithms/base_algo.h"
-#include "binning_table.h"
-#include "ckd.h"
-#include "io_nitro.h"
-#include "io.h"
-#include "l1.h"
-#include "settings_l1b.h"
-#include "timer.h"
-#include <yaml-cpp/yaml.h>
+
+#include "settings_im.h"
+#include "uncalibration.h"
+
+#include <netcdf>
 #include <spdlog/spdlog.h>
+#include <tango_l1b/binning_table.h>
+#include <tango_l1b/ckd.h>
+#include <tango_l1b/io.h>
+#include <tango_l1b/io_nitro.h>
+#include <tango_l1b/l1.h>
+#include <tango_l1b/timer.h>
+#include <tango_l1b/algorithms/build_algo.h>
+#include <tango_l1b/algorithms/base_algo.h>
 
 namespace tango {
 
-auto driver_nitro(const SettingsL1B& settings,
+
+// Meta data such as the exposure time are read from the L1A input
+// file but ignored by the instrument model. Instead, they are set by
+// user settings. The L1A-L1B processor, however, only reads from the
+// input file because after the IM run these parameter should be
+// fixed.
+static auto setL1Meta(const SettingsIM& settings,
+                      std::vector<L1>& l1_products) -> void
+{
+    for (auto& l1 : l1_products) {
+        l1.binning_table_id =
+          static_cast<uint8_t>(settings.detector.binning_table_id);
+        l1.nr_coadditions =
+          static_cast<uint16_t>(settings.detector.nr_coadditions);
+        l1.exposure_time = settings.detector.exposure_time;
+    }
+}
+
+auto driver_nitro(const SettingsIM& settings,
             const int argc,
             const char* const argv[]) -> void
 {
     // Set up loggers and print general information
     initLogging(false);
-    printHeading("Tango L1B processor", false);
+    printHeading("Tango instrument model", false);
     printSystemInfo(TANGO_PROJECT_VERSION,
                     TANGO_GIT_COMMIT_ABBREV,
                     TANGO_CMAKE_HOST_SYSTEM,
@@ -34,36 +55,20 @@ auto driver_nitro(const SettingsL1B& settings,
 
     // Read in the CKD
     printHeading("Reading CKD and input data");
-    CKD ckd(settings.io.ckd, settings.swath.spectrum_width);
+    const CKD ckd { settings.io.ckd };
 
-    // Initialize L1 products by reading all L1A data (everything is
-    // stored in memory).
+    printHeading("Initialize the binning table");
+    // Initialize the binning table
+    const BinningTable binning_table { ckd.n_detector_rows,
+                                       ckd.n_detector_cols,
+                                       settings.io.binning_table,
+                                       settings.detector.binning_table_id };
+
+    // Read and initialize data
     std::vector<L1> l1_products {};
-    readL1product(settings.io.l1a, settings.image_start, settings.image_end.value_or(fill::i), l1_products);
-
-    // Initialize the binning table and bin the CKD
-    const BinningTable binning_table {
-        ckd.n_detector_rows,
-        ckd.n_detector_cols,
-        settings.io.binning_table,
-        static_cast<int>(l1_products.front().binning_table_id)
-    };
-    if (settings.unbinning == Unbin::none) {
-        binning_table.bin(ckd.pixel_mask);
-        binning_table.bin(ckd.dark.offset);
-        binning_table.bin(ckd.dark.current);
-        binning_table.bin(ckd.noise.g);
-        binning_table.bin(ckd.noise.n2);
-        binning_table.bin(ckd.prnu.prnu);
-        binning_table.binPixelIndices(ckd.swath.pix_indices);
-    }
-
-    // Run retrieval
-    printHeading("Retrieval");
-    Timer timer_total {};
-    timer_total.start();
-
-    const std::string& config = settings.getConfig();
+    //readL1(settings.io.sgm, settings.image_start, settings.image_end.value_or(fill::i), l1_products);
+    readL1product(settings.io.sgm, settings.image_start, settings.image_end.value_or(fill::i), l1_products);
+    setL1Meta(settings, l1_products);
 
     const std::string& proctable_file = settings.proctable.file;
     spdlog::info("proctable_file: {} ", proctable_file);
@@ -71,19 +76,15 @@ auto driver_nitro(const SettingsL1B& settings,
     const std::string& algo_list_name = settings.proctable.algo_list;
     spdlog::info("algo_list_name: {} ", algo_list_name);
 
-
     YAML::Node proctable = YAML::LoadFile(proctable_file);
     YAML::Node algo_list = proctable[algo_list_name];
 
-    const int algo_list_length = algo_list.size();
-    // For some reason array is not happy with algo_list_length
-    //    std::array<Timer, algo_list_length> timers {};
-    std::array<Timer, 20> timers {};
-
+    // Run the forward model (main loop)
+    printHeading("Instrument Model");
+    std::array<Timer, static_cast<int>(ProcLevel::n_levels)> timers {};
+    Timer timer_total {};
+    timer_total.start();
     #pragma omp parallel for schedule(dynamic)
-
-
-
     for (int i_alt = 0; i_alt < static_cast<int>(l1_products.size()); ++i_alt) {
         printPercentage(i_alt, l1_products.size(), "Processing scenes");
 
@@ -99,6 +100,10 @@ auto driver_nitro(const SettingsL1B& settings,
             spdlog::info("{: ^30}", it->as<std::string>()); // Remove this later
             BuildAlgo algo_builder;
             BaseAlgo* algo = algo_builder.CreateAlgo(it->as<std::string>());
+            
+            // Inverse operators
+            algo->setModelType("IM");
+
             if (algo) {
                 timers[static_cast<int>(i_algo)].start();
                 if (algo->algoCheckInput(ckd, l1)) {
@@ -111,6 +116,9 @@ auto driver_nitro(const SettingsL1B& settings,
     }
     timer_total.stop();
     spdlog::info("Processing images 100.0%");
+
+    // For writing to output switch out the LBL wavelength grid
+    //*l1_products.front().wavelength = ckd.wave.wavelength;
 
     // Overview of timings
     spdlog::info("");
@@ -126,7 +134,7 @@ auto driver_nitro(const SettingsL1B& settings,
 
     printHeading("Writing file");
 
-    writeL1product(settings.io.l1b, "L1B", settings.getConfig(), l1_products, argc, argv);
+    writeL1product(settings.io.l1a, "L1A", settings.getConfig(), l1_products, argc, argv);
 
     printHeading("Success");
 }

@@ -47,6 +47,22 @@ public:
 //    /// Set all data pointers to NULL.
 //    virtual void unloadData() = 0;
 
+    /// Getter for model_type
+    std::string getModelType() const {
+        return model_type;
+    }
+
+    /// Setter for model_type
+    void setModelType(const std::string& modelType) {
+        if (modelType != "L1B" && modelType != "IM") {
+            spdlog::error("Model type must be 'L1B' or 'IM'");
+        } else {
+            model_type = modelType;
+        }
+    }
+
+private:
+    std::string model_type {"L1B"};
 };
 
 } // namespace tango

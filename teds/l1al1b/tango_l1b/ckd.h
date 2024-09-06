@@ -128,6 +128,7 @@ public:
         // Wavelengths assigned to each detector column of each L1B spectrum.
         // Dimensions: (n_act, n_detector_cols).
         std::vector<std::vector<double>> wavelength {};
+        std::vector<std::vector<double>> wave_map {};
     } wave;
 
     // Radiometric

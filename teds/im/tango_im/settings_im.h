@@ -171,6 +171,12 @@ public:
         };
     } io;
 
+    struct
+    {
+        Setting<std::string> file { { "proctable", "file" }, {}, "proctable file path"};
+        Setting<std::string> algo_list { { "proctable", "algo_list" }, {}, "list of algorithm names"};
+    } proctable;
+
     SettingsIM() = default;
     SettingsIM(const std::string& yaml_file) : Settings { yaml_file } {}
     auto scanKeys() -> void override;

@@ -8,7 +8,7 @@
 // available to the user user. Otherwise run the instrument model with
 // settings read from a YAML configuration file.
 
-#include "driver.h"
+#include "driver_nitro.h"
 #include "settings_im.h"
 
 #include <iostream>
@@ -23,7 +23,7 @@ auto main(int argc, char* argv[]) -> int
         // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
         tango::SettingsIM settings { argv[1] };
         settings.init();
-        tango::driver(settings, argc, argv);
+        driver_nitro(settings, argc, argv);
     }
     return 0;
 }

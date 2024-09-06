@@ -12,6 +12,7 @@
 #include "setting.h"
 #include <netcdf>
 #include <spdlog/pattern_formatter.h>
+#include "settings_l1b.h"
 
 namespace tango {
 
@@ -101,92 +102,5 @@ auto copyGeometry(const std::string& l1a_filename,
                   const std::string& geo_filename,
                   int i_alt_start,
                   std::vector<L1>& l1_products) -> void;
-
-
-void writeL1product(const std::string& filename, const std::string& level, const std::string& config, const std::vector<L1>& l1_products, const int argc, const char* const argv[]);
-void writeGlobalAttributes(netCDF::NcFile& nc, const std::string& level, const std::string& config, const int argc, const char* const argv[]);
-void writeImageAttributes(netCDF::NcFile& nc, const std::vector<L1>& l1_products);
-void writeScienceData(netCDF::NcFile& nc, const std::vector<L1>& l1_products);
-void writeObservationData(netCDF::NcFile& nc, const std::vector<L1>& l1_products);
-void writeGeolocationData(netCDF::NcFile& nc, const std::vector<L1>& l1_products);
-
-
-
-// Template function to get netCDF type from standard dtype
-template<typename T>
-netCDF::NcType getNetCDFType() {
-    if constexpr (std::is_same<T, double>::value) {
-        return netCDF::ncDouble;
-    } else if constexpr (std::is_same<T, float>::value) {
-        return netCDF::ncFloat;
-    } else if constexpr (std::is_same<T, int>::value) {
-        return netCDF::ncInt;
-    } else if constexpr (std::is_same<T, unsigned short>::value) {
-        return netCDF::ncUshort;
-    } else if constexpr (std::is_same<T, char>::value) {
-        return netCDF::ncByte;
-    }
-}
-
-typedef netCDF::NcVar NcVar;
-
-// Template function for adding variables to netcdf
-template<typename T>
-netCDF::NcVar addVariable(    
-    netCDF::NcGroup& nc_grp, 
-    const std::string& varname, 
-    const std::string& long_name,
-    const std::string& units,  
-    T fill_value, 
-    T min_val,
-    T max_val,
-    const std::vector<netCDF::NcDim>& dims) 
-{
-    // Use the helper function to get the appropriate netCDF type
-    netCDF::NcType nc_type = getNetCDFType<T>();
-
-    // Create the variable
-    netCDF::NcVar nc_var = nc_grp.addVar(varname, nc_type, dims);
-
-    // Set attributes
-    nc_var.putAtt("_FillValue", nc_type, fill_value);
-    nc_var.putAtt("long_name", long_name);
-    nc_var.putAtt("units", units);
-    nc_var.putAtt("valid_min", nc_type, min_val);
-    nc_var.putAtt("valid_max", nc_type, max_val);
-
-    return nc_var;
-}
-
-template<typename T>
-std::vector<T> flatten3DVector(const std::vector<std::vector<std::vector<T>>>& vec3D) {
-    std::vector<T> flatVec;
-
-    // Iterate over the first dimension (outer vector)
-    for (const auto& vec2D : vec3D) {
-        // Iterate over the second dimension (2D vector)
-        for (const auto& vec1D : vec2D) {
-            // Append elements from the third dimension (1D vector)
-            flatVec.insert(flatVec.end(), vec1D.begin(), vec1D.end());
-        }
-    }
-
-    return flatVec;
-}
-
-template<typename T>
-std::vector<T> flatten2DVector(const std::vector<std::vector<T>>& vec2D) {
-    std::vector<T> flatVec;
-
-    // Iterate over the 2D vector (each row)
-    for (const auto& row : vec2D) {
-        // Append elements from the current row to the flattened vector
-        flatVec.insert(flatVec.end(), row.begin(), row.end());
-    }
-
-    return flatVec;
-}
-
-
 
 } // namespace tango

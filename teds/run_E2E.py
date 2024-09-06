@@ -535,7 +535,8 @@ def build(config, step, cfg_path, attribute_dict):
             # and of the final output) the second dimension is detector_pixels which is too
             # large to view.
             # Need to reshape to 3D to be able to make sense of this.
-            temp_output_file = reshape_output('l1a', im_config)
+            temp_output_file = None
+            # temp_output_file = reshape_output('l1a', im_config)
 
             # Add attributes to output file
             if temp_output_file is not None:

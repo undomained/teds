@@ -11,6 +11,7 @@
 #include <tango_l1b/binning_table.h>
 #include <tango_l1b/ckd.h>
 #include <tango_l1b/io.h>
+#include <tango_l1b/io_nitro.h>
 #include <tango_l1b/l1.h>
 #include <tango_l1b/timer.h>
 
@@ -76,10 +77,8 @@ auto driver(const SettingsIM& settings,
 
     // Read and initialize data
     std::vector<L1> l1_products {};
-    readL1(settings.io.sgm,
-           settings.image_start,
-           settings.image_end.value_or(fill::i),
-           l1_products);
+    //readL1(settings.io.sgm, settings.image_start, settings.image_end.value_or(fill::i), l1_products);
+    readL1product(settings.io.sgm, settings.image_start, settings.image_end.value_or(fill::i), l1_products);
     setL1Meta(settings, l1_products);
 
     // Run the forward model (main loop)
@@ -180,7 +179,10 @@ auto driver(const SettingsIM& settings,
 
     Timer timer_output {};
     timer_output.start();
-    writeL1(settings.io.l1a, settings.getConfig(), l1_products, argc, argv);
+    //writeL1(settings.io.l1a, settings.getConfig(), l1_products, argc, argv);
+    writeL1product(settings.io.l1a, "L1A", settings.getConfig(), l1_products, argc, argv);
+
+
     timer_output.stop();
 
     spdlog::info("");

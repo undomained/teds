@@ -91,7 +91,8 @@ def detector_image_dimensions(output_data, data, config ):
     # At them to the output
     output_data.add(name='detector_row', value=det_rows, kind='dimension')
     output_data.add(name='detector_column', value=det_cols, kind='dimension')
-    output_data.add(name='along_track', value=data.shape[0], kind='dimension')
+# along_track dimension is alread part of the dataset. No need to add it.
+#    output_data.add(name='along_track', value=data.shape[0], kind='dimension')
 
     # Data might be binned
     # How do I get the right dimensions when binning has been applied?
@@ -535,8 +536,7 @@ def build(config, step, cfg_path, attribute_dict):
             # and of the final output) the second dimension is detector_pixels which is too
             # large to view.
             # Need to reshape to 3D to be able to make sense of this.
-            temp_output_file = None
-            # temp_output_file = reshape_output('l1a', im_config)
+            temp_output_file = reshape_output('l1a', im_config)
 
             # Add attributes to output file
             if temp_output_file is not None:

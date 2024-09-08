@@ -36,8 +36,10 @@ auto driver_nitro(const SettingsL1B& settings,
     printHeading("Reading CKD and input data");
     CKD ckd(settings.io.ckd, settings.swath.spectrum_width);
 
+    const std::string& config = settings.getConfig();
+
     // Hardcoded level here!!!!
-    L1Measurement l1m(settings.io.l1a, "L1B", settings.image_start, settings.image_end.value_or(fill::i));
+    L1Measurement l1m(settings.io.l1a, "L1B", settings.image_start, settings.image_end.value_or(fill::i), config);
 
     // Initialize the binning table and bin the CKD
     const BinningTable binning_table {
@@ -61,7 +63,6 @@ auto driver_nitro(const SettingsL1B& settings,
     Timer timer_total {};
     timer_total.start();
 
-    const std::string& config = settings.getConfig();
 
     const std::string& proctable_file = settings.proctable.file;
     spdlog::info("proctable_file: {} ", proctable_file);

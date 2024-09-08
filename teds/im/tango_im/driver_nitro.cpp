@@ -13,6 +13,7 @@
 #include <tango_l1b/io.h>
 #include <tango_l1b/io_nitro.h>
 #include <tango_l1b/l1.h>
+#include <tango_l1b/l1_measurement.h>
 #include <tango_l1b/timer.h>
 #include <tango_l1b/algorithms/build_algo.h>
 #include <tango_l1b/algorithms/base_algo.h>
@@ -64,11 +65,10 @@ auto driver_nitro(const SettingsIM& settings,
                                        settings.io.binning_table,
                                        settings.detector.binning_table_id };
 
-    // Read and initialize data
-    std::vector<L1> l1_products {};
-    //readL1(settings.io.sgm, settings.image_start, settings.image_end.value_or(fill::i), l1_products);
-    readL1product(settings.io.sgm, settings.image_start, settings.image_end.value_or(fill::i), l1_products);
-    setL1Meta(settings, l1_products);
+    const std::string& config = settings.getConfig();
+
+    // Hardcoded level here!!!!
+    L1Measurement l1m(settings.io.sgm, "L1A", settings.image_start, settings.image_end.value_or(fill::i), config);
 
     const std::string& proctable_file = settings.proctable.file;
     spdlog::info("proctable_file: {} ", proctable_file);
@@ -84,17 +84,21 @@ auto driver_nitro(const SettingsIM& settings,
     std::array<Timer, static_cast<int>(ProcLevel::n_levels)> timers {};
     Timer timer_total {};
     timer_total.start();
-    #pragma omp parallel for schedule(dynamic)
-    for (int i_alt = 0; i_alt < static_cast<int>(l1_products.size()); ++i_alt) {
-        printPercentage(i_alt, l1_products.size(), "Processing scenes");
+//    #pragma omp parallel for schedule(dynamic)
+//    for (int i_alt = 0; i_alt < static_cast<int>(l1_products.size()); ++i_alt) {
+//        printPercentage(i_alt, l1_products.size(), "Processing scenes");
+    for (int i_alt = 0; i_alt < static_cast<int>(l1m.l1_measurement.size()); ++i_alt) {
+        printPercentage(i_alt, l1m.l1_measurement.size(), "Processing scenes");
 
-        auto& l1 { l1_products[i_alt] };
+//        auto& l1 { l1_products[i_alt] };
+        auto& l1 { l1m.l1_measurement[i_alt] };
         
         // Initialize pixel mask
         l1.pixel_mask = ckd.pixel_mask;
         
         std::string i_alt_msg = " Processing image [" + std::to_string(i_alt) +  "] ";
-        spdlog::info("{:=^30}", i_alt_msg);
+//        spdlog::info("{:=^30}", i_alt_msg);
+        spdlog::info("{}", i_alt_msg);
         int i_algo = 0;
         for (YAML::const_iterator it=algo_list.begin(); it!=algo_list.end();it++){
             spdlog::info("{: ^30}", it->as<std::string>()); // Remove this later
@@ -134,7 +138,7 @@ auto driver_nitro(const SettingsIM& settings,
 
     printHeading("Writing file");
 
-    writeL1product(settings.io.l1a, "L1A", settings.getConfig(), l1_products, argc, argv);
+    l1m.write(settings.io.l1a, "L1A", settings.getConfig(), argc, argv);
 
     printHeading("Success");
 }

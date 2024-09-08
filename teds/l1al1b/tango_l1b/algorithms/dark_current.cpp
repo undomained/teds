@@ -35,7 +35,11 @@ bool DarkCurrent::algoCheckInput(const CKD& ckd, L1& l1) {
 void DarkCurrent::algoExecute(const CKD& ckd, L1& l1) {
     for (int i {}; i < static_cast<int>(l1.image.size()); ++i) {
         if (!l1.pixel_mask[i]) {
-            l1.image[i] -= ckd.dark.current[i] * l1.exposure_time;
+            if (getModelType() == "L1B"){
+                l1.image[i] -= ckd.dark.current[i] * l1.exposure_time;
+            } else if (getModelType() == "IM"){
+                l1.image[i] += ckd.dark.current[i] * l1.exposure_time;
+            }
         }
     }
 }

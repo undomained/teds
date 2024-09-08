@@ -36,8 +36,13 @@ void PRNU::algoExecute(const CKD& ckd, L1& l1)
 {
     for (int i {}; i < static_cast<int>(l1.image.size()); ++i) {
         if (!l1.pixel_mask[i]) {
-            l1.image[i] /= ckd.prnu.prnu[i];
-            l1.stdev[i] /= ckd.prnu.prnu[i];
+            if (getModelType() == "L1B"){
+                l1.image[i] /= ckd.prnu.prnu[i];
+                l1.stdev[i] /= ckd.prnu.prnu[i];
+            } else if (getModelType() == "IM"){
+                l1.image[i] *= ckd.prnu.prnu[i];
+//                l1.stdev[i] *= ckd.prnu.prnu[i];
+            }
         }
     }
 }

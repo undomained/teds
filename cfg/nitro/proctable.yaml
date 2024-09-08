@@ -25,6 +25,6 @@ test:
     - Non_Linearity
     - PRNU
     - Exposure_Time
-    - Straylight
+#    - Straylight
     - Radiometric
     

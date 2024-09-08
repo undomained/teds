@@ -6,9 +6,9 @@
 #include "algorithms/base_algo.h"
 #include "binning_table.h"
 #include "ckd.h"
-#include "io_nitro.h"
 #include "io.h"
 #include "l1.h"
+#include "l1_measurement.h"
 #include "settings_l1b.h"
 #include "timer.h"
 #include <yaml-cpp/yaml.h>
@@ -36,17 +36,15 @@ auto driver_nitro(const SettingsL1B& settings,
     printHeading("Reading CKD and input data");
     CKD ckd(settings.io.ckd, settings.swath.spectrum_width);
 
-    // Initialize L1 products by reading all L1A data (everything is
-    // stored in memory).
-    std::vector<L1> l1_products {};
-    readL1product(settings.io.l1a, settings.image_start, settings.image_end.value_or(fill::i), l1_products);
+    // Hardcoded level here!!!!
+    L1Measurement l1m(settings.io.l1a, "L1B", settings.image_start, settings.image_end.value_or(fill::i));
 
     // Initialize the binning table and bin the CKD
     const BinningTable binning_table {
         ckd.n_detector_rows,
         ckd.n_detector_cols,
         settings.io.binning_table,
-        static_cast<int>(l1_products.front().binning_table_id)
+        static_cast<int>(l1m.l1_measurement.front().binning_table_id)
     };
     if (settings.unbinning == Unbin::none) {
         binning_table.bin(ckd.pixel_mask);
@@ -82,12 +80,10 @@ auto driver_nitro(const SettingsL1B& settings,
 
     #pragma omp parallel for schedule(dynamic)
 
+    for (int i_alt = 0; i_alt < static_cast<int>(l1m.l1_measurement.size()); ++i_alt) {
+        printPercentage(i_alt, l1m.l1_measurement.size(), "Processing scenes");
 
-
-    for (int i_alt = 0; i_alt < static_cast<int>(l1_products.size()); ++i_alt) {
-        printPercentage(i_alt, l1_products.size(), "Processing scenes");
-
-        auto& l1 { l1_products[i_alt] };
+        auto& l1 { l1m.l1_measurement[i_alt] };
         
         // Initialize pixel mask
         l1.pixel_mask = ckd.pixel_mask;
@@ -126,9 +122,10 @@ auto driver_nitro(const SettingsL1B& settings,
 
     printHeading("Writing file");
 
-    writeL1product(settings.io.l1b, "L1B", settings.getConfig(), l1_products, argc, argv);
+    l1m.write(settings.io.l1b, "L1B", settings.getConfig(), argc, argv);
 
     printHeading("Success");
+
 }
 
 } // namespace tango

@@ -9,6 +9,7 @@
 // settings read from a YAML configuration file.
 
 #include "driver_nitro.h"
+#include "driver.h"
 #include "settings_im.h"
 
 #include <iostream>
@@ -23,7 +24,15 @@ auto main(int argc, char* argv[]) -> int
         // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
         tango::SettingsIM settings { argv[1] };
         settings.init();
-        driver_nitro(settings, argc, argv);
+        const std::string instrument = settings.instrument;
+        const std::string nitro = "nitro";
+        if (instrument.compare(nitro) == 0){
+            std::cout << "NITRO DRIVER" << std::endl;
+            driver_nitro(settings, argc, argv);
+        } else {
+            std::cout << "CARBO DRIVER" << std::endl;
+            driver(settings, argc, argv);
+        }
     }
     return 0;
 }

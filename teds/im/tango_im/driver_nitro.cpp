@@ -11,7 +11,6 @@
 #include <tango_l1b/binning_table.h>
 #include <tango_l1b/ckd.h>
 #include <tango_l1b/io.h>
-#include <tango_l1b/io_nitro.h>
 #include <tango_l1b/l1.h>
 #include <tango_l1b/l1_measurement.h>
 #include <tango_l1b/timer.h>
@@ -83,7 +82,7 @@ auto driver_nitro(const SettingsIM& settings,
     std::array<Timer, static_cast<int>(ProcLevel::n_levels)> timers {};
     Timer timer_total {};
     timer_total.start();
-//    #pragma omp parallel for schedule(dynamic)
+    #pragma omp parallel for schedule(dynamic)
     for (int i_alt = 0; i_alt < static_cast<int>(l1_measurement.size()); ++i_alt) {
         printPercentage(i_alt, l1_measurement.size(), "Processing scenes");
 
@@ -93,8 +92,7 @@ auto driver_nitro(const SettingsIM& settings,
         l1.pixel_mask = ckd.pixel_mask;
         
         std::string i_alt_msg = " Processing image [" + std::to_string(i_alt) +  "] ";
-//        spdlog::info("{:=^30}", i_alt_msg);
-        spdlog::info("{}", i_alt_msg);
+        spdlog::info("{:=^30}", i_alt_msg);
         int i_algo = 0;
         for (YAML::const_iterator it=algo_list.begin(); it!=algo_list.end();it++){
             spdlog::info("{: ^30}", it->as<std::string>()); // Remove this later

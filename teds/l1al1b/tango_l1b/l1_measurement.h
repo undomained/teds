@@ -15,6 +15,17 @@ class L1;
 
 class L1Measurement {
 private:
+    std::string l1_filename;
+    std::string l1_level;
+    std::vector<L1> l1_measurement;
+    std::vector<double> image_time;
+    std::vector<uint8_t> binning_table;
+    std::vector<uint16_t> nr_coadditions;
+    std::vector<double> exposure_time;
+    size_t alt_beg {};
+    size_t alt_end {};
+    size_t n_images {};
+
     void readMetaData(const netCDF::NcFile& nc, const std::string& config);
     void readScienceData(const netCDF::NcFile& nc);
     void readSceneData(const netCDF::NcFile& nc);
@@ -91,16 +102,13 @@ public:
         const std::string& config, 
         const int argc, const char* const argv[]);
 
-    std::string l1_filename;
-    std::string l1_level;
-    std::vector<L1> l1_measurement;
-    std::vector<double> image_time;
-    std::vector<uint8_t> binning_table;
-    std::vector<uint16_t> nr_coadditions;
-    std::vector<double> exposure_time;
-    size_t alt_beg {};
-    size_t alt_end {};
-    size_t n_images {};
+    // Some functions defined public for accessing the measurement points/images/L1 objects
+    // Limited acces. Do not want the outside world to be able to delete, resize, remove L1 objects
+    // add L1 objects etc.
+    L1& operator[](const int img);
+    int size();
+    L1& front();
+    L1& back();
 };
 
 

@@ -39,14 +39,14 @@ auto driver_nitro(const SettingsL1B& settings,
     const std::string& config = settings.getConfig();
 
     // Hardcoded level here!!!!
-    L1Measurement l1m(settings.io.l1a, "L1B", settings.image_start, settings.image_end.value_or(fill::i), config);
+    L1Measurement l1_measurement(settings.io.l1a, "L1B", settings.image_start, settings.image_end.value_or(fill::i), config);
 
     // Initialize the binning table and bin the CKD
     const BinningTable binning_table {
         ckd.n_detector_rows,
         ckd.n_detector_cols,
         settings.io.binning_table,
-        static_cast<int>(l1m.l1_measurement.front().binning_table_id)
+        static_cast<int>(l1_measurement.front().binning_table_id)
     };
     if (settings.unbinning == Unbin::none) {
         binning_table.bin(ckd.pixel_mask);
@@ -81,10 +81,10 @@ auto driver_nitro(const SettingsL1B& settings,
 
     #pragma omp parallel for schedule(dynamic)
 
-    for (int i_alt = 0; i_alt < static_cast<int>(l1m.l1_measurement.size()); ++i_alt) {
-        printPercentage(i_alt, l1m.l1_measurement.size(), "Processing scenes");
+    for (int i_alt = 0; i_alt < static_cast<int>(l1_measurement.size()); ++i_alt) {
+        printPercentage(i_alt, l1_measurement.size(), "Processing scenes");
 
-        auto& l1 { l1m.l1_measurement[i_alt] };
+        auto& l1 { l1_measurement[i_alt] };
         
         // Initialize pixel mask
         l1.pixel_mask = ckd.pixel_mask;
@@ -123,7 +123,7 @@ auto driver_nitro(const SettingsL1B& settings,
 
     printHeading("Writing file");
 
-    l1m.write(settings.io.l1b, "L1B", settings.getConfig(), argc, argv);
+    l1_measurement.write(settings.io.l1b, "L1B", settings.getConfig(), argc, argv);
 
     printHeading("Success");
 

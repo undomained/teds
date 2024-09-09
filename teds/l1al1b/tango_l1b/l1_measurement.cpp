@@ -47,6 +47,26 @@ L1Measurement::L1Measurement(const std::string filename, const std::string level
     spdlog::info("AFTER READING L1");
 }
 
+L1& L1Measurement::operator[](const int img){
+    // acces specific image (L1 object)
+    return l1_measurement[img];
+}
+
+int L1Measurement::size(){
+    // Return the size i.e number of images (L1 objects)
+    return l1_measurement.size();
+}
+
+L1& L1Measurement::front(){
+    // Return the first image (L1 object)
+    return l1_measurement.front();
+}
+
+L1& L1Measurement::back(){
+    // Return the last image (L1 object)
+    return l1_measurement.back();
+}
+
 void L1Measurement::read(const std::string& filename,
     const std::string& level,
     const std::string& config)

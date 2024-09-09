@@ -213,7 +213,7 @@ def reshape_output(output_key, config):
     temp_output_file = f"{output_file[:-3]}_temp.nc"
     output_data.write(temp_output_file)
 
-    return
+    return temp_output_file
 
 def reshape_output2(output_key, config):
     """

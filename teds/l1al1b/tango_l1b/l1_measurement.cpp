@@ -177,7 +177,6 @@ void L1Measurement::writeObservationData(netCDF::NcFile& nc) {
     spdlog::info("Writing Observation Data");
     const auto n_across_track { l1_measurement.front().observation_sig.size() };    
     const auto nc_across_track { nc.addDim("across_track", n_across_track) };
-//    const auto n_images = l1_measurement.size();
     const auto nc_images = nc.getDim("along_track");
     auto& l1 { l1_measurement[0] };
 
@@ -334,7 +333,7 @@ void L1Measurement::writeGeolocationData(netCDF::NcFile& nc) {
 void L1Measurement::readMetaData(const netCDF::NcFile& nc, const std::string& config) {
     // Edwards Meta data part from readL1 fct from io_nitro.cpp?
     spdlog::info("Reading Metadata");
-    if (l1_level == "L1A") {
+    if (l1_level == "SGM") {
         uint8_t detector_binning_table_id { YAML::Load(config)["detector"]["binning_table_id"].as<uint8_t>() };
         uint16_t nr_coadditions { YAML::Load(config)["detector"]["nr_coadditions"].as<uint16_t>() };
         float exposure_time { YAML::Load(config)["detector"]["exposure_time"].as<float>() };

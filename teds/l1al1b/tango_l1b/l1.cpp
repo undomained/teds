@@ -11,9 +11,9 @@ namespace tango {
 L1::L1():
     pixel_mask(),
     image(),
-    noise2(),
     image_i32(),
     stdev(),
+    noise2(),
     geo(),
 
     image_time(0.0),

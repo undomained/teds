@@ -25,9 +25,9 @@ struct L1 {
     // Science data
     std::vector<bool> pixel_mask;
     std::vector<double> image;
-    std::vector<double> noise2; // squared to indicate variance
     std::vector<int> image_i32;
-    std::vector<double> stdev; // stdev is a statistical property, using noise2
+    std::vector<double> stdev; // this is used for noise, not standard deviation
+    std::vector<double> noise2; // variance
 
     std::vector<Spectrum> spectra; // for carbon
 

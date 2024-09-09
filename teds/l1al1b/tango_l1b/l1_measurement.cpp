@@ -66,7 +66,9 @@ void L1Measurement::read(const std::string& filename,
 {
     l1_filename = filename;
     const netCDF::NcFile nc { l1_filename, netCDF::NcFile::read };
-    //setLevel( nc);
+    // possibly given file name is not equal to filename at construction.
+    // need to set level
+    setLevel( nc);
 
     readMetaData(nc, config);
     if (l1_level == "SGM"){
@@ -221,6 +223,7 @@ void L1Measurement::writeObservationData(netCDF::NcFile& nc) {
     }}; 
     
     NcVar nc_std = addVariable(nc_grp, "radiance_stdev", "standard deviation of radiance in bin", "ph nm-1 s-1 sr-1 m-2", fill::f, 0.0f, 1e20f, {nc_images, nc_across_track, nc_wavelength});
+    // Note: buf values are order x^16. But in output file radiance is filled with fill values. Nu clue why.
     flatstd(buf);
     nc_std.putVar(buf.data());
 }

@@ -14,10 +14,15 @@ def generate(ncc):
     prnu_max = 1 + prnu_budget/100
     prnu_min = 1 - prnu_budget/100    
 
+    QE = ncc.get_var('prnu/quantum_efficiency')
+
     attr = {
         'long_name': 'pixel response non-uniformity',
-        'comment' :  'Placeholder, does not include Quantum Efficiency'
+        'comment' :  'PRNU with Quantum Efficiency'
     }
     prnu = np.random.uniform(prnu_min, prnu_max, size = ncc.get_shape(dims))
-    ncc.create_var_auto(dims, prnu, attr, 'f8')
+
+    prnu_QE = prnu * QE
+
+    ncc.create_var_auto(dims, prnu_QE, attr, 'f8')
 

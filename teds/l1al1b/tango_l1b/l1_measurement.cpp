@@ -247,34 +247,31 @@ void L1Measurement::writeScienceData(netCDF::NcFile& nc){
     
     auto nc_grp { nc.addGroup("science_data") };
 
-    // add image
-    NcVar nc_img = addVariable(nc_grp, "detector_image", "detector images", "counts" , fill::d, -1e100, 1e100, nc_flatimg_shape);
-    std::vector<double> buf(n_images * n_bins);
-    for (size_t i {}; i < n_images; ++i) {
-        for (size_t j {}; j < n_bins; ++j) {
-            buf[i * n_bins + j] = l1_measurement[i].image[j];
+    // add image and stdev
+    NcVar nc_img = addVariable(nc_grp, "detector_image", "detector images", "counts" , fill::d, -1e100, 1e100, {nc_images, nc_rows, nc_cols});
+    NcVar nc_std = addVariable(nc_grp, "detector_stdev", "standard deviation of detector bin","counts", fill::d, 0.0,1e100, {nc_images, nc_rows, nc_cols});
+    std::vector<double> buf(n_images * n_rows * n_cols);
+    std::vector<double> buf2(n_images * n_rows * n_cols);
+    for (size_t i {}; i < n_images; i++) {
+        for (size_t j {}; j < n_rows; j++) {
+            for (size_t k {}; k < n_cols; k++) {
+                buf[i * n_rows * n_cols + j * n_cols + k] = l1_measurement[i].image[j * n_cols + k];
+                buf2[i * n_rows * n_cols + j * n_cols + k] = l1_measurement[i].stdev[j * n_cols + k];
+            }
         }
     }
     nc_img.putVar(buf.data());
-
-    // add stdev
-    NcVar nc_std = addVariable(nc_grp, "detector_stdev", "standard deviation of detector bin","counts", fill::d, 0.0,1e100, nc_flatimg_shape);
-    for (size_t i {}; i < n_images; ++i) {
-        for (size_t j {}; j < n_bins; ++j) {
-            buf[i * n_bins + j] = l1_measurement[i].stdev[j];
-        }
-    }
-    nc_std.putVar(buf.data());
+    nc_std.putVar(buf2.data());
 
     // Add wavelength
     NcVar nc_wl = addVariable(nc_grp, "wavelength", "radiance wavelengths", "nm", fill::f, 0.0f, 999.0f, {nc_rows, nc_cols});
-    std::vector<float> buf2(n_rows * n_cols);
-    for (size_t i {}; i < n_rows; ++i) {
-        for (size_t j {}; j < n_cols; ++j) {
-            buf2[i * n_cols + j] = static_cast<float>(wavelengths[i][j]);
+    std::vector<float> buf3(n_rows * n_cols);
+    for (size_t i {}; i < n_rows; i++) {
+        for (size_t j {}; j < n_cols; j++) {
+            buf3[i * n_cols + j] = static_cast<float>(wavelengths[i][j]);
         }
     }
-    nc_wl.putVar(buf2.data());
+    nc_wl.putVar(buf3.data());
 }
 
 void L1Measurement::writeGeolocationData(netCDF::NcFile& nc) {
@@ -371,18 +368,22 @@ void L1Measurement::readScienceData(const netCDF::NcFile& nc) {
     std::vector<double> detector_stdev(n_images * n_bins);
     std::vector<double> flattened_wl(n_bins);
 
-    grp.getVar("detector_image").getVar({ alt_beg, 0 }, { n_images, n_bins }, detector_images.data());
-    grp.getVar("detector_stdev").getVar({ alt_beg, 0 }, { n_images, n_bins }, detector_stdev.data());
+    grp.getVar("detector_image").getVar({ alt_beg, 0, 0 }, { n_images, n_rows, n_cols }, detector_images.data());
+    grp.getVar("detector_stdev").getVar({ alt_beg, 0, 0 }, { n_images, n_rows, n_cols }, detector_stdev.data());
     grp.getVar("wavelength").getVar(flattened_wl.data());
+    int pix {};
     for (size_t i_alt {}; i_alt < n_images; ++i_alt) {
         auto& l1 { l1_measurement[i_alt] };
         l1.image.resize(n_bins);
         l1.stdev.resize(n_bins);
         l1.noise2.resize(n_bins);
-        for (size_t i {}; i < n_bins; ++i) {
-            l1.image[i] = detector_images[i_alt * n_bins + i];
-            l1.stdev[i] = detector_stdev[i_alt * n_bins + i];
-            l1.noise2[i] = l1.stdev[i] * l1.stdev[i];
+        for (size_t i {}; i < n_rows; i++) {
+            for (size_t j {}; j < n_cols; j++) {
+                pix = i * n_cols + j; // pixel index
+                l1.image[pix] = detector_images[i_alt * n_rows * n_cols + pix];
+                l1.stdev[pix] = detector_stdev[i_alt * n_rows * n_cols + pix];
+                l1.noise2[pix] = l1.stdev[pix] * l1.stdev[pix];
+            }
         }
     }
     

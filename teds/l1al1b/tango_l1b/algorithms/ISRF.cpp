@@ -20,30 +20,37 @@ std::string ISRF::getName() const {
 bool ISRF::algoCheckInput(const CKD& ckd, L1& l1) {
     // Check if isrf wavelengths match with input wavelengths. If so, wavelength
     // dependend ISRF can be applied
-    float wl_differ = 0.0;
-    int n_wl_input = (*l1.wavelength).front().size();
-    int n_wl_isrf = (ckd.n_lbl);
-    int center_ix = (ckd.n_isrf_samples - 1) / 2;
+    float wl_differ = 0.0; // float to monitor difference in wavelength increments
+
+    auto& wl_input = (*l1.lbl_wavelength).front();
+    int n_wl_input = wl_input.size(); // number of input wavelengths
+    int n_wl_isrf = (ckd.n_lbl); // number of wavelengths in isrf ckd
+    int center_ix = (ckd.n_isrf_samples - 1) / 2; // center index of ISRF sample
     if (n_wl_input == n_wl_isrf) {
         // sizes match, now look for matching wavelengths
-        if ((*l1.wavelength).front()[0]
-            == ckd.rad.isrf_wl.front().front()[center_ix]) {
+        if (wl_input[0] == ckd.rad.isrf_wl.front().front()[center_ix]) {
             // first wavelength matches as well, now look at increments
+            
+            // input wavelenght increments
+            std::vector<double> inc_input(n_wl_input - 1);
+            for (int i_wl {}; i_wl < n_wl_input - 1; ++i_wl) {
+                    inc_input[i_wl] = wl_input[i_wl + 1]- wl_input[i_wl];
+                }
+            double mean_inc_input =
+                  std::accumulate(inc_input.begin(), inc_input.end(), 0.0)
+                  / (inc_input.size());
+            
+            // ckd wavelength increments
             for (int i_act {}; i_act < ckd.n_act; ++i_act) {
                 std::vector<double> inc_isrf(n_wl_isrf - 1);
-                std::vector<double> inc_input(n_wl_input - 1);
                 for (int i_wl {}; i_wl < n_wl_input - 1; ++i_wl) {
-                    inc_isrf[i_wl] = ckd.rad.isrf_wl[0][i_wl + 1][center_ix]
-                                     - ckd.rad.isrf_wl[0][i_wl][center_ix];
-                    inc_input[i_wl] = (*l1.wavelength)[i_act][i_wl + 1]
-                                      - (*l1.wavelength)[i_act][i_wl];
+                    inc_isrf[i_wl] = ckd.rad.isrf_wl[i_act][i_wl + 1][center_ix]
+                                     - ckd.rad.isrf_wl[i_act][i_wl][center_ix];
                 }
+
                 double mean_inc_isrf =
                   std::accumulate(inc_isrf.begin(), inc_isrf.end(), 0.0)
                   / (inc_isrf.size());
-                double mean_inc_input =
-                  std::accumulate(inc_input.begin(), inc_input.end(), 0.0)
-                  / (inc_input.size());
                 wl_differ += std::abs(mean_inc_input - mean_inc_isrf);
             }
         } else {

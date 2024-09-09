@@ -397,6 +397,13 @@ void L1Measurement::readSceneData(const netCDF::NcFile& nc){
     spdlog::info("Reading Scene Data");
     const auto n_act { nc.getDim("across_track").getSize() };
     const auto n_wavelength { nc.getDim("wavelength").getSize() };
+    const auto n_alt { nc.getDim("along_track").getSize() };
+
+    if (n_images > (n_alt - alt_beg)){
+        n_images = n_alt - alt_beg; // set last image to analyze to last image possible
+        spdlog::warn("Given image_end exceeds number of images in scene");
+    }
+
     std::vector<double> spectra(n_images * n_act * n_wavelength);
     std::vector<double> wavelength(n_wavelength);
 

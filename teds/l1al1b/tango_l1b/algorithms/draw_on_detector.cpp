@@ -42,8 +42,8 @@ void DrawOnDetector::algoExecute(const CKD& ckd, L1& l1) {
         std::vector<double> wl = ckd.wave.wavelength[i_act];
         const CubicSpline spl_wl_to_col { wl, cols };
 
-        std::vector<double> lbl = (l1.observation_sig[i_act]);
-        std::vector<double> lbl_wavelengths =( *l1.wavelength)[i_act];
+        std::vector<double> lbl = (l1.observation_sig[i_act]); // spectrum signal
+        std::vector<double> lbl_wavelengths =(*l1.lbl_wavelength)[i_act]; // spectrum wavelength
         std::vector<double> col_ix(lbl_wavelengths.size(), 0.0); 
         // Calculate decimal col indices of line-by-line spectrum
         for (int i_wave {}; i_wave < (lbl_wavelengths.size()); ++i_wave) {
@@ -55,7 +55,6 @@ void DrawOnDetector::algoExecute(const CKD& ckd, L1& l1) {
         for (int i_col {}; i_col < ckd.n_detector_cols; ++i_col){
             lbl_in_cols[i_act][i_col] = spl_lbl_vs_col.eval(i_col);
         }
-
     }
 
     // Now per column interpolate act_pos to rows

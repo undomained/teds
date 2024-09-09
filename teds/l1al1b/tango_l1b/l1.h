@@ -35,7 +35,8 @@ struct L1 {
     std::vector<std::vector<double>> observation_std; // spectra.stdev alternative for nitro
 
     // shared pointer between all instances of l1 because they are all the same for every along track
-    std::shared_ptr<std::vector<std::vector<double>>> wavelength; //2D array (act, wl)
+    std::shared_ptr<std::vector<std::vector<double>>> lbl_wavelength; // wavelength of incoming line-by-line spectra
+    std::shared_ptr<std::vector<std::vector<double>>> wavelength;
 
     // Geolocation data
     struct {

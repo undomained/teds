@@ -223,8 +223,8 @@ void L1Measurement::writeObservationData(netCDF::NcFile& nc) {
 void L1Measurement::writeScienceData(netCDF::NcFile& nc){
     // Edwards splitup functions copied from io.cpp with l1_products -> l1_measurement
     spdlog::info("Writing Science Data");
-// Note: n_images is member of L1Measurements
-//    const auto n_images { l1_products.size() };
+    // Note: n_images is member of L1Measurements
+    //    const auto n_images { l1_products.size() };
     const auto n_bins { l1_measurement.front().image.size() };
 
     const auto nc_images = nc.getDim("along_track");
@@ -413,6 +413,7 @@ void L1Measurement::readSceneData(const netCDF::NcFile& nc){
 
     // set first l1 wavelength, is shared between other l1 objects
     l1_measurement.front().wavelength = wavelength_lbl;
+    l1_measurement.front().lbl_wavelength = wavelength_lbl;
 
     //import spectra
     for (size_t i_alt {}; i_alt < n_images; ++i_alt) {

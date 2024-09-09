@@ -68,7 +68,7 @@ auto driver_nitro(const SettingsIM& settings,
     const std::string& config = settings.getConfig();
 
     // Hardcoded level here!!!!
-    L1Measurement l1m(settings.io.sgm, "L1A", settings.image_start, settings.image_end.value_or(fill::i), config);
+    L1Measurement l1_measurement(settings.io.sgm, "L1A", settings.image_start, settings.image_end.value_or(fill::i), config);
 
     const std::string& proctable_file = settings.proctable.file;
     spdlog::info("proctable_file: {} ", proctable_file);
@@ -85,13 +85,10 @@ auto driver_nitro(const SettingsIM& settings,
     Timer timer_total {};
     timer_total.start();
 //    #pragma omp parallel for schedule(dynamic)
-//    for (int i_alt = 0; i_alt < static_cast<int>(l1_products.size()); ++i_alt) {
-//        printPercentage(i_alt, l1_products.size(), "Processing scenes");
-    for (int i_alt = 0; i_alt < static_cast<int>(l1m.l1_measurement.size()); ++i_alt) {
-        printPercentage(i_alt, l1m.l1_measurement.size(), "Processing scenes");
+    for (int i_alt = 0; i_alt < static_cast<int>(l1_measurement.size()); ++i_alt) {
+        printPercentage(i_alt, l1_measurement.size(), "Processing scenes");
 
-//        auto& l1 { l1_products[i_alt] };
-        auto& l1 { l1m.l1_measurement[i_alt] };
+        auto& l1 { l1_measurement[i_alt] };
         
         // Initialize pixel mask
         l1.pixel_mask = ckd.pixel_mask;
@@ -138,7 +135,7 @@ auto driver_nitro(const SettingsIM& settings,
 
     printHeading("Writing file");
 
-    l1m.write(settings.io.l1a, "L1A", settings.getConfig(), argc, argv);
+    l1_measurement.write(settings.io.l1a, "L1A", settings.getConfig(), argc, argv);
 
     printHeading("Success");
 }

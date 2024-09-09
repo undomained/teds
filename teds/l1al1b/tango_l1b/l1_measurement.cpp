@@ -66,7 +66,7 @@ void L1Measurement::read(const std::string& filename,
 {
     l1_filename = filename;
     const netCDF::NcFile nc { l1_filename, netCDF::NcFile::read };
-    setLevel( nc);
+    //setLevel( nc);
 
     readMetaData(nc, config);
     if (l1_level == "SGM"){
@@ -89,7 +89,7 @@ void L1Measurement::write(const std::string& filename,
 
     writeGlobalAttributes(nc, level, config,argc, argv);
     writeMetaData(nc);
-
+    
     if (level == "SGM"){
         // Need to check if proctable has only ISRF in it.
         writeObservationData(nc);
@@ -339,9 +339,6 @@ void L1Measurement::readMetaData(const netCDF::NcFile& nc, const std::string& co
         uint16_t nr_coadditions { YAML::Load(config)["detector"]["nr_coadditions"].as<uint16_t>() };
         float exposure_time { YAML::Load(config)["detector"]["exposure_time"].as<float>() };
         for (int i_alt {}; i_alt < static_cast<int>(n_images); ++i_alt) {
-//            l1_measurement[i_alt].binning_table_id = static_cast<uint8_t>(settings.detector.binning_table_id)[i_alt];
-//            l1_measurement[i_alt].nr_coadditions = static_cast<uint16_t>(settings.detector.nr_coadditions);
-//            l1_measurement[i_alt].exposure_time =  settings.detector.exposure_time;
             l1_measurement[i_alt].binning_table_id =  detector_binning_table_id;
             l1_measurement[i_alt].nr_coadditions = nr_coadditions;
             l1_measurement[i_alt].exposure_time =  exposure_time;
@@ -424,9 +421,11 @@ void L1Measurement::readSceneData(const netCDF::NcFile& nc){
         }
     }
 
-    // set first l1 wavelength, is shared between other l1 objects
-    l1_measurement.front().wavelength = wavelength_lbl;
-    l1_measurement.front().lbl_wavelength = wavelength_lbl;
+    // set wavelengths
+    for (L1& l1 : l1_measurement) {
+        l1.wavelength = wavelength_lbl;
+        l1.lbl_wavelength = wavelength_lbl;
+    }
 
     //import spectra
     for (size_t i_alt {}; i_alt < n_images; ++i_alt) {

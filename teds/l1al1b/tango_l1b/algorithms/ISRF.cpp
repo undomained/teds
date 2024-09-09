@@ -21,7 +21,6 @@ bool ISRF::algoCheckInput(const CKD& ckd, L1& l1) {
     // Check if isrf wavelengths match with input wavelengths. If so, wavelength
     // dependend ISRF can be applied
     float wl_differ = 0.0; // float to monitor difference in wavelength increments
-
     auto& wl_input = (*l1.lbl_wavelength).front();
     int n_wl_input = wl_input.size(); // number of input wavelengths
     int n_wl_isrf = (ckd.n_lbl); // number of wavelengths in isrf ckd
@@ -57,7 +56,6 @@ bool ISRF::algoCheckInput(const CKD& ckd, L1& l1) {
             wl_differ = 1;
         }
     }
-
     if (wl_differ == 0) {
         return true;
     } else {
@@ -76,6 +74,7 @@ void ISRF::algoExecute(const CKD& ckd, L1& l1) {
     for (int i_act {}; i_act < ckd.n_act; ++i_act) {
         std::vector<double> signal_conv(ckd.n_lbl, 0.0);
         for (int i_wl {}; i_wl < ckd.n_lbl; ++i_wl) {
+
             // Left and right bounds of isrf samples, convolution kernel
             int i_isrf_0 = std::max(center_ix - i_wl, 0);
             int i_isrf_1 = std::min(ckd.n_lbl + center_ix - i_wl - 1,
@@ -99,7 +98,8 @@ void ISRF::algoExecute(const CKD& ckd, L1& l1) {
                     norm_inv * this_isrf[k] * this_signal[k];
             }
         }
-        l1.observation_sig[i_act] = std::move(signal_conv);
+        
+        l1.observation_sig[i_act] = signal_conv;
     }
 }
 

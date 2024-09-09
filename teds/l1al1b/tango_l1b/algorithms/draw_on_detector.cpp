@@ -3,6 +3,7 @@
 
 #include "draw_on_detector.h"
 #include "../cubic_spline.h"
+#include <numeric>
 
 namespace tango {
 
@@ -39,21 +40,15 @@ void DrawOnDetector::algoExecute(const CKD& ckd, L1& l1) {
     std::vector<std::vector<double>> lbl_in_cols(
         ckd.n_act, std::vector<double>(ckd.n_detector_cols, 0.0)); 
     for (int i_act {}; i_act < ckd.n_act; ++i_act) {
-        std::vector<double> wl = ckd.wave.wavelength[i_act];
-        const CubicSpline spl_wl_to_col { wl, cols };
-
+        
+        std::vector<double> wl = ckd.wave.wavelength[i_act]; // wavelength per column (ckd)
         std::vector<double> lbl = (l1.observation_sig[i_act]); // spectrum signal
         std::vector<double> lbl_wavelengths =(*l1.lbl_wavelength)[i_act]; // spectrum wavelength
-        std::vector<double> col_ix(lbl_wavelengths.size(), 0.0); 
-        // Calculate decimal col indices of line-by-line spectrum
-        for (int i_wave {}; i_wave < (lbl_wavelengths.size()); ++i_wave) {
-            col_ix[i_wave] = spl_wl_to_col.eval(lbl_wavelengths[i_wave]);
-        }
 
-        // Interpolate line-by-line spectrum to integer (detector) column range
-        const CubicSpline spl_lbl_vs_col {col_ix, lbl};
-        for (int i_col {}; i_col < ckd.n_detector_cols; ++i_col){
-            lbl_in_cols[i_act][i_col] = spl_lbl_vs_col.eval(i_col);
+        const CubicSpline spl_wl_to_sig { lbl_wavelengths, lbl}; // spline of signal
+        // Interpolate signal to wavelength of column
+        for (int i_col :cols){
+            lbl_in_cols[i_act][i_col] = spl_wl_to_sig.eval(wl[i_col]);
         }
     }
 

@@ -14,27 +14,23 @@
 
 namespace tango {
 
-L1Measurement::L1Measurement(const std::string filename, const std::string level, const int image_start, const int image_end, const std::string config)
+L1Measurement::L1Measurement(const std::string filename, const int image_start, const int image_end, const std::string config)
 {
 
     // When we create a L1Measurement object need to create it from file
     // So l1_filename should be a member
-    spdlog::info("Now file_name: {}", filename);
     l1_filename = filename;
-    l1_level = level;
     const netCDF::NcFile nc { l1_filename, netCDF::NcFile::read };
-    spdlog::info("AFTER read NC");
+    setLevel( nc);
+
     // TODO do we want to obtain image_start and image_end from settings?
     alt_beg = static_cast<size_t>(image_start);
-    spdlog::info("alt_beg: {}", alt_beg);
     if (image_end == fill::i){
         alt_end = nc.getDim("along_track").getSize();
     } else {
         alt_end = static_cast<size_t>(image_end) + 1;
     }
-    spdlog::info("alt_end: {}", alt_end);
     n_images = alt_end - alt_beg ;
-    spdlog::info("n_images: {}", n_images);
 
     l1_measurement.resize(n_images);
     image_time.resize(n_images);
@@ -42,9 +38,7 @@ L1Measurement::L1Measurement(const std::string filename, const std::string level
     nr_coadditions.resize(n_images);
     exposure_time.resize(n_images);
 
-    spdlog::info("BEFORE READING L1");
-    read(l1_filename, l1_level, config);
-    spdlog::info("AFTER READING L1");
+    read(l1_filename, config);
 }
 
 L1& L1Measurement::operator[](const int img){
@@ -68,16 +62,14 @@ L1& L1Measurement::back(){
 }
 
 void L1Measurement::read(const std::string& filename,
-    const std::string& level,
     const std::string& config)
 {
     l1_filename = filename;
-    l1_level = level;
     const netCDF::NcFile nc { l1_filename, netCDF::NcFile::read };
+    setLevel( nc);
 
     readMetaData(nc, config);
-    if (l1_level == "L1A"){
-//    if (l1_level == "SGM"){
+    if (l1_level == "SGM"){
         readSceneData(nc);
     } else {
         readScienceData(nc);
@@ -98,15 +90,29 @@ void L1Measurement::write(const std::string& filename,
     writeGlobalAttributes(nc, level, config,argc, argv);
     writeMetaData(nc);
 
-//    if (level == "SGM"){
-//        writeObservationData(nc);
-//    } else {
-//        writeScienceData(nc);
-//    }
+    if (level == "SGM"){
+        // Need to check if proctable has only ISRF in it.
+        writeObservationData(nc);
+    } else {
+        writeScienceData(nc);
+    }
 //TODO need to fix this. Because sometime we do need to write observation data
-    writeScienceData(nc);
+//    writeScienceData(nc);
 
     writeGeolocationData(nc);
+}
+
+void L1Measurement::setLevel(const netCDF::NcFile& nc){
+    // Determine data level
+    std::string level {};
+    try {
+        nc.getAtt("product_type").getValues(level);
+    } catch (const netCDF::exceptions::NcBadId&) {
+        spdlog::error("Can't find product_type variable in input data, aborting");
+        std::exit(EXIT_FAILURE);
+    }
+    spdlog::info("Input data calibration level: {}", level);
+    l1_level = level;
 }
 
 void L1Measurement::writeGlobalAttributes(netCDF::NcFile& nc, const std::string& level, const std::string& config, const int argc, const char* const argv[]) {

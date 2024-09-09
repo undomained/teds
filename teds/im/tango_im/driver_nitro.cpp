@@ -67,8 +67,7 @@ auto driver_nitro(const SettingsIM& settings,
 
     const std::string& config = settings.getConfig();
 
-    // Hardcoded level here!!!!
-    L1Measurement l1_measurement(settings.io.sgm, "L1A", settings.image_start, settings.image_end.value_or(fill::i), config);
+    L1Measurement l1_measurement(settings.io.sgm, settings.image_start, settings.image_end.value_or(fill::i), config);
 
     const std::string& proctable_file = settings.proctable.file;
     spdlog::info("proctable_file: {} ", proctable_file);
@@ -135,7 +134,11 @@ auto driver_nitro(const SettingsIM& settings,
 
     printHeading("Writing file");
 
-    l1_measurement.write(settings.io.l1a, "L1A", settings.getConfig(), argc, argv);
+    std::string level = "L1A";
+    if (algo_list.size() <= 1){
+        level = "SGM";
+    }
+    l1_measurement.write(settings.io.l1a, level, settings.getConfig(), argc, argv);
 
     printHeading("Success");
 }

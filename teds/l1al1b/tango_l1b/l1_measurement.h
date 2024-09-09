@@ -26,6 +26,7 @@ private:
     size_t alt_end {};
     size_t n_images {};
 
+    void setLevel(const netCDF::NcFile& nc);
     void readMetaData(const netCDF::NcFile& nc, const std::string& config);
     void readScienceData(const netCDF::NcFile& nc);
     void readSceneData(const netCDF::NcFile& nc);
@@ -85,7 +86,6 @@ public:
     /// Constructor.
     L1Measurement(
             const std::string filename,
-            const std::string level, 
             const int image_start,
             const int image_end,
             const std::string config);
@@ -94,7 +94,6 @@ public:
     ~L1Measurement() = default;
 
     void read(const std::string& filename,
-        const std::string& level,
         const std::string& config);
 
     void write(const std::string& filename,

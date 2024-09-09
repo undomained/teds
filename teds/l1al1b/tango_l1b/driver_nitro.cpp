@@ -38,8 +38,7 @@ auto driver_nitro(const SettingsL1B& settings,
 
     const std::string& config = settings.getConfig();
 
-    // Hardcoded level here!!!!
-    L1Measurement l1_measurement(settings.io.l1a, "L1B", settings.image_start, settings.image_end.value_or(fill::i), config);
+    L1Measurement l1_measurement(settings.io.l1a, settings.image_start, settings.image_end.value_or(fill::i), config);
 
     // Initialize the binning table and bin the CKD
     const BinningTable binning_table {

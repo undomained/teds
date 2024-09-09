@@ -32,7 +32,11 @@ bool Coaddition::algoCheckInput(const CKD& ckd, L1& l1) {
 void Coaddition::algoExecute(const CKD& ckd, L1& l1) {
     for (int i {}; i < static_cast<int>(l1.image.size()); ++i) {
         if (!l1.pixel_mask[i]) {
-            l1.image[i] *= l1.nr_coadditions;
+            if (getModelType() == "L1B"){
+                spdlog::warn("Coaddition correction for L1B not implemented yet");
+            } else if (getModelType() == "IM"){
+                l1.image[i] *= l1.nr_coadditions;
+            }
         }
     }
 }

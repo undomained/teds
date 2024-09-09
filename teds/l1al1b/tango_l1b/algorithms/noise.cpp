@@ -2,6 +2,7 @@
 // in the LICENSE file in the root directory of this project.
 
 #include "noise.h"
+#include <random>
 
 namespace tango {
 
@@ -40,15 +41,22 @@ void Noise::algoExecute(const CKD& ckd, L1& l1) {
             continue;
         }
 
+        const double noise2 { ckd.noise.g[i] * l1.image[i] + ckd.noise.n2[i] };
+
+        if (getModelType()=="L1B"){
         // Not sure if this is the right order of calculations
-        double noise2 { ckd.noise.g[i] * l1.image[i] + ckd.noise.n2[i] };
-        noise2 /= l1.nr_coadditions; 
-        
-        if (noise2 <= 0.0) {
-            l1.pixel_mask[i] = true;
-        } else {
-            l1.noise2[i] = noise2; 
+            if (noise2 <= 0.0) {
+                l1.pixel_mask[i] = true;
+            } else {
+                l1.noise2[i] = noise2; 
+            }
+        } else if (getModelType()=="IM"){
+            const int seed = 100;
+            static std::mt19937 gen { static_cast<unsigned long>(seed) };
+            std::normal_distribution<> d { 0.0, noise2 };
+            l1.image[i] += d(gen);
         }
+
         // another option for binned images has to be added here 
     }
 }

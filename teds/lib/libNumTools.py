@@ -548,7 +548,6 @@ def interpolate_data_irregular(indata, gm_data, gases):
     print('Interpolating data to GM mesh...')
 
     dim_alt, dim_act = outdata.lat.shape   # dimensions
-    dxdy = np.column_stack((indata.lat.ravel(), indata.lon.ravel()))
 
     # Interpolate values to GM grid
     albedo = griddata(dxdy, indata.albedo_conv.ravel(), (outdata.lat, outdata.lon), fill_value=0.0)
@@ -620,6 +619,41 @@ def interpolate_data_regular(indata, gm_data, gases):
      
     print('                             ...done')
     return albedo, outdata
+
+
+def convert(indata, gases):
+
+    """This routine converts the data format
+
+    Parameters
+    ----------
+    indata : Class
+        Meteo data
+    gases : List
+        List of gases to be processed
+
+    Returns
+    -------
+    albedo : Matrix
+        Albedo on gm grid
+    outdata: Class
+        Meteo data on gm grid
+    """
+    print('convert atmospheric data')
+    outdata = Emptyclass()
+    
+    for gas in gases:
+        outdata.__setattr__(gas.upper(), indata.__getattribute__("dcol_"+gas).swapaxes(0,1))
+    outdata.__setattr__("lat", indata.__getattribute__("lat").swapaxes(0,1))
+    outdata.__setattr__("lon", indata.__getattribute__("lon").swapaxes(0,1))
+    outdata.__setattr__("zlay", indata.__getattribute__("zlay").swapaxes(0,1))
+    outdata.__setattr__("air", indata.__getattribute__("col_air").swapaxes(0,1))
+    outdata.__setattr__("zlev", indata.__getattribute__("zlev").swapaxes(0,1))
+     
+    albedo = indata.albedo.swapaxes(0,1)
+    print('                             ...done')
+    return albedo, outdata
+
 
 def convolvedata(data, config):
 

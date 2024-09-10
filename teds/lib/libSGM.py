@@ -11,31 +11,14 @@ from xarray import DataArray
 from .libNumTools import convolution_2d
 from typing import List
 
-
 def interp_sentinel2_albedo(s2_albedos: List[DataArray],
                             lat,
                             lon,
-                            kernel_para,
-                            band) -> List[DataArray]:
+                            band_label) -> List[DataArray]:
 
     s2_albedos_regridded = []
     for s2_albedo in s2_albedos:
         logging.info(f'Sentinel 2 band {s2_albedo.band_label}:')
-        # Define the settings for the convolution
-        conv_settings = {}
-        if (kernel_para['type'] == '2D Gaussian'):
-            fwhm_x = kernel_para['fwhm_x']
-            fwhm_y = kernel_para['fwhm_y']
-            fsize = kernel_para['size_factor']
-
-            conv_settings['type'] = kernel_para['type']
-            conv_settings['1D kernel extension'] = int(
-                fsize * np.max([fwhm_x, fwhm_y]) / s2_albedo.gsd)
-            # Convert all kernel parameter to units of sampling distance
-            conv_settings['fwhm x'] = int(fwhm_x / s2_albedo.gsd)
-            conv_settings['fwhm y'] = int(fwhm_y / s2_albedo.gsd)
-            logging.info('  Convolving with Gaussian')
-            s2_albedo.values = convolution_2d(s2_albedo.values, conv_settings)
 
         #   Change coordinate system to WGS84
         logging.info('  Projecting to WSG84')

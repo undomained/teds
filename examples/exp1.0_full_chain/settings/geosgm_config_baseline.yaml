@@ -1,9 +1,3 @@
-kernel_parameter:               #parameter to configure the 2D blurring of the scene
-    type:    '2D Gaussian'      #type pf kernel, current version has only one option  
-    fwhm_x:  300                #FWHM in ACT direction
-    fwhm_y:  300                #FWHM in flight direction
-    size_factor: 2              #the size of the convolution kernel in units of fwhm
-        
 atmosphere:
     nlay: 30                    #number of atmospheric layers
     dzlay: 1000                 #geometrical thickness of the layers [m]
@@ -24,7 +18,7 @@ scale_gas:                  #only relevant for AFGL profiles
     xh2o: 10000.            #ppm
 
 sentinel2:
-    band_section: ['B02', 'B03', 'B11']   # use e.g. https://en.wikipedia.org/wiki/Sentinel-2 for band defintion
+    band_label: ['B02', 'B03', 'B11']   # use e.g. https://en.wikipedia.org/wiki/Sentinel-2 for band defintion
     
 io_files:
     input_gm: '/home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/gm/Tango_Carbon_gm_exp1.0.nc'

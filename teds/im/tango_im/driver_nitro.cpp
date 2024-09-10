@@ -95,7 +95,6 @@ auto driver_nitro(const SettingsIM& settings,
         spdlog::info("{:=^30}", i_alt_msg);
         int i_algo = 0;
         for (YAML::const_iterator it=algo_list.begin(); it!=algo_list.end();it++){
-            spdlog::info("{: ^30}", it->as<std::string>()); // Remove this later
             BuildAlgo algo_builder;
             BaseAlgo* algo = algo_builder.CreateAlgo(it->as<std::string>());
             
@@ -105,6 +104,7 @@ auto driver_nitro(const SettingsIM& settings,
             if (algo) {
                 timers[static_cast<int>(i_algo)].start();
                 if (algo->algoCheckInput(ckd, l1)) {
+                    spdlog::info("{: ^30}", algo->getName()); // Remove this later
                     algo->algoExecute(ckd, l1);
                 }
                 timers[static_cast<int>(i_algo)].stop();

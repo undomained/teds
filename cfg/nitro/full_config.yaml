@@ -140,7 +140,6 @@ sgm:
 # Configuration file for running the Instrument module
 #
 #########################################################
-############################
 im:
     do_python: false
     proctable:
@@ -148,61 +147,28 @@ im:
         algo_list: 'algos_im'
     instrument: 'nitro'
     processing_version: 0.000
-    cal_level: 'l1a' # To indicate wether to uncalibrate the whole way (l1a) or to stop at a certain point ('prnu' -> uncalibrate until (NOT INCLUDING) prnu step)
-    # image_start: 0
-    # image_end: 105
+    image_start: 0
+    image_end: 0
     detector:
         binning_table_id: 1         # across track binning
         exposure_time:    0.021     # exposure time [sec]
         nr_coadditions:   2         # along track co-adding
-    isrf:
-        enabled: true      # apply spectral convolution (true) or not (false)
-        fwhm_gauss: 0.6    #full width half max [nm] (for carbon: 0.45 and for nitro 0.60)
-    noise:
-        enabled: true      # Add noise (true) or not (false)
-        seed:    100       # Seed for noise generation
-    dark:
-        enabled: true      # apply dark current and dark offset (true) or not (false)
-    nonlin:
-        enabled: false     # apply non linearity (true) or not (false)
-    prnu:
-        enabled: true      # apply PRNU and QE (true) or not (false)
-    stray:
-        enabled: false     # apply straylight (true) or not (false)
-    rad:
-        enabled: true      # apply radiametric (true) or not (false)
 #########################################################
 #
 # L1AL1B specific
 # Configuration file for running the L1AL1B module
 #
 #########################################################
-############################
 l1al1b:
     do_python: false
     proctable:
         file: '../cfg/nitro/proctable.yaml'
 #        algo_list: 'algos_l1b'
-        algo_list: 'test'
+        algo_list: 'algos_l1b'
     instrument: 'nitro'
     processing_version: 0.000
-    # image_start: 0
-    # image_end: 105
-    cal_level: 'l1b' # To indicate wether to calibrate the whole way (l1b) or to stop at a certain point ('prnu' -> calibrate until (NOT INCLUDING) prnu step)
-# What about geolocation??????
-    noise:
-        enabled: true      # apply noise calibration (true) or not (false)
-    dark:
-        enabled: true      # apply dark current and dark offset corrections (true) or not (false)
-    nonlin:
-        enabled: false     # apply non linearity correction(true) or not (false)
-    prnu:
-        enabled: true      # apply PRNU and QE corrections (true) or not (false)
-    stray:
-        enabled: false     # apply straylight correction (true) or not (false)
-        van_cittert_steps: 0  #van Citter iteration for stray light correction (0=no correction)
-    rad:
-        enabled: true      # apply radiometric correction (true) or not (false)
+    image_start: 0
+    image_end: 0
 #############################
 #########################################################
 #

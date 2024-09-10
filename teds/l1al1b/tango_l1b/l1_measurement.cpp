@@ -25,12 +25,18 @@ L1Measurement::L1Measurement(const std::string filename, const int image_start, 
 
     // TODO do we want to obtain image_start and image_end from settings?
     alt_beg = static_cast<size_t>(image_start);
+    int n_alt = nc.getDim("along_track").getSize();
     if (image_end == fill::i){
-        alt_end = nc.getDim("along_track").getSize();
+        alt_end = n_alt;
     } else {
         alt_end = static_cast<size_t>(image_end) + 1;
     }
     n_images = alt_end - alt_beg ;
+
+    if (n_images > (n_alt - alt_beg)){
+        spdlog::warn("Given image_end exceeds number of images in input");
+        n_images = n_alt - alt_beg; // set last image to analyze to last image possible
+    }
 
     l1_measurement.resize(n_images);
     image_time.resize(n_images);
@@ -68,7 +74,7 @@ void L1Measurement::read(const std::string& filename,
     const netCDF::NcFile nc { l1_filename, netCDF::NcFile::read };
     // possibly given file name is not equal to filename at construction.
     // need to set level
-    setLevel( nc);
+    setLevel(nc);
 
     readMetaData(nc, config);
     if (l1_level == "SGM"){
@@ -84,8 +90,7 @@ void L1Measurement::write(const std::string& filename,
     const std::string& config, 
     const int argc, const char* const argv[]) 
 {
-    spdlog::info("write L1");
-    std::cout << filename << std::endl;
+    spdlog::info("write L1: {}", filename);
     
     netCDF::NcFile nc { filename, netCDF::NcFile::replace };
 
@@ -98,8 +103,8 @@ void L1Measurement::write(const std::string& filename,
     } else {
         writeScienceData(nc);
     }
-//TODO need to fix this. Because sometime we do need to write observation data
-//    writeScienceData(nc);
+    //TODO need to fix this. Because sometime we do need to write observation data
+    //    writeScienceData(nc);
 
     writeGeolocationData(nc);
 }
@@ -410,11 +415,6 @@ void L1Measurement::readSceneData(const netCDF::NcFile& nc){
     const auto n_act { nc.getDim("across_track").getSize() };
     const auto n_wavelength { nc.getDim("wavelength").getSize() };
     const auto n_alt { nc.getDim("along_track").getSize() };
-
-    if (n_images > (n_alt - alt_beg)){
-        n_images = n_alt - alt_beg; // set last image to analyze to last image possible
-        spdlog::warn("Given image_end exceeds number of images in scene");
-    }
 
     std::vector<double> spectra(n_images * n_act * n_wavelength);
     std::vector<double> wavelength(n_wavelength);

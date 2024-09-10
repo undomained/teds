@@ -8,23 +8,17 @@ algos_im:
     - Dark_Offset
     - Coaddition
 #    - Binning
-#    - ADC
+#   - Straylight (waiting for data)
+    - DAC
 algos_l1b:
-    - Dark_Offset
-    - Noise
-    - Dark_Current
-    - PRNU
-    - Swath
-    - Radiometric
-test:
-    - Coaddition
+#   - Binning # Where do we put this?
+    - Noise # annotation, no correction
+    - Coaddition # modifies noise, figure out best order. 
     - DAC
     - Dark_Offset
-    - Noise
     - Dark_Current
     - Non_Linearity
     - PRNU
-    - Exposure_Time
-#    - Straylight
+#   - Straylight (waiting for data)
     - Radiometric
     

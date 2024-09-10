@@ -69,7 +69,6 @@ bool ISRF::algoCheckInput(const CKD& ckd, L1& l1) {
 //}
 
 void ISRF::algoExecute(const CKD& ckd, L1& l1) {
-    spdlog::info("Applying wavelength dependend ISRF");
     int center_ix = (ckd.n_isrf_samples - 1) / 2;
     for (int i_act {}; i_act < ckd.n_act; ++i_act) {
         std::vector<double> signal_conv(ckd.n_lbl, 0.0);

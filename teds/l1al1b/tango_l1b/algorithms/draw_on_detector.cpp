@@ -18,8 +18,13 @@ std::string DrawOnDetector::getName() const {
 }
 
 bool DrawOnDetector::algoCheckInput(const CKD& ckd, L1& l1) {
-    spdlog::warn("Draw On Detector checkinput needs to be implemented");
-    return true; 
+    bool sig_input = l1.observation_sig.size() > 0;
+    bool wl_input = (*l1.observation_wl).size() > 0;
+    if (sig_input && wl_input){
+        return true;
+    } else {
+        return false;
+    }
 }
 
 //void DrawOnDetector::unloadData() {

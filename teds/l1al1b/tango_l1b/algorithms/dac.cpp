@@ -12,11 +12,21 @@ namespace tango {
 //}
 
 std::string DAC::getName() const {
-    return std::string("DAC");
+    if (getModelType() == "IM") {
+        return std::string("ADC");
+    } else {
+        return std::string("DAC");
+    }
 }
 
 bool DAC::algoCheckInput(const CKD& ckd, L1& l1) {
-    spdlog::warn("DAC algoCheckInput fct still to be filled in");
+    // Check if image and ckd have the same dimensions
+    if (l1.image.size() > 0) {
+        return true;
+    } else {
+        spdlog::warn("No input image");
+        return false;
+    }
 
     return true;
 }
@@ -26,12 +36,25 @@ bool DAC::algoCheckInput(const CKD& ckd, L1& l1) {
 //}
 
 void DAC::algoExecute(const CKD& ckd, L1& l1) {
-    spdlog::warn("Conversion factor (bits->voltage) not implemented");
-    float f_DAC = 1.0;
-    for (int i {}; i < static_cast<int>(l1.image.size()); ++i) {
-        if (!l1.pixel_mask[i]) {
-            l1.image[i] *= f_DAC;
+    spdlog::warn("Conversion factor (bits or counts -> voltage) not implemented");
+    float f_DAC = 1.0; 
+
+    if (getModelType() == "L1B") {
+        for (int i {}; i < static_cast<int>(l1.image.size()); ++i) {
+            if (!l1.pixel_mask[i]) {
+                l1.image[i] *= f_DAC;
+                l1.stdev[i] *= f_DAC;
+            }
         }
+        l1.units = 'V';
+    } else if (getModelType() == "IM") {
+        for (int i {}; i < static_cast<int>(l1.image.size()); ++i) {
+            if (!l1.pixel_mask[i]) {
+                l1.image[i] /= f_DAC;
+                l1.stdev[i] /= f_DAC; 
+            }
+        }
+        l1.units = "counts";
     }
 }
 

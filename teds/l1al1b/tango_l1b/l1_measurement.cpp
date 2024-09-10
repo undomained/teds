@@ -147,7 +147,6 @@ void L1Measurement::writeGlobalAttributes(netCDF::NcFile& nc, const std::string&
 void L1Measurement::writeMetaData(netCDF::NcFile& nc) {
     // Edwards splitup functions copied from io.cpp with l1_products -> l1_measurement
     spdlog::info("Writing Image Attributes");
-//    const auto n_images { l1_products.size() };
     const auto nc_images { nc.addDim("along_track", n_images) };
 
     auto nc_grp { nc.addGroup("image_attributes") };
@@ -174,6 +173,7 @@ void L1Measurement::writeMetaData(netCDF::NcFile& nc) {
 
 }
 
+// May be obsolete?
 void L1Measurement::writeObservationData(netCDF::NcFile& nc) {
     // Edwards splitup functions copied from io.cpp with l1_products -> l1_measurement
     spdlog::info("Writing Observation Data");
@@ -244,15 +244,12 @@ void L1Measurement::writeScienceData(netCDF::NcFile& nc){
     const auto& wavelengths = *l1_measurement.front().wavelength; 
     const auto n_cols { wavelengths.front().size() };
     const auto nc_cols { nc.addDim("cols", n_cols) };
-
-
-    const std::vector<netCDF::NcDim> nc_flatimg_shape { nc_images, nc_detector_bin };
     
     auto nc_grp { nc.addGroup("science_data") };
-
+    std::string& units = l1_measurement.front().units;
     // add image and stdev
-    NcVar nc_img = addVariable(nc_grp, "detector_image", "detector images", "counts" , fill::d, -1e100, 1e100, {nc_images, nc_rows, nc_cols});
-    NcVar nc_std = addVariable(nc_grp, "detector_stdev", "standard deviation of detector bin","counts", fill::d, 0.0,1e100, {nc_images, nc_rows, nc_cols});
+    NcVar nc_img = addVariable(nc_grp, "detector_image", "detector images", units , fill::d, -1e100, 1e100, {nc_images, nc_rows, nc_cols});
+    NcVar nc_std = addVariable(nc_grp, "detector_stdev", "standard deviation of detector bin",units, fill::d, 0.0,1e100, {nc_images, nc_rows, nc_cols});
     std::vector<double> buf(n_images * n_rows * n_cols);
     std::vector<double> buf2(n_images * n_rows * n_cols);
     for (size_t i {}; i < n_images; i++) {
@@ -370,16 +367,22 @@ void L1Measurement::readScienceData(const netCDF::NcFile& nc) {
     std::vector<double> detector_images(n_images * n_bins);
     std::vector<double> detector_stdev(n_images * n_bins);
     std::vector<double> flattened_wl(n_bins);
+    std::string units {};
 
-    grp.getVar("detector_image").getVar({ alt_beg, 0, 0 }, { n_images, n_rows, n_cols }, detector_images.data());
+    auto nc_img =  grp.getVar("detector_image");
+    nc_img.getVar({ alt_beg, 0, 0 }, { n_images, n_rows, n_cols }, detector_images.data());
+    nc_img.getAtt("units").getValues(units);
+
     grp.getVar("detector_stdev").getVar({ alt_beg, 0, 0 }, { n_images, n_rows, n_cols }, detector_stdev.data());
     grp.getVar("wavelength").getVar(flattened_wl.data());
+   
     int pix {};
     for (size_t i_alt {}; i_alt < n_images; ++i_alt) {
         auto& l1 { l1_measurement[i_alt] };
         l1.image.resize(n_bins);
         l1.stdev.resize(n_bins);
         l1.noise2.resize(n_bins);
+        l1.units = units;
         for (size_t i {}; i < n_rows; i++) {
             for (size_t j {}; j < n_cols; j++) {
                 pix = i * n_cols + j; // pixel index
@@ -430,7 +433,7 @@ void L1Measurement::readSceneData(const netCDF::NcFile& nc){
     // set wavelengths
     for (L1& l1 : l1_measurement) {
         l1.wavelength = wavelength_lbl;
-        l1.lbl_wavelength = wavelength_lbl;
+        l1.observation_wl = wavelength_lbl;
     }
 
     //import spectra

@@ -22,21 +22,27 @@
 namespace tango {
 
 struct L1 {
+
     // Science data
     std::vector<bool> pixel_mask;
     std::vector<double> image;
+    std::vector<double> stdev; // this is used for noise, is not the standard deviation
+    std::vector<double> noise2; // 
+    std::shared_ptr<std::vector<std::vector<double>>> wavelength; //shared_ptr, same wl for all alt
+    std::string units;
+
+    // Carbon Instrument 
+    std::vector<Spectrum> spectra; 
     std::vector<int> image_i32;
-    std::vector<double> stdev; // this is used for noise, not standard deviation
-    std::vector<double> noise2; // variance
+    double image_time; // Detector image meta data
+    uint8_t binning_table_id;
+    uint16_t nr_coadditions;
+    double exposure_time;
 
-    std::vector<Spectrum> spectra; // for carbon
-
+    // Nitro instrument
     std::vector<std::vector<double>> observation_sig; // spectra.signal alternative for nitro
     std::vector<std::vector<double>> observation_std; // spectra.stdev alternative for nitro
-
-    // shared pointer between all instances of l1 because they are all the same for every along track
-    std::shared_ptr<std::vector<std::vector<double>>> lbl_wavelength; // wavelength of incoming line-by-line spectra
-    std::shared_ptr<std::vector<std::vector<double>>> wavelength;
+    std::shared_ptr<std::vector<std::vector<double>>> observation_wl; // wavelength of incoming line-by-line spectra
 
     // Geolocation data
     struct {
@@ -48,12 +54,6 @@ struct L1 {
         std::vector<float> sza; // Solar zenith angle
         std::vector<float> saa; // Solar azimuth angle
     } geo;
-
-    // Detector image meta data
-    double image_time;
-    uint8_t binning_table_id;
-    uint16_t nr_coadditions;
-    double exposure_time;
 
     // Current calibration level
     ProcLevel level;

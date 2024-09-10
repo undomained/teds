@@ -34,8 +34,10 @@ void Radiometric::algoExecute(const CKD& ckd, L1& l1) {
         if (!l1.pixel_mask[i]) {
             if (getModelType() == "L1B"){
                 l1.image[i] *= ckd.rad.rad[i];
+                l1.units = "ph nm-1 s-1 sr-1 m-2";
             } else if (getModelType() == "IM"){
                 l1.image[i] /= ckd.rad.rad[i];
+                l1.units = "counts";
             }
         }
     }

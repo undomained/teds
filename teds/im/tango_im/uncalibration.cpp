@@ -190,11 +190,11 @@ auto drawOnDetector(const CKD& ckd, L1& l1) -> void
         const CubicSpline spl_wl_to_col { wl, cols };
 
         std::vector<double> lbl = (l1.spectra[i_act].signal);
-        std::vector<double> lbl_wavelengths =( *l1.wavelength)[i_act];
-        std::vector<double> col_ix(lbl_wavelengths.size(), 0.0); 
+        std::vector<double> observation_wls =( *l1.wavelength)[i_act];
+        std::vector<double> col_ix(observation_wls.size(), 0.0); 
         // Calculate decimal col indices of line-by-line spectrum
-        for (int i_wave {}; i_wave < (lbl_wavelengths.size()); ++i_wave) {
-            col_ix[i_wave] = spl_wl_to_col.eval(lbl_wavelengths[i_wave]);
+        for (int i_wave {}; i_wave < (observation_wls.size()); ++i_wave) {
+            col_ix[i_wave] = spl_wl_to_col.eval(observation_wls[i_wave]);
         }
 
         // Interpolate line-by-line spectrum to integer (detector) column range

@@ -21,7 +21,7 @@ bool ISRF::algoCheckInput(const CKD& ckd, L1& l1) {
     // Check if isrf wavelengths match with input wavelengths. If so, wavelength
     // dependend ISRF can be applied
     float wl_differ = 0.0; // float to monitor difference in wavelength increments
-    auto& wl_input = (*l1.lbl_wavelength).front();
+    auto& wl_input = (*l1.observation_wl).front();
     int n_wl_input = wl_input.size(); // number of input wavelengths
     int n_wl_isrf = (ckd.n_lbl); // number of wavelengths in isrf ckd
     int center_ix = (ckd.n_isrf_samples - 1) / 2; // center index of ISRF sample

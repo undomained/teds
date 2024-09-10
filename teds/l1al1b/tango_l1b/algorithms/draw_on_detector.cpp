@@ -43,9 +43,9 @@ void DrawOnDetector::algoExecute(const CKD& ckd, L1& l1) {
         
         std::vector<double> wl = ckd.wave.wavelength[i_act]; // wavelength per column (ckd)
         std::vector<double> lbl = (l1.observation_sig[i_act]); // spectrum signal
-        std::vector<double> lbl_wavelengths =(*l1.lbl_wavelength)[i_act]; // spectrum wavelength
+        std::vector<double> observation_wls =(*l1.observation_wl)[i_act]; // spectrum wavelength
 
-        const CubicSpline spl_wl_to_sig { lbl_wavelengths, lbl}; // spline of signal
+        const CubicSpline spl_wl_to_sig { observation_wls, lbl}; // spline of signal
         // Interpolate signal to wavelength of column
         for (int i_col :cols){
             lbl_in_cols[i_act][i_col] = spl_wl_to_sig.eval(wl[i_col]);
@@ -70,9 +70,8 @@ void DrawOnDetector::algoExecute(const CKD& ckd, L1& l1) {
     }
     std::vector<double> image_zeros(l1.image.size());
     l1.stdev = image_zeros;
-
-    // Set wavelength as well
-    *l1.wavelength = ckd.wave.wave_map;
+    *l1.wavelength = ckd.wave.wave_map; // Set wavelength
+    l1.units = "counts";
 }
 
 } // namespace tango

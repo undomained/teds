@@ -82,7 +82,9 @@ auto driver_nitro(const SettingsIM& settings,
     std::array<Timer, static_cast<int>(ProcLevel::n_levels)> timers {};
     Timer timer_total {};
     timer_total.start();
-    #pragma omp parallel for schedule(dynamic)
+
+//    #pragma omp parallel for schedule(dynamic)
+
     for (int i_alt = 0; i_alt < static_cast<int>(l1_measurement.size()); ++i_alt) {
         printPercentage(i_alt, l1_measurement.size(), "Processing scenes");
 

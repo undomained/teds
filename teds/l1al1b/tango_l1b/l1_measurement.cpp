@@ -45,6 +45,7 @@ L1Measurement::L1Measurement(const std::string filename, const int image_start, 
     exposure_time.resize(n_images);
 
     read(l1_filename, config);
+//    copyGeometry(config);
 }
 
 L1& L1Measurement::operator[](const int img){
@@ -102,11 +103,9 @@ void L1Measurement::write(const std::string& filename,
         writeObservationData(nc);
     } else {
         writeScienceData(nc);
+//        writeGeolocationData(nc);
     }
-    //TODO need to fix this. Because sometime we do need to write observation data
-    //    writeScienceData(nc);
 
-    writeGeolocationData(nc);
 }
 
 void L1Measurement::setLevel(const netCDF::NcFile& nc){
@@ -195,42 +194,34 @@ void L1Measurement::writeObservationData(netCDF::NcFile& nc) {
 
     // add wavelength
     NcVar nc_wl = addVariable(nc_grp, "wavelength", "radiance wavelengths", "nm", fill::f, 0.0f, 999.0f, {nc_across_track, nc_wavelength});
-    std::vector<float> buf(n_across_track * n_wavelength);
+    std::vector<float> buf3(n_across_track * n_wavelength);
     for (size_t i {}; i < n_across_track; ++i) {
         for (size_t j {}; j < n_wavelength; ++j) {
-            buf[i * n_wavelength + j] = static_cast<float>(wavelengths[i][j]);
+            buf3[i * n_wavelength + j] = static_cast<float>(wavelengths[i][j]);
         }
     }
-    nc_wl.putVar(buf.data());
+    nc_wl.putVar(buf3.data());
 
-    // add radiance, flatten first
-    const auto flatsignal { [&](auto& buf) {
-        for (size_t i {}; i < n_images; ++i) {
-            for (size_t j {}; j < n_across_track; ++j) {
-                for (size_t k {}; k < n_wavelength; ++k) {
-                    buf[(i * n_across_track + j) * n_wavelength + k] = static_cast<float>(l1_measurement[i].observation_sig[j][k]);
-                }
+    std::string& units = l1_measurement.front().units;
+    NcVar nc_rad = addVariable(nc_grp, "radiance", "radiance", units , fill::f, 0.0f, 1e20f, {nc_images, nc_across_track, nc_wavelength});
+    NcVar nc_std = addVariable(nc_grp, "radiance_stdev", "standard deviation of radiance in bin",units, fill::f, 0.0f, 1e20f, {nc_images, nc_across_track, nc_wavelength});
+
+    std::vector<double> buf(n_images * n_across_track * n_wavelength);
+    std::vector<double> buf2(n_images * n_across_track * n_wavelength);
+
+    for (size_t i {}; i < n_images; i++) {
+        for (size_t j {}; j < n_across_track; j++) {
+            for (size_t k {}; k < n_wavelength; k++) {
+                int index = i * n_across_track * n_wavelength + j * n_wavelength + k;
+                buf[index] = l1_measurement[i].observation_sig[j][k];
+                buf2[index] = l1_measurement[i].observation_std[j][k];
             }
         }
-    } };
-    NcVar nc_rad = addVariable(nc_grp, "radiance", "radiance", "ph nm-1 s-1 sr-1 m-2", fill::f, 0.0f, 1e20f, {nc_images, nc_across_track, nc_wavelength});
-    flatsignal(buf);
+    }
+    spdlog::info("Writing radiance and radiance_std with units: {}", units);
     nc_rad.putVar(buf.data());
+    nc_std.putVar(buf2.data());
 
-    const auto flatstd { [&](auto& buf) {
-        for (size_t i {}; i < n_images; ++i) {
-            for (size_t j {}; j < n_across_track; ++j) {
-                for (size_t k {}; k < n_wavelength; ++k) {
-                    buf[(i * n_across_track + j) * n_wavelength + k] = static_cast<float>(l1_measurement[i].observation_std[j][k]);
-                }
-            }
-        }
-    }}; 
-    
-    NcVar nc_std = addVariable(nc_grp, "radiance_stdev", "standard deviation of radiance in bin", "ph nm-1 s-1 sr-1 m-2", fill::f, 0.0f, 1e20f, {nc_images, nc_across_track, nc_wavelength});
-    // Note: buf values are order x^16. But in output file radiance is filled with fill values. Nu clue why.
-    flatstd(buf);
-    nc_std.putVar(buf.data());
 }
 
 void L1Measurement::writeScienceData(netCDF::NcFile& nc){
@@ -285,8 +276,6 @@ void L1Measurement::writeGeolocationData(netCDF::NcFile& nc) {
 
     const auto n_across_track { l1_measurement.front().spectra.size() };
     const auto nc_across_track { nc.addDim("across_track", n_across_track) };
-// Note: n_images is member of L1Measurements
-//    const auto n_images { l1_products.size() };
     const auto nc_images = nc.getDim("along_track");
     const std::vector<netCDF::NcDim> geometry_shape { nc_images, nc_across_track };
 
@@ -322,7 +311,7 @@ void L1Measurement::writeGeolocationData(netCDF::NcFile& nc) {
     NcVar nc_sza = addVariable(nc_grp, "solarzenithangle", "solar zenith angle at bin locations", "degrees", fill::f, -90.0f, 90.0f, geometry_shape);
     NcVar nc_saa = addVariable(nc_grp, "solarazimuthangle", "solar azimuth angle at bin locations", "degrees", fill::f, -180.0f, 180.0f, geometry_shape);
     
-    nc_lon.putVar(lat.data());
+    nc_lon.putVar(lon.data());
     nc_lat.putVar(lat.data());
     nc_hei.putVar(height.data());
     nc_vza.putVar(vza.data());
@@ -416,8 +405,13 @@ void L1Measurement::readSceneData(const netCDF::NcFile& nc){
 
     std::vector<double> spectra(n_images * n_act * n_wavelength);
     std::vector<double> wavelength(n_wavelength);
+    std::string units {};
 
-    nc.getVar("radiance").getVar({ alt_beg, 0, 0 }, { n_images, n_act, n_wavelength }, spectra.data());
+    auto nc_rad =  nc.getVar("radiance");
+    nc_rad.getVar({ alt_beg, 0, 0 }, { n_images, n_act, n_wavelength }, spectra.data());
+    nc_rad.getAtt("units").getValues(units);
+//    nc.getVar("radiance").getVar({ alt_beg, 0, 0 }, { n_images, n_act, n_wavelength }, spectra.data());
+//    nc_img.getAtt("units").getValues(units);
     nc.getVar("wavelength").getVar(wavelength.data());
 
     // import wavelength
@@ -438,13 +432,55 @@ void L1Measurement::readSceneData(const netCDF::NcFile& nc){
     for (size_t i_alt {}; i_alt < n_images; ++i_alt) {
         auto& l1 { l1_measurement[i_alt] };
         l1.observation_sig.resize(n_act);
+        l1.observation_std.resize(n_act);
+        l1.units = units;
         for (size_t i_act {}; i_act < n_act; ++i_act) {
             l1.observation_sig[i_act].resize(n_wavelength);
+            l1.observation_std[i_act].resize(n_wavelength);
             for (size_t i {}; i < n_wavelength; ++i) {
                 const size_t idx { (i_alt * n_act + i_act) * n_wavelength + i };
                 l1.observation_sig[i_act][i] = spectra[idx];
             }
         }
+    }
+}
+
+void L1Measurement::copyGeometry(const std::string& config)
+{
+    // The following line gives a problem. Not sure why.
+    const std::string geo_filename { YAML::Load(config)["io"]["geometry"].as<std::string>() };
+
+    const netCDF::NcFile nc_geo { geo_filename, netCDF::NcFile::read };
+    const netCDF::NcGroup nc { nc_geo.getGroup("/") };
+    const auto n_alt { nc_geo.getDim("along_track").getSize() };
+    const auto n_act { nc_geo.getDim("across_track").getSize() };
+    std::vector<double> lat(n_alt * n_act);
+    std::vector<double> lon(n_alt * n_act);
+    std::vector<double> vza(n_alt * n_act);
+    std::vector<double> vaa(n_alt * n_act);
+    std::vector<double> sza(n_alt * n_act);
+    std::vector<double> saa(n_alt * n_act);
+    nc_geo.getVar("latitude").getVar(lat.data());
+    nc_geo.getVar("longitude").getVar(lon.data());
+    nc_geo.getVar("viewingzenithangle").getVar(vza.data());
+    nc_geo.getVar("viewingazimuthangle").getVar(vaa.data());
+    nc_geo.getVar("solarzenithangle").getVar(sza.data());
+    nc_geo.getVar("solarazimuthangle").getVar(saa.data());
+    int i_alt_start = static_cast<int>(alt_beg);
+    for (int i_alt {}; i_alt < static_cast<int>(l1_measurement.size()); ++i_alt) {
+        const auto copy { [i_alt_start, i_alt, n_act](
+                            const std::vector<double>& in,
+                            std::vector<float>& out) {
+            out = { in.begin() + (i_alt_start + i_alt) * n_act,
+                    in.begin() + (i_alt_start + i_alt + 1) * n_act };
+        } };
+        copy(lat, l1_measurement[i_alt].geo.lat);
+        copy(lon, l1_measurement[i_alt].geo.lon);
+        copy(vza, l1_measurement[i_alt].geo.vza);
+        copy(vaa, l1_measurement[i_alt].geo.vaa);
+        copy(sza, l1_measurement[i_alt].geo.sza);
+        copy(saa, l1_measurement[i_alt].geo.saa);
+        l1_measurement[i_alt].geo.height = std::vector<float>(n_act, 0.0);
     }
 }
 

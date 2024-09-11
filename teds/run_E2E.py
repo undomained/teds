@@ -395,6 +395,10 @@ def get_specific_config(orig_config, kind):
         output_path = get_file_name(orig_config, 'sgm')
         specific_config['io']['sgm'] = os.path.join(output_path, orig_config['io']['sgm_rad'])
 
+        # To add info from geometry file
+        output_path = get_file_name(orig_config, 'gm')
+        specific_config['io']['geometry'] = os.path.join(output_path, orig_config['io']['gm'])
+
     elif kind == 'l1al1b':
 
         # Output to L1B
@@ -532,15 +536,16 @@ def build(config, step, cfg_path, attribute_dict):
             # TODO: Should check be set to True
             subprocess.run(["im/build/tango_im.x", im_config_file], check=False)
 
-            # output dataset is 2D. In case of detector image (in case of some inbetween steps
-            # and of the final output) the second dimension is detector_pixels which is too
-            # large to view.
-            # Need to reshape to 3D to be able to make sense of this.
-            temp_output_file = reshape_output('l1a', im_config)
+# With updates to l1_measurement.cpp there is no need for reshaping data.
+#            # output dataset is 2D. In case of detector image (in case of some inbetween steps
+#            # and of the final output) the second dimension is detector_pixels which is too
+#            # large to view.
+#            # Need to reshape to 3D to be able to make sense of this.
+#            temp_output_file = reshape_output('l1a', im_config)
 
             # Add attributes to output file
-            if temp_output_file is not None:
-                Utils.add_attributes_to_output(temp_output_file, attribute_dict)
+#            if temp_output_file is not None:
+#                Utils.add_attributes_to_output(temp_output_file, attribute_dict)
             Utils.add_attributes_to_output(im_config['io']['l1a'], attribute_dict)
         else:
             # run Python code
@@ -562,14 +567,15 @@ def build(config, step, cfg_path, attribute_dict):
             # Need to call C++ with L1B specific config file
             subprocess.run(["l1al1b/build/tango_l1b.x", l1b_config_file], check=False)
 
-            # output dataset is 2D. In case of detector image (in case of inbetween step)
-            # the second dimension is detector_pixels which is too large to view.
-            # Need to reshape to 3D to be able to make sense of this.
-            temp_output_file = reshape_output('l1b', l1b_config)
+# With updates to l1_measurement.cpp there is no need for reshaping data.
+#            # output dataset is 2D. In case of detector image (in case of inbetween step)
+#            # the second dimension is detector_pixels which is too large to view.
+#            # Need to reshape to 3D to be able to make sense of this.
+#            temp_output_file = reshape_output('l1b', l1b_config)
 
             # Add attributes to output file
-            if temp_output_file is not None:
-                Utils.add_attributes_to_output(temp_output_file, attribute_dict)
+#            if temp_output_file is not None:
+#                Utils.add_attributes_to_output(temp_output_file, attribute_dict)
             Utils.add_attributes_to_output(l1b_config['io']['l1b'], attribute_dict)
         else:
             # run Python code

@@ -17,12 +17,9 @@ std::string Noise::getName() const {
 }
 
 bool Noise::algoCheckInput(const CKD& ckd, L1& l1) {
-    // Fill noise2 if needed
+    // Fill stdev if needed
     if ((l1.stdev.size()) != l1.image.size()) {
         l1.stdev.resize(l1.image.size());
-    }
-    if ((l1.noise2.size()) != l1.image.size()) {
-        l1.noise2.resize(l1.image.size());
     }
     // Check if image and ckd have the same dimensions
     if ((l1.image.size() != ckd.noise.g.size()) && (l1.image.size() != ckd.noise.n2.size())) {
@@ -51,7 +48,7 @@ void Noise::algoExecute(const CKD& ckd, L1& l1) {
             if (noise2 <= 0.0) {
                 l1.pixel_mask[i] = true;
             } else {
-                l1.noise2[i] = noise2;
+                l1.stdev[i] = std::sqrt(noise2);
             }
 
         } else if (getModelType()=="IM"){

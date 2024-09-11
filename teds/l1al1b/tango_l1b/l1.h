@@ -27,7 +27,6 @@ struct L1 {
     std::vector<bool> pixel_mask;
     std::vector<double> image;
     std::vector<double> stdev; // this is used for noise, is not the standard deviation
-    std::vector<double> noise2; // 
     // TODO: Should we make wavelenght 1D as well? For improved perfomance and consistency
     std::shared_ptr<std::vector<std::vector<double>>> wavelength; //shared_ptr, same wl for all alt
     std::string units;

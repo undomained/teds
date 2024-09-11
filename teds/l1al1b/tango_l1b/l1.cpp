@@ -13,7 +13,6 @@ L1::L1():
     image(),
     image_i32(),
     stdev(),
-    noise2(),
     geo(),
 
     image_time(0.0),

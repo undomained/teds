@@ -386,14 +386,12 @@ void L1Measurement::readScienceData(const netCDF::NcFile& nc) {
         auto& l1 { l1_measurement[i_alt] };
         l1.image.resize(n_bins);
         l1.stdev.resize(n_bins);
-        l1.noise2.resize(n_bins);
         l1.units = units;
         for (size_t i {}; i < n_rows; i++) {
             for (size_t j {}; j < n_cols; j++) {
                 pix = i * n_cols + j; // pixel index
                 l1.image[pix] = detector_images[i_alt * n_rows * n_cols + pix];
                 l1.stdev[pix] = detector_stdev[i_alt * n_rows * n_cols + pix];
-                l1.noise2[pix] = l1.stdev[pix] * l1.stdev[pix];
             }
         }
     }

@@ -1,0 +1,24 @@
+GM config for different MicroHH cases
+
+Epoch: xxxx-xx-xxT12:00:00
+
+
+1.Jaenschwalde - lat 52.099171920621856 lon 15.11136171003431
+ltan: 13.823
+start_time: 13.73
+end_time: 13.80
+
+2.Belchatow - lat 51.44156094162394 lon 19.828912600536132
+ltan: 14.120
+start_time: 13.57
+end_time: 13.64
+
+3. Lipetsk - lat 52.57123 lon 39.6945
+ltan:  15.515
+start_time: 13.90
+end_time: 13.97
+
+4. Matimba - lat -23.6688333 lon 27.610838
+ltan:  15.089
+start_time: 88.41
+end_time: 88.48

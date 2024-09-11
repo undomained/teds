@@ -31,13 +31,15 @@ struct L1 {
     std::shared_ptr<std::vector<std::vector<double>>> wavelength; //shared_ptr, same wl for all alt
     std::string units;
 
-    // Carbon Instrument 
-    std::vector<Spectrum> spectra; 
-    std::vector<int> image_i32;
-    double image_time; // Detector image meta data
+    // Detector image meta data
+    double image_time;
     uint8_t binning_table_id;
     uint16_t nr_coadditions;
     double exposure_time;
+
+    // Carbon Instrument 
+    std::vector<Spectrum> spectra; 
+    std::vector<int> image_i32;
 
     // Nitro instrument, 
     // TODO: Should we make these 1D as well? For improved perfomance and consistency

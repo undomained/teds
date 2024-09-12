@@ -45,7 +45,7 @@ L1Measurement::L1Measurement(const std::string filename, const int image_start, 
     exposure_time.resize(n_images);
 
     read(l1_filename, config);
-//    copyGeometry(config);
+    copyGeometry(config);
 }
 
 L1& L1Measurement::operator[](const int img){
@@ -103,7 +103,7 @@ void L1Measurement::write(const std::string& filename,
         writeObservationData(nc);
     } else {
         writeScienceData(nc);
-//        writeGeolocationData(nc);
+        writeGeolocationData(nc);
     }
 
 }
@@ -274,7 +274,16 @@ void L1Measurement::writeGeolocationData(netCDF::NcFile& nc) {
     // Edwards splitup functions copied from io.cpp with l1_products -> l1_measurement
     spdlog::info("Writing Geolocation Data");
 
-    const auto n_across_track { l1_measurement.front().spectra.size() };
+    // At the moment for nitro we have detector image with second dimension row
+    // instead of across track
+    // spectra is empty.
+    // So we can get row dimension. But then we would need to interpolate the geolocation data
+    // Or maybe that is something that needs to happen in copyGeometry function
+    //
+    // const auto n_across_track { l1_measurement.front().spectra.size() };
+    // across_track is row for science data
+    const auto n_across_track {(*l1_measurement.front().wavelength).size()};
+
     const auto nc_across_track { nc.addDim("across_track", n_across_track) };
     const auto nc_images = nc.getDim("along_track");
     const std::vector<netCDF::NcDim> geometry_shape { nc_images, nc_across_track };
@@ -292,6 +301,8 @@ void L1Measurement::writeGeolocationData(netCDF::NcFile& nc) {
             std::copy(
                 in.cbegin(), in.cend(), out.begin() + i_alt * in.size());
         } };
+
+
         copy(l1_measurement[i_alt].geo.lat, lat);
         copy(l1_measurement[i_alt].geo.lon, lon);
         copy(l1_measurement[i_alt].geo.height, height);
@@ -311,8 +322,8 @@ void L1Measurement::writeGeolocationData(netCDF::NcFile& nc) {
     NcVar nc_sza = addVariable(nc_grp, "solarzenithangle", "solar zenith angle at bin locations", "degrees", fill::f, -90.0f, 90.0f, geometry_shape);
     NcVar nc_saa = addVariable(nc_grp, "solarazimuthangle", "solar azimuth angle at bin locations", "degrees", fill::f, -180.0f, 180.0f, geometry_shape);
     
-    nc_lon.putVar(lon.data());
     nc_lat.putVar(lat.data());
+    nc_lon.putVar(lon.data());
     nc_hei.putVar(height.data());
     nc_vza.putVar(vza.data());
     nc_vaa.putVar(vaa.data());
@@ -447,7 +458,14 @@ void L1Measurement::readSceneData(const netCDF::NcFile& nc){
 
 void L1Measurement::copyGeometry(const std::string& config)
 {
-    // The following line gives a problem. Not sure why.
+
+    // TODO:
+    // Note: geometry from geometry file has dims along track x across track 
+    // Our nitro L1B output (and IM output) is a detector image and has dimensions
+    // n_image x row x col
+    // So just copying the geometry data will not work.
+    // Would need to be interpolated to dimensions along track x row
+
     const std::string geo_filename { YAML::Load(config)["io"]["geometry"].as<std::string>() };
 
     const netCDF::NcFile nc_geo { geo_filename, netCDF::NcFile::read };

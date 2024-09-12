@@ -41,6 +41,7 @@ auto SettingsIM::scanKeys() -> void
     scan(io.binning_table);
     scan(io.l1a);
     scan(io.sgm);
+    scan(io.geometry);
 }
 
 auto SettingsIM::checkParameters() -> void
@@ -49,6 +50,7 @@ auto SettingsIM::checkParameters() -> void
     checkPresenceOfFile(io.ckd, true);
     checkPresenceOfFile(io.binning_table, true);
     checkPresenceOfFile(io.sgm, true);
+    checkPresenceOfFile(io.geometry, true);
     checkFileWritable(io.l1a);
 }
 

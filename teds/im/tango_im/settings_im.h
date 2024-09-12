@@ -169,6 +169,9 @@ public:
             "than l1a then this is actually not an L1A but a higher level\n"
             "product."
         };
+        Setting<std::string> geometry { { "io", "geometry" },
+                                        {},
+                                        "geometry file (input)" };
     } io;
 
     struct

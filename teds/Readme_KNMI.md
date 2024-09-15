@@ -46,14 +46,18 @@ From the teds directory:
 ### Configuration files
 Configuration files can be found in cfg/nitro.  
 The configuration file for the nominal run is in this directory.  
-The different cases are in subdirectories.  
-All settings for the different steps are combined in 1 yaml file.  
+The different cases (scenarios) are in (scenario) subdirectories in directory cfg/nitro/scenarios.  
+All settings for the different steps are combined in 1 yaml file (`full_config.yaml`).  
 This ensures that the settings between te steps will be consistent.  
-Note: the .cfg files needed to run the C++ code in the IM and L1AL1B part are generated from the yaml input when step is `im`, `l1al1b` or `all`.  
-Where the .cfg file is written is determined in the yaml file settings, but python scripts expects this at the moment to be in the same location as the yaml file.
+For the IM and L1AL1B steps a special config yaml file is created called `im_config_temp.yaml` and `l1al1b_config_temp.yaml` respectively.
+Note: The nitro code uses for IM and L1B `driver_ntro`, which makes use of proctable and not of cal level!
 
 ### Building the executables.
-See `build_instructions.md` in the teds directory
+There are 4 scripts to build and rebuild the IM and L1B C++ code.
+After building or rebuiling also the `run_E2E.py` script is run.
+The scripts are `brl1.sh` and `brim.sh` for building and running.
+The scripts are `rebuildl1.sh` and `rebuildim.sh` for rebuilding and running.
+
 
 ### Running the E2E processor
 In the teds directory the script `run_E2E.py` is situated.  
@@ -77,8 +81,8 @@ The output of the inbetween steps can also be found as `im_l1x_<algo>.nc`.
 Output files of the different steps is written in dorectory `data/no2` (or someother directory. you can change the location by updating the yaml file).  
 The output file(s) of one step can be input files to the next step.  
 There are also input files that are not produced by the different steps of the E2E processor. These are
-* `ckd.nc`
-* `binning_tables.nc`
+* `ckd_nitro.nc`
+* `binning_tables_no2.nc`
 They can be found in `data/no2/ckd` directory (or some other directory. you can change the location by updating the yaml file).
 
 ### Running scenarios
@@ -89,7 +93,7 @@ First it is required to create a scenario file.
 - Add the following information
   - title. Title for this scenario
   - description. Description for this scenario
-  - `scenario_dir`. Sub directory in base output directory (data/no2) where the scenario output files can be found.
+  - `scenario_dir`. Sub directory in base output directory (data/no2) where the scenario output files can be found in sub directory scenarios.
   - steps. The steps that need to be rerun. For instance, if the scenario is running with different CKD files for 
     IM and L1B than there is no need to rerun GM and SGM. The nominal GM and SGM output files can be used.
     But from IM onwards all steps need to be rerun.

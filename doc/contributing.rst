@@ -125,7 +125,7 @@ Style guide
 
 This project follows the PEP 8 style guide which is universally adopted by most Python projects. It is also the standard used for the Python standard library development and is described in full here: https://peps.python.org/pep-0008/.
 
-In order to see if your code conforms to the standard, configure your editor to highlights parts of the code that do not conform or use an external tool to do so. One such tool is ``flake8`` which is part of ``requirements.txt`` (the executable is in your path if the virtual environment is activated). You can test the correctness of a source file by running ``flake8 file.py``. This tool compares the source file(s) to a set of rules defined by PEP 8 and generates a report per source file. If everything conforms to the standard there should be no output. Writing readable code is important for *i)* reducing the likelihood of future bugs and *ii)* reducing the time it takes for someone (including yourself) to read and contribute to the code.
+In order to see if your code conforms to the standard, configure your editor to highlight parts of the code that do not conform or use an external tool to do so. One such tool is ``flake8`` which is part of ``requirements.txt`` (the executable is in your path if the virtual environment is activated). You can test the correctness of a source file by running ``flake8 file.py``. This tool compares the source file(s) to a set of rules defined by PEP 8 and generates a report per source file. If everything conforms to the standard there should be no output. Writing readable code is important for *i)* reducing the likelihood of future bugs and *ii)* reducing the time it takes for someone (including yourself) to read and contribute to the code.
 
 ``flake8_check.sh``, found in the root source directory, checks all Python source files with some exceptions listed in the script. It is run as one of the steps in the Bitbucket pipeline when new code is pushed. If there are style errors in any of the source files the pipeline fails.
 
@@ -141,7 +141,32 @@ In addition to PEP 8, here are some additional rules specific to the TEDS projec
 Type hints
 ^^^^^^^^^^
 
-*coming soon..*
+Imagine you come across the following piece of code:
+
+.. code-block:: python
+
+   def process_albedo(input):
+       albedo = extract_albedo(input)
+       albedo.normalize()
+       return albedo
+
+
+What is ``input``? A string, a dictionary, or something else? And what is ``albedo``, an Xarray object perhaps? Without looking at other parts of the code, there is no way to be sure. Sometimes you need to traverse several layers of abstraction to find out the object types. The dynamic nature of Python allows us to develop code fast but it also poses a challenge in keeping the codebase robust and maintainable.
+
+This is where type hinting comes in. Python will always remain a dynamically typed language, meaning the interpreter will not check the type of function arguments or return values. However, by using a special syntax to specify the types of variables, tools such as ``mypy`` can check and flag if a variable type in some context is different from its expected type. In other words, it ensures that the code does what you said it would do in terms of the function signature. A complete description of type hints is given by PEP 484: https://peps.python.org/pep-0484/.
+
+The syntax of type hints is simple:
+
+.. code-block:: python
+
+   def f(number: int, text: str = 'default') -> str:
+       ...
+       return s
+
+
+The type is given after the colon, optionally followed by a default value. An added benefit of type hinting is ensuring good documentation. By specifying all types in the function signature (``mypy`` ensures a consistent style) there is no need to include them in the doc-string.
+
+In TEDS, ``mypy`` is a type hinting tool that is run as part of the regression suite after each push to the repository. If there are any errors the pipeline will fail and the error should be resolved.
 
 
 Doc-strings
@@ -284,7 +309,7 @@ When making changes to the documentation, you can view the result by running
 
    make html
 
-in the root directory and opening ``build/html/index.html`` in a web browser. When done editing, commit and push to the repository. Read the Docs service will automatically pick up the changes and update https://teds.rtfd.io/ within minutes.
+in the ``doc`` directory and opening ``build/html/index.html`` in a web browser. When done editing, commit and push to the repository. Read the Docs service will automatically pick up the changes and update https://teds.rtfd.io/ within minutes.
 
 
 Debugging with GDB

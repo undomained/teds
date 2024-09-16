@@ -31,7 +31,7 @@ def convolve_with_isrf(signals_in: npt.NDArray[np.float64],
 
     Help function for change_wavelength_grid.
 
-    Args
+    Args:
       signals_in:
         Spectra with dimensions ALT, ACT, spectral sample.
       w_in:
@@ -151,7 +151,7 @@ def convert_from_radiance(l1_products: L1,
     The quantum efficiency [e/ph] is taken into account by the PRNU
     step.
 
-    Args
+    Args:
       l1_products:
         L1 products (signal and detector settings).
       rad_corr:
@@ -218,7 +218,7 @@ def scene_to_detector(scene_data: npt.NDArray[np.float64],
     wavelengths) at integer row coordinates, using cubic interpolation
     and linear extrapolation.
 
-    Args
+    Args:
       scene_data:
         Data with dimensions ALT angle, ACT angle, wavelength.
       spectrum_rows:
@@ -272,7 +272,7 @@ def map_to_detector(l1_products: L1,
     along columns (not along constant wavelengths) at integer row coordinates,
     using cubic interpolation and linear extrapolation.
 
-    Args
+    Args:
       l1_products:
         L1 products (signal and detector settings).
       spectrum_rows:
@@ -297,7 +297,7 @@ def map_to_detector(l1_products: L1,
 def stray_light(l1_products: L1, ckd: CKDStray) -> None:
     """Add stray light to the image.
 
-    Args
+    Args:
       l1_products:
         L1 products (signal and detector settings).
       ckd:
@@ -318,7 +318,7 @@ def stray_light(l1_products: L1, ckd: CKDStray) -> None:
 def include_prnu(l1_products: L1, prnu_qe: npt.NDArray[np.float64]) -> None:
     """Incorporate PRNU and quantum efficiency.
 
-    Args
+    Args:
       l1_products:
         L1 products (signal and detector settings).
       prnu_qe:
@@ -344,7 +344,7 @@ def include_nonlinearity(l1_products: L1, ckd: CKDNonlin) -> None:
     curve. Input data outside the model range are clipped. The model
     does not depend on pixel.
 
-    Args
+    Args:
       l1_products:
         L1 products (signal and detector settings).
       ckd:
@@ -371,17 +371,21 @@ def include_darksignal(l1_products: L1,
                        dark_current: npt.NDArray[np.float64]) -> None:
     """Incorporate dark signal.
 
-    If the dark signal does not depend linearly on exposure time, make sure the
-    dark current CKD is valid for the used exposure time.
+    If the dark signal does not depend linearly on exposure time, make
+    sure the dark current CKD is valid for the used exposure time.
 
-    :param dict l1_products: L1 products (signal and detector settings).
-    :param ndarray dark_current: Detector map of dark current [counts/s].
+    Args:
+      l1_products:
+        L1 products (signal and detector settings).
+      dark_current:
+        Detector map of dark current [counts/s].
+
     """
-    # assuming bad pixels are NaN already
+    # Assuming bad pixels are NaN already
     l1_products['signal'] += (dark_current.ravel()
                               * l1_products['exptimes'][..., None])
-    # uncertainty of dark signal not implemented
-    # no change of processing level
+    # Uncertainty of dark signal is not implemented, no change of
+    # processing level.
 
 
 def include_noise(l1_products: L1,
@@ -392,7 +396,7 @@ def include_noise(l1_products: L1,
 
     The signal is changed.
 
-    Args
+    Args:
       l1_products:
         L1 products (signal and detector settings).
       ckd:
@@ -427,7 +431,7 @@ def include_noise(l1_products: L1,
 def include_offset(l1_products: L1, offset: npt.NDArray[np.float64]) -> None:
     """Incorporate offset.
 
-    Args
+    Args:
       l1_products:
         L1 products (signal and detector settings).
       offset:
@@ -453,7 +457,7 @@ def include_coadding_and_binning(l1_products: L1,
     sums them, i.e. if noise was added, that is exactly the same in
     each frame copy.
 
-    Args
+    Args:
       l1_products:
         L1 products (signal and detector settings).
       new_coad_factor:

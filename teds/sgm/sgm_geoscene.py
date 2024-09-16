@@ -134,13 +134,14 @@ def geosgm_output(filename, atm):
             
     return
 
-def geoscene_generation(config):
-    """Scene generation module.
 
-    Parameters
-    ----------
-    config : Dict
-       Dict containing configuration parameters.
+def geoscene_generation(config: dict) -> None:
+    """Generate a geophysical scene.
+
+    Args:
+      config
+        Configuration dictionary
+
     """
     # first get the geometry data
     gm_data = get_gm_data(config['io_files']['input_gm'])

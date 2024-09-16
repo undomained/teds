@@ -45,8 +45,8 @@ def check_config(config: dict) -> None:
     """Check consistency of some of the configuration settings.
 
     Args:
-      config_file:
-        Path of YAML configuration file.
+      config:
+        Configuration dictionary
       towards_l1b:
         Whether the processing direction is to L1B or L1A
 
@@ -89,7 +89,7 @@ def process_l1b(config_user: dict) -> None:
 
     Read input, process data, and write output.
 
-    Args
+    Args:
       config_user:
         Configuration dictionary directly from file, as given by the user, to
         be expanded with default values for parameters not specified by the

@@ -25,7 +25,7 @@ def remove_coadding_and_binning(l1_products: L1,
                                 method: str) -> None:
     """Undo coadding over time and binning over the detector.
 
-    Args
+    Args:
       l1_products:
         L1 products (signal and detector settings).
       bin_indices:
@@ -71,7 +71,7 @@ def remove_coadding_and_binning(l1_products: L1,
 def remove_offset(l1_products: L1, offset: npt.NDArray[np.float64]) -> None:
     """Remove offset.
 
-    Args
+    Args:
       l1_products:
         L1 products (signal and detector settings).
       offset:
@@ -91,7 +91,7 @@ def determine_noise(l1_products: L1,
 
     The signal is not changed.
 
-    Args
+    Args:
       l1_products:
         L1 products (signal and detector settings).
       ckd:
@@ -131,7 +131,7 @@ def remove_darksignal(l1_products: L1,
     If the dark signal does not depend linearly on exposure time, make
     sure the dark current CKD is valid for the used exposure time.
 
-    Args
+    Args:
       l1_products:
         L1 products (signal and detector settings).
       dark_current:
@@ -157,7 +157,7 @@ def remove_nonlinearity(l1_products: L1, ckd: CKDNonlin) -> None:
     curve. Input data outside the model range are clipped. The model
     does not depend on pixel.
 
-    Args
+    Args:
       l1_products:
         L1 products (signal and detector settings).
       ckd:
@@ -184,7 +184,7 @@ def remove_nonlinearity(l1_products: L1, ckd: CKDNonlin) -> None:
 def remove_prnu(l1_products: L1, prnu_qe: npt.NDArray[np.float64]) -> None:
     """Remove PRNU and quantum efficiency.
 
-    Args
+    Args:
       l1_products:
         L1 products (signal and detector settings).
       prnu_qe:
@@ -290,7 +290,7 @@ def map_from_detector(l1_products: L1,
     width along columns. This is not the exact inverse of
     `map_to_detector`.
 
-    Args
+    Args:
       l1_products:
         L1 products (signal and detector settings).
       wavelengths:
@@ -358,7 +358,7 @@ def convert_to_radiance(l1_products: L1,
     The quantum efficiency [e/ph] is taken into account by the PRNU
     step.
 
-    Args
+    Args:
       l1_products:
         L1 products (signal and detector settings).
       rad_corr:

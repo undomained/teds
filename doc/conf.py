@@ -6,6 +6,9 @@
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
+import os
+import sys
+
 project = 'TEDS'
 copyright = '2024, SRON'
 author = 'Raul Laasner'
@@ -18,7 +21,7 @@ version = release
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
-extensions = []
+extensions = ['sphinx.ext.napoleon']
 
 templates_path = ['_templates']
 exclude_patterns = ['_build']
@@ -26,6 +29,12 @@ exclude_patterns = ['_build']
 latex_elements = {
   'extraclassoptions': 'openany'
 }
+
+# Napoleon settings
+sys.path.insert(0, os.path.abspath('..'))
+napoleon_google_docstring = True
+napoleon_use_admonition_for_examples = True
+napoleon_use_admonition_for_notes = True
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output

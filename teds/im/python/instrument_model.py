@@ -90,7 +90,7 @@ def process_im(config_user: dict) -> None:
 
     Read input, process data, and write output.
 
-    Args
+    Args:
       config_user:
         Configuration dictionary directly from file, as given by the user, to
         be expanded with default values for parameters not specified by the

@@ -28,4 +28,5 @@ Contents
    downloading
    installation
    running_the_code
+   api
    contributing

@@ -17,7 +17,7 @@ def bin_data(data: npt.NDArray[np.float64],
     bin indices can have any number of dimensions, as long as they
     have the same number of elements.
 
-    Args
+    Args:
       data:
         Unbinned frames.
       bin_indices:
@@ -50,7 +50,7 @@ def unbin_data(binned_data: npt.NDArray[np.float64],
     where the array of bin indices has the corresponding bin index,
     with a tweak depending on the method.
 
-    Args
+    Args:
       binned_data:
         Binned frames.
       bin_indices:

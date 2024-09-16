@@ -169,13 +169,14 @@ def extract_atm(atm,ialt,iact):
 
     return atm_ext
 
-def Carbon_radiation_scene_generation(config):
-    """Scene generation module.
 
-    Parameters
-    ----------
-    config : Dict
-       Dict containing configuration parameters.
+def Carbon_radiation_scene_generation(config: dict) -> None:
+    """Generate TOA spectra for the Tango-Carbon instrument.
+
+    Args:
+      config
+        Configuration dictionary
+
     """
     #get the geometry data
     

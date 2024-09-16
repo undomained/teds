@@ -99,7 +99,7 @@ def read_binning_pattern(binning_file: str,
                                                   npt.NDArray[np.int32]]:
     """Read a binning pattern.
 
-    Args
+    Args:
       binning_file:
         Path of file with binning patterns.
       binning_table_id:
@@ -139,7 +139,7 @@ def read_proc_level(filename: str) -> ProcLevel:
       filename:
         Path of an L1A file, L1B file, or anything in between.
 
-    Returns
+    Returns:
       Processing (calibration) level of the given file.
 
     """
@@ -155,7 +155,7 @@ def read_ckd(filename: str) -> CKD:
     All available data are read, so unused data are not skipped and
     missing data are not checked.
 
-    Args
+    Args:
       filename:
         Path of CKD file.
 
@@ -269,7 +269,7 @@ def read_geometry(l1_products: L1, config: dict) -> Geometry:
     Geometry is not used for calculations in L1 processing. The
     dictionaries are only used to read some settings.
 
-    Args
+    Args:
       l1_products:
         L1 products (signal and detector settings).
       config:
@@ -338,9 +338,7 @@ def read_l1(filename: str,
         Last frame to read, default last frame in data.
 
     Returns:
-
-    :return: Dictionary of signal and some settings.
-    :rtype: dict
+      L1 products (signal and detector settings).
 
     """
     image_end = None if image_end is None else image_end+1

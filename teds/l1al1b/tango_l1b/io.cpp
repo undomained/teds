@@ -735,8 +735,8 @@ auto copyGeometry(const std::string& l1a_filename,
 {
     const netCDF::NcFile nc_geo { geo_filename, netCDF::NcFile::read };
     const netCDF::NcGroup nc { nc_geo.getGroup("/") };
-    const auto n_alt { nc_geo.getDim("along_track").getSize() };
-    const auto n_act { nc_geo.getDim("across_track").getSize() };
+    const auto n_alt { nc_geo.getDim("along_track_sample").getSize() };
+    const auto n_act { nc_geo.getDim("across_track_sample").getSize() };
     std::vector<double> lat(n_alt * n_act);
     std::vector<double> lon(n_alt * n_act);
     std::vector<double> vza(n_alt * n_act);

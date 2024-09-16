@@ -169,10 +169,32 @@ The type is given after the colon, optionally followed by a default value. An ad
 In TEDS, ``mypy`` is a type hinting tool that is run as part of the regression suite after each push to the repository. If there are any errors the pipeline will fail and the error should be resolved.
 
 
-Doc-strings
-^^^^^^^^^^^
+Docstrings
+^^^^^^^^^^
 
-*coming soon..*
+Ideally, all modules should, functions, and classes exported by a module - in other words all public methods - should have docstrings. Also, a docstring is mandatory for every function that has one or more of the following properties:
+
+* being part of the public API,
+* nontrivial size,
+* non-obvious logic.
+
+The docstring may be descriptive-style ("Fetches rows from a Bigtable.") or imperative-style ("Fetch rows from a Bigtable.") but should be consistent within a file. This project follows the Google style guide for docstrings: https://google.github.io/styleguide/pyguide.html#s3.8-comments-and-docstrings. Most importantly, it has the following structure for the function arguments and return value:
+
+.. code-block:: python
+
+   def read_proc_level(filename: str) -> ProcLevel:
+       """Read the processing level of a L1 file.
+
+       Args:
+         filename:
+           Path of an L1A file, L1B file, or anything in between.
+
+       Returns
+         Processing (calibration) level of the given file.
+
+       """
+
+The difference with Numpy-style docstrings is quite small as long as type hinting is enforced. The main difference is an additional line after the section title (e.g. Args) which makes this a bit more concise than Numpy.
 
 
 Regression tests

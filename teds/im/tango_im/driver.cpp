@@ -21,13 +21,16 @@ namespace tango {
 static auto inverseNonlinearity(const std::string& ckd_file)
 {
     const netCDF::NcFile nc { ckd_file, netCDF::NcFile::read };
-    const auto grp { nc.getGroup("nonlinearity") };
-    const auto n_knots { grp.getDim("knots").getSize() };
-    std::vector<double> knots(n_knots);
-    std::vector<double> y(n_knots);
-    grp.getVar("knots").getVar(knots.data());
-    grp.getVar("y").getVar(y.data());
-    return LinearSpline { y, knots };
+    if (const auto grp { nc.getGroup("nonlinearity") }; !grp.isNull()) {
+        const auto n_knots { grp.getDim("knots").getSize() };
+        std::vector<double> knots(n_knots);
+        std::vector<double> y(n_knots);
+        grp.getVar("knots").getVar(knots.data());
+        grp.getVar("y").getVar(y.data());
+        return LinearSpline { y, knots };
+    } else {
+        return LinearSpline {};
+    }
 }
 
 // Meta data such as the exposure time are read from the L1A input

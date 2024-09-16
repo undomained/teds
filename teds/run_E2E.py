@@ -451,11 +451,10 @@ def get_specific_config(orig_config, kind):
         specific_config['isrf'] = orig_config['im']['isrf']
 
     elif kind == 'pam':
-        output_path = get_file_name(orig_config, 'sgm')
-        specific_config['io']['sgm_atm'] = os.path.join(output_path, orig_config['io']['sgm_atm'])
-
-        output_path = get_file_name(orig_config, 'l1l2')
-        specific_config['io']['l2'] = os.path.join(output_path, orig_config['io']['l2'])
+        for key in ['gm','sgm_rad','sgm_atm_raw','sgm_atm','l2']:
+            output_path = get_file_name(orig_config, key)
+            specific_config['io'][key] = os.path.join(output_path, orig_config['io'][key])
+        specific_config['io']['base_dir'] =  orig_config['io']['base_dir']
 
     else:
         error_msg = f"Unknown module kind {kind}. Unable to fetch corresponding IO config. Exiting!"

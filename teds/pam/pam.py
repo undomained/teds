@@ -12,7 +12,7 @@ from pathlib import Path
 
 from teds import log
 
-def read_file(file):
+def read_file(file, var_names):
     # read in netcdf file, return as dict
     # descends into groups (only 1 level) as saves vars to root of dict
 
@@ -20,12 +20,13 @@ def read_file(file):
 
     def read_vars(f):
         for key in f.variables.keys():
-            var[key] = f[key][:]
-            try:
-                var[key].units = f[key].units
-                var[key].long_name = f[key].long_name
-            except:
-                pass
+            if key in var_names:
+                var[key] = f[key][:]
+                try:
+                    var[key].units = f[key].units
+                    var[key].long_name = f[key].long_name
+                except:
+                    pass
 
     with nc.Dataset(file) as f:
         read_vars(f)
@@ -35,53 +36,55 @@ def read_file(file):
 
     return var
 
-def plot_map(lat,lon,var,var_name,save_location):
+def plot_map(lat, lon, var, f_name, var_name, save_location):
     # map of var
 
     fig = plt.figure(figsize=(12,12))
-    projection = crs.PlateCarree()
+    # projection = crs.PlateCarree()
+    projection = crs.Orthographic(central_longitude=np.mean(lon), central_latitude=np.mean(lat) )
     ax = plt.axes(projection=projection)
 
     cs = ax.pcolormesh(lon,lat,var,transform=crs.PlateCarree())
         # vmin=args.var_min, vmax=args.var_max,alpha=args.opacity, cmap=args.colormap, zorder=3)
-    plt.title(var_name)
+    plt.title(f'{f_name} {var_name}')
     
     cax,kw = colorbar.make_axes(ax,location='bottom',pad=0.05,shrink=0.5)
     cbar=fig.colorbar(cs,cax=cax,**kw)
     try:
-        cbar.set_label(f'{var.long_name} [{var.units}]')
+        cbar.set_label(f'{var.long_name} [{var.units}]', labelpad = 25)
     except:
         pass
 
     ax.set_aspect('equal')
 
-    savestring = var_name.lower().replace(" ", "_")
+    savestring = f_name.lower().replace(" ", "_") +'_'+ var_name.lower().replace(" ", "_")
     plt.savefig(f'{save_location}/{savestring}.png',format='png', dpi=1000, bbox_inches='tight')
 
     return
 
-def plot_map_diff(lat,lon,var1,var2,var_name,plot_name,save_location):
-    # map of difference (var1 - var2)
+def plot_map_diff(lat, lon, var1, var2, f1_name, f2_name, var_name, save_location):
+    # map of difference (var2 - var1)
 
     assert lat.shape == lon.shape == var1.shape == var2.shape
     assert var1.units == var2.units
 
 
-    diff = var1 - var2
+    diff = var2 - var1
     minmax = np.max(np.abs([np.min(diff),np.max(diff)]))
 
     fig = plt.figure(figsize=(12,12))
-    projection = crs.PlateCarree()
+    # projection = crs.PlateCarree()
+    projection = crs.Orthographic(central_longitude=np.mean(lon), central_latitude=np.mean(lat) )
     ax = plt.axes(projection=projection)
 
-    cs = ax.pcolormesh(lon,lat,var1-var2,transform=crs.PlateCarree(),
+    cs = ax.pcolormesh(lon,lat,var2-var1,transform=crs.PlateCarree(),
         vmin=-minmax, vmax=minmax, cmap='bwr', zorder=3)
-    plt.title(var_name)
+    plt.title(f'({f2_name} - {f1_name}) {var_name}')
     
     cax,kw = colorbar.make_axes(ax,location='bottom',pad=0.05,shrink=0.5)
     cbar=fig.colorbar(cs,cax=cax,**kw)
     try:
-        cbar.set_label(f'Difference {plot_name} [{var1.units}]')
+        cbar.set_label(f'Difference {var_name} [{var1.units}]', labelpad = 25)
     except:
         pass
 
@@ -93,9 +96,9 @@ def plot_map_diff(lat,lon,var1,var2,var_name,plot_name,save_location):
 
     return
 
-def plot_scatter(var1,var2,var_name,var1_name,var2_name,save_location):
-    # var 1: truth
-    # var 2: retrieval
+def plot_scatter(var1, var2, f1_name, f2_name, var_name, save_location):
+    # var 1: x
+    # var 2: y
 
     assert var1.shape == var2.shape
     assert var1.units == var2.units
@@ -115,10 +118,10 @@ def plot_scatter(var1,var2,var_name,var1_name,var2_name,save_location):
     # make 1D hist
     if (var1_flat == var1_flat[0]).all():
         plt.figure(figsize=(9,9))
-        plt.hist(var2_flat, bins=25,label='L2')
-        plt.axvline(x=var1_flat[0],linestyle='--',color='k',label='SGM')
+        plt.hist(var2_flat, bins=25,label=f2_name)
+        plt.axvline(x=var1_flat[0],linestyle='--',color='k',label=f1_name)
         plt.ylabel('Count')
-        plt.xlabel(f'{var1_name} [{var1.units}]')
+        plt.xlabel(f'{var_name} [{var1.units}]')
         plt.legend()
         savestring = 'hist_'+var_name.lower().replace(" ", "_")
         plt.savefig(f'{save_location}/{savestring}.png',format='png', dpi=1000, bbox_inches='tight')
@@ -143,8 +146,8 @@ def plot_scatter(var1,var2,var_name,var1_name,var2_name,save_location):
         ax.set_xlim(lims)
         ax.set_ylim(lims)
         plt.title('N = {}, R$^2$ = {:.3f}, mean $\sigma$ = {:.3E}, mean bias = {:.3E}'.format(var1_flat.size,r2, sigma, bias))
-        plt.xlabel(f'{var1_name} [{var1.units}]')
-        plt.ylabel(f'{var2_name} [{var2.units}]')
+        plt.xlabel(f'{f1_name} {var_name} [{var1.units}]', labelpad=25)
+        plt.ylabel(f'{f2_name} {var_name} [{var2.units}]')
         plt.plot(lims,lims*slope+intercept,'k--',alpha=0.5,zorder=2,label='y={:.2f}x+{:.2E}'.format(slope, intercept))
         plt.legend()
         cax,kw = colorbar.make_axes(ax,location='right',pad=0.02,shrink=0.5)
@@ -159,43 +162,51 @@ def plot_scatter(var1,var2,var_name,var1_name,var2_name,save_location):
 
 def pam_nitro(cfg):
 
-
     log.info(f"Started PAM")
 
-    # read SGM atm and L2 file
+    # set fontsize
+    mpl.rcParams.update({'font.size': cfg['font_size']})
 
-    sgm = read_file(cfg['io']['sgm_atm'])
-    l2  = read_file(cfg['io']['l2'])
-    basedir  = os.path.dirname(cfg['io']['l2'])
-
-    savedir = os.path.join(basedir, 'figs' )
+    # create folder for figs
+    savedir = os.path.join(cfg['io']['base_dir'], 'figs' )
     Path(savedir).mkdir(exist_ok=True)
-    
-    plotvars = cfg['plot_list']
-
     log.info(f"Saving figures to: {savedir}")
 
     # loop over plotting vars
+    plotvars = cfg['plot_list']
 
     for varname in plotvars:
-
+        plotvar = plotvars[varname]
         log.info(f'Plotting {varname}')
 
-        plotvar = plotvars[varname]
-        l2_var = l2[plotvar['l2_name']]
-        sgm_var = sgm[plotvar['sgm_name']]
+        # read files
+        f1 = read_file(cfg['io'][plotvar['f1']], [plotvar['f1_var'], 'lat', 'lon'])
 
-        # map of SGM var
-        plot_map(sgm['lat'],sgm['lon'],sgm_var, f'SGM {varname}', savedir)
+        f1_var = f1[plotvar['f1_var']]
+        f1_lat = f1['lat']
+        f1_lon = f1['lon']
+        f1_name = plotvar['f1_name']
 
-        # map of L2 var
-        plot_map(l2['lat'],l2['lon'],l2_var, f'L2 {varname}', savedir)
-        
-        # diff map (L2 - SGM)
-        plot_map_diff(l2['lat'],l2['lon'],l2_var,sgm_var, varname, f'(L2 - SGM) {varname}', savedir)
+        # map of f1 var
+        plot_map(f1_lat, f1_lon, f1_var, f1_name, varname, savedir)
 
-        # scatter plot SGM vs L2 var
-        plot_scatter(sgm_var,l2_var,varname,f'SGM {varname}',f'L2 {varname}', savedir)
+        # if two files are present, plot f2 map, diff and scatter
+        if 'f2' in plotvar:
+            f2 = read_file(cfg['io'][plotvar['f2']], [plotvar['f2_var'], 'lat', 'lon'])
+
+            f2_lat = f2['lat']
+            f2_lon = f2['lon']
+            f2_var = f2[plotvar['f2_var']]
+            f2_name = plotvar['f2_name']
+
+            # map of f2 var
+            plot_map(f2_lat, f2_lon, f2_var, f2_name, varname, savedir)
+            
+            # diff map (f2 - f1)
+            plot_map_diff(f1_lat, f1_lon, f1_var, f2_var, f1_name, f2_name, varname, savedir)
+
+            # scatter plot f1 vs f2 var
+            plot_scatter(f1_var, f2_var, f1_name, f2_name, varname, savedir)
 
     log.info(f'Finished PAM')
 

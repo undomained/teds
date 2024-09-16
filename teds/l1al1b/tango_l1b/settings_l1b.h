@@ -27,7 +27,7 @@ public:
     Setting<std::string> instrument {
         { "instrument" },
         "",
-        "which instrument to run the simulator for (carbon, nitro)"
+        "which instrument to run the simulator for (Carbon, Nitro)"
     };
     Setting<std::string> processing_version {
         { "processing_version" },

@@ -60,7 +60,7 @@ additional diagnostic information.
 @ivar observationError: The 1-sigma error on the observation.
 @type observationError: A L{np.ndarray} instance with length M{n}.
 @ivar independentVariable: The independent variable for the model, for our
-                           retrievals usually M{\lambda}.
+                           retrievals usually M{\\lambda}.
 @type independentVariable: A L{np.ndarray} instance with length M{n}.
 @ivar verbose:   An integer indicating how chatty (and plotting) the model should be.
                  0: be silent, 1: plot to file, 2: show.
@@ -439,7 +439,7 @@ overridden in a subclass.
                    (self.observation-self.modelCalculation)/self.observationError,
                    'k', label="err")
             # l.set_ylabel("$\Delta R/\sigma$")
-            l.set_ylabel("$\Delta R/\sigma$",rotation=0, fontsize=12, labelpad=45)
+            l.set_ylabel("$\\Delta R/\\sigma$",rotation=0, fontsize=12, labelpad=45)
             l.yaxis.tick_right()
             # l.tick_params(axis='y', labelsize=6)
             l.xaxis.set_visible(False)
@@ -654,13 +654,13 @@ After creating an instance, the actual fit is performed in the L{__call__} metho
              holds the a priori information.
 @ivar priorSinvh: One of the transformation matrices obtained with singular
              value decomposition. This one is derived from the a priori error
-             covariance matrix. In pure latex notation: C{\mathbf{S}_a^{-1/2}}
+             covariance matrix. In pure latex notation: C{\\mathbf{S}_a^{-1/2}}
 @ivar priorSinv: One of the transformation matrices obtained with singular
              value decomposition. This one is derived from the a priori error
-             covariance matrix. In pure latex notation: C{\mathbf{S}_a^{-1}}
+             covariance matrix. In pure latex notation: C{\\mathbf{S}_a^{-1}}
 @ivar priorSh: One of the transformation matrices obtained with singular value
              decomposition. This one is derived from the a priori error
-             covariance matrix. In pure latex notation: C{\mathbf{S}_a^{1/2}}
+             covariance matrix. In pure latex notation: C{\\mathbf{S}_a^{1/2}}
 @ivar errSinvhD: The diagonal of the inverse square root of the mearurement
              error covariance matrix. Since the measurement error covariance
              matrix itself is diagonal, this matrix is diagonal as well.

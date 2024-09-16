@@ -1,23 +1,26 @@
 # This source code is licensed under the 3-clause BSD license found in
 # the LICENSE file in the root directory of this project.
 
+from geopandas import GeoDataFrame
+from io import BytesIO
 from shapely import Point
 from shapely import Polygon
-from geopandas import GeoDataFrame
 from pystac_client import Client
 from pystac.item import Item as PystacItem
 from netCDF4 import Dataset
+from requests import get
+from teds import log
+from tqdm import tqdm
+from xarray import DataArray
+import numpy as np
+import numpy.typing as npt
 import rioxarray
 import shapely
-from xarray import DataArray
-from requests import get
-from typing import List
-from tqdm import tqdm
-from io import BytesIO
-from teds import log
+import typing as tp
 
 
-def generate_geometry(lat: List[float], lon: List[float]) -> List[PystacItem]:
+def generate_geometry(lat: DataArray,
+                      lon: npt.NDArray[np.float64]) -> tp.List[PystacItem]:
     # Generate geometry from latitude-longitude points
     latlon = [Point(xy) for xy in zip(lon.ravel(), lat.ravel())]
     # Link points to the WGS84 reference ellipsiod
@@ -34,7 +37,7 @@ def generate_geometry(lat: List[float], lon: List[float]) -> List[PystacItem]:
     # granules. Filter the list first and then download only one or
     # more granules.
     search = api.search(
-        collections=('sentinel-s2-l2a-cogs',),
+        collections=['sentinel-s2-l2a-cogs'],
         query={
             'eo:cloud_cover': {'lt': 0.1},
             'sentinel:valid_cloud_cover': {'eq': True}, },
@@ -46,10 +49,12 @@ def generate_geometry(lat: List[float], lon: List[float]) -> List[PystacItem]:
     # empty polygon for the combined intersects.
     all_boxes = Polygon()
     # List of granules (metadata) being considered in the end
-    collection_filtered = []
+    collection_filtered: list[PystacItem] = []
     for i_granule, granule in enumerate(collection):
         # Crop the bounding box of this granule with the target bounding box
-        intersect = Polygon(granule.geometry['coordinates'][0]).intersection(
+        assert granule.geometry is not None
+        coords = granule.geometry['coordinates']
+        intersect = Polygon(coords[0]).intersection(
             target_box)
         # If adding this box to the list of previously accepted box increases
         # the total area by a certain margin then accept this box.
@@ -60,7 +65,8 @@ def generate_geometry(lat: List[float], lon: List[float]) -> List[PystacItem]:
     return collection_filtered
 
 
-def write_albedo_to_netcdf(albedo_file: str, albedos: List[DataArray]) -> None:
+def write_albedo_to_netcdf(albedo_file: str,
+                           albedos: tp.List[DataArray]) -> None:
     nc = Dataset(albedo_file, 'w')
     nc.title = 'Sentinel 2 albedos for different wavelength bands'
     for albedo in albedos:
@@ -100,7 +106,13 @@ def write_albedo_to_netcdf(albedo_file: str, albedos: List[DataArray]) -> None:
     nc.close()
 
 
-def download_sentinel2_albedo(config) -> None:
+def download_sentinel2_albedo(config: dict) -> None:
+    """Download Sentinel 2 albedo.
+
+    Args:
+      config: configuration settings
+
+    """
     nc = Dataset(config['gm_input'])
     lat = nc['lat'][:]
     lon = nc['lon'][:]

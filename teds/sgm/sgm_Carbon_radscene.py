@@ -51,8 +51,8 @@ def radsgm_output(filename_rad, rad_output):
     nc.title = 'Tango Carbon E2ES SGM radiometric scene'
     nc.product_type = 'SGM'
     nc.createDimension('wavelength', nwav)     # spectral axis
-    nc.createDimension('across_track', nact)     # across track axis
-    nc.createDimension('along_track', nalt)     # along track axis
+    nc.createDimension('across_track_sample', nact)     # across track axis
+    nc.createDimension('along_track_sample', nalt)     # along track axis
 
     # wavelength
     wavelength = np.zeros((nact, nwav))
@@ -69,10 +69,11 @@ def radsgm_output(filename_rad, rad_output):
                               rad_output['solar irradiance'])
     # radiance
 
-    _ = writevariablefromname(nc, 
-                              'radiance_sgm', 
-                              ('along_track', 'across_track', 'wavelength'), 
-                              rad_output['radiance'])
+    _ = writevariablefromname(
+        nc, 
+        'radiance_sgm', 
+        ('along_track_sample', 'across_track_sample', 'wavelength'), 
+        rad_output['radiance'])
 
     return
 
@@ -86,11 +87,11 @@ def sgm_output_atm_ref(filename, atm, albedo, gm_data, gases):
     output_atm = Dataset(filename, mode='w')
     output_atm.title = 'Tango Carbon E2ES SGM atmospheric scene'
 #    output_atm.createDimension('along_gm_org.__getattribute__(gm_para)track', dim_alt)      # along track axis
-    output_atm.createDimension('along_track', dim_alt)      # along track axis
-    output_atm.createDimension('across_track', dim_act)     # across track axis
+    output_atm.createDimension('along_track_sample', dim_alt)      # along track axis
+    output_atm.createDimension('across_track_sample', dim_act)     # across track axis
     output_atm.createDimension('number_layers', dim_lay)         # layer axis
     output_atm.createDimension('number_levels', dim_lev)         # level axis
-    _dims = ('along_track', 'across_track', 'number_layers')
+    _dims = ('along_track_sample', 'across_track_sample', 'number_layers')
     # central layer height
     _ = writevariablefromname(output_atm, 'central_layer_height', _dims, atm.zlay)
     # columndensity_co2
@@ -100,14 +101,14 @@ def sgm_output_atm_ref(filename, atm, albedo, gm_data, gases):
     # columndensity_h2o
     _ = writevariablefromname(output_atm, 'subcol_density_h2o', _dims, atm.H2O)
     # level height
-    _dims = ('along_track', 'across_track', 'number_levels')
+    _dims = ('along_track_sample', 'across_track_sample', 'number_levels')
     _ = writevariablefromname(output_atm, 'levelheight', _dims, atm.zlev)
 
     xco2 = np.sum(atm.CO2,axis=2)/atm.air*1.e6  #[ppm]
     xch4 = np.sum(atm.CH4,axis=2)/atm.air*1.e9  #[ppb]
     xh2o = np.sum(atm.H2O,axis=2)/atm.air*1.e6  #[ppm]
 
-    _dims = ('along_track', 'across_track')
+    _dims = ('along_track_sample', 'across_track_sample')
     # albedo
     _ = writevariablefromname(output_atm, 'albedo', _dims, albedo)
     # column_co2

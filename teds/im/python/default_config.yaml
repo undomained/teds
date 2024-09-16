@@ -1,0 +1,69 @@
+# All user configurable settings and their default values for the
+# instrument model (IM)
+
+# Global attributes
+instrument: Carbon
+processing_version: ""
+
+# Target calibration level
+cal_level: l1a
+
+# The first and last (inclusive) along-track positions to be include
+# in processing.
+image_start: 0
+image_end: null
+
+# Detector related settings
+detector:
+  exposure_time: 0.0
+  # Binning pattern to be applied converting RAW to L1A data
+  binning_table_id: 0
+  # Coaddition factor to be applied converting RAW to L1A data
+  nr_coadditions: 1
+
+# Radiance is convolved with ISRF (yes) or linearly interpolated on
+# CKD wavelength grid (no).
+isrf:
+  enabled: yes
+  # FWHM of ISRF, not necessarily a Gauss here
+  fwhm_gauss: 0.45
+  # Default is a Gauss
+  shape: 2
+
+dark:
+  # Whether to add dark offset and current to detector images
+  enabled: yes
+
+noise:
+  # Whether to add noise to detector images
+  enabled: yes
+  # For random number generator
+  seed: 0
+
+nonlin:
+  # Whether to apply pixel response nonlinearity to detector images
+  enabled: yes
+
+prnu:
+  # Whether to apply PRNU and quantum efficiency to detector images
+  enabled: yes
+
+stray:
+  # Whether to add stray light to detector images
+  enabled: yes
+
+l1b:
+  # Whether to convolve the line-by-line spectra with the ISRF. If
+  # yes, the result is a level 1B product.
+  enabled: yes
+
+# Input/output file paths
+io:
+  # Calibration key data (CKD)
+  ckd: ""
+  # Binning table
+  binning_table: ""
+  # SGM line-by-line radiance spectra
+  sgm: ""
+  # Fully or partially uncalibrated product
+  l1a: ""

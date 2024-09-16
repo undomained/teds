@@ -36,7 +36,7 @@ def read_file(file, var_names):
 
     return var
 
-def plot_map(lat, lon, var, f_name, var_name, save_location):
+def plot_map(cfg, lat, lon, var, f_name, var_name, save_location):
     # map of var
 
     fig = plt.figure(figsize=(12,12))
@@ -51,7 +51,12 @@ def plot_map(lat, lon, var, f_name, var_name, save_location):
     cax,kw = colorbar.make_axes(ax,location='bottom',pad=0.05,shrink=0.5)
     cbar=fig.colorbar(cs,cax=cax,**kw)
     try:
-        cbar.set_label(f'{var.long_name} [{var.units}]', labelpad = 25)
+        cbar.set_label(f'{var.long_name} [{var.units}]')
+        cax.get_xaxis().get_offset_text().set_position((1.15,0))
+        if cfg['font_size']:
+            cax.get_xaxis().get_offset_text().set_fontsize(cfg['font_size']-4)
+        cbar.ax.xaxis.OFFSETTEXTPAD = -15
+
     except:
         pass
 
@@ -62,7 +67,7 @@ def plot_map(lat, lon, var, f_name, var_name, save_location):
 
     return
 
-def plot_map_diff(lat, lon, var1, var2, f1_name, f2_name, var_name, save_location):
+def plot_map_diff(cfg, lat, lon, var1, var2, f1_name, f2_name, var_name, save_location):
     # map of difference (var2 - var1)
 
     assert lat.shape == lon.shape == var1.shape == var2.shape
@@ -85,6 +90,10 @@ def plot_map_diff(lat, lon, var1, var2, f1_name, f2_name, var_name, save_locatio
     cbar=fig.colorbar(cs,cax=cax,**kw)
     try:
         cbar.set_label(f'Difference {var_name} [{var1.units}]', labelpad = 25)
+        cax.get_xaxis().get_offset_text().set_position((1.15,0))
+        if cfg['font_size']:
+            cax.get_xaxis().get_offset_text().set_fontsize(cfg['font_size']-4)
+        cbar.ax.xaxis.OFFSETTEXTPAD = -15
     except:
         pass
 
@@ -165,7 +174,8 @@ def pam_nitro(cfg):
     log.info(f"Started PAM")
 
     # set fontsize
-    mpl.rcParams.update({'font.size': cfg['font_size']})
+    if 'font_size' in cfg:
+        mpl.rcParams.update({'font.size': cfg['font_size']})
 
     # create folder for figs
     savedir = os.path.join(cfg['io']['base_dir'], 'figs' )
@@ -188,7 +198,7 @@ def pam_nitro(cfg):
         f1_name = plotvar['f1_name']
 
         # map of f1 var
-        plot_map(f1_lat, f1_lon, f1_var, f1_name, varname, savedir)
+        plot_map(cfg, f1_lat, f1_lon, f1_var, f1_name, varname, savedir)
 
         # if two files are present, plot f2 map, diff and scatter
         if 'f2' in plotvar:
@@ -200,10 +210,10 @@ def pam_nitro(cfg):
             f2_name = plotvar['f2_name']
 
             # map of f2 var
-            plot_map(f2_lat, f2_lon, f2_var, f2_name, varname, savedir)
+            plot_map(cfg, f2_lat, f2_lon, f2_var, f2_name, varname, savedir)
             
             # diff map (f2 - f1)
-            plot_map_diff(f1_lat, f1_lon, f1_var, f2_var, f1_name, f2_name, varname, savedir)
+            plot_map_diff(cfg, f1_lat, f1_lon, f1_var, f2_var, f1_name, f2_name, varname, savedir)
 
             # scatter plot f1 vs f2 var
             plot_scatter(f1_var, f2_var, f1_name, f2_name, varname, savedir)

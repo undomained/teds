@@ -134,6 +134,7 @@ def download_sentinel2_albedo(config: dict) -> None:
                 size = in_memory_object.write(data)
                 bar.update(size)
         albedo = rioxarray.open_rasterio(in_memory_object)
+        assert isinstance(albedo, DataArray)
         albedo = albedo.assign_attrs({
             'band_label': band_label,
             'gsd': abs(albedo.x.values[1] - albedo.x.values[0])

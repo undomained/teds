@@ -53,7 +53,7 @@ def get_sgm_atm(filen_sgm_atm):
     data = nc.Dataset(filen_sgm_atm, mode='r')
     atm_sgm = {}
     surf_sgm = {}
-    surf_sgm['albedo'] = deepcopy(data['albedo B11'][:])
+    surf_sgm['albedo'] = deepcopy(data['albedo'][:])
     atm_sgm['zlay'] = deepcopy(data['zlay'][:])
     atm_sgm['zlev'] = deepcopy(data['zlev'][:])
     atm_sgm['dcol_co2'] = deepcopy(data['dcol_co2'][:])
@@ -308,7 +308,7 @@ def level1b_to_level2_processor(config, sw_diag_output = False):
 
     print('level 1B to 2 proessor ...')
     l1b = get_l1b(config['io_files']['input_l1b'])
-
+    
     # get sgm geo data
     surf_sgm, atm_sgm = get_sgm_atm(config['io_files']['input_sgm'])
 
@@ -433,7 +433,7 @@ def level1b_to_level2_processor(config, sw_diag_output = False):
                 istart = np.argmin(np.abs(wavelength - wave_start))
                 iend = np.argmin(np.abs(wavelength - wave_end))
                 wave_meas = wavelength[istart:iend+1]  # nm
-    
+                
                 # define isrf function
     
                 isrf_convolution = libNumTools.get_isrf(wave_meas, wave_lbl, config['isrf_settings'])

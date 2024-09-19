@@ -1,0 +1,62 @@
+# Configuration file for running the geometry module
+
+profile: orbit
+
+field_of_regard:
+  nact: 100                   # number of ACT angles (line of sights)
+  nalt: 100                   # number of ALT scn lines
+  alpha_act_min: -1.72        # minimum ACT angle [degree]
+  alpha_act_max: +1.72        # maximum ACT angle [degree]
+
+# target reference point
+geometry:
+  # latitude [degree]  # Jaenschwalde
+  lat_initial: 51.83472
+  # longitude [degree]
+  lon_initial: 14.46277
+
+time:
+  # time increment between ALT scan lines [s]
+  time_incremental: 0.0416667
+  # observation time at reference point, year
+  year: 2022
+  month: 7
+  day: 4
+  hour: 12
+  minute: 00
+  # hours difference from Greenwich
+  timezone: +1
+
+satellite:
+  # roll angle [degree]
+  alpha_roll: 0.
+  # orbit height [m]
+  sat_height: 500000
+
+# orbit propagation
+orbit:
+  epoch: 2022-08-12T12:00:00
+  sat_height: 500.0 # km
+  eccentricity: 0.0
+  arg_perigee: 0.0
+  mean_anomaly: 0.0
+  ltan: 13.823 # decimal hours
+  mean_motion_dot: 0.0
+  drag_coeff: 0.0
+  propagation_duration: 1.67 # hours
+
+sensors:
+  sensor_00__00:
+    n_ground_pixels: 100
+    swath_width: 30.0 # km
+    integration_time: 0.04 # seconds
+    alt_sampling: 0.300 # km
+    start_time: 13.73 # minutes wrt orbit epoch
+    end_time: 13.80 # minutes wrt orbit epoch
+    pitch: 0.0
+    roll: 0.0
+    yaw: 0.0
+
+io_files:
+  output_gm: 'data/geometry.nc'
+gm_title: 'Tango Carbon E2ES GM output'

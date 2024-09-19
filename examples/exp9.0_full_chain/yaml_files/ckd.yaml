@@ -1,0 +1,22 @@
+# Input for ckd_generator.yaml
+
+main:
+  ckd_out: /home/raul/Projects/tango/data/ckd.nc
+  n_detector_rows: 512
+  n_detector_cols: 640
+  # The input CKD will be interpolated to this temperature. Only
+  # applies to variables for which data at different temperatures is
+  # available.
+  temperature: 15.0
+
+dark:
+  ckd_in: /home/raul/Projects/tango/data/ckd/OWL640N_low-gain_ckd.nc
+
+noise:
+  ckd_in: /home/raul/Projects/tango/data/ckd/OWL640N_low-gain_ckd.nc
+
+prnu:
+  ckd_in: /home/raul/Projects/tango/data/ckd/OWL640N_low-gain_ckd.nc
+
+stray:
+  ckd_in: /home/raul/Projects/tango/data/ckd_stray.nc

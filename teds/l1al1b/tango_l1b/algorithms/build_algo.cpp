@@ -16,6 +16,7 @@
 #include "coaddition.h"
 #include "ISRF.h"
 #include "draw_on_detector.h"
+#include "extract_spectra.h"
 
 namespace tango {
 
@@ -35,6 +36,7 @@ BuildAlgo::BuildAlgo() {
     algo_map["Coaddition"] = []() -> BaseAlgo* { return new Coaddition(); };
     algo_map["ISRF"] = []() -> BaseAlgo* { return new ISRF(); };
     algo_map["Draw_On_Detector"] = []() -> BaseAlgo* { return new DrawOnDetector(); };
+    algo_map["Extract_Spectra"] = []() -> BaseAlgo* { return new ExtractSpectra(); };
 }
 
 BuildAlgo::~BuildAlgo() = default;

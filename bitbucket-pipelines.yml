@@ -9,7 +9,7 @@ definitions:
         size: 8x #  32 GiB
 
 pipelines:
-  default:
+  custom:
     - parallel:
       - step:
           <<: *step-defaults

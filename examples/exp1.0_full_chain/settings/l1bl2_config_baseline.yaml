@@ -6,7 +6,7 @@ retrieval_init:                 #initialization parameter for inversion
     first_ALT_index: 50
     last_ALT_index: 56
     sw_prof_init: 'sgm'         #switch between 'afgl' and 'sgm' initialization 
-    batch_size: 25              #max ACT pixels to retrieve simultaneously
+    batch_size: 20              #max ACT pixels to retrieve simultaneously
     deallocate_chunk: False     #set to True on memory-constrained systems
     use_float64: False          #set to False unless you absolutely need it
     prior_XCO2: 0.0003          #prior CO2 concentration

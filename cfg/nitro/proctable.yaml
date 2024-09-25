@@ -21,4 +21,7 @@ algos_l1b:
     - PRNU
 #   - Straylight (waiting for data)
     - Radiometric
+# Note: below algo only needed when wanting to compare with input.
+# When running L1B for real binning should be sufficient.
+    - Extract_Spectra
     

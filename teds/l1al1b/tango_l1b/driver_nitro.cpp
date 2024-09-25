@@ -78,6 +78,7 @@ auto driver_nitro(const SettingsL1B& settings,
     //    std::array<Timer, algo_list_length> timers {};
     std::array<Timer, 20> timers {};
 
+    bool is_spectra = false;
     #pragma omp parallel for schedule(dynamic)
 
     for (int i_alt = 0; i_alt < static_cast<int>(l1_measurement.size()); ++i_alt) {
@@ -93,6 +94,11 @@ auto driver_nitro(const SettingsL1B& settings,
         int i_algo = 0;
         for (YAML::const_iterator it=algo_list.begin(); it!=algo_list.end();it++){
             
+            std::string algo_name = it->as<std::string>();
+            if (!algo_name.compare("Extract_Spectra")){
+                is_spectra = true;
+            }
+
             BuildAlgo algo_builder;
             BaseAlgo* algo = algo_builder.CreateAlgo(it->as<std::string>());
             if (algo) {
@@ -123,7 +129,12 @@ auto driver_nitro(const SettingsL1B& settings,
 
     printHeading("Writing file");
 
-    l1_measurement.write(settings.io.l1b, "L1B", settings.getConfig(), argc, argv);
+    if (is_spectra){
+        // a bit of a hack to get L1B to output spectra (observations) when ExtractSpectra is involved
+        l1_measurement.write(settings.io.l1b, "SGM", settings.getConfig(), argc, argv);
+    } else{
+        l1_measurement.write(settings.io.l1b, "L1B", settings.getConfig(), argc, argv);
+    }
 
     printHeading("Success");
 

@@ -447,9 +447,6 @@ def get_specific_config(orig_config, kind):
         output_path = get_file_name(orig_config, 'l1al1b')
         specific_config['io']['l1b'] = os.path.join(output_path, orig_config['io']['l1b'])
 
-        # Also need acces to isrf which is a IM configuration parameter
-        specific_config['isrf'] = orig_config['im']['isrf']
-
     elif kind == 'pam':
         for key in ['gm','sgm_rad','sgm_atm_raw','sgm_atm','l2']:
             output_path = get_file_name(orig_config, key)

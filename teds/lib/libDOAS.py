@@ -1737,7 +1737,9 @@ def ReadRad(f, iscan):
 
     # photons to mol
     rad /= constants.NA
-    radError /= constants.NA
+    # radError /= constants.NA
+
+    radError = rad.copy() * 1e-6 # fixed noise value, otherwise OE does not work
 
     radFlag = np.zeros(rad.shape) # TODO: placeholder
 

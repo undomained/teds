@@ -19,12 +19,12 @@ def read_doas(file_doas, slice_alt, slice_act):
     with nc.Dataset(file_doas) as f:
         doas['no2_scd'] = f['doas/no2/nitrogendioxide_slant_column_density'][slice_alt,slice_act]
         doas['no2_scd_error'] = f['doas/no2/nitrogendioxide_slant_column_density_precision'][slice_alt,slice_act]
-        doas['lat'] = f['lat'][slice_alt,slice_act]
-        doas['lon'] = f['lon'][slice_alt,slice_act]
-        doas['sza'] = f['sza'][slice_alt,slice_act]
-        doas['vza'] = f['vza'][slice_alt,slice_act]
-        doas['saa'] = f['saa'][slice_alt,slice_act]
-        doas['vaa'] = f['vaa'][slice_alt,slice_act]
+        doas['lat'] = f['latitude'][slice_alt,slice_act]
+        doas['lon'] = f['longitude'][slice_alt,slice_act]
+        doas['sza'] = f['solarzenithangle'][slice_alt,slice_act]
+        doas['vza'] = f['viewingzenithangle'][slice_alt,slice_act]
+        doas['saa'] = f['solarazimuthangle'][slice_alt,slice_act]
+        doas['vaa'] = f['viewingazimuthangle'][slice_alt,slice_act]
     return doas
 
 def read_cloud(file_cloud, slice_alt, slice_act):
@@ -38,7 +38,12 @@ def read_cloud(file_cloud, slice_alt, slice_act):
             cloud['cloud_bottom_pressure_error'] = f['cloud_bottom_pressure_error'][slice_alt,slice_act]
             cloud['cloud_fraction'] = f['cloud_fraction'][slice_alt,slice_act]
         else:
-            cloud['cloud_fraction'] = np.zeros_like(f['lat'][slice_alt,slice_act])
+            cloud['cloud_fraction'] = np.zeros_like(f['latitude'][slice_alt,slice_act])
+            cloud['cot'] = np.zeros_like(f['latitude'][slice_alt,slice_act])
+            cloud['cot_error_alb'] = np.zeros_like(f['latitude'][slice_alt,slice_act])
+            cloud['cot_error_R'] = np.zeros_like(f['latitude'][slice_alt,slice_act])
+            cloud['cloud_bottom_pressure'] = np.zeros_like(f['latitude'][slice_alt,slice_act])
+            cloud['cloud_bottom_pressure_error'] = np.zeros_like(f['latitude'][slice_alt,slice_act])
     return cloud
 
 def get_amf(cfg, doas, atm, cloud):
@@ -490,11 +495,11 @@ def write_amf(cfg, amf, slice_alt, slice_act):
 
         if amf[var].ndim == 2:
             dim = ('scanline','ground_pixel')
-            out = np.ma.masked_all_like(dst['lat'])
+            out = np.ma.masked_all_like(dst['latitude'])
             out[slice_alt,slice_act] = amf[var]
         elif amf[var].ndim == 3:
             dim = ('scanline','ground_pixel','pressure_layers')
-            out = np.ma.masked_all(dst['lat'].shape+(amf[var].shape[-1],))
+            out = np.ma.masked_all(dst['latitude'].shape+(amf[var].shape[-1],))
             out[slice_alt,slice_act,:] = amf[var]
         else:
             log.error('{var} has {var.ndim} dimensions, not recognised.')

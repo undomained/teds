@@ -23,12 +23,12 @@ def read_doas(file_doas, slice_alt, slice_act):
         doas['o2o2_scd_error'] = f['doas/o2o2/oxygen_oxygen_dimer_slant_column_density_precision'][slice_alt,slice_act]
         doas['o2o2_R'] = f['doas/o2o2/O2O2_continuum_reflectance_at_reference_wavelength'][slice_alt,slice_act]
         doas['o2o2_R_error'] = f['doas/o2o2/O2O2_continuum_reflectance_at_reference_wavelength_precision'][slice_alt,slice_act]
-        doas['lat'] = f['lat'][slice_alt,slice_act]
-        doas['lon'] = f['lon'][slice_alt,slice_act]
-        doas['sza'] = f['sza'][slice_alt,slice_act]
-        doas['vza'] = f['vza'][slice_alt,slice_act]
-        doas['saa'] = f['saa'][slice_alt,slice_act]
-        doas['vaa'] = f['vaa'][slice_alt,slice_act]
+        doas['lat'] = f['latitude'][slice_alt,slice_act]
+        doas['lon'] = f['longitude'][slice_alt,slice_act]
+        doas['sza'] = f['solarzenithangle'][slice_alt,slice_act]
+        doas['vza'] = f['viewingzenithangle'][slice_alt,slice_act]
+        doas['saa'] = f['solarazimuthangle'][slice_alt,slice_act]
+        doas['vaa'] = f['viewingazimuthangle'][slice_alt,slice_act]
     return doas
 
 def get_cloud_fraction(cfg, doas, atm):
@@ -348,11 +348,11 @@ def write_cloud(cfg, cloud, slice_alt, slice_act):
 
         if cloud[var].ndim == 2:
             dim = ('scanline','ground_pixel')
-            out = np.ma.masked_all_like(dst['lat'])
+            out = np.ma.masked_all_like(dst['latitude'])
             out[slice_alt,slice_act] = cloud[var]
         elif cloud[var].ndim == 3:
             dim = ('scanline','ground_pixel','pressure_layers')
-            out = np.ma.masked_all(dst['lat'].shape+(cloud[var].shape[-1],))
+            out = np.ma.masked_all(dst['latitude'].shape+(cloud[var].shape[-1],))
             out[slice_alt,slice_act,:] = cloud[var]
         else:
             log.error('{var} has {var.ndim} dimensions, not recognised.')

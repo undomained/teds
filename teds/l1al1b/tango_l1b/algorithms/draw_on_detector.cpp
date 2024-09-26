@@ -75,7 +75,7 @@ void DrawOnDetector::algoExecute(const CKD& ckd, L1& l1) {
     }
     std::vector<double> image_zeros(l1.image.size());
     l1.stdev = image_zeros;
-    *l1.wavelength = ckd.wave.wave_map; // Set wavelength
+    l1.wavelength = std::make_shared<std::vector<std::vector<double>>>(ckd.wave.wave_map); // Set wavelength
     l1.units = "counts";
 }
 

@@ -428,7 +428,7 @@ void L1Measurement::readSceneData(const netCDF::NcFile& nc){
     nc.getVar("wavelength").getVar(wavelength.data());
 
     // import wavelength
-    auto wavelength_lbl {std::make_shared<std::vector<std::vector<double>>>(n_act, std::vector<double>(n_wavelength))};
+    auto wavelength_lbl = std::make_shared<std::vector<std::vector<double>>>(n_act, std::vector<double>(n_wavelength));
     for (size_t i_act {}; i_act < n_act; ++i_act) {
         for (size_t i {}; i < n_wavelength; ++i) {
             (*wavelength_lbl)[i_act][i] = wavelength[i];
@@ -438,6 +438,7 @@ void L1Measurement::readSceneData(const netCDF::NcFile& nc){
     // set wavelengths
     for (L1& l1 : l1_measurement) {
         l1.wavelength = wavelength_lbl;
+        l1.wavelength.reset();
         l1.observation_wl = wavelength_lbl;
     }
 

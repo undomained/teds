@@ -101,9 +101,10 @@ void L1Measurement::write(const std::string& filename,
     if (level == "SGM"){
         // Need to check if proctable has only ISRF in it.
         writeObservationData(nc);
+        writeGeolocationData(nc);
     } else {
         writeScienceData(nc);
-        writeGeolocationData(nc);
+        // writeGeolocationData(nc);
     }
 
 }
@@ -284,7 +285,8 @@ void L1Measurement::writeGeolocationData(netCDF::NcFile& nc) {
     // across_track is row for science data
     const auto n_across_track {(*l1_measurement.front().wavelength).size()};
 
-    const auto nc_across_track { nc.addDim("across_track", n_across_track) };
+    // const auto nc_across_track { nc.addDim("across_track", n_across_track) };
+    const auto nc_across_track = nc.getDim("across_track");
     const auto nc_images = nc.getDim("along_track");
     const std::vector<netCDF::NcDim> geometry_shape { nc_images, nc_across_track };
 

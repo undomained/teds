@@ -114,9 +114,6 @@ void ExtractSpectra::algoExecute(const CKD& ckd, L1& l1) {
         }
     }
 
-// TODO What should units be now?
-    l1.units = "counts";
-
 // TODO To be able to compare to input, should we not also go to original wavelength grid of spectra??????
 //
 }

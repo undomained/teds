@@ -7,22 +7,23 @@ reading/writing input/output files, and tests for things like whether
 a file is readable/writable.
 
 """
-from .l1b_types import CKD
-from .l1b_types import Geometry
-from .l1b_types import L1
-from .l1b_types import ProcLevel
-
 from datetime import datetime
 from datetime import timezone
+from pathlib import Path
+import os
+
 from netCDF4 import Dataset
 from netCDF4 import default_fillvals
-from pathlib import Path
-import xarray as xr
 import numpy as np
 import numpy.typing as npt
-import os
 import subprocess
+import xarray as xr
 import yaml
+
+from .types import CKD
+from .types import Geometry
+from .types import L1
+from .types import ProcLevel
 
 
 def print_heading(heading: str, empty_line: bool = True) -> None:

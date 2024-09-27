@@ -3,3 +3,5 @@
 '''Functions for using L1B processor.'''
 
 from teds.l1al1b.python.l1b_processor import process_l1b  # noqa: F401
+
+__path__[0] = __path__[0] + '/python'

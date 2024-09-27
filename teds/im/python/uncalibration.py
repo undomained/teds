@@ -7,19 +7,20 @@ L1A-L1B processor, gradually bringing the data level from L1B to L1A
 or anywhere in between.
 
 """
-from teds.l1al1b.python.binning import bin_data
-from teds.l1al1b.python.calibration import convolve_with_all_kernels
-from teds.l1al1b.python.io import read_binning_pattern
-from teds.l1al1b.python.l1b_types import CKDNoise
-from teds.l1al1b.python.l1b_types import CKDNonlin
-from teds.l1al1b.python.l1b_types import CKDStray
-from teds.l1al1b.python.l1b_types import ProcLevel
-from teds.l1al1b.python.l1b_types import L1
+import math
 
 from scipy.interpolate import CubicSpline
-import math
 import numpy as np
 import numpy.typing as npt
+
+from teds.l1al1b.binning import bin_data
+from teds.l1al1b.calibration import convolve_with_all_kernels
+from teds.l1al1b.io import read_binning_pattern
+from teds.l1al1b.types import CKDNoise
+from teds.l1al1b.types import CKDNonlin
+from teds.l1al1b.types import CKDStray
+from teds.l1al1b.types import ProcLevel
+from teds.l1al1b.types import L1
 
 
 def convolve_with_isrf(signals_in: npt.NDArray[np.float64],

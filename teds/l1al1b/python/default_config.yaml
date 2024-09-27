@@ -6,7 +6,7 @@ instrument: Carbon
 processing_version: ""
 
 # Target calibration level
-cal_level: L1A
+cal_level: L1B
 
 # The first and last (inclusive) along-track positions to be include
 # in processing.

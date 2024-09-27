@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # This source code is licensed under the 3-clause BSD license found in
 # the LICENSE file in the root directory of this project.
 """Level 1A to 1B processor.
@@ -19,6 +18,14 @@ Input files are:
 - (optionally) netCDF geometry data io.geometry
 
 """
+from pathlib import Path
+import argparse
+import os
+
+import numpy as np
+import yaml
+
+from . import calibration as cal
 from .binning import bin_data
 from .io import print_heading
 from .io import print_system_info
@@ -27,18 +34,10 @@ from .io import read_ckd
 from .io import read_l1
 from .io import read_proc_level
 from .io import write_l1
-from .l1b_types import ProcLevel
-from .l1b_types import L1
-
+from .types import ProcLevel
+from .types import L1
 from teds import log
 from teds.lib.utils import merge_configs
-import teds.l1al1b.python.calibration as cal
-
-from pathlib import Path
-import argparse
-import numpy as np
-import os
-import yaml
 
 
 def check_config(config: dict) -> None:
@@ -96,19 +95,17 @@ def process_l1b(config_user: dict) -> None:
         user.
 
     """
-    # Start with the full default config and then merge in those
-    # settings given by the user.
-    defaults_filename = os.path.join(
-        os.path.dirname(__file__), 'default_config.yaml')
-    config: dict = yaml.safe_load(open(defaults_filename))
-    merge_configs(config, config_user)
-    check_config(config)
-
     print_heading('Tango L1B processor', empty_line=False)
     print_system_info()
 
-    # Read CKD
     print_heading('Reading CKD and input data')
+    # Start with the full default config and then merge in those
+    # settings given by the user.
+    defaults_filename = Path(__file__).parent / 'default_config.yaml'
+    config: dict = yaml.safe_load(open(defaults_filename))
+    merge_configs(config, config_user)
+    check_config(config)
+    # Read input data
     ckd = read_ckd(config['io']['ckd'])
 
     # Read input data
@@ -124,7 +121,7 @@ def process_l1b(config_user: dict) -> None:
         data_binning_table_id,
         ckd['n_detrows'],
         ckd['n_detcols'])
-    # binning CKD instead of unbinning data
+    # Binning CKD instead of unbinning data
     if config['unbinning'] == 'none' and not (
             bin_indices.ravel()
             == np.arange(ckd['n_detrows'] * ckd['n_detcols'])).all():

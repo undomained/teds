@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # This source code is licensed under the 3-clause BSD license found in
 # the LICENSE file in the root directory of this project.
 """Instrument model (level 1B to 1A processor).
@@ -19,24 +18,25 @@ Input files are:
 - (optionally) netCDF geometry data io.geometry
 
 """
-from teds import log
-from teds.l1al1b.python.io import print_heading
-from teds.l1al1b.python.io import print_system_info
-from teds.l1al1b.python.io import read_binning_pattern
-from teds.l1al1b.python.io import read_ckd
-from teds.l1al1b.python.io import read_l1
-from teds.l1al1b.python.io import read_proc_level
-from teds.l1al1b.python.io import write_l1
-from teds.l1al1b.python.l1b_types import ProcLevel
-from teds.l1al1b.python.l1b_types import L1
-from teds.lib.utils import merge_configs
-import teds.im.python.uncalibration as cal
-
 from pathlib import Path
 import argparse
-import numpy as np
 import os
+
+import numpy as np
 import yaml
+
+from . import uncalibration as cal
+from teds import log
+from teds.l1al1b.io import print_heading
+from teds.l1al1b.io import print_system_info
+from teds.l1al1b.io import read_binning_pattern
+from teds.l1al1b.io import read_ckd
+from teds.l1al1b.io import read_l1
+from teds.l1al1b.io import read_proc_level
+from teds.l1al1b.io import write_l1
+from teds.l1al1b.types import ProcLevel
+from teds.l1al1b.types import L1
+from teds.lib.utils import merge_configs
 
 
 def check_config(config: dict) -> None:
@@ -97,19 +97,17 @@ def process_im(config_user: dict) -> None:
         user.
 
     """
-    # Start with the full default config and then merge in those
-    # settings given by the user.
-    defaults_filename = os.path.join(
-        os.path.dirname(__file__), 'default_config.yaml')
-    config: dict = yaml.safe_load(open(defaults_filename))
-    merge_configs(config, config_user)
-    check_config(config)
-
     print_heading('Tango instrument model', empty_line=False)
     print_system_info()
 
-    # Read CKD
     print_heading('Reading CKD and input data')
+    # Start with the full default config and then merge in those
+    # settings given by the user.
+    defaults_filename = Path(__file__).parent / 'default_config.yaml'
+    config: dict = yaml.safe_load(open(defaults_filename))
+    merge_configs(config, config_user)
+    check_config(config)
+    # Read input data
     ckd = read_ckd(config['io']['ckd'])
 
     # Read input data

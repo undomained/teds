@@ -5,10 +5,10 @@
 Much of this is also used by the instrument model (IM).
 
 """
-
 from enum import auto
 from enum import IntEnum
 from typing import TypedDict
+
 import numpy as np
 import numpy.typing as npt
 

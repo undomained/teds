@@ -5,18 +5,18 @@
 Each function should set the new data level accordingly.
 
 """
-from .binning import unbin_data
-from .l1b_types import CKDNoise
-from .l1b_types import CKDNonlin
-from .l1b_types import CKDStray
-from .l1b_types import L1
-from .l1b_types import ProcLevel
-
-
 from scipy.fft import fft2
 from scipy.fft import ifft2
 import numpy as np
 import numpy.typing as npt
+
+
+from .binning import unbin_data
+from .types import CKDNoise
+from .types import CKDNonlin
+from .types import CKDStray
+from .types import L1
+from .types import ProcLevel
 
 
 def remove_coadding_and_binning(l1_products: L1,
@@ -78,7 +78,7 @@ def remove_offset(l1_products: L1, offset: npt.NDArray[np.float64]) -> None:
         Detector map of offset [counts].
 
     """
-    # assuming bad pixels are NaN already
+    # Assuming bad pixels are NaN already
     l1_products['signal'] -= offset.ravel()
     # Uncertainty of offset not implemented and would mess with the
     # binning factors in RAW data. No change of processing level.
@@ -138,7 +138,7 @@ def remove_darksignal(l1_products: L1,
         Detector map of dark current [counts/s].
 
     """
-    # assuming bad pixels are NaN already
+    # Assuming bad pixels are NaN already
     l1_products['signal'] -= (
         dark_current.ravel()*l1_products['exptimes'][..., None])
     # uncertainty of dark signal not implemented
@@ -166,7 +166,7 @@ def remove_nonlinearity(l1_products: L1, ckd: CKDNonlin) -> None:
 
     """
     # C++ code gives noise that is orders of magnitude too large
-    dx = 0.001*np.min(np.diff(ckd['expected']))
+    dx = 0.001 * np.min(np.diff(ckd['expected']))
     l1_products['noise'] *= (
         (np.interp(l1_products['signal'] + dx,
                    ckd['observed'],

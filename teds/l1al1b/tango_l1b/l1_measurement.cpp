@@ -437,7 +437,6 @@ void L1Measurement::readSceneData(const netCDF::NcFile& nc){
 
     // set wavelengths
     for (L1& l1 : l1_measurement) {
-        l1.wavelength = wavelength_lbl;
         l1.wavelength.reset();
         l1.observation_wl = wavelength_lbl;
     }

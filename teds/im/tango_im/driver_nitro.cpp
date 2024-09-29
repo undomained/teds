@@ -13,6 +13,7 @@
 #include <tango_l1b/io.h>
 #include <tango_l1b/l1.h>
 #include <tango_l1b/l1_measurement.h>
+#include <tango_l1b/datasets.h>
 #include <tango_l1b/timer.h>
 #include <tango_l1b/algorithms/build_algo.h>
 #include <tango_l1b/algorithms/base_algo.h>
@@ -57,12 +58,17 @@ auto driver_nitro(const SettingsIM& settings,
     printHeading("Reading CKD and input data");
     const CKD ckd { settings.io.ckd };
 
+    Dataset input_data;
+    input_data.add_container("ckd",ckd);
+
     printHeading("Initialize the binning table");
     // Initialize the binning table
     const BinningTable binning_table { ckd.n_detector_rows,
                                        ckd.n_detector_cols,
                                        settings.io.binning_table,
                                        settings.detector.binning_table_id };
+
+    input_data.add_container("binning",binning_table);
 
     const std::string& config = settings.getConfig();
 
@@ -107,7 +113,8 @@ auto driver_nitro(const SettingsIM& settings,
                 timers[static_cast<int>(i_algo)].start();
                 if (algo->algoCheckInput(ckd, l1)) {
                     spdlog::info("{: ^30}", algo->getName()); // Remove this later
-                    algo->algoExecute(ckd, l1);
+//                    algo->algoExecute(ckd, l1, binning_table);
+                    algo->algoExecute(l1, input_data);
                 }
                 timers[static_cast<int>(i_algo)].stop();
             }

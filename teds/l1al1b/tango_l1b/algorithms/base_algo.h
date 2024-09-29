@@ -7,12 +7,15 @@
 
 #include <string>
 #include <map>
+#include "../datasets.h"
 #include "../ckd.h"
 #include "../l1.h"
+#include "../binning_table.h"
 #include <spdlog/spdlog.h>
 
 namespace tango {
 
+class Dataset;
 class CKD;
 class L1;
 
@@ -41,7 +44,7 @@ public:
     /// Virtual function to be implemented by each algorithm which
     /// inherits from BaseAlgorithm. In this function algorithm-specific code
     /// should be placed which implements the intended correction.
-    virtual void algoExecute(const CKD& ckd, L1& l1);
+    virtual void algoExecute(L1& l1, const Dataset& input_data);
 
 //    // TODO do we need this unload?
 //    /// Set all data pointers to NULL.

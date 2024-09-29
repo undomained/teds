@@ -33,7 +33,8 @@ public:
     void getPixelIndices(const double spectrum_width);
 
     /// Perform the algorithm
-    void algoExecute(const CKD& ckd, L1& l1) override;
+    void algoExecute(L1& l1, const Dataset& input_data) override;
+
 
 };
 } // namespace tango

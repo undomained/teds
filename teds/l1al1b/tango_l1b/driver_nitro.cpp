@@ -9,6 +9,7 @@
 #include "io.h"
 #include "l1.h"
 #include "l1_measurement.h"
+#include "datasets.h"
 #include "settings_l1b.h"
 #include "timer.h"
 #include <yaml-cpp/yaml.h>
@@ -36,6 +37,9 @@ auto driver_nitro(const SettingsL1B& settings,
     printHeading("Reading CKD and input data");
     CKD ckd(settings.io.ckd, settings.swath.spectrum_width);
 
+    Dataset input_data;
+    input_data.add_container("ckd",ckd);
+
     const std::string& config = settings.getConfig();
 
     L1Measurement l1_measurement(settings.io.l1a, settings.image_start, settings.image_end.value_or(fill::i), config);
@@ -47,6 +51,8 @@ auto driver_nitro(const SettingsL1B& settings,
         settings.io.binning_table,
         static_cast<int>(l1_measurement.front().binning_table_id)
     };
+    input_data.add_container("binning",binning_table);
+
     if (settings.unbinning == Unbin::none) {
         binning_table.bin(ckd.pixel_mask);
         binning_table.bin(ckd.dark.offset);
@@ -105,7 +111,7 @@ auto driver_nitro(const SettingsL1B& settings,
                 timers[static_cast<int>(i_algo)].start();
                 if (algo->algoCheckInput(ckd, l1)) {
                     spdlog::info("{: ^30}", algo->getName()); // Remove this later
-                    algo->algoExecute(ckd, l1);
+                    algo->algoExecute(l1, input_data);
                 }
                 timers[static_cast<int>(i_algo)].stop();
             }

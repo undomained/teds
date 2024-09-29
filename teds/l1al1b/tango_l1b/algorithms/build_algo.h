@@ -13,9 +13,6 @@
 
 namespace tango {
 
-//class PRNUCorrection;
-//class DummyCorrection;
-
 class BuildAlgo {
 public:
     BuildAlgo();

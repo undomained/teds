@@ -17,6 +17,7 @@
 #include "ISRF.h"
 #include "draw_on_detector.h"
 #include "extract_spectra.h"
+#include "binning.h"
 
 namespace tango {
 
@@ -25,6 +26,7 @@ namespace tango {
 // Left: algo name defined in proctable
 // Right: algo name defined in cpp file. 
 BuildAlgo::BuildAlgo() {
+    algo_map["Binning"] = []() -> BaseAlgo* { return new Binning(); };
     algo_map["DummyCorrection"] = []() -> BaseAlgo* { return new DummyCorrection(); };
     algo_map["PRNU"] = []() -> BaseAlgo* { return new PRNU(); };
     algo_map["Dark_Offset"] = []() -> BaseAlgo* { return new DarkOffset(); };

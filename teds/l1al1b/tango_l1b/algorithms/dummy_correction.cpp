@@ -26,7 +26,8 @@ bool DummyCorrection::algoCheckInput(const CKD& ckd, L1& l1) {
 //    spdlog::info("DummyCorrection unload fct still to be filled in");
 //}
 
-void DummyCorrection::algoExecute(const CKD& ckd, L1& l1) {
+void DummyCorrection::algoExecute(L1& l1, const Dataset& input_data) {
+
     spdlog::info("DummyCorrection algoExecute fct still to be filled in");
 }
 

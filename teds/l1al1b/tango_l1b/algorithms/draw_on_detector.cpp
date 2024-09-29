@@ -31,7 +31,10 @@ bool DrawOnDetector::algoCheckInput(const CKD& ckd, L1& l1) {
 //    spdlog::info("DrawOnDetector unload fct still to be filled in");
 //}
 
-void DrawOnDetector::algoExecute(const CKD& ckd, L1& l1) {
+void DrawOnDetector::algoExecute(L1& l1, const Dataset& input_data) {
+
+    CKD const& ckd = input_data.get_container<CKD>("ckd");
+
     int n_pixels = ckd.n_detector_rows * ckd.n_detector_cols;
     l1.image.assign(n_pixels, 0.0);
 

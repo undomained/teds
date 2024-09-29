@@ -68,7 +68,10 @@ bool ISRF::algoCheckInput(const CKD& ckd, L1& l1) {
 //    spdlog::info("ISRF unload fct still to be filled in");
 //}
 
-void ISRF::algoExecute(const CKD& ckd, L1& l1) {
+void ISRF::algoExecute(L1& l1, const Dataset& input_data) {
+
+    CKD const& ckd = input_data.get_container<CKD>("ckd");
+
     int center_ix = (ckd.n_isrf_samples - 1) / 2;
     for (int i_act {}; i_act < ckd.n_act; ++i_act) {
         std::vector<double> signal_conv(ckd.n_lbl, 0.0);

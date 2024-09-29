@@ -34,7 +34,10 @@ bool Noise::algoCheckInput(const CKD& ckd, L1& l1) {
 //    spdlog::info("Noise unload fct still to be filled in");
 //}
 
-void Noise::algoExecute(const CKD& ckd, L1& l1) {
+void Noise::algoExecute(L1& l1, const Dataset& input_data) {
+
+    CKD const& ckd = input_data.get_container<CKD>("ckd");
+
     spdlog::warn("Noise, binning not yet taken into account");
     for (int i {}; i < static_cast<int>(l1.image.size()); ++i) {
         if (l1.pixel_mask[i]) {

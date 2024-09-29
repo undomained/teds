@@ -26,7 +26,7 @@ std::string BaseAlgo::getName() const {
 //    spdlog::info("BaseAlgo unload fct still to be filled in");
 //}
 
-void BaseAlgo::algoExecute(const CKD& ckd, L1& l1)
+void BaseAlgo::algoExecute(L1& l1, const Dataset& input_data)
 {
     spdlog::info("BaseAlgo algoExecute fct still to be filled in");
 }

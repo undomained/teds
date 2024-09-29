@@ -35,7 +35,10 @@ bool DAC::algoCheckInput(const CKD& ckd, L1& l1) {
 //    spdlog::info("DAC unload fct still to be filled in");
 //}
 
-void DAC::algoExecute(const CKD& ckd, L1& l1) {
+void DAC::algoExecute(L1& l1, const Dataset& input_data) {
+
+    CKD const& ckd = input_data.get_container<CKD>("ckd");
+
     spdlog::warn("Conversion factor (bits or counts -> voltage) not implemented");
     float f_DAC = 1.0; 
 

@@ -1,6 +1,7 @@
 // This source code is licensed under the 3-clause BSD license found
 // in the LICENSE file in the root directory of this project.
 
+#include "../datasets.h"
 #include "straylight.h"
 
 namespace tango {
@@ -50,7 +51,10 @@ static auto fillHoles(const std::vector<bool>& pixel_mask,
 }
 
 
-void Straylight::algoExecute(const CKD& ckd, L1& l1) {
+void Straylight::algoExecute(L1& l1, const Dataset& input_data) {
+
+    CKD const& ckd = input_data.get_container<CKD>("ckd");
+
     fillHoles(l1.pixel_mask, l1.image);
     // Unbin the image using the stray light binning table
     std::vector<double> image_unbin(ckd.npix);

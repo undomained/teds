@@ -28,7 +28,9 @@ bool ExtractSpectra::algoCheckInput(const CKD& ckd, L1& l1) {
     return true;
 }
 
-void ExtractSpectra::algoExecute(const CKD& ckd, L1& l1) {
+void ExtractSpectra::algoExecute(L1& l1, const Dataset& input_data) {
+
+    CKD const& ckd = input_data.get_container<CKD>("ckd");
 
    // Fil observation data with zero
     l1.observation_sig.resize(ckd.n_act);

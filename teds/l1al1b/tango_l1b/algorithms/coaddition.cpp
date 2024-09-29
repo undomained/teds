@@ -29,7 +29,10 @@ bool Coaddition::algoCheckInput(const CKD& ckd, L1& l1) {
 //    spdlog::info("Coaddition unload fct still to be filled in");
 //}
 
-void Coaddition::algoExecute(const CKD& ckd, L1& l1) {
+void Coaddition::algoExecute(L1& l1, const Dataset& input_data) {
+
+    CKD const& ckd = input_data.get_container<CKD>("ckd");
+
     if (getModelType() == "L1B"){
         spdlog::warn("Coaddition correction for L1B not implemented yet");
     }

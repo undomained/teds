@@ -3,6 +3,17 @@ Contributing
 
 In this section, we lay out rules and recommendations for contributing to this project. A set of rules (a coding style guide) is essential for any development team to ensure code readability and integrity. As a developer, you should pause to go through either all of the rules or ones that are relevant to you depending on what you are currently working on, so that when you commit new code it will pass all linter, regression, and other tests.
 
+Each rule or concept is described in the following chapters but in summary, run the following from the root source directory before each push to the repository:
+
+.. code-block:: bash
+
+   bash flake8_check.sh
+   mypy teds
+   pytest
+   bash clang_format_check.sh clang-format-18
+
+The exact statements that are automatically run with each push in a container set up for this project are found in ``bitbucket-pipelines.yml`` in the root directory.
+
 It is worth mentioning that all guidelines listed in section are quite standard and used by the majority of the Python and C++ communities. Adopting and getting used to these will hopefully also benefit you with any future projects.
 
 
@@ -135,7 +146,7 @@ In addition to PEP 8, here are some additional rules specific to the TEDS projec
 * Do not use an empty class for the purpose of amending it across functions. Use a dictionary or, better, inherit from an existing class.
 * Try not to commit commented out code. If it's work in progress, just skip over that part of the code when committing (``git add --patch``) and come back later.
 * Do not commit things like TODO lists unless you are convinced they are informative for everybody.
-* Group imports as follows: standard system libraries followed by local libraries. Separate the groups by blank lines. Within a group, sort the imports alphabetically. This also means that ``from ...`` should come before ``import ...``. Do not import multiple things on one line.
+* Group imports as follows: standard system libraries followed by third party libraries followed by local libraries. Separate the groups by blank lines. Within a group, sort the imports alphabetically. This also means that ``from ...`` should come before ``import ...``. Do not import multiple things on one line.
 
 
 Type hints
@@ -189,7 +200,7 @@ The docstring may be descriptive-style ("Fetches rows from a Bigtable.") or impe
          filename:
            Path of an L1A file, L1B file, or anything in between.
 
-       Returns
+       Returns:
          Processing (calibration) level of the given file.
 
        """
@@ -202,9 +213,26 @@ Regression tests
 
 When contributing a new feature or fix, it is important not to break anything in other parts of the code. To make sure that previously developed and tested software still performs after a change - in other words that there has not been a regression -  we run *regression tests* before every commit. If any of the tests fail, the conflict must be resolved so that all tests pass.
 
+For the Python code, this project depends on the Pytest testing framework. In order to run all tests, call ``pytest`` from the root source directory. In order to run tests for one module only, use the test script's path as an argument, e.g. ``pytest tests/im/test_im.py``. For other uses of Pytest, have a look at Pytest's documentation (read a couple of the first How-to guides at least).
+
 Besides running tests in your development environment, the test suite is run automatically in a *runner* with each push to Bitbucket. The status of the latest run of the test suite is seen at the repository's overview page: https://bitbucket.org/sron_earth/teds (on the right side you will find something like "Pipeline # for master"). Detailed logs of all tests are found by clicking on Pipelines on the left side of the page.
 
-A new piece of code or a bug fix typically warrants a new test or amendments to existing tests. It is thus normal for tests to keep growing over time and sometimes even exceed the amount of normal code.
+A new piece of code or a bug fix typically warrants a new test or amendments to existing tests. It is thus normal for tests to keep growing over time and sometimes even exceed the amount of normal code. In order to see how much code is covered by tests, run
+
+.. code-block:: python
+
+   coverage run -m pytest
+   coverage report -m --sort=cover --skip-covered
+
+Remove ``--skip-covered`` to see the total coverage, including files that have 100% coverage. The output tells you how much of each source file is covered and the lines numbers which are not touched by any files. Your aim should be to reduce the number of such lines.
+
+For a more visual representation that you can open in a web browser, run
+
+.. code-block:: python
+
+   coverage html
+
+and open ``htmlcov/index.html``. Then, by clicking on a source file you'll see exactly which lines are not passing through the tests. The coverage tool is only meant as a guide to show you how effective are the tests. A minimum percentage of code coverage is not enforced for this project.
 
 
 C++

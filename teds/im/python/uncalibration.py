@@ -368,8 +368,8 @@ def include_nonlinearity(l1_products: L1, ckd: CKDNonlin) -> None:
     l1_products['proc_level'] = ProcLevel.noise
 
 
-def include_darksignal(l1_products: L1,
-                       dark_current: npt.NDArray[np.float64]) -> None:
+def include_dark_signal(l1_products: L1,
+                        dark_current: npt.NDArray[np.float64]) -> None:
     """Incorporate dark signal.
 
     If the dark signal does not depend linearly on exposure time, make

@@ -105,7 +105,7 @@ def determine_noise(l1_products: L1,
     orig_bin_factors = l1_products['noise']  # quirk of RAW data
     # The signal is split in contributions from light and dark in case
     # the dark signal is negative.
-    dark_signal = dark_current.ravel()*l1_products['exptimes'][..., None]
+    dark_signal = dark_current.ravel() * l1_products['exptimes'][..., None]
     photoresponse_signal = l1_products['signal'] - dark_signal
     # The absolute value of dark_signal should be taken because a
     # negative signal still increases the noise.
@@ -119,13 +119,12 @@ def determine_noise(l1_products: L1,
     # two problems with that:
     # * in general, bad pixels should be flagged in the CKD
     # * in this case, a nonpositive noise is more likely a model problem
-    # l1_products['signal'][variance <= 0] = np.nan
     l1_products['noise'][variance <= 0] = np.nan
     # no change of processing level
 
 
-def remove_darksignal(l1_products: L1,
-                      dark_current: npt.NDArray[np.float64]) -> None:
+def remove_dark_signal(l1_products: L1,
+                       dark_current: npt.NDArray[np.float64]) -> None:
     """Remove dark signal.
 
     If the dark signal does not depend linearly on exposure time, make
@@ -140,7 +139,7 @@ def remove_darksignal(l1_products: L1,
     """
     # Assuming bad pixels are NaN already
     l1_products['signal'] -= (
-        dark_current.ravel()*l1_products['exptimes'][..., None])
+        dark_current.ravel() * l1_products['exptimes'][..., None])
     # uncertainty of dark signal not implemented
     l1_products['proc_level'] = ProcLevel.dark
 
@@ -174,7 +173,7 @@ def remove_nonlinearity(l1_products: L1, ckd: CKDNonlin) -> None:
          - np.interp(l1_products['signal'] - dx,
                      ckd['observed'],
                      ckd['expected']))
-        / (2*dx))
+        / (2 * dx))
     # C++ code gives extremely large values instead of clipping
     l1_products['signal'] = np.interp(
         l1_products['signal'], ckd['observed'], ckd['expected'])

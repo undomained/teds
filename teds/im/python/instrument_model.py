@@ -179,7 +179,7 @@ def process_im(config_user: dict) -> None:
     if config['dark']['enabled'] and step_needed(
             ProcLevel.dark, l1_products['proc_level'], cal_level):
         log.info('Including dark signal')
-        cal.include_darksignal(l1_products, ckd['dark']['current'])
+        cal.include_dark_signal(l1_products, ckd['dark']['current'])
     if config['noise']['enabled'] and step_needed(
             ProcLevel.noise, l1_products['proc_level'], cal_level):
         log.info('Including noise')

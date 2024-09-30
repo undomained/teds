@@ -181,7 +181,7 @@ def process_l1b(config_user: dict) -> None:
     if config['dark']['enabled'] and step_needed(
             ProcLevel.dark, l1_products['proc_level'], cal_level):
         log.info('Removing dark signal')
-        cal.remove_darksignal(l1_products, ckd['dark']['current'])
+        cal.remove_dark_signal(l1_products, ckd['dark']['current'])
     if config['nonlin']['enabled'] and step_needed(
             ProcLevel.nonlin, l1_products['proc_level'], cal_level):
         log.info('Removing non-linearity')

@@ -30,7 +30,7 @@ Uncalibration steps
 .. autofunction:: teds.im.python.uncalibration.stray_light
 .. autofunction:: teds.im.python.uncalibration.include_prnu
 .. autofunction:: teds.im.python.uncalibration.include_nonlinearity
-.. autofunction:: teds.im.python.uncalibration.include_darksignal
+.. autofunction:: teds.im.python.uncalibration.include_dark_signal
 .. autofunction:: teds.im.python.uncalibration.include_noise
 .. autofunction:: teds.im.python.uncalibration.include_offset
 .. autofunction:: teds.im.python.uncalibration.include_coadding_and_binning
@@ -57,7 +57,7 @@ Calibration steps
 .. autofunction:: teds.l1al1b.python.calibration.remove_coadding_and_binning
 .. autofunction:: teds.l1al1b.python.calibration.remove_offset
 .. autofunction:: teds.l1al1b.python.calibration.determine_noise
-.. autofunction:: teds.l1al1b.python.calibration.remove_darksignal
+.. autofunction:: teds.l1al1b.python.calibration.remove_dark_signal
 .. autofunction:: teds.l1al1b.python.calibration.remove_nonlinearity
 .. autofunction:: teds.l1al1b.python.calibration.remove_prnu
 .. autofunction:: teds.l1al1b.python.calibration.stray_light

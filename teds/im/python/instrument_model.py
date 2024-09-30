@@ -27,15 +27,15 @@ import yaml
 
 from . import uncalibration as cal
 from teds import log
-from teds.l1al1b.io import print_heading
-from teds.l1al1b.io import print_system_info
-from teds.l1al1b.io import read_binning_pattern
-from teds.l1al1b.io import read_ckd
-from teds.l1al1b.io import read_l1
-from teds.l1al1b.io import read_proc_level
-from teds.l1al1b.io import write_l1
-from teds.l1al1b.types import ProcLevel
-from teds.l1al1b.types import L1
+from teds.l1al1b.python.io import print_heading
+from teds.l1al1b.python.io import print_system_info
+from teds.l1al1b.python.io import read_binning_pattern
+from teds.l1al1b.python.io import read_ckd
+from teds.l1al1b.python.io import read_l1
+from teds.l1al1b.python.io import read_proc_level
+from teds.l1al1b.python.io import write_l1
+from teds.l1al1b.python.types import ProcLevel
+from teds.l1al1b.python.types import L1
 from teds.lib.utils import merge_configs
 
 

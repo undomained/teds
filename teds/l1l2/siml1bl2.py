@@ -1,36 +1,52 @@
+# This source code is licensed under the 3-clause BSD license found in
+# the LICENSE file in the root directory of this project.
 import numpy as np
+import numpy.typing as npt
 import xarray as xr
+
 from teds.l1l2.l1bl2 import level2_output
 
+
 # Helper function to generate noise based on type
-def generate_noise(intensity, base_value, noise_type):
-    """
-    Generates noise based on the specified type.
+def generate_noise(intensity: float, base_value: float, noise_type: str) -> (
+        float):
+    """Generates noise based on the specified type.
 
-    Parameters:
-    - intensity: The standard deviation of the noise.
-    - base_value: The base value to apply relative noise to.
-    - noise_type: Type of noise, either 'absolute' or 'relative'.
+    Parameters
+    ----------
+    intensity
+        The standard deviation of the noise.
+    base_value
+        The base value to apply relative noise to.
+    noise_type
+        Type of noise, either 'absolute' or 'relative'.
 
-    Returns:
-    - Noise value to be added to the data.
+    Returns
+    -------
+        Noise value to be added to the data.
+
     """
     if noise_type == 'absolute':
-        return np.random.normal(0, intensity)  # Absolute noise with given intensity
+        # Absolute noise with given intensity
+        return np.random.normal(0, intensity)
     elif noise_type == 'relative':
-        return np.random.normal(0, intensity) / 100 * base_value  # Relative noise as a percentage of the base value
+        # Relative noise as a percentage of the base value
+        return np.random.normal(0, intensity) / 100 * base_value
     else:
-        raise ValueError("Invalid noise type. Choose 'absolute' or 'relative'.")
+        raise ValueError(
+            "Invalid noise type. Choose 'absolute' or 'relative'.")
 
-def simplified_level1b_to_level2_processor(config):
+
+def simplified_level1b_to_level2_processor(config: dict) -> npt.NDArray:
 
     # 0. Load input data file
     ref_filename = config["io_files"]["input_geo_ref"]
     ds = xr.open_dataset(ref_filename)  # Load the NetCDF dataset
-  
+
     # Extract noise settings from the configuration
     noise_needed = config['sim_with_noise']
-    noise_type = config["noise_model"]["type"]  # Type of noise: 'absolute' or 'relative'
+    # Type of noise: 'absolute' or 'relative'
+    noise_type = config["noise_model"]["type"]
     # Noise intensities for different gases
     intensity_values = {
         'XCO2': config["noise_model"]['intensity_xco2'],
@@ -44,9 +60,12 @@ def simplified_level1b_to_level2_processor(config):
     # Define the output filename
     filename = config["io_files"]["output_siml2"]
 
-    # Prepare the Level 2 product: a 2D array of dictionaries containing retrieval data
-    nalt, nact, nlay = ds["zlay"].shape  # Number of along-track bins, across-track bins, and layers
-    l2product = np.empty((nalt, nact), dtype=object)  # Initialize the output array
+    # Prepare the Level 2 product: a 2D array of dictionaries
+    # containing retrieval data.
+    # Number of along-track bins, across-track bins, and layers
+    nalt, nact, nlay = ds["zlay"].shape
+    # Initialize the output array
+    l2product = np.empty((nalt, nact), dtype=object)
 
     # Set the random seed for noise generation
     np.random.seed(seed)
@@ -57,10 +76,13 @@ def simplified_level1b_to_level2_processor(config):
             # Initialize noise for each gas and proxy
             noise = {}
             if noise_needed:
-                # If noise is needed, calculate noise for each gas type based on its settings
+                # If noise is needed, calculate noise for each gas
+                # type based on its settings.
                 for key in intensity_values:
-                    base_value = ds[key.split('_')[0]].values[ialt, iact]  # Determine the base value from dataset
-                    noise[key] = generate_noise(intensity_values[key], base_value, noise_type)
+                    # Determine the base value from dataset
+                    base_value = ds[key.split('_')[0]].values[ialt, iact]
+                    noise[key] = generate_noise(intensity_values[key],
+                                                base_value, noise_type)
             else:
                 # No noise case: set noise for each gas type to zero
                 noise = {key: 0 for key in intensity_values}
@@ -70,29 +92,44 @@ def simplified_level1b_to_level2_processor(config):
                 'convergence': 1,  # Convergence flag (dummy value)
                 'number_iter': 1,  # Number of iterations (dummy value)
                 'chi2': 1,  # Chi-square value (dummy value)
-                'alb0': ds["albedo"].values[ialt, iact],  # Albedo value from dataset
+                # Albedo value from dataset
+                'alb0': ds["albedo"].values[ialt, iact],
                 'spec_shift': 0,  # Spectral shift (dummy value)
                 'spec_squeeze': 0,  # Spectral squeeze (dummy value)
-                'XCO2': ds["XCO2"].values[ialt, iact] + noise['XCO2'],  # XCO2 value with noise
+                # XCO2 value with noise
+                'XCO2': ds["XCO2"].values[ialt, iact] + noise['XCO2'],
                 'XCO2 precision': noise['XCO2'],  # XCO2 noise precision
-                'XCO2 col avg kernel': np.ones(nlay),  # XCO2 column average kernel (dummy array)
-                'XCH4': ds["XCH4"].values[ialt, iact] + noise['XCH4'],  # XCH4 value with noise
+                # XCO2 column average kernel (dummy array)
+                'XCO2 col avg kernel': np.ones(nlay),
+                # XCH4 value with noise
+                'XCH4': ds["XCH4"].values[ialt, iact] + noise['XCH4'],
                 'XCH4 precision': noise['XCH4'],  # XCH4 noise precision
-                'XCH4 col avg kernel': np.ones(nlay),  # XCH4 column average kernel (dummy array)
-                'XH2O': ds["XH2O"].values[ialt, iact] + noise['XH2O'],  # XH2O value with noise
+                # XCH4 column average kernel (dummy array)
+                'XCH4 col avg kernel': np.ones(nlay),
+                # XH2O value with noise
+                'XH2O': ds["XH2O"].values[ialt, iact] + noise['XH2O'],
                 'XH2O precision': noise['XH2O'],  # XH2O noise precision
-                'XH2O col avg kernel': np.ones(nlay),  # XH2O column average kernel (dummy array)
-                'XCO2 proxy': ds["XCO2"].values[ialt, iact] + noise['XCO2_proxy'],  # XCO2 proxy value with noise
-                'XCO2 proxy precision': noise['XCO2_proxy'],  # XCO2 proxy noise precision
-                'XCH4 proxy': ds["XCH4"].values[ialt, iact] + noise['XCH4_proxy'],  # XCH4 proxy value with noise
-                'XCH4 proxy precision': noise['XCH4_proxy'],  # XCH4 proxy noise precision
+                # XH2O column average kernel (dummy array)
+                'XH2O col avg kernel': np.ones(nlay),
+                # XCO2 proxy value with noise
+                'XCO2 proxy': (ds["XCO2"].values[ialt, iact]
+                               + noise['XCO2_proxy']),
+                # XCO2 proxy noise precision
+                'XCO2 proxy precision': noise['XCO2_proxy'],
+                # XCH4 proxy value with noise
+                'XCH4 proxy': (ds["XCH4"].values[ialt, iact]
+                               + noise['XCH4_proxy']),
+                # XCH4 proxy noise precision
+                'XCH4 proxy precision': noise['XCH4_proxy'],
             }
 
     # Define retrieval initialization parameters
     retrieval_init = {
         'zlay': ds["zlay"].values[0, 0, :],  # Layer heights (dummy data)
-        'surface pressure': ds["col_air"] / 6.02214076e23 * 0.029 * 9.81 / 100,  # Surface pressure calculation
-        'surface elevation': ds["zlev"].values[:, :, -1],  # Surface elevation data
+        # Surface pressure calculation
+        'surface pressure': ds["col_air"] / 6.02214076e23 * 0.029 * 9.81 / 100,
+        # Surface elevation data
+        'surface elevation': ds["zlev"].values[:, :, -1],
         'trace gases': {  # Reference profiles for trace gases
             'CO2': {'ref_profile': np.ones(nlay)},  # Dummy profile for CO2
             'CH4': {'ref_profile': np.ones(nlay)},  # Dummy profile for CH4
@@ -106,8 +143,10 @@ def simplified_level1b_to_level2_processor(config):
         'longitude': ds["lon"].values,  # Longitude data from the dataset
     }
 
-    # Additional settings (currently empty but can be used for future extensions)
-    settings = {}  # Currently not used, so an empty dictionary is provided
+    # Additional settings (currently empty but can be used for future
+    # extensions)
+    # Currently not used, so an empty dictionary is provided
+    settings: dict = {}
 
     # Create the output file using the prepared data
     level2_output(filename, l2product, retrieval_init, l1bproduct, settings)
@@ -115,6 +154,3 @@ def simplified_level1b_to_level2_processor(config):
     print('=> l1bl2 finished successfully')
 
     return l2product
-
-
-

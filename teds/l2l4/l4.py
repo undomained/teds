@@ -1,18 +1,26 @@
-import xarray as xr
-import numpy as np
-from l4_tools import *
+# This source code is licensed under the 3-clause BSD license found in
+# the LICENSE file in the root directory of this project.
+from . import l4_tools
 
-def level2_to_level4_processor(config):
-    """
-    Process Level 2 to Level 4 emission data based on the provided configuration.
-    
-    Parameters:
-    config (dict): A dictionary containing file paths and processing options.
+from teds import log
 
-    Returns:
-    dict: The processed Level 4 product grouped by the estimation method.
+
+def level2_to_level4_processor(config: dict) -> dict:
+    """Process Level 2 to Level 4 emission data based on the provided
+    configuration.
+
+    Parameters
+    ----------
+    config
+        A dictionary containing file paths and processing options.
+
+    Returns
+    -------
+        The processed Level 4 product grouped by the estimation
+        method.
+
     """
-    
+
     sgm_filename = config["io_files"]["input_sgm"]
     sgm_ref_filename = config["io_files"]["input_sgm_ref"]
     l2_filename = config["io_files"]["input_l2"]
@@ -33,10 +41,16 @@ def level2_to_level4_processor(config):
 
             if method == "microhh_fit":
                 # Run the existing microhh_fit function
-                apr_emission, ret_emission, ret_emission_error = microhh_fit(
-                    sgm_filename, sgm_ref_filename, l2_filename, sp, apr_name
+                apr_emission, ret_emission, ret_emission_error = (
+                    l4_tools.microhh_fit(sgm_filename,
+                                         sgm_ref_filename,
+                                         l2_filename,
+                                         sp,
+                                         apr_name)
                 )
-                method_group[sp] = (apr_emission, ret_emission, ret_emission_error)
+                method_group[sp] = (apr_emission,
+                                    ret_emission,
+                                    ret_emission_error)
 
             # Additional methods can be added here with elif blocks
             # elif method == "other_method":
@@ -44,7 +58,7 @@ def level2_to_level4_processor(config):
             #     ...
 
             else:
-                print(f"Warning: Method {method} is not implemented yet.")
+                log.warn(f"Method {method} is not implemented yet.")
                 continue
 
         # Add the results of this method to the overall l4_product
@@ -52,8 +66,8 @@ def level2_to_level4_processor(config):
             l4_product[method] = method_group
 
     # Create the output NetCDF file with grouped data
-    create_grouped_dataset(l4_filename, l4_product)
+    l4_tools.create_grouped_dataset(l4_filename, l4_product)
 
-    print('=> Level 2 to Level 4 processing finished successfully')
+    log.info('=> Level 2 to Level 4 processing finished successfully')
 
     return l4_product

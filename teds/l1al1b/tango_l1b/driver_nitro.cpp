@@ -60,6 +60,7 @@ auto driver_nitro(const SettingsL1B& settings,
         binning_table.bin(ckd.noise.g);
         binning_table.bin(ckd.noise.n2);
         binning_table.bin(ckd.prnu.prnu);
+        binning_table.bin(ckd.rad.rad);
         binning_table.binPixelIndices(ckd.swath.pix_indices);
     }
 

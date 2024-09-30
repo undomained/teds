@@ -231,17 +231,28 @@ void L1Measurement::writeScienceData(netCDF::NcFile& nc){
     // Note: n_images is member of L1Measurements
     //    const auto n_images { l1_products.size() };
     const auto n_bins { l1_measurement.front().image.size() };
+    spdlog::info("n_bins: {}", n_bins);
 
     const auto nc_images = nc.getDim("along_track");
     const auto nc_detector_bin { nc.addDim("detector_bin", n_bins) };
-
-    const auto n_rows {(*l1_measurement.front().wavelength).size()};
-    const auto nc_rows { nc.addDim("rows", n_rows) };
 
     const auto& wavelengths = *l1_measurement.front().wavelength; 
     const auto n_cols { wavelengths.front().size() };
     const auto nc_cols { nc.addDim("cols", n_cols) };
     
+    const auto n_detector_rows {(*l1_measurement.front().wavelength).size()};
+    const auto n_binned_rows = static_cast <int>(round(n_bins/n_cols));
+
+    int n_rows;
+    if (n_binned_rows == n_detector_rows ){
+        // No binning
+        n_rows = n_detector_rows;
+    } else {
+        n_rows = n_binned_rows;
+    }
+
+    const auto nc_rows { nc.addDim("rows", n_rows) };
+
     auto nc_grp { nc.addGroup("science_data") };
     std::string& units = l1_measurement.front().units;
     // add image and stdev

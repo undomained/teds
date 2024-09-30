@@ -65,7 +65,7 @@ additional diagnostic information.
 @ivar observationError: The 1-sigma error on the observation.
 @type observationError: A L{np.ndarray} instance with length M{n}.
 @ivar independentVariable: The independent variable for the model, for our
-                           retrievals usually M{\lambda}.
+                           retrievals usually M{\\lambda}.
 @type independentVariable: A L{np.ndarray} instance with length M{n}.
 @ivar verbose:   An integer indicating how chatty (and plotting) the model should be.
                  0: be silent, 1: plot to file, 2: show.
@@ -444,7 +444,7 @@ overridden in a subclass.
                    (self.observation-self.modelCalculation)/self.observationError,
                    'k', label="err")
             # l.set_ylabel("$\Delta R/\sigma$")
-            l.set_ylabel("$\Delta R/\sigma$",rotation=0, fontsize=12, labelpad=45)
+            l.set_ylabel("$\\Delta R/\\sigma$",rotation=0, fontsize=12, labelpad=45)
             l.yaxis.tick_right()
             # l.tick_params(axis='y', labelsize=6)
             l.xaxis.set_visible(False)
@@ -659,13 +659,13 @@ After creating an instance, the actual fit is performed in the L{__call__} metho
              holds the a priori information.
 @ivar priorSinvh: One of the transformation matrices obtained with singular
              value decomposition. This one is derived from the a priori error
-             covariance matrix. In pure latex notation: C{\mathbf{S}_a^{-1/2}}
+             covariance matrix. In pure latex notation: C{\\mathbf{S}_a^{-1/2}}
 @ivar priorSinv: One of the transformation matrices obtained with singular
              value decomposition. This one is derived from the a priori error
-             covariance matrix. In pure latex notation: C{\mathbf{S}_a^{-1}}
+             covariance matrix. In pure latex notation: C{\\mathbf{S}_a^{-1}}
 @ivar priorSh: One of the transformation matrices obtained with singular value
              decomposition. This one is derived from the a priori error
-             covariance matrix. In pure latex notation: C{\mathbf{S}_a^{1/2}}
+             covariance matrix. In pure latex notation: C{\\mathbf{S}_a^{1/2}}
 @ivar errSinvhD: The diagonal of the inverse square root of the mearurement
              error covariance matrix. Since the measurement error covariance
              matrix itself is diagonal, this matrix is diagonal as well.
@@ -1737,9 +1737,7 @@ def ReadRad(f, iscan):
 
     # photons to mol
     rad /= constants.NA
-    # radError /= constants.NA
-
-    radError = rad.copy() * 1e-6 # fixed noise value, otherwise OE does not work
+    radError /= constants.NA
 
     radFlag = np.zeros(rad.shape) # TODO: placeholder
 
@@ -1807,7 +1805,7 @@ def SplineInterp1D(x,y,xnew):
 
     return ynew
 
-def initOutput(l2_file,geo):
+def initOutput(l2_file, results, geo):
     # initialise output
 
     with nc.Dataset(l2_file, 'w', format='NETCDF4') as dst:
@@ -1816,8 +1814,8 @@ def initOutput(l2_file,geo):
         dst.processing_date = datetime.datetime.now().strftime('%Y%m%dT%H%M%S')
 
         # create dims
-        alt_dim = dst.createDimension('scanline', geo['lat'].shape[0])
-        act_dim = dst.createDimension('ground_pixel', geo['lat'].shape[1])
+        alt_dim = dst.createDimension('scanline', results['errorFlag'].shape[0])
+        act_dim = dst.createDimension('ground_pixel', results['errorFlag'].shape[1])
 
         _ = writevariablefromname(dst, 'latitude', ('scanline','ground_pixel'), geo['lat'])
         _ = writevariablefromname(dst, 'longitude', ('scanline','ground_pixel'), geo['lon'])
@@ -1974,8 +1972,8 @@ def writeOutput(l2_file,IFDOEconfig,parameterNames,results,geo):
             write_field('C'+str(i),'intensity_offset_coefficients',i=i)
             write_field('C'+str(i)+'Sigma','intensity_offset_coefficients_precision',i=i)
 
-    write_field('RMS','root_mean_square_error_of_fit')
-    write_field('DOF','degrees_of_freedom')
+    write_field('rms','root_mean_square_error_of_fit')
+    write_field('dof','degrees_of_freedom')
     write_field('nIter','number_of_iterations')
     write_field('chiSquare','chi_square')
 
@@ -2197,7 +2195,7 @@ def ifdoe_run(config, mode='no2'):
 
   # C.1  Set up arrays for the scanline results
 
-    resultScalarList = ['RMS','DOF','chiSquare','nIter','nOutliers','converged','nValid',
+    resultScalarList = ['rms','dof','chiSquare','nIter','nOutliers','converged','nValid',
                         'radCalWs','radCalWsSigma','radCalWq','radCalWqSigma', 'radCalChiSquare']
 
     for name in resultScalarList:
@@ -2431,8 +2429,8 @@ def ifdoe_run(config, mode='no2'):
 
         # F.4  Determine diagnostics: RMS error, degrees of freedom, etc.
 
-            RMS = model.rmse
-            DOF = oe.answer['degrees of freedom']
+            # rms = model.rmse
+            dof = oe.answer['degrees of freedom']
             chiSquare = oe.costFunction
             nIter = oe.answer['number of iterations']
             converged = oe.answer['converged']
@@ -2443,8 +2441,10 @@ def ifdoe_run(config, mode='no2'):
             RMeas = model.observation
             RRes = RMeas - RModel
 
+            rms = np.sqrt(np.mean((RRes)**2))
+
             # scale precision with chisquare reduced
-            chiSquare_reduced = chiSquare/(nValid - DOF)
+            chiSquare_reduced = chiSquare/(nValid - dof)
             precision = np.diag(np.sqrt(model.covariance * chiSquare_reduced))
 
         # F.6  Show/plot results
@@ -2523,6 +2523,7 @@ def ifdoe_run(config, mode='no2'):
             results['NO2Geo'][iscan,ipxl] = results['NO2'][iscan,ipxl] / amfGeo
             results['NO2GeoSigma'][iscan,ipxl] = results['NO2Sigma'][iscan,ipxl] / amfGeo
 
+            results['rms'][iscan,ipxl] *= szaFactor
         
             # continuum reflectance at 440 nm for NO2:
 
@@ -2612,10 +2613,10 @@ def ifdoe_run(config, mode='no2'):
 
     # H)  Finishing up
     if not os.path.isfile(cfg['io']['l2']):
-        initOutput(cfg['io']['l2'],geo)
+        initOutput(cfg['io']['l2'], results, geo)
 
     # write results to output file
-    writeOutput(cfg['io']['l2'],cfg,parameterNames,results,geo)
+    writeOutput(cfg['io']['l2'], cfg, parameterNames, results, geo)
     log.info(f"Output witten to {cfg['io']['l2']}")
 
     log.info(f'IFDOE {mode.upper()} calculation finished in {np.round(time.time()-startTime,1)} s')

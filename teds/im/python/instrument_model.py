@@ -42,10 +42,11 @@ from teds.lib.utils import merge_configs
 def check_config(config: dict) -> None:
     """Check consistency of some of the configuration settings.
 
-    Args:
-      config_file:
+    Parameters
+    ----------
+    config_file
         Path of YAML configuration file.
-      towards_l1b:
+    towards_l1b
         Whether the processing direction is to L1B or L1A
 
     """
@@ -70,16 +71,18 @@ def step_needed(proc_step: ProcLevel,
     This is similar to the function in l1b_processor.py but the
     process chain is traversed in the opposite direction.
 
-    Args:
-      proc_step:
+    Parameters
+    ----------
+    proc_step
         Processing step to be tested.
-      in_level:
+    in_level
         Processing level of the input data.
-      out_level:
+    out_level
         Processing level of the output data.
 
-    Returns:
-      Whether the step is needed.
+    Returns
+    -------
+        Whether the step is needed.
 
     """
     return in_level >= proc_step and out_level < proc_step
@@ -90,11 +93,12 @@ def process_im(config_user: dict) -> None:
 
     Read input, process data, and write output.
 
-    Args:
-      config_user:
-        Configuration dictionary directly from file, as given by the user, to
-        be expanded with default values for parameters not specified by the
-        user.
+    Parameters
+    ----------
+    config_user
+        Configuration dictionary directly from file, as given by the
+        user, to be expanded with default values for parameters not
+        specified by the user.
 
     """
     print_heading('Tango instrument model', empty_line=False)

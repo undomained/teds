@@ -17,16 +17,18 @@ def bin_data(data: npt.NDArray[np.float64],
     bin indices can have any number of dimensions, as long as they
     have the same number of elements.
 
-    Args:
-      data:
+    Parameters
+    ----------
+    data
         Unbinned frames.
-      bin_indices:
+    bin_indices
         Bin index of each pixel in an unbinned frame.
-      count_table:
+    count_table
         Number of pixels in each bin of a binned frame.
 
-    Returns:
-      Binned frames.
+    Returns
+    -------
+        Binned frames.
 
     """
     if data.dtype == bool:
@@ -50,20 +52,23 @@ def unbin_data(binned_data: npt.NDArray[np.float64],
     where the array of bin indices has the corresponding bin index,
     with a tweak depending on the method.
 
-    Args:
-      binned_data:
+    Parameters
+    ----------
+    binned_data
         Binned frames.
-      bin_indices:
+    bin_indices
         Bin index of each pixel in an unbinned frame.
-      count_table:
+    count_table
         Number of pixels in each bin of a binned frame.
-      method:
+    method
         Method for unbinning, 'nearest' splits each bin value equally between
         all corresponding pixels (keeping the sum over all data the same),
         'linear' or 'cubic' puts each ratio of bin value and pixel count at the
         centroid of the corresponding pixels and interpolates.
 
-    Returns: Unbinned frames.
+    Returns
+    -------
+        Unbinned frames.
 
     """
     # Actually, method can also be 'thin_plate_spline' and 'quintic'.

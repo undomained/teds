@@ -38,10 +38,11 @@ def print_heading(heading: str, empty_line: bool = True) -> None:
     logger. Things like timestamps are not necessary for just printing
     a section heading.
 
-    Args:
-      heading:
+    Parameters
+    ----------
+    heading
         Title of the section to be displayed.
-      empty_line:
+    empty_line
         Whether to print an empty line before printing the heading.
 
     """
@@ -100,19 +101,22 @@ def read_binning_pattern(binning_file: str,
                                                   npt.NDArray[np.int32]]:
     """Read a binning pattern.
 
-    Args:
-      binning_file:
+    Parameters
+    ----------
+    binning_file
         Path of file with binning patterns.
-      binning_table_id:
+    binning_table_id
         Identifier of binning pattern, 0 is unbinned.
-      n_detrows:
+    n_detrows
         Number of detector rows.
-      n_detcols:
+    n_detcols
         Number of detector columns.
 
-    Returns:
-      Two-dimensional (unbinned) detector map of bin indices and
-      one-dimensional list of number of detector pixels per bin.
+    Returns
+    -------
+        Two-dimensional (unbinned) detector map of bin indices and
+        one-dimensional list of number of detector pixels per bin.
+
     """
     if binning_table_id == 0:
         bin_indices = np.arange(n_detrows * n_detcols, dtype=np.int32).reshape(
@@ -136,12 +140,14 @@ def read_binning_pattern(binning_file: str,
 def read_proc_level(filename: str) -> ProcLevel:
     """Read the processing level of a L1 file.
 
-    Args:
-      filename:
+    Parameters
+    ----------
+    filename
         Path of an L1A file, L1B file, or anything in between.
 
-    Returns:
-      Processing (calibration) level of the given file.
+    Returns
+    -------
+        Processing (calibration) level of the given file.
 
     """
     ds = Dataset(filename)
@@ -156,12 +162,14 @@ def read_ckd(filename: str) -> CKD:
     All available data are read, so unused data are not skipped and
     missing data are not checked.
 
-    Args:
-      filename:
+    Parameters
+    ----------
+    filename
         Path of CKD file.
 
-    Returns:
-      Calibration key data (CKD).
+    Returns
+    -------
+        Calibration key data (CKD).
 
     """
     nc = Dataset(filename)
@@ -270,14 +278,16 @@ def read_geometry(l1_products: L1, config: dict) -> Geometry:
     Geometry is not used for calculations in L1 processing. The
     dictionaries are only used to read some settings.
 
-    Args:
-      l1_products:
+    Parameters
+    ----------
+    l1_products
         L1 products (signal and detector settings).
-      config:
+    config
         Configuration parameters.
 
-    Returns:
-      Coordinates and angles.
+    Returns
+    -------
+        Coordinates and angles.
 
     """
     filename = config['io']['geometry']
@@ -330,16 +340,18 @@ def read_l1(filename: str,
     level may be L1A, L1B, or anything in between. image_start/end
     specify a subrange to process.
 
-    Args:
-      filename:
+    Parameters
+    ----------
+    filename
         Path of L1A file, L1B file, or anything in between.
-      image_start:
+    image_start
         First (zero-based) frame to read, default 0.
-      image_end:
+    image_end
         Last frame to read, default last frame in data.
 
-    Returns:
-      L1 products (signal and detector settings).
+    Returns
+    -------
+        L1 products (signal and detector settings).
 
     """
     image_end = None if image_end is None else image_end+1
@@ -436,18 +448,20 @@ def write_l1(filename: str,
              geometry: bool = False) -> str:
     """Write a L1 file.
 
-    Args:
-      filename:
+    Parameters
+    ----------
+    filename
         Path of an L1A file, L1B file, or anything in between.
-      config:
+    config
         Configuration parameters.
-      l1_products:
+    l1_products
         L1 products (signal and detector settings).
-      geometry:
+    geometry
         Include geometry data if available and data consists of spectra.
 
-    Returns:
-      Name of the NetCDF created
+    Returns
+    -------
+        Name of the NetCDF created
 
     """
     # Fill values are set explicitly to the netCDF default where the

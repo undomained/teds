@@ -25,14 +25,15 @@ def remove_coadding_and_binning(l1_products: L1,
                                 method: str) -> None:
     """Undo coadding over time and binning over the detector.
 
-    Args:
-      l1_products:
+    Parameters
+    ----------
+    l1_products
         L1 products (signal and detector settings).
-      bin_indices:
+    bin_indices
         Bin index of each pixel in an unbinned frame.
-      count_table:
+    count_table
         Number of pixels in each bin of a binned frame.
-      method:
+    method
         Method for unbinning the data, but 'none' keeps the data
         binned, divided by the binning factors and bins the CKD. Other
         options are 'nearest' to split each bin value equally between
@@ -71,10 +72,11 @@ def remove_coadding_and_binning(l1_products: L1,
 def remove_offset(l1_products: L1, offset: npt.NDArray[np.float64]) -> None:
     """Remove offset.
 
-    Args:
-      l1_products:
+    Parameters
+    ----------
+      l1_products
         L1 products (signal and detector settings).
-      offset:
+      offset
         Detector map of offset [counts].
 
     """
@@ -91,15 +93,17 @@ def determine_noise(l1_products: L1,
 
     The signal is not changed.
 
-    Args:
-      l1_products:
+    Parameters
+    ----------
+    l1_products
         L1 products (signal and detector settings).
-      ckd:
+    ckd
         Noise CKD consisting of maps of read_noise [counts] and the
         conversion gain [e/counts].
 
-    Returns:
-      Detector map of dark current [counts/s].
+    Returns
+    -------
+        Detector map of dark current [counts/s].
 
     """
     orig_bin_factors = l1_products['noise']  # quirk of RAW data
@@ -130,10 +134,11 @@ def remove_dark_signal(l1_products: L1,
     If the dark signal does not depend linearly on exposure time, make
     sure the dark current CKD is valid for the used exposure time.
 
-    Args:
-      l1_products:
+    Parameters
+    ----------
+    l1_products
         L1 products (signal and detector settings).
-      dark_current:
+    dark_current
         Detector map of dark current [counts/s].
 
     """
@@ -156,10 +161,11 @@ def remove_nonlinearity(l1_products: L1, ckd: CKDNonlin) -> None:
     curve. Input data outside the model range are clipped. The model
     does not depend on pixel.
 
-    Args:
-      l1_products:
+    Parameters
+    ----------
+    l1_products
         L1 products (signal and detector settings).
-      ckd:
+    ckd
         Nonlinearity CKD consisting of an expected, linear signal
         [counts], and an observed, non-linear signal [counts].
 
@@ -183,10 +189,11 @@ def remove_nonlinearity(l1_products: L1, ckd: CKDNonlin) -> None:
 def remove_prnu(l1_products: L1, prnu_qe: npt.NDArray[np.float64]) -> None:
     """Remove PRNU and quantum efficiency.
 
-    Args:
-      l1_products:
+    Parameters
+    ----------
+    l1_products
         L1 products (signal and detector settings).
-      prnu_qe:
+    prnu_qe
         Detector map of PRNU times quantum efficiency (not the
         correction).
 
@@ -202,14 +209,16 @@ def convolve(
         kernel_fft: npt.NDArray[np.complex128]) -> npt.NDArray[np.float64]:
     """Convolve an image with kernel.
 
-    Args:
-      image:
+    Parameters
+    ----------
+    image
         Image in real space.
-      kernel_fft:
+    kernel_fft
         Fourier transform of the kernel.
 
-    Returns:
-      Convolution result in real space.
+    Returns
+    -------
+        Convolution result in real space.
 
     """
     image = np.pad(image, ((0, kernel_fft.shape[0]-image.shape[0]),
@@ -224,17 +233,19 @@ def convolve_with_all_kernels(image: npt.NDArray[np.float64],
                               ckd: CKDStray) -> npt.NDArray[np.float64]:
     """Convolve an image with multiple kernels.
 
-    Args:
-      image:
+    Parameters
+    ----------
+    image
         Image in real space.
-      ckd:
+    ckd
         Stray light CKD containing a list of the Fourier transforms of
         kernels, weights of subimages, and an 'edges' array which
         specifies the location of each subimage within the original
         image.
 
-    Returns:
-      Convolution result in real space.
+    Returns
+    -------
+        Convolution result in real space.
 
     """
     original_shape = image.shape
@@ -254,17 +265,19 @@ def convolve_with_all_kernels(image: npt.NDArray[np.float64],
 def stray_light(l1_products: L1, ckd: CKDStray) -> None:
     """Correct a detector image for stray light.
 
-    Args:
-      l1_products:
+    Parameters
+    ----------
+    l1_products
         L1 products (signal and detector settings).
-      ckd:
+    ckd
         Stray light CKD containing a list of the Fourier transforms of
         kernels, weights of subimages, and an 'edges' array which
         specifies the location of each subimage within the original
         image.
 
-    Returns:
-      Detector image corrected (cleaned) of stray light.
+    Returns
+    -------
+        Detector image corrected (cleaned) of stray light.
 
     """
     eta = ckd['eta'].reshape(l1_products['signal'][0, :].shape[0])
@@ -289,21 +302,22 @@ def map_from_detector(l1_products: L1,
     width along columns. This is not the exact inverse of
     `map_to_detector`.
 
-    Args:
-      l1_products:
+    Parameters
+    ----------
+    l1_products
         L1 products (signal and detector settings).
-      wavelengths:
+    wavelengths
         Wavelength [nm] at a given spectrum and column.
-      spectrum_rows:
+    spectrum_rows
         Central row index (float) of a given spectrum and at each
         column, 0 is halfway first row.
-      spectrum_width:
+    spectrum_width
         Number of pixels along a column centred around spectrum_rows
         belonging to one spectrum, at least 1.0.
-      pixel_mask:
+    pixel_mask
         Detector map of pixel flags, False good, True
         bad.
-      bin_indices:
+    bin_indices
         Bin index of each pixel in an unbinned frame.
 
     """
@@ -357,12 +371,13 @@ def convert_to_radiance(l1_products: L1,
     The quantum efficiency [e/ph] is taken into account by the PRNU
     step.
 
-    Args:
-      l1_products:
+    Parameters
+    ----------
+    l1_products
         L1 products (signal and detector settings).
-      rad_corr:
+    rad_corr
         Radiance responsivity correction factor [nm-1 sr-1 m-2].
-      exptime:
+    exptime
         Exposure time [s] if not already in l1_products.
 
     """

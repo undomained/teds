@@ -32,7 +32,7 @@ latex_elements = {
 
 # Napoleon settings
 sys.path.insert(0, os.path.abspath('..'))
-napoleon_google_docstring = True
+napoleon_numpy_docstring = True
 napoleon_use_admonition_for_examples = True
 napoleon_use_admonition_for_notes = True
 

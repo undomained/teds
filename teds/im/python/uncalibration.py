@@ -32,24 +32,26 @@ def convolve_with_isrf(signals_in: npt.NDArray[np.float64],
 
     Help function for change_wavelength_grid.
 
-    Args:
-      signals_in:
+    Parameters
+    ----------
+    signals_in
         Spectra with dimensions ALT, ACT, spectral sample.
-      w_in:
+    w_in
         Wavelengths corresponding to input spectra (1D).
-      grid_out:
+    grid_out
         Wavelengths corresponding to output spectra with dimensions
         ACT, spectral sample.
-      fwhm:
+    fwhm
         Full width at half-maximum.
-      shape:
+    shape
         Shape parameter of the generalized normal distribution.  Value
         2 for Gauss (default), towards 1 for stronger wings and large
         values for a more blocky shape.
 
-    Returns:
-      Spectra convolved with ISRF with dimensions ALT, ACT, spectral
-      sample.
+    Returns
+    -------
+        Spectra convolved with ISRF with dimensions ALT, ACT, spectral
+        sample.
 
     """
     signals = np.ascontiguousarray(np.transpose(signals_in, axes=(1, 0, 2)))
@@ -89,16 +91,17 @@ def change_wavelength_grid(l1_products: L1,
     The ISRF has a fixed shape as a function of wavelength and does not depend
     on pixel.
 
-    Args:
-      l1_products:
+    Parameters
+    ----------
+    l1_products
         L1 products (signal and detector settings).
-      grid_out:
+    grid_out
         New wavelength grid [nm].
-      convolve:
+    convolve
         Convolve with ISRF (True) or only interpolate (False)
-      fwhm:
+    fwhm
         Full width at half-maximum [nm] of ISRF.
-      shape:
+    shape
         ISRF shape parameter. Value 2 for Gauss (default), towards 1
         for stronger wings and large values for a more blocky shape.
 
@@ -152,12 +155,13 @@ def convert_from_radiance(l1_products: L1,
     The quantum efficiency [e/ph] is taken into account by the PRNU
     step.
 
-    Args:
-      l1_products:
+    Parameters
+    ----------
+    l1_products
         L1 products (signal and detector settings).
-      rad_corr:
+    rad_corr
         Radiance responsivity correction factor [nm-1 sr-1 m-2].
-      exptime:
+    exptime
         Exposure time [s] if not already in l1_products.
 
     """
@@ -219,17 +223,19 @@ def scene_to_detector(scene_data: npt.NDArray[np.float64],
     wavelengths) at integer row coordinates, using cubic interpolation
     and linear extrapolation.
 
-    Args:
-      scene_data:
+    Parameters
+    ----------
+    scene_data
         Data with dimensions ALT angle, ACT angle, wavelength.
-      spectrum_rows:
+    spectrum_rows
         Central row index (float) of a given spectrum (i.e. of data at
         a given ACT angle) and at each column, 0 is halfway first row.
-      n_detrows:
+    n_detrows
         Number of detector rows.
 
-    Returns:
-      Data with dimensions ALT angle, row, column.
+    Returns
+    -------
+        Data with dimensions ALT angle, row, column.
 
     """
     # Assuming spectrum_rows is monotonically increasing or decreasing
@@ -273,13 +279,14 @@ def map_to_detector(l1_products: L1,
     along columns (not along constant wavelengths) at integer row coordinates,
     using cubic interpolation and linear extrapolation.
 
-    Args:
-      l1_products:
+    Parameters
+    ----------
+    l1_products
         L1 products (signal and detector settings).
-      spectrum_rows:
+    spectrum_rows
         Central row index (float) of a given spectrum and at each
         column.
-      n_detrows:
+    n_detrows
         Number of detector rows.
 
     """
@@ -298,10 +305,11 @@ def map_to_detector(l1_products: L1,
 def stray_light(l1_products: L1, ckd: CKDStray) -> None:
     """Add stray light to the image.
 
-    Args:
-      l1_products:
+    Parameters
+    ----------
+    l1_products
         L1 products (signal and detector settings).
-      ckd:
+    ckd
         Stray light CKD containing a list of the Fourier transforms of
         kernels, weights of subimages, and an 'edges' array which
         specifies the location of each subimage within the original
@@ -319,10 +327,11 @@ def stray_light(l1_products: L1, ckd: CKDStray) -> None:
 def include_prnu(l1_products: L1, prnu_qe: npt.NDArray[np.float64]) -> None:
     """Incorporate PRNU and quantum efficiency.
 
-    Args:
-      l1_products:
+    Parameters
+    ----------
+    l1_products
         L1 products (signal and detector settings).
-      prnu_qe:
+    prnu_qe
         Detector map of PRNU times quantum efficiency (not the
         correction).
 
@@ -345,10 +354,11 @@ def include_nonlinearity(l1_products: L1, ckd: CKDNonlin) -> None:
     curve. Input data outside the model range are clipped. The model
     does not depend on pixel.
 
-    Args:
-      l1_products:
+    Parameters
+    ----------
+    l1_products
         L1 products (signal and detector settings).
-      ckd:
+    ckd
         Nonlinearity CKD consisting of an expected, linear signal
         [counts], and an observed, non-linear signal [counts].
 
@@ -375,10 +385,11 @@ def include_dark_signal(l1_products: L1,
     If the dark signal does not depend linearly on exposure time, make
     sure the dark current CKD is valid for the used exposure time.
 
-    Args:
-      l1_products:
+    Parameters
+    ----------
+    l1_products
         L1 products (signal and detector settings).
-      dark_current:
+    dark_current
         Detector map of dark current [counts/s].
 
     """
@@ -397,15 +408,16 @@ def include_noise(l1_products: L1,
 
     The signal is changed.
 
-    Args:
-      l1_products:
+    Parameters
+    ----------
+    l1_products
         L1 products (signal and detector settings).
-      ckd:
+    ckd
         Noise CKD consisting of maps of read_noise [counts] and the
         conversion gain [e/counts].
-      dark_current:
+    dark_current
         Detector map of dark current [counts/s].
-      seed:
+    seed
         Seed for random number generator.
 
     """
@@ -432,10 +444,11 @@ def include_noise(l1_products: L1,
 def include_offset(l1_products: L1, offset: npt.NDArray[np.float64]) -> None:
     """Incorporate offset.
 
-    Args:
-      l1_products:
+    Parameters
+    ----------
+    l1_products
         L1 products (signal and detector settings).
-      offset:
+    offset
         Detector map of offset [counts].
 
     """
@@ -458,18 +471,19 @@ def include_coadding_and_binning(l1_products: L1,
     sums them, i.e. if noise was added, that is exactly the same in
     each frame copy.
 
-    Args:
-      l1_products:
+    Parameters
+    ----------
+    l1_products
         L1 products (signal and detector settings).
-      new_coad_factor:
+    new_coad_factor
         Coaddition factor.
-      binning_file:
+    binning_file
         Path of file with binning patterns.
-      binning_table_id:
+    binning_table_id
         Identifier of binning pattern, 0 is unbinned.
-      n_detrows:
+    n_detrows
         Number of detector rows.
-      n_detcols:
+    n_detcols
         Number of detector columns.
 
     """

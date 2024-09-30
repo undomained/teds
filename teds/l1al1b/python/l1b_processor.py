@@ -43,10 +43,11 @@ from teds.lib.utils import merge_configs
 def check_config(config: dict) -> None:
     """Check consistency of some of the configuration settings.
 
-    Args:
-      config:
+    Parameters
+    ----------
+    config
         Configuration dictionary
-      towards_l1b:
+    towards_l1b
         Whether the processing direction is to L1B or L1A
 
     """
@@ -68,16 +69,18 @@ def step_needed(proc_step: ProcLevel,
     Needed processing steps are between in_level (inclusive) and
     out_level (inclusive).
 
-    Args:
-      proc_step:
+    Parameters
+    ----------
+    proc_step
         Processing step to be tested.
-      in_level:
+    in_level
         Processing level of the input data.
-      out_level:
+    out_level
         Processing level of the output data.
 
-    Returns:
-      Whether the step is needed.
+    Returns
+    -------
+        Whether the step is needed.
 
     """
     return in_level < proc_step and out_level >= proc_step
@@ -88,8 +91,9 @@ def process_l1b(config_user: dict) -> None:
 
     Read input, process data, and write output.
 
-    Args:
-      config_user:
+    Parameters
+    ----------
+    config_user
         Configuration dictionary directly from file, as given by the user, to
         be expanded with default values for parameters not specified by the
         user.

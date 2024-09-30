@@ -190,11 +190,11 @@ def pam_nitro(cfg):
         log.info(f'Plotting {varname}')
 
         # read files
-        f1 = read_file(cfg['io'][plotvar['f1']], [plotvar['f1_var'], 'lat', 'lon'])
+        f1 = read_file(cfg['io'][plotvar['f1']], [plotvar['f1_var'], 'latitude', 'longitude'])
 
         f1_var = f1[plotvar['f1_var']]
-        f1_lat = f1['lat']
-        f1_lon = f1['lon']
+        f1_lat = f1['latitude']
+        f1_lon = f1['longitude']
         f1_name = plotvar['f1_name']
 
         # map of f1 var
@@ -202,10 +202,10 @@ def pam_nitro(cfg):
 
         # if two files are present, plot f2 map, diff and scatter
         if 'f2' in plotvar:
-            f2 = read_file(cfg['io'][plotvar['f2']], [plotvar['f2_var'], 'lat', 'lon'])
+            f2 = read_file(cfg['io'][plotvar['f2']], [plotvar['f2_var'], 'latitude', 'longitude'])
 
-            f2_lat = f2['lat']
-            f2_lon = f2['lon']
+            f2_lat = f2['latitude']
+            f2_lon = f2['longitude']
             f2_var = f2[plotvar['f2_var']]
             f2_name = plotvar['f2_name']
 

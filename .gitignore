@@ -13,14 +13,6 @@ __pycache__/
 # Jupyter Notebook
 .ipynb_checkpoints/
 
-# all .files
-.*~
-
-teds/L1AL1B/tango_l1b/build/
-teds/L1AL1B/tango_l1b/manual/*
-teds/CKD/ckd_nitro.nc
-teds/CKD/ckd_generation/ckd_carbon.nc
-teds/CKD/ckd_generation/data_nitro
-data
-
 doc/_build
+
+.coverage

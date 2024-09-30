@@ -1,0 +1,2 @@
+[tool.coverage.run]
+omit = ["teds/lib/hapi.py"]

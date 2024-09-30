@@ -37,8 +37,6 @@ bool Noise::algoCheckInput(const CKD& ckd, L1& l1) {
 void Noise::algoExecute(L1& l1, const Dataset& input_data) {
 
     CKD const& ckd = input_data.get_container<CKD>("ckd");
-////    CKD::Noise noise_data = ckd.get_ckd<CKD::Noise>("noise");
-////    ckd.get_ckd("noise");
 
     spdlog::warn("Noise, binning not yet taken into account");
     for (int i {}; i < static_cast<int>(l1.image.size()); ++i) {

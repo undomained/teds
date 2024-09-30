@@ -21,7 +21,7 @@ bool PRNU::algoCheckInput(const CKD& ckd, L1& l1)
     if (l1.image.size() == ckd.prnu.prnu.size()) {
         return true;
     } else {
-        spdlog::warn("Image and CKD dimensions do not match, skipping");
+        spdlog::warn("PRNU: Image and CKD dimensions do not match, skipping");
         return false;
     }
 }

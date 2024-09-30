@@ -23,7 +23,7 @@ bool Noise::algoCheckInput(const CKD& ckd, L1& l1) {
     }
     // Check if image and ckd have the same dimensions
     if ((l1.image.size() != ckd.noise.g.size()) && (l1.image.size() != ckd.noise.n2.size())) {
-        spdlog::warn("Image and CKD dimensions do not match, skipping");
+        spdlog::warn("Noise: Image and CKD dimensions do not match, skipping");
         return false;
     } else {
         return true;
@@ -37,6 +37,8 @@ bool Noise::algoCheckInput(const CKD& ckd, L1& l1) {
 void Noise::algoExecute(L1& l1, const Dataset& input_data) {
 
     CKD const& ckd = input_data.get_container<CKD>("ckd");
+////    CKD::Noise noise_data = ckd.get_ckd<CKD::Noise>("noise");
+////    ckd.get_ckd("noise");
 
     spdlog::warn("Noise, binning not yet taken into account");
     for (int i {}; i < static_cast<int>(l1.image.size()); ++i) {

@@ -18,7 +18,7 @@ std::string DarkCurrent::getName() const {
 bool DarkCurrent::algoCheckInput(const CKD& ckd, L1& l1) {
     // Check if image and ckd have the same dimensions
     if (l1.image.size() != ckd.dark.current.size()) {
-        spdlog::warn("Image and CKD dimensions do not match, skipping");
+        spdlog::warn("Dark Current: Image and CKD dimensions do not match, skipping");
         return false;
     } else if (l1.exposure_time <= 0) {
         spdlog::warn("Exposure time = 0, skipping");

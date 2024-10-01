@@ -9,14 +9,16 @@ from pystac_client import Client
 from pystac.item import Item as PystacItem
 from netCDF4 import Dataset
 from requests import get
-from teds import log
 from tqdm import tqdm
 from xarray import DataArray
 import numpy as np
 import numpy.typing as npt
+import os
 import rioxarray
 import shapely
 import typing as tp
+
+from teds import log
 
 
 def generate_geometry(lat: DataArray,
@@ -95,13 +97,33 @@ def write_albedo_to_netcdf(albedo_file: str,
         nc_var.valid_max = 10e6
         nc_var[:] = albedo.y.values
 
-        nc_var = nc_grp.createVariable(
-            'albedo', 'u2', ['x', 'y'], fill_value=32767)
-        nc_var.long_name = 'albedo'
-        nc_var.valid_min = 0
-        nc_var.valid_max = 10_000
-        nc_var.set_auto_scale(False)
-        nc_var.scale_factor = 1e-4
+        if albedo.band_label == 'SCL':
+            nc_var = nc_grp.createVariable(
+                'scl', 'u1', ['x', 'y'], fill_value=0)
+            nc_var.long_name = 'scene classification layer'
+            nc_var.flag_values = [np.uint8(i) for i in range(12)]
+            nc_var.flag_meanings = ('No Data (Missing data)',
+                                    'Saturated or defective pixel',
+                                    'Topographic casted shadows',
+                                    'Cloud shadows',
+                                    'Vegetation',
+                                    'Not-vegetated',
+                                    'Water',
+                                    'Unclassified',
+                                    'Cloud medium probability',
+                                    'Cloud high probability',
+                                    'Thin cirrus',
+                                    'Snow or ice')
+            nc_var.valid_min = 1
+            nc_var.valid_max = 11
+        else:
+            nc_var = nc_grp.createVariable(
+                'albedo', 'u2', ['x', 'y'], fill_value=32767)
+            nc_var.long_name = 'albedo'
+            nc_var.valid_min = 0
+            nc_var.valid_max = 10_000
+            nc_var.set_auto_scale(False)
+            nc_var.scale_factor = 1e-4
         nc_var[:] = albedo.values[0]
     nc.close()
 
@@ -119,7 +141,7 @@ def download_sentinel2_albedo(config: dict) -> None:
     collection = generate_geometry(lat, lon)
     # Extract the high resolution albedo map of selected wavelength bands
     albedos = []
-    for band_label in config['sentinel2']['band_section']:
+    for band_label in config['sentinel2']['band_section'] + ['SCL']:
         log.info(f'Downloading Sentinel 2 albedo for band {band_label}')
         tiff_url = collection[-1].assets[band_label].href
         short_name = tiff_url.split('sentinel-s2-l2a-cogs/')[1]

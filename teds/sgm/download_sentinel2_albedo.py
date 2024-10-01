@@ -155,7 +155,18 @@ def download_sentinel2_albedo(config: dict) -> None:
             for data in resp.iter_content(chunk_size=1024):
                 size = in_memory_object.write(data)
                 bar.update(size)
-        albedo = rioxarray.open_rasterio(in_memory_object)
+        # Option to read the tiff file from memory or first write to
+        # hard drive and read from there.
+        if 'in_memory' in config['sentinel2'] and (
+                config['sentinel2']['in_memory']):
+            albedo = rioxarray.open_rasterio(in_memory_object)
+        else:
+            _filename = 'albedo.tif'
+            with open(_filename, 'bw') as tif_file:
+                in_memory_object.seek(0)
+                tif_file.write(in_memory_object.read())
+            albedo = rioxarray.open_rasterio(_filename)
+            os.remove(_filename)
         assert isinstance(albedo, DataArray)
         albedo = albedo.assign_attrs({
             'band_label': band_label,

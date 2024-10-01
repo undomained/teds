@@ -2086,20 +2086,12 @@ def ifdoe_run(config, mode='no2'):
     
     # A.4  Setup loop bounds
 
-    scanN,pxlN,spectralN = getDimensionsRad(cfg['io']['sgm_rad'])
-    scanN_atm,pxlN_atm = getDimensionsAtm(cfg['io']['sgm_atm'])
-    
-    # when using act subset, get pxlN from atm file, rad has full act shape
-    if pxlN_atm < pxlN:
-        pxlN = pxlN_atm
-        act_subset = True
-    else:
-        act_subset = False
-
+    scanN,pxlN,spectralN = getDimensionsRad(cfg['io']['l1b'])
 
     if 'alt' in cfg:
         scanBeg = cfg['alt']['start']
         scanEnd = cfg['alt']['stop']
+        scanN = scanEnd - scanBeg + 1
     else:
         scanBeg = 0
         scanEnd = scanN - 1
@@ -2107,6 +2099,7 @@ def ifdoe_run(config, mode='no2'):
     if 'act' in cfg:
         pxlBeg = cfg['act']['start']
         pxlEnd = cfg['act']['stop']
+        pxlN = pxlEnd - pxlBeg + 1
     else:
         pxlBeg = 0
         pxlEnd = pxlN - 1
@@ -2123,9 +2116,8 @@ def ifdoe_run(config, mode='no2'):
 
     # read geometry
 
-    if act_subset: # L1B geometry not working correctly when using act subset
+    if 'act' in cfg: # L1B geometry not working correctly when using act subset
         geo = readGeometryGm(cfg['io']['gm'],slice_alt,slice_act)
-    
     else:
         geo = readGeometryL1b(cfg['io']['l1b'],slice_alt,slice_act)
 

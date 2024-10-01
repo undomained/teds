@@ -147,8 +147,8 @@ im:
         algo_list: 'algos_im'
     instrument: 'nitro'
     processing_version: 0.000
-    image_start: 0
-    image_end: 0
+    # image_start: 0
+    # image_end: 0
     detector:
         binning_table_id: 1         # across track binning
         exposure_time:    0.021     # exposure time [sec]
@@ -167,8 +167,8 @@ l1al1b:
         algo_list: 'algos_l1b'
     instrument: 'nitro'
     processing_version: 0.000
-    image_start: 0
-    image_end: 0
+    # image_start: 0
+    # image_end: 0
 #############################
 #########################################################
 #

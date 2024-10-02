@@ -1,6 +1,32 @@
+[build-system]
+requires = ['setuptools', 'cmake>=3.22']
+build-backend = 'setuptools.build_meta'
+
 [project]
 name = 'teds'
 version = '0.0.1'
+dependencies = [
+    'netCDF4',
+    'h5py',
+    'scipy',
+    'numpy',
+    'PyYAML',
+    'astropy',
+    'sgp4',
+    'geopandas',
+    'pystac_client == 0.6.1',
+    'tqdm',
+    'rioxarray',
+    'numba',
+    'shapely',
+    'threadpoolctl',
+    'tables',
+    'pyproj',
+    'Glymur == 0.13.2',
+]
+
+[tool.setuptools]
+packages = ['teds']
 
 [tool.coverage.run]
 omit = ['teds/lib/hapi.py']

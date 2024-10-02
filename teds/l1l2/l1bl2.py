@@ -20,8 +20,6 @@ from teds.lib import libINV
 from teds.lib.libWrite import writevariablefromname
 
 
-import matplotlib.pyplot as plt
-
 class Emptyclass:
     """Empty class. Data container."""
     
@@ -130,7 +128,7 @@ def level2_output(filename, l2product, retrieval_init, l1bproduct, settings):
     nalt = l1bproduct['latitude'][:, 0].size
     nact = len(l2product[0])
     nlay = len(l2product[0][0]['XCO2 col avg kernel'])
-        
+
     # filename
     print(filename)
     output_l2 = nc.Dataset(filename, mode='w')
@@ -139,9 +137,9 @@ def level2_output(filename, l2product, retrieval_init, l1bproduct, settings):
     output_l2.createDimension('bins_across_track', nact)     # across track axis
     output_l2.createDimension('bins_along_track', nalt)     # along track axis
     output_l2.createDimension('bins_albedo', 1)     # spectral bins albedo
-    grp_ns    = output_l2.createGroup('non_scattering_retrieval')
+    grp_ns = output_l2.createGroup('non_scattering_retrieval')
     grp_prior = output_l2.createGroup('prior')
-    grp_diag  = output_l2.createGroup('diagnostics')
+    grp_diag = output_l2.createGroup('diagnostics')
 
     # layer height
 

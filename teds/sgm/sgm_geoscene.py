@@ -20,9 +20,7 @@ from typing import List
 
 
 def get_sentinel2_albedo(filename: str) -> List[DataArray]:
-    '''Read a list of Sentinel 2 albedos from a NetCDF file.
-
-    '''
+    """Read a list of Sentinel 2 albedos from a NetCDF file."""
     nc = Dataset(filename)
     albedos = []
     for group in nc.groups:

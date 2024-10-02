@@ -1,7 +1,5 @@
 # collection of numerical tools
 import numpy as np
-import sys
-import matplotlib.pyplot as plt
 import scipy
 import math
 from numba import njit

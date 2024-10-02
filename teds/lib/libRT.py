@@ -8,10 +8,8 @@ import os
 import io
 import numpy as np
 import netCDF4 as nc
-import matplotlib.pyplot as plt
 from contextlib import redirect_stdout
 from contextlib import nullcontext
-import h5py
 from time import sleep
 from tqdm import tqdm
 import sys

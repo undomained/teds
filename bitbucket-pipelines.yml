@@ -31,3 +31,4 @@ pipelines:
           - mkdir build
           - cmake -G Ninja -C CI/initial_cache.cmake -B build
           - cmake --build build -j 6
+          - cmake --build build --target test

@@ -4,12 +4,12 @@
 # CMake
 cmake_minimum_required(VERSION 3.22)
 
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
-include(Tools)
-
 # Project
 file(STRINGS ../../project_version.txt TANGO_VERSION REGEX "^[0-9.]+")
 project(tango_l1b VERSION ${TANGO_VERSION} LANGUAGES CXX)
+
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+include(Tools)
 
 # The first_run variable is useful when attempting to detect the
 # default value of a variable, but only during the first configuring
@@ -39,7 +39,7 @@ if (INCLUDE_COVERAGE)
   string(APPEND CMAKE_CXX_FLAGS " ${COVERAGE_FLAGS}")
 endif()
 
-# Define main target
+# Define main targets
 add_library(tango_l1b "")
 add_executable(tango_l1b.x "")
 target_link_libraries(tango_l1b.x PRIVATE tango_l1b)
@@ -54,7 +54,7 @@ foreach(_var LIBRARIES LIBRARY_PATHS INCLUDE_PATHS)
   convert_to_list(${_var})
 endforeach()
 generate_library_targets(LIBRARY_PATHS LIBRARIES)
-target_link_libraries(tango_l1b.x PRIVATE ${LIBRARIES})
+target_link_libraries(tango_l1b PUBLIC ${LIBRARIES})
 
 # Sources
 add_subdirectory(tango_l1b)
@@ -82,11 +82,12 @@ find_package(yaml-cpp 0.7 QUIET HINTS ${YAML_CPP_PATH})
 if (TARGET yaml-cpp::yaml-cpp OR TARGET yaml-cpp)
   if (TARGET yaml-cpp::yaml-cpp)
     get_target_property(_loc yaml-cpp::yaml-cpp IMPORTED_LOCATION_RELEASE)
+    target_link_libraries(tango_l1b PUBLIC yaml-cpp::yaml-cpp)
   else()
     get_target_property(_loc yaml-cpp IMPORTED_LOCATION_RELEASE)
+    target_link_libraries(tango_l1b PUBLIC yaml-cpp)
   endif()
   message(STATUS "Found ${_loc}")
-  target_link_libraries(tango_l1b PUBLIC yaml-cpp)
 else()
   if (first_run)
     message("yaml-cpp >= 0.7 not found, downloading")
@@ -116,18 +117,14 @@ else()
   install(TARGETS pocketfft EXPORT tango_l1bConfig)
 endif()
 
-# Retrieve locations from the list of supplied libraries and convert
-# into a string.
-get_target_property(all_libs tango_l1b LINK_LIBRARIES)
-foreach(_lib ${LIBRARIES})
-  get_target_property(_loc ${_lib} IMPORTED_LOCATION)
-  # Clean the location if from a build instead of an install directory
-  string(REGEX REPLACE "\\$<BUILD_INTERFACE:([^>]+).+" "\\1" _loc "${_loc}")
-  list(APPEND all_libs ${_loc})
-endforeach()
-list(JOIN all_libs " " all_libs)
+# Retrieve paths of all linked libraries
+get_library_paths(tango_l1b)
+
 # Gather all compiler flags
 get_all_flags(CXX all_flags)
+
+# Information about the environment that shown when running the
+# processor
 target_compile_definitions(tango_l1b PRIVATE
   TANGO_PROJECT_VERSION="${TANGO_VERSION}"
   TANGO_GIT_COMMIT_ABBREV="${GIT_COMMIT_ABBREV}"
@@ -135,7 +132,16 @@ target_compile_definitions(tango_l1b PRIVATE
   TANGO_EXECUTABLE="${CMAKE_CURRENT_BINARY_DIR}/tango_l1b"
   TANGO_CXX_COMPILER="${CMAKE_CXX_COMPILER}"
   TANGO_CXX_COMPILER_FLAGS="${all_flags}"
-  TANGO_LIBRARIES="${all_libs}")
+  TANGO_LIBRARIES="${tango_l1b_library_paths}")
+
+# Define properties to be passed on to the instrument model
+define_property(TARGET PROPERTY TEDS_ALL_FLAGS)
+define_property(TARGET PROPERTY TEDS_ALL_LIBS)
+define_property(TARGET PROPERTY TEDS_COMMIT_HASH)
+set_target_properties(tango_l1b PROPERTIES
+  TEDS_ALL_FLAGS "${all_flags}"
+  TEDS_ALL_LIBS "${lib_locs}"
+  TEDS_COMMIT_HASH "${GIT_COMMIT_ABBREV}")
 
 # Print info
 message(
@@ -143,4 +149,4 @@ message(
 get_all_flags(CXX all_flags)
 message("Compiler flags: ${all_flags}")
 message("Build configuration: ${CMAKE_BUILD_TYPE}")
-message("Install location: ${CMAKE_INSTALL_PREFIX}")
+message("Install path: ${CMAKE_INSTALL_PREFIX}")

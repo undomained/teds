@@ -1,9 +1,10 @@
 # This source code is licensed under the 3-clause BSD license found in
 # the LICENSE file in the root directory of this project.
 
-target_sources(tango_im.x PRIVATE
-  main.cpp
+target_sources(tango_im PRIVATE
   driver.cpp
   settings_im.cpp
   uncalibration.cpp
 )
+
+target_sources(tango_im.x PRIVATE main.cpp)

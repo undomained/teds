@@ -9,7 +9,7 @@ YAML configuration files
 
 Each TEDS module takes one argument which is a reference to a configuration file written in YAML. We chose YAML because it is versatile, human-readable, and widely used and supported. It uses Python-style indentation to indicate nesting and as basic types supports scalars, lists, and maps (also called dictionaries or hashes). Furthermore, it is a strict superset of JSON and thus compatible with it.
 
-A quick way to understand the YAML format is to run either C++ code without any arguments:
+A quick way to understand the YAML format is run the L1A-L1B C++ code without any arguments:
 
 .. code-block:: bash
 

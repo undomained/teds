@@ -1,3 +1,7 @@
+[project]
+name = 'teds'
+version = '0.0.1'
+
 [tool.coverage.run]
 omit = ['teds/lib/hapi.py']
 

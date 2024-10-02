@@ -5,7 +5,8 @@
 cmake_minimum_required(VERSION 3.22)
 
 # Project
-file(STRINGS ../../project_version.txt TANGO_VERSION REGEX "^[0-9.]+")
+file(STRINGS ../../pyproject.toml _version REGEX "^version *= *'[0-9.]+'$")
+string(REGEX MATCH "[0-9.]+" TANGO_VERSION ${_version})
 project(tango_l1b VERSION ${TANGO_VERSION} LANGUAGES CXX)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake)

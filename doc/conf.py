@@ -8,15 +8,14 @@
 
 import os
 import sys
+import tomllib
 
 project = 'TEDS'
-copyright = '2024, SRON'
-author = 'Raul Laasner'
-with open('../project_version.txt') as f:
-    for line in f.readlines():
-        if not line.startswith('#'):
-            release = line.rstrip()
-version = release
+copyright = 'SRON'
+author = 'TANGO team'
+
+pyproject_data = tomllib.load(open('../pyproject.toml', 'rb'))
+version = pyproject_data['projects']['version']
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration

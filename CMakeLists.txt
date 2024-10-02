@@ -16,7 +16,9 @@
 # CMake
 cmake_minimum_required(VERSION 3.22)
 
-project(tango VERSION 0.1 LANGUAGES CXX)
+file(STRINGS pyproject.toml _version REGEX "^version *= *'[0-9.]+'$")
+string(REGEX MATCH "[0-9.]+" TANGO_VERSION ${_version})
+project(tango VERSION ${TANGO_VERSION} LANGUAGES CXX)
 
 add_subdirectory(teds/l1al1b)
 add_subdirectory(teds/im)

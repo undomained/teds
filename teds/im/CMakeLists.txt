@@ -10,6 +10,7 @@
 add_library(tango_im "")
 add_executable(tango_im.x "")
 target_link_libraries(tango_im.x PRIVATE tango_im)
+check_include_coverage()
 
 # Sources
 add_subdirectory(tango_im)

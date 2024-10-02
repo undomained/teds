@@ -28,6 +28,8 @@ auto Spectrum::extract(const CKD& ckd,
                 const double n { image_stdev[ipix] * w };
                 stdev[i] += n * n;
                 total_weight += w;
+            } else {
+                mask[i] = true;
             }
         }
         if (total_weight > 0.0) {

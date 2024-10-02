@@ -35,17 +35,12 @@ option(BUILD_SHARED_LIBS
 option(INCLUDE_COVERAGE "Defines new target called 'coverage'" OFF)
 set(COVERAGE_FLAGS "--coverage" CACHE STRING
   "Additional compiler flags used when running code coverage")
-if (INCLUDE_COVERAGE)
-  string(APPEND CMAKE_CXX_FLAGS " ${COVERAGE_FLAGS}")
-endif()
 
 # Define main targets
 add_library(tango_l1b "")
 add_executable(tango_l1b.x "")
 target_link_libraries(tango_l1b.x PRIVATE tango_l1b)
-include(GetGitRevisionDescription)
-get_git_head_revision(_ GIT_COMMIT)
-string(SUBSTRING ${GIT_COMMIT} 0 8 GIT_COMMIT_ABBREV)
+check_include_coverage()
 
 # Process user defined include paths and libraries
 target_include_directories(tango_l1b.x PUBLIC ${INCLUDE_PATHS})
@@ -125,6 +120,9 @@ get_all_flags(CXX all_flags)
 
 # Information about the environment that shown when running the
 # processor
+include(GetGitRevisionDescription)
+get_git_head_revision(_ GIT_COMMIT)
+string(SUBSTRING ${GIT_COMMIT} 0 8 GIT_COMMIT_ABBREV)
 target_compile_definitions(tango_l1b PRIVATE
   TANGO_PROJECT_VERSION="${TANGO_VERSION}"
   TANGO_GIT_COMMIT_ABBREV="${GIT_COMMIT_ABBREV}"

@@ -94,11 +94,7 @@ auto driver(const SettingsL1B& settings,
             timers[static_cast<int>(ProcLevel::noise)].start();
             // If the unbinning setting is none the the detector image
             // is still binned.
-            noise(ckd,
-                  settings.noise.enabled,
-                  binning_table,
-                  settings.unbinning == Unbin::none,
-                  l1);
+            noise(ckd, settings.noise.enabled, binning_table, l1);
             timers[static_cast<int>(ProcLevel::noise)].stop();
         }
         // Dark current
@@ -119,7 +115,7 @@ auto driver(const SettingsL1B& settings,
         if (l1.level < ProcLevel::prnu
             && settings.cal_level >= ProcLevel::prnu) {
             timers[static_cast<int>(ProcLevel::prnu)].start();
-            PRNU(ckd, settings.prnu.enabled, l1);
+            prnu(ckd, settings.prnu.enabled, l1);
             timers[static_cast<int>(ProcLevel::prnu)].stop();
         }
         // Stray light
@@ -127,11 +123,8 @@ auto driver(const SettingsL1B& settings,
             && settings.cal_level >= ProcLevel::stray) {
             timers[static_cast<int>(ProcLevel::stray)].start();
             // Same comment about unbinning as for noise above
-            strayLight(ckd,
-                       binning_table,
-                       settings.stray.van_cittert_steps,
-                       settings.unbinning == Unbin::none,
-                       l1);
+            strayLight(
+              ckd, binning_table, settings.stray.van_cittert_steps, l1);
             timers[static_cast<int>(ProcLevel::stray)].stop();
         }
         // Swath

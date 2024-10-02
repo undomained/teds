@@ -16,23 +16,6 @@
 
 namespace tango {
 
-// Read the knots and values from the CKD file but construct the
-// inverse of the nonlinearity spline.
-static auto inverseNonlinearity(const std::string& ckd_file)
-{
-    const netCDF::NcFile nc { ckd_file, netCDF::NcFile::read };
-    if (const auto grp { nc.getGroup("nonlinearity") }; !grp.isNull()) {
-        const auto n_knots { grp.getDim("knots").getSize() };
-        std::vector<double> knots(n_knots);
-        std::vector<double> y(n_knots);
-        grp.getVar("knots").getVar(knots.data());
-        grp.getVar("y").getVar(y.data());
-        return LinearSpline { y, knots };
-    } else {
-        return LinearSpline {};
-    }
-}
-
 // Meta data such as the exposure time are read from the L1A input
 // file but ignored by the instrument model. Instead, they are set by
 // user settings. The L1A-L1B processor, however, only reads from the
@@ -71,7 +54,7 @@ auto driver(const SettingsIM& settings,
     const CKD ckd { settings.io.ckd };
     // For undoing nonlinearity calibration we need the inverse of the
     // nonlinearity spline from the CKD.
-    const LinearSpline nonlin_spline { inverseNonlinearity(settings.io.ckd) };
+    const LinearSpline nonlin_spline { ckd.nonlin.spline.invert() };
 
     // Initialize the binning table
     const BinningTable binning_table { ckd.n_detector_rows,

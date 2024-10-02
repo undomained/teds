@@ -22,14 +22,16 @@ private:
     double range {};
     std::vector<double> knots {};
     std::vector<double> values {};
-    auto lookupIdx(const double x) const -> int;
+    [[nodiscard]] auto lookupIdx(const double x) const -> int;
 
 public:
     LinearSpline() = default;
     LinearSpline(const std::vector<double>& x_values,
                  const std::vector<double>& y_values);
-    auto eval(const double x) const -> double;
-    auto deriv(const double x) const -> double;
+    [[nodiscard]] auto eval(const double x) const -> double;
+    [[nodiscard]] auto deriv(const double x) const -> double;
+    // Construct a new spline by inverting the x and y values
+    [[nodiscard]] auto invert() const -> LinearSpline;
     ~LinearSpline() = default;
 };
 

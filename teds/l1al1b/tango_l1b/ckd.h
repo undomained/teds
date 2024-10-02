@@ -20,6 +20,7 @@ private:
     auto genPixelIndices(const double spectrum_width) -> void;
 
 public:
+    CKD() = default;
     // Construct the CKD from a NetCDF file. The second argument
     // defines the number of pixels comprising one spectral element.
     CKD(const std::string& filename, const double spectrum_width = 1.0);
@@ -55,7 +56,7 @@ public:
         bool enabled { false };
         // Conversion gain (signal dependent noise term)
         std::vector<double> g {};
-        // Square or read noise (signal independent noise term)
+        // Square of read noise (signal independent noise term)
         std::vector<double> n2 {};
     } noise;
 

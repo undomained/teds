@@ -29,7 +29,6 @@ auto darkOffset(const CKD& ckd, const bool enabled, L1& l1) -> void;
 auto noise(const CKD& ckd,
            const bool enabled,
            const BinningTable& binning_table,
-           const bool binned_detector_image,
            L1& l1) -> void;
 
 // Remove dark current. This is split from dark offset because noise
@@ -40,13 +39,12 @@ auto darkCurrent(const CKD& ckd, const bool enabled, L1& l1) -> void;
 auto nonlinearity(const CKD& ckd, const bool enabled, L1& l1) -> void;
 
 // Correct for photoresponse non-uniformity and quantum efficiency
-auto PRNU(const CKD& ckd, const bool enabled, L1& l1) -> void;
+auto prnu(const CKD& ckd, const bool enabled, L1& l1) -> void;
 
 // Correct for stray light
 auto strayLight(const CKD& ckd,
                 const BinningTable& binning_table,
                 const int n_van_cittert,
-                const bool binned_detector_image,
                 L1& l1) -> void;
 
 // Extract a set of spectra from one detector image

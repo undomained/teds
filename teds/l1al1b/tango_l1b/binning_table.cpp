@@ -15,7 +15,7 @@ BinningTable::BinningTable(const int detector_n_rows,
                            const std::string& binning_table,
                            const int table_id)
 {
-    if (table_id == 0) {
+    if (table_id < 2) {
         // Default binning table is the same size as the unbinned detector
         bin_indices.resize(detector_n_rows * detector_n_cols);
         std::iota(bin_indices.begin(), bin_indices.end(), 0);

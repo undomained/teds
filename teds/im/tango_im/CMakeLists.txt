@@ -8,3 +8,6 @@ target_sources(tango_im PRIVATE
 )
 
 target_sources(tango_im.x PRIVATE main.cpp)
+
+target_include_directories(tango_im INTERFACE
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/..>)

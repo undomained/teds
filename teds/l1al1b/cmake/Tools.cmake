@@ -71,3 +71,12 @@ function(get_library_paths target)
   list(JOIN _paths " " _paths)
   set(${target}_library_paths ${_paths} PARENT_SCOPE)
 endfunction()
+
+# Test if INCLUDE_COVERAGE option is ON and if so pass the coverage
+# flag to the compiler. This macro needs to be called separately for
+# each scope.
+macro(check_include_coverage)
+  if (INCLUDE_COVERAGE)
+    string(APPEND CMAKE_CXX_FLAGS " ${COVERAGE_FLAGS}")
+  endif()
+endmacro()

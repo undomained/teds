@@ -20,3 +20,4 @@ project(tango VERSION 0.1 LANGUAGES CXX)
 
 add_subdirectory(teds/l1al1b)
 add_subdirectory(teds/im)
+add_subdirectory(tests)

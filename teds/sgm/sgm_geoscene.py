@@ -190,8 +190,6 @@ def geoscene_generation(config: dict) -> None:
         meteodata = libATM.get_atmosphericdata_new(
             gm_data.lat, gm_data.lon, config['meteo'])
 
-        meteodata = libATM.get_atmosphericdata_new(gm_data.lat, gm_data.lon, config['io_files']['meteo'])
-
         # Get albedo on the microHH grid
         s2_albedos = get_sentinel2_albedo(config['io_files']['input_s2'])
 

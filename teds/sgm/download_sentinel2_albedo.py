@@ -16,13 +16,12 @@ import numpy.typing as npt
 import os
 import rioxarray
 import shapely
-import typing as tp
 
 from teds import log
 
 
 def generate_geometry(lat: DataArray,
-                      lon: npt.NDArray[np.float64]) -> tp.List[PystacItem]:
+                      lon: npt.NDArray[np.float64]) -> list[PystacItem]:
     # Generate geometry from latitude-longitude points
     latlon = [Point(xy) for xy in zip(lon.ravel(), lat.ravel())]
     # Link points to the WGS84 reference ellipsiod
@@ -67,8 +66,7 @@ def generate_geometry(lat: DataArray,
     return collection_filtered
 
 
-def write_albedo_to_netcdf(albedo_file: str,
-                           albedos: tp.List[DataArray]) -> None:
+def write_albedo_to_netcdf(albedo_file: str, albedos: list[DataArray]) -> None:
     nc = Dataset(albedo_file, 'w')
     nc.title = 'Sentinel 2 albedos for different wavelength bands'
     for albedo in albedos:

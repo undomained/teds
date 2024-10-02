@@ -9,12 +9,12 @@ from scipy.interpolate import RegularGridInterpolator
 import logging
 from xarray import DataArray
 from .libNumTools import convolution_2d
-from typing import List
 
-def interp_sentinel2_albedo(s2_albedos: List[DataArray],
+
+def interp_sentinel2_albedo(s2_albedos: list[DataArray],
                             lat,
                             lon,
-                            band_label) -> List[DataArray]:
+                            band_label) -> list[DataArray]:
 
     s2_albedos_regridded = []
     for s2_albedo in s2_albedos:

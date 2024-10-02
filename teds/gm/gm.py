@@ -144,8 +144,8 @@ def get_S2_microHH(logger, config):
                lat_grid : pixel latitude grid; numpy array
                lon_grid: pixel_longitude grid, numpy array
     """
-    from lib import libGM
-    from lib import constants
+    from teds.lib import libGM
+    from teds.lib import constants
     nact = config["field_of_regard"]["nact"]
     nalt = config["field_of_regard"]["nalt"]
 

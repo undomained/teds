@@ -18,6 +18,7 @@ Input files are:
 - (optionally) netCDF geometry data io.geometry
 
 """
+from importlib.resources import files
 from pathlib import Path
 import argparse
 import os
@@ -86,10 +87,11 @@ def step_needed(proc_step: ProcLevel,
     return in_level < proc_step and out_level >= proc_step
 
 
-def process_l1b(config_user: dict) -> None:
+def process_l1b(config_user: dict | None = None) -> None:
     """Run a simulation of the L1A-L1B process.
 
-    Read input, process data, and write output.
+    Read input, process data, and write output. If run without an
+    argument, print the list of all settings and exit.
 
     Parameters
     ----------
@@ -99,20 +101,23 @@ def process_l1b(config_user: dict) -> None:
         user.
 
     """
+    defaults_filename = str(files('teds.l1al1b.python')
+                            / 'default_config.yaml')
+    if config_user is None:
+        print(open(defaults_filename).read())
+        return
+    assert isinstance(config_user, dict)
+
     print_heading('Tango L1B processor', empty_line=False)
     print_system_info()
 
     print_heading('Reading CKD and input data')
     # Start with the full default config and then merge in those
     # settings given by the user.
-    defaults_filename = Path(__file__).parent / 'default_config.yaml'
     config: dict = yaml.safe_load(open(defaults_filename))
     merge_configs(config, config_user)
     check_config(config)
-    # Read input data
     ckd = read_ckd(config['io']['ckd'])
-
-    # Read input data
     log.info('Reading input data')
     l1_products: L1 = read_l1(
         config['io']['l1a'], config['image_start'], config['image_end'])

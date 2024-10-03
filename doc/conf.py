@@ -6,16 +6,15 @@
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
+import importlib
 import os
 import sys
-import tomllib
 
 project = 'TEDS'
 copyright = 'SRON'
 author = 'TANGO team'
 
-pyproject_data = tomllib.load(open('../pyproject.toml', 'rb'))
-version = pyproject_data['projects']['version']
+version = importlib.metadata.version('teds')
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration

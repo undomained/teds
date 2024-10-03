@@ -45,6 +45,8 @@ You will notice that the shell's prompt has changed to remind you that you are i
 
 The second command installs all dependencies found in ``pyproject.toml`` and creates an *editable* build of ``teds`` suitable for development. The third command installs additional development tools such as linters and documentation tools. The reason for the split is an when distributing the package, only the second command needs to be run without the ``--editable`` flag. This leaves out everything not required for the end user.
 
+If your working directory is the same as where the virtual environment is located, the TEDS package should automatically be found by Python scripts. If not, you might need to update your ``PYTHONPATH``.
+
 
 C++ code
 ---------

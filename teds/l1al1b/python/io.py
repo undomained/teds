@@ -10,6 +10,7 @@ a file is readable/writable.
 from datetime import datetime
 from datetime import timezone
 from pathlib import Path
+import importlib
 import os
 
 from netCDF4 import Dataset
@@ -71,13 +72,7 @@ def print_system_info() -> None:
 
     """
     # Project version
-    _version_file = os.path.join(os.path.dirname(__file__),
-                                 '../../../project_version.txt')
-    with open(_version_file) as f:
-        for line in f.readlines():
-            if not line.startswith('#'):
-                version = line.rstrip()
-    print('Version                 :', version)
+    print('Version                 :', importlib.metadata.version('teds'))
     # Short git hash (only if .git found)
     git_hash = get_git_commit_hash()
     if git_hash:

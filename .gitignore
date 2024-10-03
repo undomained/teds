@@ -16,3 +16,6 @@ __pycache__/
 doc/_build
 
 .coverage
+
+# Setuptools
+teds.egg-info

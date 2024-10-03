@@ -187,7 +187,7 @@ void L1Measurement::writeObservationData(netCDF::NcFile& nc) {
     const auto nc_images = nc.getDim("along_track");
     auto& l1 { l1_measurement[0] };
 
-    const auto& wavelengths = *l1_measurement.front().wavelength; 
+    const auto& wavelengths = *l1_measurement.front().observation_wl_out; 
     const auto n_wavelength { wavelengths.front().size() };
     const auto nc_wavelength { nc.addDim("wavelength", n_wavelength) };
     
@@ -513,6 +513,92 @@ void L1Measurement::copyGeometry(const std::string& config)
         copy(saa, l1_measurement[i_alt].geo.saa);
         l1_measurement[i_alt].geo.height = std::vector<float>(n_act, 0.0);
     }
+}
+
+void L1Measurement::binWavelength(L1& l1, CKD const& ckd) {
+    // Same function as algorithm/extract_spectra.cpp but for binning wavelength map
+    // Taken out of image loop as it unly needs to be done once for one image
+    // Only runs when creating 'observation' data
+
+   // Fill output data with zeroes
+    auto wavelength_out = std::make_shared<std::vector<std::vector<double>>>(ckd.n_act, std::vector<double>(ckd.n_detector_cols));
+    for (size_t i_act {}; i_act < ckd.n_act; ++i_act) {
+        for (size_t i {}; i < ckd.n_detector_cols; ++i) {
+            (*wavelength_out)[i_act][i] = 0.0;
+        }
+    }
+
+    for (size_t i_col {}; i_col < ckd.n_detector_cols; ++i_col){
+        for (size_t i_act {}; i_act < ckd.n_act; ++i_act) {
+
+            const double row_mid = ckd.swath.row_indices[i_act][i_col];
+            double row_first = row_mid;
+            double row_last = row_mid;
+
+            if (i_act > 0){
+                row_first = ckd.swath.row_indices[i_act-1][i_col];
+            }
+            if (i_act < (ckd.n_act-1)){
+                row_last = ckd.swath.row_indices[i_act+1][i_col];
+            }
+            int row_first_i {static_cast<int>(row_first) };
+            int row_last_i {static_cast<int>(row_last) };
+            int row_mid_i {static_cast<int>(row_mid) };
+
+            // Check boundaries
+            if (row_first_i < 0){
+                row_first_i = 0;
+            }
+            if (row_mid_i < 0){
+                row_mid_i = 0;
+            }
+            if (row_last_i < 0){
+                row_last_i = 0;
+            }
+            const int n_row = ckd.n_detector_rows;
+            if (row_first_i >= n_row){
+                row_first_i = n_row-1;
+            }
+            if (row_mid_i >= n_row){
+                row_mid_i = n_row-1;
+            }
+            if (row_last_i >= n_row){
+                row_last_i = n_row-1;
+            }
+
+            // Determine weight factors for rows below row_mid and above row_mid
+            int n_rows_below = row_mid_i - row_first_i;
+            int n_rows_above = row_last_i - row_mid_i;
+            double weight_factor_below = 0.;
+            if (n_rows_below > 0){
+                weight_factor_below = 1. / (n_rows_below) ;
+            }
+            double weight_factor_above = 0.;
+            if (n_rows_above > 0){
+                weight_factor_above = 1. / (n_rows_above) ;
+            }
+
+            // Add signal of rows below row_mid to signal according to weight
+            double total_weight = 0.;
+            double weight = 0.0;
+            double n = 0.;
+            for (int i_row {row_first_i}; i_row <= row_mid_i; ++i_row){
+                total_weight += weight;
+                (*wavelength_out)[i_act][i_col] += weight * (*l1.wavelength)[i_row][i_col] ;
+                weight += weight_factor_below;
+            }
+            // Add signal of rows above row_mid to signal according to weight
+            weight = 1.0;
+            for (int i_row {row_mid_i}; i_row <= row_last_i; ++i_row){
+                total_weight += weight;
+                (*wavelength_out)[i_act][i_col] += weight * (*l1.wavelength)[i_row][i_col] ;
+                weight -= weight_factor_above;
+            }
+            // Divide by total_weight
+            (*wavelength_out)[i_act][i_col] /= total_weight;
+        }
+    }
+    l1.observation_wl_out = wavelength_out;
 }
 
 } // namespace tango

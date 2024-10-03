@@ -8,10 +8,12 @@
 #include "setting.h"
 #include <netcdf>
 #include <memory>
+#include "ckd.h"
 
 namespace tango {
 
 class L1;
+class CKD;
 
 class L1Measurement {
 private:
@@ -117,6 +119,8 @@ public:
     //                  const std::string& geo_filename);
     //                  int i_alt_start,
     //                  std::vector<L1>& l1_products) -> void;
+
+    void binWavelength(L1& l1, const CKD& ckd);
 };
 
 

@@ -501,95 +501,94 @@ def build(config, steps, cfg_path, attribute_dict):
     configuration = config.copy()
 
     for step in steps:
-        match step:
-            case 'gm' | 'all' :
-                gm_config = get_specific_config(configuration, 'gm')
-                attribute_dict = add_module_specific_attributes(gm_config, attribute_dict, 'gm')
-                e2e_module = importlib.import_module("gm.gm")
-                e2e_module.geometry_module(gm_config)
-                # add attributes to the output file
-                Utils.add_attributes_to_output(gm_config['io']['gm'], attribute_dict)
+       if step == 'gm' or 'all':
+            gm_config = get_specific_config(configuration, 'gm')
+            attribute_dict = add_module_specific_attributes(gm_config, attribute_dict, 'gm')
+            e2e_module = importlib.import_module("gm.gm")
+            e2e_module.geometry_module(gm_config)
+            # add attributes to the output file
+            Utils.add_attributes_to_output(gm_config['io']['gm'], attribute_dict)
 
-            case 'sgm' | 'all' :
-                sgm_config = get_specific_config(configuration, 'sgm')
-                attribute_dict = add_module_specific_attributes(sgm_config, attribute_dict, 'sgm')
-                e2e_module = importlib.import_module("sgm.sgm_no2")
-                e2e_module.scene_generation_module_nitro(sgm_config)
-                Utils.add_attributes_to_output(sgm_config['io']['sgm_rad'], attribute_dict)
-                Utils.add_attributes_to_output(sgm_config['io']['sgm_atm'], attribute_dict)
-                Utils.add_attributes_to_output(sgm_config['io']['sgm_atm_raw'], attribute_dict)
+       if step == 'sgm' or 'all':
+            sgm_config = get_specific_config(configuration, 'sgm')
+            attribute_dict = add_module_specific_attributes(sgm_config, attribute_dict, 'sgm')
+            e2e_module = importlib.import_module("sgm.sgm_no2")
+            e2e_module.scene_generation_module_nitro(sgm_config)
+            Utils.add_attributes_to_output(sgm_config['io']['sgm_rad'], attribute_dict)
+            Utils.add_attributes_to_output(sgm_config['io']['sgm_atm'], attribute_dict)
+            Utils.add_attributes_to_output(sgm_config['io']['sgm_atm_raw'], attribute_dict)
 
-            case 'im' | 'all' :
-                im_config = get_specific_config(configuration, 'im')
-                attribute_dict = add_module_specific_attributes(im_config, attribute_dict, 'im')
-                # write config to temp yaml file with IM values filled in
-                im_config_file = f"{cfg_path}/im_config_temp.yaml"
-                with open(im_config_file,'w') as outfile:
-                    yaml.dump(im_config, outfile)
+       if step == 'im' or 'all':
+            im_config = get_specific_config(configuration, 'im')
+            attribute_dict = add_module_specific_attributes(im_config, attribute_dict, 'im')
+            # write config to temp yaml file with IM values filled in
+            im_config_file = f"{cfg_path}/im_config_temp.yaml"
+            with open(im_config_file,'w') as outfile:
+                yaml.dump(im_config, outfile)
 
-                if not im_config['do_python']:
-                    # Run C++ IM code
-                    # Need to call C++ using the IM specific config_file
-                    # TODO: Should check be set to True
-                    subprocess.run(["im/build/tango_im.x", im_config_file], check=False)
+            if not im_config['do_python']:
+                # Run C++ IM code
+                # Need to call C++ using the IM specific config_file
+                # TODO: Should check be set to True
+                subprocess.run(["im/build/tango_im.x", im_config_file], check=False)
 
-        # With updates to l1_measurement.cpp there is no need for reshaping data.
-        #            # output dataset is 2D. In case of detector image (in case of some inbetween steps
-        #            # and of the final output) the second dimension is detector_pixels which is too
-        #            # large to view.
-        #            # Need to reshape to 3D to be able to make sense of this.
-        #            temp_output_file = reshape_output('l1a', im_config)
+    # With updates to l1_measurement.cpp there is no need for reshaping data.
+    #            # output dataset is 2D. In case of detector image (in case of some inbetween steps
+    #            # and of the final output) the second dimension is detector_pixels which is too
+    #            # large to view.
+    #            # Need to reshape to 3D to be able to make sense of this.
+    #            temp_output_file = reshape_output('l1a', im_config)
 
-                    # Add attributes to output file
-        #            if temp_output_file is not None:
-        #                Utils.add_attributes_to_output(temp_output_file, attribute_dict)
-                    Utils.add_attributes_to_output(im_config['io']['l1a'], attribute_dict)
-                else:
-                    # run Python code
-                    e2e_module = importlib.import_module("im.Python.instrument_model")
-                    e2e_module.instrument_model(im_config, attribute_dict)
-                    # No need to reshape because Python output is already 3D
+                # Add attributes to output file
+    #            if temp_output_file is not None:
+    #                Utils.add_attributes_to_output(temp_output_file, attribute_dict)
+                Utils.add_attributes_to_output(im_config['io']['l1a'], attribute_dict)
+            else:
+                # run Python code
+                e2e_module = importlib.import_module("im.Python.instrument_model")
+                e2e_module.instrument_model(im_config, attribute_dict)
+                # No need to reshape because Python output is already 3D
 
-            case 'l1al1b' | 'all' :
-                l1b_config = get_specific_config(configuration, 'l1al1b')
-                attribute_dict = add_module_specific_attributes(l1b_config, attribute_dict, 'l1al1b')
-                # write config to temp yaml file with L1B values filled in
-                l1b_config_file = f"{cfg_path}/l1b_config_temp.yaml"
-                with open(l1b_config_file,'w') as outfile:
-                    yaml.dump(l1b_config, outfile)
+       if step == 'l1al1b' or 'all':
+            l1b_config = get_specific_config(configuration, 'l1al1b')
+            attribute_dict = add_module_specific_attributes(l1b_config, attribute_dict, 'l1al1b')
+            # write config to temp yaml file with L1B values filled in
+            l1b_config_file = f"{cfg_path}/l1b_config_temp.yaml"
+            with open(l1b_config_file,'w') as outfile:
+                yaml.dump(l1b_config, outfile)
 
-                if not l1b_config['do_python']:
+            if not l1b_config['do_python']:
 
-                    # Need to call C++ with L1B specific config file
-                    subprocess.run(["l1al1b/build/tango_l1b.x", l1b_config_file], check=False)
+                # Need to call C++ with L1B specific config file
+                subprocess.run(["l1al1b/build/tango_l1b.x", l1b_config_file], check=False)
 
-        # With updates to l1_measurement.cpp there is no need for reshaping data.
-        #            # output dataset is 2D. In case of detector image (in case of inbetween step)
-        #            # the second dimension is detector_pixels which is too large to view.
-        #            # Need to reshape to 3D to be able to make sense of this.
-        #            temp_output_file = reshape_output('l1b', l1b_config)
+    # With updates to l1_measurement.cpp there is no need for reshaping data.
+    #            # output dataset is 2D. In case of detector image (in case of inbetween step)
+    #            # the second dimension is detector_pixels which is too large to view.
+    #            # Need to reshape to 3D to be able to make sense of this.
+    #            temp_output_file = reshape_output('l1b', l1b_config)
 
-                    # Add attributes to output file
-        #            if temp_output_file is not None:
-        #                Utils.add_attributes_to_output(temp_output_file, attribute_dict)
-                    Utils.add_attributes_to_output(l1b_config['io']['l1b'], attribute_dict)
-                else:
-                    # run Python code
-                    e2e_module = importlib.import_module("l1al1b.Python.l1b_processor")
-                    e2e_module.l1b_processor(l1b_config, attribute_dict)
+                # Add attributes to output file
+    #            if temp_output_file is not None:
+    #                Utils.add_attributes_to_output(temp_output_file, attribute_dict)
+                Utils.add_attributes_to_output(l1b_config['io']['l1b'], attribute_dict)
+            else:
+                # run Python code
+                e2e_module = importlib.import_module("l1al1b.Python.l1b_processor")
+                e2e_module.l1b_processor(l1b_config, attribute_dict)
 
-            case 'l1l2' | 'all' :
-                l2_config = get_specific_config(configuration, 'l1l2')
-                attribute_dict = add_module_specific_attributes(l2_config, attribute_dict, 'l1l2')
-                e2e_module = importlib.import_module("l1l2.l1bl2_no2")
-                e2e_module.l1bl2_no2(l2_config)
-                Utils.add_attributes_to_output(l2_config['io']['l2'], attribute_dict)
+       if step == 'l1l2' or 'all':
+            l2_config = get_specific_config(configuration, 'l1l2')
+            attribute_dict = add_module_specific_attributes(l2_config, attribute_dict, 'l1l2')
+            e2e_module = importlib.import_module("l1l2.l1bl2_no2")
+            e2e_module.l1bl2_no2(l2_config)
+            Utils.add_attributes_to_output(l2_config['io']['l2'], attribute_dict)
 
-            case 'pam' | 'all' :
-                pam_config = get_specific_config(configuration, 'pam')
-                attribute_dict = add_module_specific_attributes(pam_config, attribute_dict, 'pam')
-                e2e_module = importlib.import_module("pam.pam")
-                e2e_module.pam_nitro(pam_config)
+       if step == 'pam' or 'all':
+            pam_config = get_specific_config(configuration, 'pam')
+            attribute_dict = add_module_specific_attributes(pam_config, attribute_dict, 'pam')
+            e2e_module = importlib.import_module("pam.pam")
+            e2e_module.pam_nitro(pam_config)
 
 if __name__ == "__main__":
 

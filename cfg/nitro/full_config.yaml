@@ -152,7 +152,7 @@ im:
     detector:
         binning_table_id: 1         # across track binning
         exposure_time:    0.021     # exposure time [sec]
-        nr_coadditions:   2         # along track co-adding
+        nr_coadditions:   1         # along track co-adding
 #########################################################
 #
 # L1AL1B specific
@@ -258,8 +258,8 @@ l1l2:
         # ---- Wavelength calibration ----
 
         # Wavelength calibation for solar and earth spectra (off/on)
-        wlcal_solar: off
-        wlcal_earth: off
+        wlcal_solar: yes
+        wlcal_earth: yes
 
         # Include wavelength stretch in wavelength calibration(off/on)
         wlcal_solar_stretch: off
@@ -352,6 +352,7 @@ l1l2:
 #########################################################
 pam:
     font_size: 22
+    create_pdf: yes
     plot_list: { # usage: '{title}' : {'f1':<file 1>, 'f2':<file 2>,'f1_var':<var name in file 1>, 'f2_var':<var name in file 2>}
                 'NO2 vertical column': {'f1':'sgm_atm', 'f2':'l2', 'f1_name':'SGM', 'f2_name':'L2', 'f1_var':'col_no2', 'f2_var':'no2_total_vcd', },
                 'NO2 vertical column raw': {'f1':'sgm_atm_raw', 'f1_name':'SGM raw', 'f1_var':'col_no2'},

@@ -133,7 +133,7 @@ sgm:
         wave_start: 395             #nm
         wave_end:   502             #nm
         dwave:      0.05            #nm
-        cleanup: False              # rm disamartmp directory when finished
+        cleanup: True              # rm disamartmp directory when finished
         o2o2: True                  # add o2-o2 absorption
         albedo: B01
 
@@ -262,8 +262,8 @@ l1l2:
         # ---- Wavelength calibration ----
 
         # Wavelength calibation for solar and earth spectra (off/on)
-        wlcal_solar: off
-        wlcal_earth: off
+        wlcal_solar: yes
+        wlcal_earth: yes
 
         # Include wavelength stretch in wavelength calibration(off/on)
         wlcal_solar_stretch: off
@@ -356,6 +356,7 @@ l1l2:
 #########################################################
 pam:
     font_size: 22
+    create_pdf: yes
     plot_list: { # usage: '{title}' : {'f1':<file 1>, 'f2':<file 2>,'f1_var':<var name in file 1>, 'f2_var':<var name in file 2>}
                 'NO2 vertical column': {'f1':'sgm_atm', 'f2':'l2', 'f1_name':'SGM', 'f2_name':'L2', 'f1_var':'col_no2', 'f2_var':'no2_total_vcd', },
                 'NO2 vertical column raw': {'f1':'sgm_atm_raw', 'f1_name':'SGM raw', 'f1_var':'col_no2'},

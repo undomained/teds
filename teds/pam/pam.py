@@ -9,6 +9,7 @@ import cartopy.crs as crs
 import matplotlib as mpl
 from scipy.stats import linregress
 from pathlib import Path
+import subprocess
 
 from teds import log
 
@@ -217,6 +218,12 @@ def pam_nitro(cfg):
 
             # scatter plot f1 vs f2 var
             plot_scatter(f1_var, f2_var, f1_name, f2_name, varname, savedir)
+
+    if cfg['create_pdf']:
+        subprocess.run(f'magick {savedir}/*.png {savedir}/pam_figures.pdf', shell=True) 
+        subprocess.run(f'magick -density 300x300 -quality 80 -compress jpeg \
+                       {savedir}/pam_figures.pdf {savedir}/pam_figures_compressed.pdf',
+                       shell=True) 
 
     log.info(f'Finished PAM')
 

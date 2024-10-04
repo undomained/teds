@@ -501,7 +501,7 @@ def build(config, steps, cfg_path, attribute_dict):
     configuration = config.copy()
 
     for step in steps:
-       if step == 'gm' or 'all':
+       if step == 'gm' or step == 'all':
             gm_config = get_specific_config(configuration, 'gm')
             attribute_dict = add_module_specific_attributes(gm_config, attribute_dict, 'gm')
             e2e_module = importlib.import_module("gm.gm")
@@ -509,7 +509,7 @@ def build(config, steps, cfg_path, attribute_dict):
             # add attributes to the output file
             Utils.add_attributes_to_output(gm_config['io']['gm'], attribute_dict)
 
-       if step == 'sgm' or 'all':
+       if step == 'sgm' or step == 'all':
             sgm_config = get_specific_config(configuration, 'sgm')
             attribute_dict = add_module_specific_attributes(sgm_config, attribute_dict, 'sgm')
             e2e_module = importlib.import_module("sgm.sgm_no2")
@@ -518,7 +518,7 @@ def build(config, steps, cfg_path, attribute_dict):
             Utils.add_attributes_to_output(sgm_config['io']['sgm_atm'], attribute_dict)
             Utils.add_attributes_to_output(sgm_config['io']['sgm_atm_raw'], attribute_dict)
 
-       if step == 'im' or 'all':
+       if step == 'im' or step == 'all':
             im_config = get_specific_config(configuration, 'im')
             attribute_dict = add_module_specific_attributes(im_config, attribute_dict, 'im')
             # write config to temp yaml file with IM values filled in
@@ -549,7 +549,7 @@ def build(config, steps, cfg_path, attribute_dict):
                 e2e_module.instrument_model(im_config, attribute_dict)
                 # No need to reshape because Python output is already 3D
 
-       if step == 'l1al1b' or 'all':
+       if step == 'l1al1b' or step == 'all':
             l1b_config = get_specific_config(configuration, 'l1al1b')
             attribute_dict = add_module_specific_attributes(l1b_config, attribute_dict, 'l1al1b')
             # write config to temp yaml file with L1B values filled in
@@ -577,14 +577,14 @@ def build(config, steps, cfg_path, attribute_dict):
                 e2e_module = importlib.import_module("l1al1b.Python.l1b_processor")
                 e2e_module.l1b_processor(l1b_config, attribute_dict)
 
-       if step == 'l1l2' or 'all':
+       if step == 'l1l2' or step == 'all':
             l2_config = get_specific_config(configuration, 'l1l2')
             attribute_dict = add_module_specific_attributes(l2_config, attribute_dict, 'l1l2')
             e2e_module = importlib.import_module("l1l2.l1bl2_no2")
             e2e_module.l1bl2_no2(l2_config)
             Utils.add_attributes_to_output(l2_config['io']['l2'], attribute_dict)
 
-       if step == 'pam' or 'all':
+       if step == 'pam' or step == 'all':
             pam_config = get_specific_config(configuration, 'pam')
             attribute_dict = add_module_specific_attributes(pam_config, attribute_dict, 'pam')
             e2e_module = importlib.import_module("pam.pam")

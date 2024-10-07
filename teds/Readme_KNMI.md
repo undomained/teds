@@ -53,10 +53,11 @@ For the IM and L1AL1B steps a special config yaml file is created called `im_con
 Note: The nitro code uses for IM and L1B `driver_ntro`, which makes use of proctable and not of cal level!
 
 ### Building the executables.
-There are 4 scripts to build and rebuild the IM and L1B C++ code.
-After building or rebuiling also the `run_E2E.py` script is run.
-The scripts are `brl1.sh` and `brim.sh` for building and running.
-The scripts are `rebuildl1.sh` and `rebuildim.sh` for rebuilding and running.
+The IM and L1B C++ code can be build for the first time running the following commands from the root directory:
+`mkdir build && cd build`
+`cmake -C ../initial_cache.cmake ..`
+`make -j `
+After that just running `make -j` suffices.
 
 
 ### Running the E2E processor

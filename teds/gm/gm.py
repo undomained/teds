@@ -265,7 +265,7 @@ def gm_output(config, vza, vaa, sza, saa, lat_grid, lon_grid):
     output.createDimension('across_track', nact)    # across track axis
     output.createDimension('along_track', nalt)     # along track axis
     # dimensions
-    dims = ('along_track_sample', 'across_track_sample')
+    dims = ('along_track', 'across_track')
     _ = writevariablefromname(output, "solarzenithangle", dims, sza)
     _ = writevariablefromname(output, "solarazimuthangle", dims, saa)
     _ = writevariablefromname(output, "viewingzenithangle", dims, vza)

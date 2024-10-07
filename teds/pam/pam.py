@@ -155,7 +155,7 @@ def plot_scatter(var1, var2, f1_name, f2_name, var_name, save_location):
         ax.set_aspect('equal')
         ax.set_xlim(lims)
         ax.set_ylim(lims)
-        plt.title('N = {}, R$^2$ = {:.3f}, mean $\sigma$ = {:.3E}, mean bias = {:.3E}'.format(var1_flat.size,r2, sigma, bias))
+        plt.title('N = {}, R$^2$ = {:.3f}, mean $\\sigma$ = {:.3E}, mean bias = {:.3E}'.format(var1_flat.size,r2, sigma, bias))
         plt.xlabel(f'{f1_name} {var_name} [{var1.units}]', labelpad=25)
         plt.ylabel(f'{f2_name} {var_name} [{var2.units}]')
         plt.plot(lims,lims*slope+intercept,'k--',alpha=0.5,zorder=2,label='y={:.2f}x+{:.2E}'.format(slope, intercept))

@@ -530,7 +530,7 @@ def build(config, steps, cfg_path, attribute_dict):
                 # Run C++ IM code
                 # Need to call C++ using the IM specific config_file
                 # TODO: Should check be set to True
-                subprocess.run(["im/build/tango_im.x", im_config_file], check=False)
+                subprocess.run(["../build/teds/im/tango_im.x", im_config_file], check=False)
 
     # With updates to l1_measurement.cpp there is no need for reshaping data.
     #            # output dataset is 2D. In case of detector image (in case of some inbetween steps
@@ -560,7 +560,7 @@ def build(config, steps, cfg_path, attribute_dict):
             if not l1b_config['do_python']:
 
                 # Need to call C++ with L1B specific config file
-                subprocess.run(["l1al1b/build/tango_l1b.x", l1b_config_file], check=False)
+                subprocess.run(["../build/teds/l1al1b/tango_l1b.x", l1b_config_file], check=False)
 
     # With updates to l1_measurement.cpp there is no need for reshaping data.
     #            # output dataset is 2D. In case of detector image (in case of inbetween step)

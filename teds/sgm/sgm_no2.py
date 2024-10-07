@@ -58,6 +58,8 @@ def get_sentinel2_albedo(filename):
     f = nc.Dataset(filename)
     albedos = []
     for group in f.groups:
+        if group == 'SCL':
+            continue
         albedo = xr.DataArray(f[group]['albedo'][:],
                            dims=('y', 'x'),
                            coords={

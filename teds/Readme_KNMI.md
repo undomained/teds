@@ -50,24 +50,28 @@ The different cases (scenarios) are in (scenario) subdirectories in directory cf
 All settings for the different steps are combined in 1 yaml file (`full_config.yaml`).  
 This ensures that the settings between te steps will be consistent.  
 For the IM and L1AL1B steps a special config yaml file is created called `im_config_temp.yaml` and `l1al1b_config_temp.yaml` respectively.
-Note: The nitro code uses for IM and L1B `driver_ntro`, which makes use of proctable and not of cal level!
+Note: The nitro code uses for IM and L1B `driver_nitro`, which makes use of proctable and not of cal level!
 
 ### Building the executables.
-The IM and L1B C++ code can be build for the first time running the following commands from the root directory:
-`mkdir build && cd build`
-`cmake -C ../initial_cache.cmake ..`
-`make -j `
-After that just running `make -j` suffices.
+The IM and L1B C++ code can be build for the first time running the following commands from the root directory:  
+`mkdir build && cd build`  
+`cmake -C ../initial_cache.cmake ..`  
+`make -j `  
+After that usually running only `make -j` in the `build` folder suffices.
 
 
 ### Running the E2E processor
 In the teds directory the script `run_E2E.py` is situated.  
-This can be run for a single step or all steps after oneother.
+This can be run for a single step, multiple steps or all steps after oneother.
 Get help on how to run:  
 `python run_E2E.py -h`
 #### Single step
 For instance running only geometry step.  
 `python run_E2E.py ../cfg/nitro/full_config.yaml gm`
+
+#### Multiple steps
+For instance running only geometry step.  
+`python run_E2E.py ../cfg/nitro/full_config.yaml im l1al1b`
 
 #### Running the full simulation:  
 `python run_E2E.py ../cfg/nitro/full_config.yaml all`
@@ -85,6 +89,9 @@ There are also input files that are not produced by the different steps of the E
 * `ckd_nitro.nc`
 * `binning_tables_no2.nc`
 They can be found in `data/no2/ckd` directory (or some other directory. you can change the location by updating the yaml file).
+
+### Simulation scenes
+In the folder `cfg/nitro/scenes` the config files for the following MicroHH simulation scenes are given: Belchatow, Jaenschwalde, Lipetsk and Matimba.
 
 ### Running scenarios
 When investigating effects of for instance changing temperature it is required to run a non nominal scenario.
@@ -115,4 +122,4 @@ A custom `config.yaml` can be added as an argument, otherwise the ckd_nitro.yaml
 More detailed information about the generator can be found in `CKD/ckd_generation/readme.md`.
 
 ### DISAMAR radiative transfer
-The Nitro SGM makes use of the KNMI DISAMAR software suite. This code is open source and available on https://gitlab.com/KNMI-OSS/disamar. See the DISAMAR readme for compiling instructions. The DISAMAR executable path then has to be given in the Nitro SGM yaml file.
+The Nitro SGM makes use of the KNMI DISAMAR software suite. This code is open source and available on https://gitlab.com/KNMI-OSS/disamar. See the DISAMAR readme for compiling instructions or run the provided building script in `sgm/build_disamar.sh`. The DISAMAR executable path has to be set in the Nitro configuration yaml file.

@@ -36,8 +36,8 @@ public:
 // either debug or info.
 auto initLogging(const bool set_debug_level) -> void;
 
-// Print the name of a major section at its beginning. For example,
-// the CKD initialization would start with
+// Print the name of a processing section. For example, the CKD
+// initialization would start with
 //
 // ######################
 // # CKD initialization #

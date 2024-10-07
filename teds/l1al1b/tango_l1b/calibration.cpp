@@ -115,7 +115,6 @@ auto darkOffset(const CKD& ckd, const bool enabled, L1& l1) -> void
 auto noise(const CKD& ckd,
            const bool enabled,
            const BinningTable& binning_table,
-           const bool binned_detector_image,
            L1& l1) -> void
 {
     if (!enabled) {
@@ -129,7 +128,7 @@ auto noise(const CKD& ckd,
         const double var { ckd.noise.g[i] * l1.image[i] + ckd.noise.n2[i] };
         if (var <= 0.0) {
             l1.pixel_mask[i] = true;
-        } else if (binned_detector_image) {
+        } else if (l1.binning_table_id != 0) {
             l1.stdev[i] =
               std::sqrt(var / (l1.nr_coadditions * binning_table.binSize(i)));
         } else {
@@ -165,7 +164,7 @@ auto nonlinearity(const CKD& ckd, const bool enabled, L1& l1) -> void
     l1.level = ProcLevel::nonlin;
 }
 
-auto PRNU(const CKD& ckd, const bool enabled, L1& l1) -> void
+auto prnu(const CKD& ckd, const bool enabled, L1& l1) -> void
 {
     if (!enabled) {
         return;
@@ -183,7 +182,6 @@ auto strayLight(const CKD& ckd,
                 const bool enabled,
                 const BinningTable& binning_table,
                 const int n_van_cittert,
-                const bool binned_detector_image,
                 L1& l1) -> void
 {
     //    if (n_van_cittert == 0) {
@@ -196,10 +194,10 @@ auto strayLight(const CKD& ckd,
     fillHoles(l1.pixel_mask, l1.image);
     // Unbin the image using the stray light binning table
     std::vector<double> image_unbin(ckd.npix);
-    if (binned_detector_image) {
-        binning_table.unbin(l1.image, image_unbin);
-    } else {
+    if (l1.binning_table_id == 0) {
         image_unbin = std::move(l1.image);
+    } else {
+        binning_table.unbin(l1.image, image_unbin);
     }
     // "Ideal" image, i.e. the one without stray light
     std::vector<double> image_ideal { image_unbin };
@@ -265,10 +263,10 @@ auto strayLight(const CKD& ckd,
               (image_unbin[i] - conv_result[i]) / (1 - ckd.stray.eta[i]);
         }
     }
-    if (binned_detector_image) {
-        binning_table.bin(image_ideal, l1.image);
-    } else {
+    if (l1.binning_table_id == 0) {
         l1.image = std::move(image_ideal);
+    } else {
+        binning_table.bin(image_ideal, l1.image);
     }
     l1.level = ProcLevel::stray;
 }

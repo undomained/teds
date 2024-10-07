@@ -33,13 +33,13 @@ LinearSpline::LinearSpline(const std::vector<double>& x_values,
     }
 }
 
-auto LinearSpline::lookupIdx(const double x) const -> int
+[[nodiscard]] auto LinearSpline::lookupIdx(const double x) const -> int
 {
     return static_cast<int>((x - knots.front()) / range
                             * static_cast<double>(knots.size() - 1));
 }
 
-auto LinearSpline::eval(const double x) const -> double
+[[nodiscard]] auto LinearSpline::eval(const double x) const -> double
 {
     const int idx { equal_spacing ? lookupIdx(x) : binaryFindIdx(knots, x) };
     if (idx == fill::i) {
@@ -55,16 +55,22 @@ auto LinearSpline::eval(const double x) const -> double
     return std::lerp(values[idx], values[idx + 1], t);
 }
 
-auto LinearSpline::deriv(const double x) const -> double
+[[nodiscard]] auto LinearSpline::deriv(const double x) const -> double
 {
     const int idx { equal_spacing ? lookupIdx(x) : binaryFindIdx(knots, x) };
     if (idx == fill::i) {
         if (x < knots.front()) {
-            return values.front();
+            return (values[1] - values.front()) / (knots[1] - knots.front());
         }
-        return values.back();
+        return (values.back() - values[knots.size() - 2])
+               / (knots.back() - knots[knots.size() - 2]);
     }
-    return values[idx];
+    return (values[idx + 1] - values[idx]) / (knots[idx + 1] - knots[idx]);
+}
+
+[[nodiscard]] auto LinearSpline::invert() const -> LinearSpline
+{
+    return { values, knots };
 }
 
 } // namespace tango

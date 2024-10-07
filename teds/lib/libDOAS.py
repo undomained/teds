@@ -66,6 +66,7 @@ additional diagnostic information.
 @type observationError: A L{np.ndarray} instance with length M{n}.
 @ivar independentVariable: The independent variable for the model, for our
                            retrievals usually M{\\lambda}.
+                           retrievals usually M{\\lambda}.
 @type independentVariable: A L{np.ndarray} instance with length M{n}.
 @ivar verbose:   An integer indicating how chatty (and plotting) the model should be.
                  0: be silent, 1: plot to file, 2: show.
@@ -444,6 +445,7 @@ overridden in a subclass.
                    (self.observation-self.modelCalculation)/self.observationError,
                    'k', label="err")
             # l.set_ylabel("$\Delta R/\sigma$")
+            l.set_ylabel("$\\Delta R/\\sigma$",rotation=0, fontsize=12, labelpad=45)
             l.set_ylabel("$\\Delta R/\\sigma$",rotation=0, fontsize=12, labelpad=45)
             l.yaxis.tick_right()
             # l.tick_params(axis='y', labelsize=6)

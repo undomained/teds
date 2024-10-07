@@ -41,7 +41,7 @@ io_files:
     input_afgl: '/home/jochen/TANGO_E2ES/EndtoEndProject/data/AFGL/prof.AFGL.US.std'
     input_sun_reference: '/home/jochen/TANGO_E2ES/EndtoEndProject/data/solar_spectra/hybrid_reference_spectrum_c2021-03-04_with_unc.nc'
     input_hapi: '/home/jochen/TANGO_E2ES/EndtoEndProject/data/harpi/'
-    input_sgm: '/home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/sgm/Tango_Carbon_sgm_atmosphere_exp1.0.nc'
+    input_sgm: '/home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/sgm/Tango_Carbon_sgm_atmosphere_ref_exp1.0.nc'
     output_l2: '/home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/level2/Tango_Carbon_l2_exp1.0.nc'
     dump_xsec: '/home/jochen/TANGO_E2ES/EndtoEndProject/data/tmp/Tango_Carbon_xsec_exp1.0_l2.pkl'
 

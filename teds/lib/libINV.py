@@ -5,7 +5,6 @@
 #==============================================================================
 
 import numpy as np
-import matplotlib.pyplot as plt
 import sys
 
 from .libRT import nonscat_fwd_model

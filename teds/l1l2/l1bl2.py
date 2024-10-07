@@ -20,8 +20,6 @@ from teds.lib import libINV
 from teds.lib.libWrite import writevariablefromname
 
 
-import matplotlib.pyplot as plt
-
 class Emptyclass:
     """Empty class. Data container."""
     
@@ -53,7 +51,7 @@ def get_sgm_atm(filen_sgm_atm):
     data = nc.Dataset(filen_sgm_atm, mode='r')
     atm_sgm = {}
     surf_sgm = {}
-    surf_sgm['albedo'] = deepcopy(data['albedo B11'][:])
+    surf_sgm['albedo'] = deepcopy(data['albedo'][:])
     atm_sgm['zlay'] = deepcopy(data['zlay'][:])
     atm_sgm['zlev'] = deepcopy(data['zlev'][:])
     atm_sgm['dcol_co2'] = deepcopy(data['dcol_co2'][:])
@@ -130,7 +128,7 @@ def level2_output(filename, l2product, retrieval_init, l1bproduct, settings):
     nalt = l1bproduct['latitude'][:, 0].size
     nact = len(l2product[0])
     nlay = len(l2product[0][0]['XCO2 col avg kernel'])
-        
+
     # filename
     print(filename)
     output_l2 = nc.Dataset(filename, mode='w')
@@ -139,9 +137,9 @@ def level2_output(filename, l2product, retrieval_init, l1bproduct, settings):
     output_l2.createDimension('bins_across_track', nact)     # across track axis
     output_l2.createDimension('bins_along_track', nalt)     # along track axis
     output_l2.createDimension('bins_albedo', 1)     # spectral bins albedo
-    grp_ns    = output_l2.createGroup('non_scattering_retrieval')
+    grp_ns = output_l2.createGroup('non_scattering_retrieval')
     grp_prior = output_l2.createGroup('prior')
-    grp_diag  = output_l2.createGroup('diagnostics')
+    grp_diag = output_l2.createGroup('diagnostics')
 
     # layer height
 
@@ -308,7 +306,7 @@ def level1b_to_level2_processor(config, sw_diag_output = False):
 
     print('level 1B to 2 proessor ...')
     l1b = get_l1b(config['io_files']['input_l1b'])
-
+    
     # get sgm geo data
     surf_sgm, atm_sgm = get_sgm_atm(config['io_files']['input_sgm'])
 
@@ -433,7 +431,7 @@ def level1b_to_level2_processor(config, sw_diag_output = False):
                 istart = np.argmin(np.abs(wavelength - wave_start))
                 iend = np.argmin(np.abs(wavelength - wave_end))
                 wave_meas = wavelength[istart:iend+1]  # nm
-    
+                
                 # define isrf function
     
                 isrf_convolution = libNumTools.get_isrf(wave_meas, wave_lbl, config['isrf_settings'])

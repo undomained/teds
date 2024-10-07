@@ -160,8 +160,8 @@ def get_S2_microHH(config):
                lat_grid : pixel latitude grid; numpy array
                lon_grid: pixel_longitude grid, numpy array
     """
-    from lib import libGM
-    from lib import constants
+    from teds.lib import libGM
+    from teds.lib import constants
     nact = config["field_of_regard"]["nact"]
     nalt = config["field_of_regard"]["nalt"]
 
@@ -265,7 +265,7 @@ def gm_output(config, vza, vaa, sza, saa, lat_grid, lon_grid):
     output.createDimension('across_track', nact)    # across track axis
     output.createDimension('along_track', nalt)     # along track axis
     # dimensions
-    dims = ('along_track', 'across_track')
+    dims = ('along_track_sample', 'across_track_sample')
     _ = writevariablefromname(output, "solarzenithangle", dims, sza)
     _ = writevariablefromname(output, "solarazimuthangle", dims, saa)
     _ = writevariablefromname(output, "viewingzenithangle", dims, vza)

@@ -6,20 +6,20 @@
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
+import importlib
+import os
+import sys
+
 project = 'TEDS'
-copyright = '2024, SRON'
-author = 'Raul Laasner'
-with open('../project_version.txt') as f:
-    for line in f.readlines():
-        if not line.startswith('#'):
-            release = line.rstrip()
-version = release
+copyright = 'SRON'
+author = 'TANGO team'
+
+version = importlib.metadata.version('teds')
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
-extensions = ['sphinx.ext.autodoc',
-              'sphinx.ext.napoleon']
+extensions = ['sphinx.ext.napoleon']
 
 templates_path = ['_templates']
 exclude_patterns = ['_build']
@@ -27,6 +27,12 @@ exclude_patterns = ['_build']
 latex_elements = {
   'extraclassoptions': 'openany'
 }
+
+# Napoleon settings
+sys.path.insert(0, os.path.abspath('..'))
+napoleon_numpy_docstring = True
+napoleon_use_admonition_for_examples = True
+napoleon_use_admonition_for_notes = True
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output

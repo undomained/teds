@@ -7,7 +7,7 @@ import sys
 # Set up the default logger for this project
 class TedsFormatter(_logging.Formatter):
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         formats = {
             _logging.DEBUG:
@@ -26,7 +26,7 @@ class TedsFormatter(_logging.Formatter):
             self.formatters[f] = _logging.Formatter(formats[f],
                                                     datefmt='%H:%M:%S')
 
-    def format(self, record):
+    def format(self, record: _logging.LogRecord) -> str:
         log_fmt = record.levelno
         formatter = self.formatters[log_fmt]
         return formatter.format(record)

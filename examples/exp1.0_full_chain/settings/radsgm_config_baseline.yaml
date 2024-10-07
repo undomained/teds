@@ -1,10 +1,12 @@
+convolve_atm_input: False
+
 kernel_parameter:               #parameter to configure the 2D blurring of the scene
     type:    '2D Gaussian'      #type pf kernel, current version has only one option  
     fwhm_x:  300                #FWHM in ACT direction
     fwhm_y:  300                #FWHM in flight direction
     size_factor: 2              #the size of the convolution kernel in units of fwhm
         
-spec_settings:              #settings for line-by-line spectra
+spec_lbl_settings:              #settings for line-by-line spectra
     wave_start: 1585        #nm
     wave_end:   1685        #nm
     dwave:      0.002       #nm
@@ -16,6 +18,14 @@ atmosphere:
     dzlay: 1000                 #geometrical thickness of the layers [m]
     psurf: 101300               #surface pressure [Pa]
 
+spec_conv_settings:         #spectra fit window for spectral convolution in case convolve_input = False
+    wavestart:   1587       #initial wavelength (indicator)
+    waveend:     1678       #final wavlength of measurement
+    dwave:       0.05       #nm
+
+isrf_settings:
+    type:       'Gaussian'                         #type of ISRF, currently only Gaussian or generalized_normal
+    fwhm:       0.45                               #fwhm  [nm]
 
 conv_gases: ['co2','ch4','h2o']
 

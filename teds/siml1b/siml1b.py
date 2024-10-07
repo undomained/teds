@@ -4,7 +4,6 @@ import numpy as np
 import sys
 import os
 import yaml
-import matplotlib.pyplot as plt
 from copy import deepcopy
 import netCDF4 as nc
 from tqdm import tqdm

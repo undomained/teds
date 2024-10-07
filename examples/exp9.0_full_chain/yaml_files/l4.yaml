@@ -1,0 +1,10 @@
+# Input and output file configuration
+io_files:
+  input_sgm: data/sgm_atmosphere.nc  # Path to the input microhh file containing atmospheric data
+  input_sgm_ref: data/sgm_atmosphere_ref.nc  # Path to the input reference file containing geographical and atmospheric data
+  input_l2: data/siml2.nc  # Path to the input reference file containing geographical and atmospheric data
+  output_l4: data/l4.nc  # Path to the output file where the simulated Level 4 data will be saved
+
+emission_estimation:
+  method: ["microhh_fit"]
+  species: ["XCO2 proxy"]

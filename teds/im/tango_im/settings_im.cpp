@@ -31,6 +31,8 @@ auto SettingsIM::scanKeys() -> void
     scan(noise.enabled);
     scan(noise.seed);
 
+    scan(nonlin.enabled);
+
     scan(prnu.enabled);
 
     scan(stray.enabled);

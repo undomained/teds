@@ -1,0 +1,38 @@
+# Input for Tango L1B code
+
+# instrument: tango
+
+processing_version: 1.0
+
+# cal_level: stray
+# unbinning: cubic
+
+reverse_wavelength: yes
+
+# image_start: 0
+# image_end: 0
+
+io:
+  ckd: data/ckd.nc
+  binning_table: data/binning_table.nc
+  l1a: data/l1a.nc
+  l1b: data/l1b.nc
+  geometry: data/geometry.nc
+
+# dark:
+#   enabled: no
+
+# noise:
+#   enabled: no
+
+# prnu:
+#   enabled: no
+
+stray:
+  van_cittert_steps: 3
+
+swath:
+  spectrum_width: 1.0
+
+# geolocation:
+#   enabled: no

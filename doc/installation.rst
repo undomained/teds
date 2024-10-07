@@ -1,15 +1,17 @@
 Installation
 ============
 
-The TEDS package is written in Python and C++. The instrument model and L1A-L1B processor are in C++ and everything else in Python:
+The TEDS package is written in Python and C++. All modules are available in Python and the L1A-L1B processor and instrument model are additionally also in C++:
 
 .. csv-table::
    :align: center
    :header: Python, C++
    :widths: auto
 
-   Geometry module, Instrument model
-   Scene generator, L1A-L1B processor
+   Geometry module
+   Scene generator
+   Instrument model, Instrument model
+   L1A-L1B processor, L1A-L1B processor
    L1B-L2 processor
    L2-L4 processor
 
@@ -21,14 +23,29 @@ TEDS has only been tested on Linux operating systems. MacOS and Windows are not 
 Python code
 -----------
 
-Set up a virtual environment:
+In order to ensure compatibility with the correct Python packages, it is important to work in a Python virtual environment. You can create a virtual environment with
 
 .. code-block:: bash
 
-   python -m venv venv  # Last argument can be any name
+   python -m venv venv  # Last argument can be anything
+
+and activate it with
+
+.. code-block:: bash
+
    source venv/bin/activate
+
+You will notice that the shell's prompt has changed to remind you that you are in a virtual environment. Any packages installed with the Python ``pip`` command are now part of the current project only. Correct versions of packages that are required for this project are listed in ``pyproject.toml`` and ``requirements.txt``. Install them all by issuing
+
+.. code-block:: bash
+
    pip install --upgrade pip
+   pip install --editable .
    pip install -r requirements.txt
+
+The second command installs all dependencies found in ``pyproject.toml`` and creates an *editable* build of ``teds`` suitable for development. The third command installs additional development tools such as linters and documentation tools. The reason for the split is an when distributing the package, only the second command needs to be run without the ``--editable`` flag. This leaves out everything not required for the end user.
+
+If your working directory is the same as where the virtual environment is located, the TEDS package should automatically be found by Python scripts. If not, you might need to update your ``PYTHONPATH``.
 
 
 C++ code
@@ -80,13 +97,13 @@ Both C++ codes depend on an OpenMP capable C++ compiler is required. Any recent 
 Configure and build
 +++++++++++++++++++++
 
-Most of the C++ code resides in the L1A-L1B processor and the instrument uses it as a dependency. Thus, the L1A-L1B processor needs to be built first.
+Most of the C++ code resides in the L1A-L1B processor and the instrument uses it as a dependency. A CMakeLists.txt found in the root source directory is a CMake script that binds them into a single project.
 
 Start by navigating into the source directory and make a copy of the initial cache file:
 
 .. code-block:: bash
 
-   cd <teds>/teds/l1al1b
+   cd <teds>
    cp initial_cache.cmake initial_cache_local.cmake
 
 where ``<teds>`` denotes the root source directory of the TEDS project. Next, edit the initial cache file to reflect your environment, although the default values might already be fine (in which case there is no need to make a local copy of the file). When done editing, create a build directory and run CMake from that using the initial cache file:
@@ -135,9 +152,9 @@ If you are not sure which build system you are using, run
 
    cmake --build . # make is probably fine though
 
-from the build directory. If successful, an executable called ``tango_l1b.x`` is produced in the build directory.
+from the build directory. If successful, an executables called ``tango_l1b.x`` and ``tango_im.x`` are produced in the build directory.
 
-Once the L1A-L1B processor has been built, the instrument model can be built similarly. The only difference is that in the initial cache file of the instrument model (example located at ``<teds>/IM/initial_cache.cmake``), the ``TANGO_L1B_PATH`` CMake variable must point to the build directory of the L1A-L1B processor.
+The L1A-L1B processor can also be built independently because unlike the instrument model, it forms part of the operational processor. For that, navigate into its sources directory ``<teds>/teds/l1al1b`` and follow the same steps as above. If all went well then only the ``tango_l1b.x`` executable is produced.
 
 .. tip::
 

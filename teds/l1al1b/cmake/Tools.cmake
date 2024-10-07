@@ -43,3 +43,40 @@ macro(get_all_flags language flags)
     string(STRIP ${${flags}} ${flags})
   endif()
 endmacro()
+
+# Return a list of paths of libraries linked to a target. The return
+# value (${target}_library_paths) is a list of strings.
+function(get_library_paths target)
+  get_target_property(_libraries ${target} LINK_LIBRARIES)
+  set(_paths "")
+  foreach(_lib ${_libraries})
+    # Test if any of the following properties are defined. Those are
+    # all candidates for the where the library is located.
+    get_target_property(_loc ${_lib} IMPORTED_LOCATION)
+    if (_loc MATCHES ".*-NOTFOUND")
+      get_target_property(_loc ${_lib} IMPORTED_LOCATION_RELEASE)
+    endif()
+    if (_loc MATCHES ".*-NOTFOUND")
+      get_target_property(_loc ${_lib} INTERFACE_INCLUDE_DIRECTORIES)
+    endif()
+    # If non of the above was found simply set the location to the
+    # library name (basically remove the NOTFOUND part).
+    if (_loc MATCHES ".*-NOTFOUND")
+      set(_loc ${_lib})
+    endif()
+    # Clean the path if from a build instead of an install directory
+    string(REGEX REPLACE "\\$<BUILD_INTERFACE:([^>]+).+" "\\1" _loc "${_loc}")
+    list(APPEND _paths ${_loc})
+  endforeach()
+  list(JOIN _paths " " _paths)
+  set(${target}_library_paths ${_paths} PARENT_SCOPE)
+endfunction()
+
+# Test if INCLUDE_COVERAGE option is ON and if so pass the coverage
+# flag to the compiler. This macro needs to be called separately for
+# each scope.
+macro(check_include_coverage)
+  if (INCLUDE_COVERAGE)
+    string(APPEND CMAKE_CXX_FLAGS " ${COVERAGE_FLAGS}")
+  endif()
+endmacro()

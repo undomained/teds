@@ -251,8 +251,8 @@ auto readL1(const std::string& filename,
     }
     spdlog::info("Input data calibration level: {}", procLevelToString(level));
 
-    // The along-track dimension is called along_track for a L1B
-    // products and detector_image otherwise.
+    // The along-track dimension is called along_track_sample for a
+    // L1B products and "image" otherwise.
     const std::string alt_dim_name { level <= ProcLevel::stray
                                        ? "detector_image"
                                         : "along_track" };
@@ -292,7 +292,7 @@ auto readL1(const std::string& filename,
 
     // Science data
     if (level <= ProcLevel::stray) {
-        const auto n_bins { nc.getDim("detector_bin").getSize() };
+        const auto n_bins { nc.getDim("bin").getSize() };
         const auto grp { nc.getGroup("science_data") };
         if (level == ProcLevel::l1a) {
             std::vector<int> detector_images(n_images * n_bins);
@@ -324,12 +324,13 @@ auto readL1(const std::string& filename,
                 l1.stdev.resize(n_bins);
                 for (size_t i {}; i < n_bins; ++i) {
                     l1.image[i] = detector_images[i_alt * n_bins + i];
+                    l1.stdev[i] = detector_stdev[i_alt * n_bins + i];
                 }
             }
         }
     }
     if (level > ProcLevel::stray) {
-        const auto n_act { nc.getDim("across_track").getSize() };
+        const auto n_act { nc.getDim("across_track_sample").getSize() };
         const auto n_wavelength { nc.getDim("wavelength").getSize() };
         std::vector<double> spectra(n_images * n_act * n_wavelength);
         std::vector<double> spectra_stdev(n_images * n_act * n_wavelength);
@@ -375,6 +376,7 @@ auto readL1(const std::string& filename,
             for (size_t i_act {}; i_act < n_act; ++i_act) {
                 l1.spectra[i_act].signal.resize(n_wavelength);
                 l1.spectra[i_act].stdev.resize(n_wavelength);
+                l1.spectra[i_act].mask.resize(n_wavelength, false);
                 for (size_t i {}; i < n_wavelength; ++i) {
                     const size_t idx { (i_alt * n_act + i_act) * n_wavelength
                                        + i };
@@ -422,7 +424,7 @@ auto writeL1(const std::string& filename,
     nc.putAtt("product_name", filename);
     // update creator name??????
     nc.putAtt("creator_name", "SRON/Earth Science");
-    nc.putAtt("creator_url", "https://www.sron.nl/missions-earth");
+    nc.putAtt("creator_url", "https://earth.sron.nl/project/tango");
     nc.putAtt("date_created", getDateAndTime());
     if (TANGO_GIT_COMMIT_ABBREV != "GITDIR-N") {
         nc.putAtt("git_commit", TANGO_GIT_COMMIT_ABBREV);
@@ -444,8 +446,7 @@ auto writeL1(const std::string& filename,
     // Along track dimension
     const auto n_images { l1_products.size() };
     const auto nc_images { nc.addDim(
-      (level <= ProcLevel::stray ? "detector_image" : "along_track"),
-      n_images) };
+      (level <= ProcLevel::stray ? "image" : "along_track_sample"), n_images) };
 
     auto nc_var { nc.addVar("configuration", netCDF::ncString) };
     nc_var.putAtt("comment",
@@ -467,19 +468,22 @@ auto writeL1(const std::string& filename,
         nc_var.putVar(buf.data());
 
         nc_var = nc_grp.addVar("binning_table", netCDF::ncByte, { nc_images });
-        nc_var.putAtt("long_name", "binning table");
+        nc_var.putAtt("long_name", "binning table ID");
         buf.assign(n_images, l1_products.front().binning_table_id);
         nc_var.putVar(buf.data());
 
         nc_var =
           nc_grp.addVar("nr_coadditions", netCDF::ncUshort, { nc_images });
-        nc_var.putAtt("long_name", "number of coadditions");
+        nc_var.putAtt("long_name", "coaddition factor");
+        nc_var.putAtt("comment", "number of detector read-outs summed");
         buf.assign(n_images, l1_products.front().nr_coadditions);
         nc_var.putVar(buf.data());
 
         nc_var =
           nc_grp.addVar("exposure_time", netCDF::ncDouble, { nc_images });
         nc_var.putAtt("long_name", "exposure time");
+        nc_var.putAtt("comment", "exposure time per detector read-out");
+        nc_var.putAtt("units", "s");
         buf.assign(n_images, l1_products.front().exposure_time);
         nc_var.putVar(buf.data());
     }
@@ -490,13 +494,13 @@ auto writeL1(const std::string& filename,
         const auto n_bins { level == ProcLevel::l1a
                               ? l1_products.front().image_i32.size()
                               : l1_products.front().image.size() };
-        const auto nc_detector_bin { nc.addDim("detector_bin", n_bins) };
+        const auto nc_bin { nc.addDim("bin", n_bins) };
         const std::vector<netCDF::NcDim> nc_detector_shape { nc_images,
-                                                             nc_detector_bin };
+                                                             nc_bin };
         if (level == ProcLevel::l1a) {
             nc_var =
               nc_grp.addVar("detector_image", netCDF::ncInt, nc_detector_shape);
-            nc_var.putAtt("long_name", "detector images");
+            nc_var.putAtt("long_name", "signal");
             nc_var.putAtt("_FillValue", netCDF::ncInt, fill::i);
             nc_var.putAtt("units", "counts");
             nc_var.putAtt("valid_min", netCDF::ncInt, 0);
@@ -542,7 +546,7 @@ auto writeL1(const std::string& filename,
         const auto n_across_track { l1_products.front().spectra.size() };
         const auto wavelengths { *l1_products.front().wavelength };
         const auto n_wavelength { wavelengths.front().size() };
-        const auto nc_across_track { nc.addDim("across_track",
+        const auto nc_across_track { nc.addDim("across_track_sample",
                                                n_across_track) };
         const auto nc_wavelength { nc.addDim("wavelength", n_wavelength) };
 
@@ -552,7 +556,7 @@ auto writeL1(const std::string& filename,
 
         nc_var = nc_grp.addVar(
           "wavelength", netCDF::ncFloat, { nc_across_track, nc_wavelength });
-        nc_var.putAtt("long_name", "radiance wavelengths");
+        nc_var.putAtt("long_name", "wavelength");
         nc_var.putAtt("_FillValue", netCDF::ncFloat, fill::f);
         nc_var.putAtt("valid_min", netCDF::ncFloat, 0.0f);
         nc_var.putAtt("valid_max", netCDF::ncFloat, 999.0f);
@@ -593,9 +597,9 @@ auto writeL1(const std::string& filename,
               nc_grp.addVar("radiance",
                             netCDF::ncFloat,
                             { nc_images, nc_across_track, nc_wavelength });
-            nc_var.putAtt("long_name", "radiance");
+            nc_var.putAtt("long_name", "spectral photon radiance");
             nc_var.putAtt("_FillValue", netCDF::ncFloat, fill::f);
-            nc_var.putAtt("units", "ph nm-1 s-1 sr-1 m-2");
+            nc_var.putAtt("units", "nm-1 s-1 sr-1 m-2");
             nc_var.putAtt("valid_min", netCDF::ncFloat, 0.0f);
             nc_var.putAtt("valid_max", netCDF::ncFloat, 1e20f);
             std::vector<float> buf(n_images * n_across_track * n_wavelength);
@@ -608,7 +612,7 @@ auto writeL1(const std::string& filename,
             nc_var.putAtt("long_name",
                           "standard deviation of radiance in bin ");
             nc_var.putAtt("_FillValue", netCDF::ncFloat, fill::f);
-            nc_var.putAtt("units", "ph nm-1 s-1 sr-1 m-2");
+            nc_var.putAtt("units", "nm-1 s-1 sr-1 m-2");
             nc_var.putAtt("valid_min", netCDF::ncFloat, 0.0f);
             nc_var.putAtt("valid_max", netCDF::ncFloat, 1e20f);
             flattenStdev(buf);
@@ -618,9 +622,9 @@ auto writeL1(const std::string& filename,
               nc_grp.addVar("radiance",
                             netCDF::ncDouble,
                             { nc_images, nc_across_track, nc_wavelength });
-            nc_var.putAtt("long_name", "radiance");
+            nc_var.putAtt("long_name", "spectral photon radiance");
             nc_var.putAtt("_FillValue", netCDF::ncDouble, fill::f);
-            nc_var.putAtt("units", "ph nm-1 s-1 sr-1 m-2");
+            nc_var.putAtt("units", "nm-1 s-1 sr-1 m-2");
             nc_var.putAtt("valid_min", netCDF::ncDouble, -1e20);
             nc_var.putAtt("valid_max", netCDF::ncDouble, 1e20);
             std::vector<double> buf(n_images * n_across_track * n_wavelength);
@@ -633,7 +637,7 @@ auto writeL1(const std::string& filename,
             nc_var.putAtt("long_name",
                           "standard deviation of radiance in bin ");
             nc_var.putAtt("_FillValue", netCDF::ncDouble, fill::f);
-            nc_var.putAtt("units", "ph nm-1 s-1 sr-1 m-2");
+            nc_var.putAtt("units", "nm-1 s-1 sr-1 m-2");
             nc_var.putAtt("valid_min", netCDF::ncDouble, -1e20);
             nc_var.putAtt("valid_max", netCDF::ncDouble, 1e20);
             flattenStdev(buf);
@@ -742,8 +746,8 @@ auto copyGeometry(const std::string& l1a_filename,
 {
     const netCDF::NcFile nc_geo { geo_filename, netCDF::NcFile::read };
     const netCDF::NcGroup nc { nc_geo.getGroup("/") };
-    const auto n_alt { nc_geo.getDim("along_track").getSize() };
-    const auto n_act { nc_geo.getDim("across_track").getSize() };
+    const auto n_alt { nc_geo.getDim("along_track_sample").getSize() };
+    const auto n_act { nc_geo.getDim("across_track_sample").getSize() };
     std::vector<double> lat(n_alt * n_act);
     std::vector<double> lon(n_alt * n_act);
     std::vector<double> vza(n_alt * n_act);

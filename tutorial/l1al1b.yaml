@@ -1,0 +1,26 @@
+# Input for Tango L1B code
+
+# instrument: tango
+
+processing_version: 1.0
+
+reverse_wavelength: yes
+
+# image_start: 10
+# image_end: 10
+
+io:
+  ckd: ckd.nc
+  binning_table: binning_table.nc
+  l1a: l1a.nc
+  l1b: l1b.nc
+  geometry: geometry.nc
+
+# prnu:
+#   enabled: no
+
+# stray:
+#   van_cittert_steps: 0
+
+swath:
+  spectrum_width: 1.0

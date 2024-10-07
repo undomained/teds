@@ -3,6 +3,17 @@ Contributing
 
 In this section, we lay out rules and recommendations for contributing to this project. A set of rules (a coding style guide) is essential for any development team to ensure code readability and integrity. As a developer, you should pause to go through either all of the rules or ones that are relevant to you depending on what you are currently working on, so that when you commit new code it will pass all linter, regression, and other tests.
 
+Each rule or concept is described in the following chapters but in summary, run the following from the root source directory before each push to the repository:
+
+.. code-block:: bash
+
+   bash flake8_check.sh
+   mypy teds
+   pytest
+   bash clang_format_check.sh clang-format-18
+
+The exact statements that are automatically run with each push in a container set up for this project are found in ``bitbucket-pipelines.yml`` in the root directory.
+
 It is worth mentioning that all guidelines listed in section are quite standard and used by the majority of the Python and C++ communities. Adopting and getting used to these will hopefully also benefit you with any future projects.
 
 
@@ -125,7 +136,7 @@ Style guide
 
 This project follows the PEP 8 style guide which is universally adopted by most Python projects. It is also the standard used for the Python standard library development and is described in full here: https://peps.python.org/pep-0008/.
 
-In order to see if your code conforms to the standard, configure your editor to highlights parts of the code that do not conform or use an external tool to do so. One such tool is ``flake8`` which is part of ``requirements.txt`` (the executable is in your path if the virtual environment is activated). You can test the correctness of a source file by running ``flake8 file.py``. This tool compares the source file(s) to a set of rules defined by PEP 8 and generates a report per source file. If everything conforms to the standard there should be no output. Writing readable code is important for *i)* reducing the likelihood of future bugs and *ii)* reducing the time it takes for someone (including yourself) to read and contribute to the code.
+In order to see if your code conforms to the standard, configure your editor to highlight parts of the code that do not conform or use an external tool to do so. One such tool is ``flake8`` which is part of ``requirements.txt`` (the executable is in your path if the virtual environment is activated). You can test the correctness of a source file by running ``flake8 file.py``. This tool compares the source file(s) to a set of rules defined by PEP 8 and generates a report per source file. If everything conforms to the standard there should be no output. Writing readable code is important for *i)* reducing the likelihood of future bugs and *ii)* reducing the time it takes for someone (including yourself) to read and contribute to the code.
 
 ``flake8_check.sh``, found in the root source directory, checks all Python source files with some exceptions listed in the script. It is run as one of the steps in the Bitbucket pipeline when new code is pushed. If there are style errors in any of the source files the pipeline fails.
 
@@ -135,19 +146,66 @@ In addition to PEP 8, here are some additional rules specific to the TEDS projec
 * Do not use an empty class for the purpose of amending it across functions. Use a dictionary or, better, inherit from an existing class.
 * Try not to commit commented out code. If it's work in progress, just skip over that part of the code when committing (``git add --patch``) and come back later.
 * Do not commit things like TODO lists unless you are convinced they are informative for everybody.
-* Group imports as follows: standard system libraries followed by local libraries. Separate the groups by blank lines. Within a group, sort the imports alphabetically. This also means that ``from ...`` should come before ``import ...``. Do not import multiple things on one line.
+* Group imports as follows: standard system libraries followed by third party libraries followed by local libraries. Separate the groups by blank lines. Within a group, sort the imports alphabetically. This also means that ``from ...`` should come before ``import ...``. Do not import multiple things on one line.
 
 
 Type hints
 ^^^^^^^^^^
 
-*coming soon..*
+Imagine you come across the following piece of code:
+
+.. code-block:: python
+
+   def process_albedo(input):
+       albedo = extract_albedo(input)
+       albedo.normalize()
+       return albedo
 
 
-Doc-strings
-^^^^^^^^^^^
+What is ``input``? A string, a dictionary, or something else? And what is ``albedo``, an Xarray object perhaps? Without looking at other parts of the code, there is no way to be sure. Sometimes you need to traverse several layers of abstraction to find out the object types. The dynamic nature of Python allows us to develop code fast but it also poses a challenge in keeping the codebase robust and maintainable.
 
-*coming soon..*
+This is where type hinting comes in. Python will always remain a dynamically typed language, meaning the interpreter will not check the type of function arguments or return values. However, by using a special syntax to specify the types of variables, tools such as ``mypy`` can check and flag if a variable type in some context is different from its expected type. In other words, it ensures that the code does what you said it would do in terms of the function signature. A complete description of type hints is given by PEP 484: https://peps.python.org/pep-0484/.
+
+The syntax of type hints is simple:
+
+.. code-block:: python
+
+   def f(number: int, text: str = 'default') -> str:
+       ...
+       return s
+
+
+The type is given after the colon, optionally followed by a default value. An added benefit of type hinting is ensuring good documentation. By specifying all types in the function signature (``mypy`` ensures a consistent style) there is no need to include them in the doc-string.
+
+In TEDS, ``mypy`` is a type hinting tool that is run as part of the regression suite after each push to the repository. If there are any errors the pipeline will fail and the error should be resolved.
+
+
+Docstrings
+^^^^^^^^^^
+
+Ideally, all modules should, functions, and classes exported by a module - in other words all public methods - should have docstrings. Also, a docstring is mandatory for every function that has one or more of the following properties:
+
+* being part of the public API,
+* nontrivial size,
+* non-obvious logic.
+
+The docstring may be descriptive-style ("Fetches rows from a Bigtable.") or imperative-style ("Fetch rows from a Bigtable.") but should be consistent within a file. This project follows the Google style guide for docstrings: https://google.github.io/styleguide/pyguide.html#s3.8-comments-and-docstrings. Most importantly, it has the following structure for the function arguments and return value:
+
+.. code-block:: python
+
+   def read_proc_level(filename: str) -> ProcLevel:
+       """Read the processing level of a L1 file.
+
+       Args:
+         filename:
+           Path of an L1A file, L1B file, or anything in between.
+
+       Returns:
+         Processing (calibration) level of the given file.
+
+       """
+
+The difference with Numpy-style docstrings is quite small as long as type hinting is enforced. The main difference is an additional line after the section title (e.g. Args) which makes this a bit more concise than Numpy.
 
 
 Regression tests
@@ -155,9 +213,26 @@ Regression tests
 
 When contributing a new feature or fix, it is important not to break anything in other parts of the code. To make sure that previously developed and tested software still performs after a change - in other words that there has not been a regression -  we run *regression tests* before every commit. If any of the tests fail, the conflict must be resolved so that all tests pass.
 
+For the Python code, this project depends on the Pytest testing framework. In order to run all tests, call ``pytest`` from the root source directory. In order to run tests for one module only, use the test script's path as an argument, e.g. ``pytest tests/im/test_im.py``. For other uses of Pytest, have a look at Pytest's documentation (read a couple of the first How-to guides at least).
+
 Besides running tests in your development environment, the test suite is run automatically in a *runner* with each push to Bitbucket. The status of the latest run of the test suite is seen at the repository's overview page: https://bitbucket.org/sron_earth/teds (on the right side you will find something like "Pipeline # for master"). Detailed logs of all tests are found by clicking on Pipelines on the left side of the page.
 
-A new piece of code or a bug fix typically warrants a new test or amendments to existing tests. It is thus normal for tests to keep growing over time and sometimes even exceed the amount of normal code.
+A new piece of code or a bug fix typically warrants a new test or amendments to existing tests. It is thus normal for tests to keep growing over time and sometimes even exceed the amount of normal code. In order to see how much code is covered by tests, run
+
+.. code-block:: python
+
+   coverage run -m pytest
+   coverage report -m --sort=cover --skip-covered
+
+Remove ``--skip-covered`` to see the total coverage, including files that have 100% coverage. The output tells you how much of each source file is covered and the lines numbers which are not touched by any files. Your aim should be to reduce the number of such lines.
+
+For a more visual representation that you can open in a web browser, run
+
+.. code-block:: python
+
+   coverage html
+
+and open ``htmlcov/index.html``. Then, by clicking on a source file you'll see exactly which lines are not passing through the tests. The coverage tool is only meant as a guide to show you how effective are the tests. A minimum percentage of code coverage is not enforced for this project.
 
 
 C++
@@ -284,7 +359,7 @@ When making changes to the documentation, you can view the result by running
 
    make html
 
-in the root directory and opening ``build/html/index.html`` in a web browser. When done editing, commit and push to the repository. Read the Docs service will automatically pick up the changes and update https://teds.rtfd.io/ within minutes.
+in the ``doc`` directory and opening ``build/html/index.html`` in a web browser. When done editing, commit and push to the repository. Read the Docs service will automatically pick up the changes and update https://teds.rtfd.io/ within minutes.
 
 
 Debugging with GDB

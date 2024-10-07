@@ -1,7 +1,6 @@
 numpy==1.26.4
 netCDF4
 PyYAML
-matplotlib
 tqdm
 scipy
 h5py
@@ -15,8 +14,14 @@ sgp4
 numba
 tables
 threadpoolctl
-Cartopy
-openpyxl== 3.1.2
-piccolo_theme==0.22.0
 Glymur==0.13.2
+piccolo_theme==0.22
 flake8==7.1.1
+mypy==1.11.1
+types-pyyaml
+types-tqdm==4.66
+types-requests
+sphinx==7.3.7
+piccolo_theme==0.22.0
+pytest==8.3
+coverage==7.6.1

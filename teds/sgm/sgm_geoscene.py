@@ -20,12 +20,13 @@ from typing import List
 
 
 def get_sentinel2_albedo(filename: str) -> List[DataArray]:
-    '''Read a list of Sentinel 2 albedos from a NetCDF file.
-
-    '''
+    """Read a list of Sentinel 2 albedos from a NetCDF file."""
     nc = Dataset(filename)
     albedos = []
     for group in nc.groups:
+        # There's a separate function to extract the SCL
+        if group == 'SCL':
+            continue
         albedo = DataArray(nc[group]['albedo'][:],
                            dims=('y', 'x'),
                            coords={
@@ -37,6 +38,18 @@ def get_sentinel2_albedo(filename: str) -> List[DataArray]:
         albedo.rio.write_crs(nc[group].crs, inplace=True)
         albedos.append(albedo)
     return albedos
+
+
+def get_sentinel2_scl(filename: str) -> DataArray:
+    """Read Sentinel 2 surface classification layer from NetCDF file."""
+    nc = Dataset(filename)
+    grp = nc['SCL']
+    scl = DataArray(grp['scl'][:],
+                    dims=('y', 'x'),
+                    coords={'y': grp['y'][:], 'x': grp['x'][:]})
+    scl.attrs['gsd'] = grp['gsd'][:]
+    scl.rio.write_crs(grp.crs, inplace=True)
+    return scl
 
 
 class Emptyclass:
@@ -134,13 +147,14 @@ def geosgm_output(filename, atm):
             
     return
 
-def geoscene_generation(config):
-    """Scene generation module.
 
-    Parameters
-    ----------
-    config : Dict
-       Dict containing configuration parameters.
+def geoscene_generation(config: dict) -> None:
+    """Generate a geophysical scene.
+
+    Args:
+      config
+        Configuration dictionary
+
     """
     # first get the geometry data
     gm_data = get_gm_data(config['io_files']['input_gm'])
@@ -176,16 +190,13 @@ def geoscene_generation(config):
         meteodata = libATM.get_atmosphericdata_new(
             gm_data.lat, gm_data.lon, config['meteo'])
 
-        meteodata = libATM.get_atmosphericdata_new(gm_data.lat, gm_data.lon, config['io_files']['meteo'])
-
         # Get albedo on the microHH grid
         s2_albedos = get_sentinel2_albedo(config['io_files']['input_s2'])
-        
+
         s2_albedos = libSGM.interp_sentinel2_albedo(
             s2_albedos,
             meteodata.lat,
             meteodata.lon,
-            config['kernel_parameter'],
             config['sentinel2']['band_section'])
         
         meteodata.__setattr__("albedo", s2_albedos)

@@ -19,8 +19,8 @@ from teds.sgm import Carbon_radiation_scene_generation
 from teds.siml1b import simplified_instrument_model_and_l1b_processor
 from teds.l1l2.l1bl2 import level1b_to_level2_processor, \
     level1b_to_level2_processor_RTorCH4
-from teds.l1l2.sl2 import simplified_level2
-from teds.l2l4.l2l4 import level2_to_level4_processor
+#from teds.l1l2.sl2 import simplified_level2
+#from teds.l2l4.l2l4 import level2_to_level4_processor
 
 #import other modules
 import yaml

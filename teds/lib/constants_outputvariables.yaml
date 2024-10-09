@@ -197,7 +197,7 @@ xh2o:
 column_air:
   name: col_air
   long_name: air total column density
-  units: molec./cm2
+  units: molec./m2
   valid_min: 0.
   valid_max: 1.E+32
   FillValue: -32767

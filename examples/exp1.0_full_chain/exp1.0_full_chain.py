@@ -5,6 +5,7 @@
      the LICENSE file in the root directory of this project.
 """
 # define  path to search for module
+import os.path
 import sys
 #from typing_extensions import TypeVarTuple
 sys.path.insert(1, "/home/jochen/TANGO_E2ES/EndtoEndProject/end_to_end/examples/exp1.0_full_chain/")
@@ -16,7 +17,10 @@ from teds.gm import geometry_module
 from teds.sgm import geoscene_generation
 from teds.sgm import Carbon_radiation_scene_generation
 from teds.siml1b import simplified_instrument_model_and_l1b_processor
-from teds.l1l2 import level1b_to_level2_processor
+from teds.l1l2.l1bl2 import level1b_to_level2_processor, \
+    level1b_to_level2_processor_RTorCH4
+#from teds.l1l2.sl2 import simplified_level2
+#from teds.l2l4.l2l4 import level2_to_level4_processor
 
 #import other modules
 import yaml
@@ -34,11 +38,11 @@ profile= 'orbit'   #needed to initialize gm and sgm consistently
 settings= {}
 settings['gm']           = False
 settings['geosgm']       = False
-settings['radsgm_Carbon']= True
+settings['radsgm_Carbon']= False
 settings['im']           = False
 settings['l1al1b']       = False
 settings['siml1b']       = False
-settings['l1bl2']        = False
+settings['l1bl2']        = True
 settings['sl2']          = False
 settings['l2l4']         = False
 
@@ -92,7 +96,7 @@ if __name__ == "__main__":
         # choose baseline L1BL2 config
 
         l1bl2_config= yaml.safe_load(open('./settings/l1bl2_config_baseline.yaml'))
-        level1b_to_level2_processor(l1bl2_config)
+        level1b_to_level2_processor_RTorCH4(l1bl2_config)
 
     # ======= simplifed L1 to L2 processor ===================================
     if(settings['sl2']):

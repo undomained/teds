@@ -95,6 +95,9 @@ auto driver_nitro(const SettingsIM& settings,
         printPercentage(i_alt, l1_measurement.size(), "Processing scenes");
 
         auto& l1 { l1_measurement[i_alt] };
+
+        // Set along_track index
+        l1.i_alt = i_alt;
         
         // Initialize pixel mask
         l1.pixel_mask = ckd.pixel_mask;

@@ -39,6 +39,17 @@ void Noise::algoExecute(L1& l1, const Dataset& input_data) {
     CKD const& ckd = input_data.get_container<CKD>("ckd");
 
     spdlog::warn("Noise, binning not yet taken into account");
+
+    // with seed
+    const int seed = 100;
+    const int x = 1e+5;
+    std::mt19937 gen { static_cast<unsigned long>(seed+x*l1.i_alt) };
+
+    // random
+    // std::random_device rd{};
+    // std::mt19937 gen{rd()};
+
+
     for (int i {}; i < static_cast<int>(l1.image.size()); ++i) {
         if (l1.pixel_mask[i]) {
             continue;
@@ -55,8 +66,7 @@ void Noise::algoExecute(L1& l1, const Dataset& input_data) {
             }
 
         } else if (getModelType()=="IM"){
-            const int seed = 100;
-            static std::mt19937 gen { static_cast<unsigned long>(seed) };
+
             std::normal_distribution<> d { 0.0, std::sqrt(noise2) };
             l1.image[i] += d(gen);
         }

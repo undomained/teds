@@ -36,6 +36,7 @@ struct L1 {
     uint8_t binning_table_id;
     uint16_t nr_coadditions;
     double exposure_time;
+    int i_alt;
 
     // Carbon Instrument 
     std::vector<Spectrum> spectra; 

@@ -849,13 +849,6 @@ def level1b_to_level2_processor_RTorCH4(config):
                         min=radtran[chunk].epsilon
                     )
                     chi2[~valid_mask] = torch.nan
-                    #print(
-                    #    f"Iteration {i1} loss:",
-                    #    chi2[valid_mask].mean().item(),
-                    #    "| valid pixels:",
-                    #    torch.sum(valid_mask).item(),
-                    #    flush=True
-                    #)
 
                     col_scales[valid_mask] = new_col_scales[valid_mask]
                     col_scales[~valid_mask] = torch.nan
@@ -900,13 +893,18 @@ def level1b_to_level2_processor_RTorCH4(config):
                     grad=True
                 )
                 dy = y-radiance
-                chi2 = (
-                    torch.einsum(
-                        "NO,NOo,No->N", dy, retrieval.inv_cov, dy
-                    ) / (N_obs_wls-radtran[chunk].N_params)
-                ).cpu()
+                chi2 = torch.einsum(
+                    "NO,NOo,No->N", dy, retrieval.inv_cov, dy
+                ) / (N_obs_wls-radtran[chunk].N_params)
+                if torch.any(torch.isnan(chi2)) and dtype != torch.float64:
+                    dy64 = dy.to(torch.float64)
+                    chi2 = (
+                        torch.einsum(
+                            "NO,NOo,No->N", dy64, retrieval.inv_cov64, dy64
+                        ) / (N_obs_wls-radtran[chunk].N_params)
+                    ).to(dtype)
                 for i in range(i1, N_iter+1):
-                    out_chi2[batch,chunk_inds,i] = chi2.detach().numpy()
+                    out_chi2[batch,chunk_inds,i] = chi2.cpu().detach().numpy()
 
                 out_col_scales[batch,chunk_inds,:] = (
                     col_scales.cpu().detach().numpy()

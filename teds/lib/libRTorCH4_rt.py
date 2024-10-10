@@ -917,6 +917,7 @@ class GaussNewtonRetrieval(object):
                         * (uncertainty*self.radiance[i,:]) ** -2
                 )
         self.inv_cov = torch.clamp(self.inv_cov, -1/self.epsilon, 1/self.epsilon)
+        self.inv_cov64 = self.inv_cov.to(torch.float64)
 
     def inversion_step(
         self,
@@ -1097,6 +1098,20 @@ class GaussNewtonRetrieval(object):
             self.inv_cov,
             dy
         ) / (self.radtran.N_obs_wls - N_params)
+
+        # Sometimes computing the chi2 goes wrong with float32, producing a
+        # NaN. Although somewhat kludgy, we can just recompute it with float64
+        # when that happens.
+        if self.dtype != torch.float64 and torch.any(torch.isnan(chi2)):
+            dy64 = dy.to(torch.float64)
+            chi2 = (
+                torch.einsum(
+                    "NO,NOo,No->N",
+                    dy64,
+                    self.inv_cov64,
+                    dy64
+                ) / (self.radtran.N_obs_wls - N_params)
+            ).to(self.dtype)
 
         ret_tup = (
             x[:,0:self.radtran.N_species],

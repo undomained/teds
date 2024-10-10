@@ -710,7 +710,7 @@ def level1b_to_level2_processor_RTorCH4(config):
         # The forward model and irradiance at observed wavelengths are
         # computed at the first batch.
         radtran = [None]*N_chunks
-        isrfs = [rt.GaussianISRF()]*N_chunks
+        isrfs = [rt.GaussianISRF() for _ in range(N_chunks)]
         sun_obs = [None]*N_chunks
 
         retstart = datetime.datetime.now()

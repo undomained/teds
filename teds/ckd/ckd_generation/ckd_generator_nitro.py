@@ -36,21 +36,22 @@ def generate_ckds(ncc, cfg):
         mod = import_mod(varpath)
         mod.generate(ncc)
 
-def main(config_path):
-    cfg = load_config(config_path)
+def main(cfg): 
     os.makedirs(cfg['paths']['dir_nitro'], exist_ok=True)
     ncc = NC_container(cfg)
     generate_ckds(ncc, cfg)
     ncc.close()
     
-
 if __name__ == "__main__":
     # Set the current working directory to the directory where the script is located
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    os.chdir(script_dir)
+    #os.chdir(script_dir)
     if len(sys.argv) < 2:
-        config_path = 'ckd_nitro.yaml'
-        print(f"No argument given, using {config_path} in this folder")
+        config_path = '{}/cfg/nitro/full_config.yaml'.format(script_dir)
+        print(f"No argument given, using {config_path}")
     else:
         config_path = sys.argv[1]
-    main(config_path)
+
+    full_config = load_config(config_path)
+    cfg = full_config['ckd']
+    main(cfg)

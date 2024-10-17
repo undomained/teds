@@ -37,7 +37,7 @@ def cmdline(arguments):
     parser = argparse.ArgumentParser(description= usage)
     parser.add_argument( "cfg_file", metavar="FILE", help=cfg_help)
     parser.add_argument( "step", metavar='STEP', nargs="+",
-                         choices=['gm','sgm','im','l1al1b','l1l2','pam','all'],
+                         choices=['ckd', 'gm','sgm','im','l1al1b','l1l2','pam','all'],
                          help="The steps that the E2E processor has to run.")
 
     args = parser.parse_args(arguments)
@@ -483,13 +483,6 @@ def add_module_specific_attributes(config, attribute_dict, step):
     return new_attribute_dict
 
 
-def generate_ckd(config):
-    # run Python code
-    log.info("Generating CKD")
-    ckd_generator = importlib.import_module("ckd.ckd_generation.ckd_generator_nitro")
-    ckd_generator.main(config['ckd'])
-
-
 def build(config, steps, cfg_path, attribute_dict):
     """
         Run E2E processor.
@@ -508,6 +501,11 @@ def build(config, steps, cfg_path, attribute_dict):
     configuration = config.copy()
 
     for step in steps:
+       if step == 'ckd' or step == 'all':
+            ckd_config = configuration['ckd']
+            ckd_generator = importlib.import_module("ckd.ckd_generation.ckd_generator_nitro")
+            ckd_generator.main(ckd_config)
+            
        if step == 'gm' or step == 'all':
             gm_config = get_specific_config(configuration, 'gm')
             attribute_dict = add_module_specific_attributes(gm_config, attribute_dict, 'gm')
@@ -621,9 +619,6 @@ if __name__ == "__main__":
     # Get information (like git hash and config file name and version (if available)
     # that will be added to the output files as attributes
     main_attribute_dict = Utils.get_main_attributes(e2e_config)
-
-    if e2e_config['ckd']['generate']:
-        generate_ckd(e2e_config)
 
     build(e2e_config, e2e_step, e2e_cfg_path, main_attribute_dict)
 

@@ -88,16 +88,18 @@ class ISRF(object):
         """
         raise NotImplemented()
 
-class GaussianISRF(ISRF):
-    """Class representing a Gaussian ISRF.
+class GeneralisedNormalISRF(ISRF):
+    """Class representing a generalised normal ISRF.
 
     N.B. this class uses caching."""
 
-    def __init__(self, epsilon=1e-6):
-        """Initialiser.
+    def __init__(self, beta=2, epsilon=1e-6):
+        """Initialiser. Create a generalised normal ISRF with shape factor
+        beta.
 
-        Values of the Gaussian that are below `epsilon` are set to zero.
+        Values of the function that are below `epsilon` are set to zero.
         """
+        self.beta = beta
         self.epsilon = epsilon
         self.N = None
         self.N_obs_wls = None
@@ -134,7 +136,10 @@ class GaussianISRF(ISRF):
             torch.einsum(
                 "No,l->Nol",
                 obs_wls,
-                torch.ones(self.N_lbl_wls, device=self.device, dtype=self.dtype)
+                torch.ones(
+                    self.N_lbl_wls,
+                    device=self.device, dtype=self.dtype
+                )
             ) - torch.einsum(
                 "No,l->Nol",
                 torch.ones(
@@ -149,7 +154,7 @@ class GaussianISRF(ISRF):
         # (N, N_lbl_wls, N_obs_wls)
         isrf_cst_grid = 1/torch.einsum(
             "No,l->Nol",
-            obs_fwhm**2 / 4 / np.log(2),
+            obs_fwhm / 2 / np.log(2)**(1/self.beta),
             torch.ones(
                 self.N_lbl_wls,
                 device=self.device,
@@ -160,14 +165,20 @@ class GaussianISRF(ISRF):
         # isrf:
         # (N × N_obs_wls × N_lbl_wls)
         isrf_num = torch.exp(
-            -isrf_wavediff**2 * isrf_cst_grid
+            -torch.abs(isrf_wavediff)**self.beta * isrf_cst_grid**self.beta
         )
         mask = torch.abs(isrf_num) < self.epsilon
         isrf_num[mask] = 0
         isrf_denom = 1/torch.sum(isrf_num, dim=2, keepdim=True)
         self.isrf_tensor = isrf_num * isrf_denom
 
-        grd_cst = 2*isrf_cst_grid*isrf_wavediff
+        grd_cst = (
+            -self.beta
+            * isrf_cst_grid**self.beta
+            * isrf_wavediff
+            * torch.abs(isrf_wavediff)**(self.beta-2)
+        )
+
         self.gradient_tensor = (
             grd_cst
             - (
@@ -210,8 +221,12 @@ class GaussianISRF(ISRF):
                 target
             )
 
+class GaussianISRF(GeneralisedNormalISRF):
+    def __init__(self, epsilon=1e-6):
+        GeneralisedNormalISRF.__init__(self, 2, epsilon)
+
 class BasicRadiativeTransfer(object):
-    """Simplistic singlge-scattering radiative transfer class. Compute
+    """Simplistic single-scattering radiative transfer class. Compute
     top-of-atmosphere Earth-reflected radiance given scattering geometry,
     optical depth, albedo and solar irradiance."""
     epsilon = 1e-9 # Fudge factor to prevent division by 0

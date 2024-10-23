@@ -167,7 +167,7 @@ class GaussianISRF(ISRF):
         isrf_denom = 1/torch.sum(isrf_num, dim=2, keepdim=True)
         self.isrf_tensor = isrf_num * isrf_denom
 
-        grd_cst = 2*isrf_cst_grid*isrf_wavediff
+        grd_cst = -2*isrf_cst_grid*isrf_wavediff
         self.gradient_tensor = (
             grd_cst
             - (

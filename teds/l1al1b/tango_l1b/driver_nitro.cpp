@@ -37,6 +37,8 @@ auto driver_nitro(const SettingsL1B& settings,
     printHeading("Reading CKD and input data");
     CKD ckd(settings.io.ckd, settings.swath.spectrum_width);
 
+    spdlog::info("CKD initialized");
+
     Dataset input_data;
     input_data.add_container("ckd",ckd);
 

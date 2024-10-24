@@ -143,6 +143,17 @@ public:
         std::vector<std::vector<std::vector<double>>> isrf_wl {};
     } rad;
 
+    // ISRF
+    struct
+    {
+        bool enabled { false };
+        // Radiometric calibration constants
+        // Dimensions: (n_act, n_detector_cols).
+        std::vector<double> x0 {};
+        std::vector<double> w {};
+        std::vector<double> n {};
+    } isrf;
+
     ~CKD() = default;
 };
 

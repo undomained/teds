@@ -155,6 +155,7 @@ CKD::CKD(const std::string& filename, const double spectrum_width)
         grp.getVar("radiometric").getVar(rad.rad.data());
 
         // Resize 3D ISRF
+        /*
         n_isrf_samples = static_cast<int>(grp.getDim("isrf_samples").getSize());
         rad.isrf.resize(n_act);
         rad.isrf_wl.resize(n_act);
@@ -168,6 +169,35 @@ CKD::CKD(const std::string& filename, const double spectrum_width)
         }
         getAndReshape3D(grp.getVar("isrf"), rad.isrf);
         getAndReshape3D(grp.getVar("isrf_wavelengths"), rad.isrf_wl);
+        */
+    }
+
+    if (const netCDF::NcGroup grp { nc.getGroup("isrf") };
+        !grp.isNull()) {
+        spdlog::info("Reading ISRF CKD");
+        isrf.x0.resize(n_act * n_lbl);
+        isrf.w.resize(n_act * n_lbl);
+        isrf.n.resize(n_act * n_lbl);
+        grp.getVar("x0").getVar(isrf.x0.data());
+        grp.getVar("w").getVar(isrf.w.data());
+        grp.getVar("n").getVar(isrf.n.data());
+
+        // Resize 3D ISRF
+        /*
+        n_isrf_samples = static_cast<int>(grp.getDim("isrf_samples").getSize());
+        rad.isrf.resize(n_act);
+        rad.isrf_wl.resize(n_act);
+        for (int i = 0; i < n_act; ++i) {
+            rad.isrf[i].resize(n_lbl);
+            rad.isrf_wl[i].resize(n_lbl);
+            for (int j = 0; j < n_lbl; ++j) {
+                rad.isrf[i][j].resize(n_isrf_samples);
+                rad.isrf_wl[i][j].resize(n_isrf_samples);
+            }
+        }
+        getAndReshape3D(grp.getVar("isrf"), rad.isrf);
+        getAndReshape3D(grp.getVar("isrf_wavelengths"), rad.isrf_wl);
+        */
     }
 }
 

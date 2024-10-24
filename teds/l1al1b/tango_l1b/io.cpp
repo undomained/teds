@@ -448,7 +448,7 @@ auto writeL1(const std::string& filename,
     const auto nc_images { nc.addDim(
       (level <= ProcLevel::stray ? "image" : "along_track_sample"), n_images) };
 
-    auto nc_var { nc.addVar("configuration", netCDF::ncString) };
+    auto nc_var { nc.addVar("configuration", netCDF::ncString, { nc_images }) };
     nc_var.putAtt("comment",
                   "configuration parameters used for producing this file");
     const char* conf_char { config.c_str() };

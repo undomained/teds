@@ -13,7 +13,6 @@ def generate(ncc):
     etendue =  cfg["etendue"]
     radiometric = 1 / (dispersion * transmission * etendue)  # nm um-1 mm-2 sr-2 
     
-    print(np.min(radiometric), np.max(radiometric), np.mean(radiometric))
     #rcc = np.ones(ncc.get_shape(dims)) * cfg['rcc']
     attr = {
         'long_name': 'Radiometric calibration constant',

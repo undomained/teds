@@ -31,8 +31,8 @@ def flatten_dict(d, parent_key='', sep='/'):
 def generate_ckds(ncc, cfg):
     varpaths = glob(f"{cfg['paths']['dir_nitro']}/**/*.py", recursive=True)
     for varpath in varpaths:
-        if 'skip' in varpath:
-            continue
+        #if not 'isrf' in varpath:
+        #    continue
         mod = import_mod(varpath)
         mod.generate(ncc)
 

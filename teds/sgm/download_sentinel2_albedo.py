@@ -9,6 +9,7 @@ from pystac_client import Client
 from pystac.item import Item as PystacItem
 from netCDF4 import Dataset
 from requests import get
+from rioxarray.merge import merge_arrays
 from tqdm import tqdm
 from xarray import DataArray
 import numpy as np
@@ -55,8 +56,7 @@ def generate_geometry(lat: DataArray,
         # Crop the bounding box of this granule with the target bounding box
         assert granule.geometry is not None
         coords = granule.geometry['coordinates']
-        intersect = Polygon(coords[0]).intersection(
-            target_box)
+        intersect = Polygon(coords[0]).intersection(target_box)
         # If adding this box to the list of previously accepted box increases
         # the total area by a certain margin then accept this box.
         all_boxes_cur = shapely.ops.unary_union([all_boxes, intersect])
@@ -97,7 +97,7 @@ def write_albedo_to_netcdf(albedo_file: str, albedos: list[DataArray]) -> None:
 
         if albedo.band_label == 'SCL':
             nc_var = nc_grp.createVariable(
-                'scl', 'u1', ['x', 'y'], fill_value=0)
+                'scl', 'u1', ['y', 'x'], fill_value=0)
             nc_var.long_name = 'scene classification layer'
             nc_var.flag_values = [np.uint8(i) for i in range(12)]
             nc_var.flag_meanings = ('No Data (Missing data)',
@@ -116,7 +116,7 @@ def write_albedo_to_netcdf(albedo_file: str, albedos: list[DataArray]) -> None:
             nc_var.valid_max = 11
         else:
             nc_var = nc_grp.createVariable(
-                'albedo', 'u2', ['x', 'y'], fill_value=32767)
+                'albedo', 'u2', ['y', 'x'], fill_value=32767)
             nc_var.long_name = 'albedo'
             nc_var.valid_min = 0
             nc_var.valid_max = 10_000
@@ -136,39 +136,50 @@ def download_sentinel2_albedo(config: dict) -> None:
     nc = Dataset(config['gm_input'])
     lat = nc['lat'][:]
     lon = nc['lon'][:]
-    collection = generate_geometry(lat, lon)
+    granules = generate_geometry(lat, lon)
     # Extract the high resolution albedo map of selected wavelength bands
     albedos = []
     for band_label in config['sentinel2']['band_section'] + ['SCL']:
         log.info(f'Downloading Sentinel 2 albedo for band {band_label}')
-        tiff_url = collection[-1].assets[band_label].href
-        short_name = tiff_url.split('sentinel-s2-l2a-cogs/')[1]
-        resp = get(tiff_url, stream=True)
-        in_memory_object = BytesIO()
-        with tqdm(desc=short_name,
-                  total=int(resp.headers.get('content-length', 0)),
-                  unit='B',
-                  unit_scale=True,
-                  unit_divisor=1000) as bar:
-            for data in resp.iter_content(chunk_size=1024):
-                size = in_memory_object.write(data)
-                bar.update(size)
-        # Option to read the tiff file from memory or first write to
-        # hard drive and read from there.
-        if 'in_memory' in config['sentinel2'] and (
-                config['sentinel2']['in_memory']):
-            albedo = rioxarray.open_rasterio(in_memory_object)
-        else:
-            _filename = 'albedo.tif'
-            with open(_filename, 'bw') as tif_file:
-                in_memory_object.seek(0)
-                tif_file.write(in_memory_object.read())
-            albedo = rioxarray.open_rasterio(_filename)
-            os.remove(_filename)
-        assert isinstance(albedo, DataArray)
-        albedo = albedo.assign_attrs({
-            'band_label': band_label,
-            'gsd': abs(albedo.x.values[1] - albedo.x.values[0])
-        })
-        albedos.append(albedo)
+        # Fetch one or more S2 albedo maps at a given wavelength.
+        # These will be merged into one so there will always be one
+        # albedo per wavelength.
+        albedos_partial = []
+        for granule in granules:
+            tiff_url = granule.assets[band_label].href
+            short_name = f'{tiff_url.split("/")[-2]}/{tiff_url.split("/")[-1]}'
+            resp = get(tiff_url, stream=True)
+            in_memory_object = BytesIO()
+            with tqdm(desc=short_name,
+                      total=int(resp.headers.get('content-length', 0)),
+                      unit='B',
+                      unit_scale=True,
+                      unit_divisor=1000) as bar:
+                for data in resp.iter_content(chunk_size=1024):
+                    size = in_memory_object.write(data)
+                    bar.update(size)
+            # Option to read the tiff file from memory or first write
+            # to hard drive and read from there.
+            if 'in_memory' in config['sentinel2'] and (
+                    config['sentinel2']['in_memory']):
+                albedo = rioxarray.open_rasterio(in_memory_object)
+            else:
+                _filename = 'albedo.tif'
+                with open(_filename, 'bw') as tif_file:
+                    in_memory_object.seek(0)
+                    tif_file.write(in_memory_object.read())
+                albedo = rioxarray.open_rasterio(_filename)
+                os.remove(_filename)
+            assert isinstance(albedo, DataArray)
+            albedo = albedo.assign_attrs({
+                'band_label': band_label,
+                'gsd': abs(albedo.x.values[1] - albedo.x.values[0])
+            })
+            albedos_partial.append(albedo)
+        # Merge albedos from different granules into one
+        first_crs = albedos_partial[0].rio.crs
+        for i in range(1, len(albedos_partial)):
+            albedos_partial[i] = albedos_partial[i].rio.reproject(first_crs)
+        albedo_combined = merge_arrays(albedos_partial)
+        albedos.append(albedo_combined)
     write_albedo_to_netcdf(config['sentinel2']['albedo_file'], albedos)

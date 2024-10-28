@@ -8,6 +8,7 @@
 namespace tango {
 
 class CKD;
+class BinningTable;
 class L1;
 
 /// Binning class
@@ -32,6 +33,8 @@ public:
 
     /// Perform the algorithm
     void algoExecute(L1& l1, const Dataset& input_data) override;
+
+    void binWavelength(L1& l1, BinningTable const& binning);
 
 };
 } // namespace tango

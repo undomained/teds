@@ -598,6 +598,10 @@ def level1b_to_level2_processor_RTorCH4(config):
         config['isrf_settings']['fwhm'] * np.ones(N_obs_wls)
     )
 
+    isrf_beta = 2
+    if config['isrf_settings']['type'] == 'generalized_normal':
+        isrf_beta = 1/config['isrf_settings']['bcoeff']
+
     # Diagonal of all inverse covariance matrices
     # Shape: along_track, across_track, wavelength
     invcov_diag = 1/np.clip(l1b['noise']**2, 1e-9, None)
@@ -710,7 +714,7 @@ def level1b_to_level2_processor_RTorCH4(config):
         # The forward model and irradiance at observed wavelengths are
         # computed at the first batch.
         radtran = [None]*N_chunks
-        isrfs = [rt.GaussianISRF() for _ in range(N_chunks)]
+        isrfs = [rt.GeneralisedNormalISRF(isrf_beta) for _ in range(N_chunks)]
         sun_obs = [None]*N_chunks
 
         retstart = datetime.datetime.now()
@@ -896,6 +900,7 @@ def level1b_to_level2_processor_RTorCH4(config):
                 chi2 = torch.einsum(
                     "NO,NOo,No->N", dy, retrieval.inv_cov, dy
                 ) / (N_obs_wls-radtran[chunk].N_params)
+
                 if torch.any(torch.isnan(chi2)) and dtype != torch.float64:
                     dy64 = dy.to(torch.float64)
                     chi2 = (
@@ -903,6 +908,7 @@ def level1b_to_level2_processor_RTorCH4(config):
                             "NO,NOo,No->N", dy64, retrieval.inv_cov64, dy64
                         ) / (N_obs_wls-radtran[chunk].N_params)
                     ).to(dtype)
+
                 for i in range(i1, N_iter+1):
                     out_chi2[batch,chunk_inds,i] = chi2.cpu().detach().numpy()
 

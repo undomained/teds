@@ -13,7 +13,9 @@ def generate(ncc):
     etendue =  cfg["etendue"]
     radiometric = 1 / (dispersion * transmission * etendue)  # nm um-1 mm-2 sr-2 
     
-    #rcc = np.ones(ncc.get_shape(dims)) * cfg['rcc']
+    # old radiometric constant
+    rcc = np.ones(ncc.get_shape(dims)) * cfg['rcc']
+
     attr = {
         'long_name': 'Radiometric calibration constant',
         'comment' : 'Transmission(wl) * Dispersion(wl) * Solid Angle',
@@ -21,5 +23,6 @@ def generate(ncc):
         'units' : ""
     }
    
-    ncc.create_var_auto(dims, radiometric, attr, 'f8')
+   # for now use the old constant
+    ncc.create_var_auto(dims, rcc, attr, 'f8')
 

@@ -120,7 +120,7 @@ public:
     //                  int i_alt_start,
     //                  std::vector<L1>& l1_products) -> void;
 
-    void binWavelength(L1& l1, const CKD& ckd);
+    void extractSpectraWavelength(L1& l1, const CKD& ckd);
 };
 
 

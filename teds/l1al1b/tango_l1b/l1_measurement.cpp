@@ -178,7 +178,6 @@ void L1Measurement::writeMetaData(netCDF::NcFile& nc) {
 
 }
 
-// May be obsolete?
 void L1Measurement::writeObservationData(netCDF::NcFile& nc) {
     // Edwards splitup functions copied from io.cpp with l1_products -> l1_measurement
     spdlog::info("Writing Observation Data");
@@ -187,7 +186,11 @@ void L1Measurement::writeObservationData(netCDF::NcFile& nc) {
     const auto nc_images = nc.getDim("along_track");
     auto& l1 { l1_measurement[0] };
 
-    const auto& wavelengths = *l1_measurement.front().observation_wl_out; 
+    auto& wavelengths = *l1_measurement.front().observation_wl;
+    if (l1_measurement.front().observation_wl == nullptr){
+        wavelengths = *l1_measurement.front().observation_wl_out;
+    }
+
     const auto n_wavelength { wavelengths.front().size() };
     const auto nc_wavelength { nc.addDim("wavelength", n_wavelength) };
     
@@ -229,26 +232,27 @@ void L1Measurement::writeScienceData(netCDF::NcFile& nc){
     // Edwards splitup functions copied from io.cpp with l1_products -> l1_measurement
     spdlog::info("Writing Science Data");
     // Note: n_images is member of L1Measurements
-    //    const auto n_images { l1_products.size() };
     const auto n_bins { l1_measurement.front().image.size() };
-    spdlog::info("n_bins: {}", n_bins);
 
     const auto nc_images = nc.getDim("along_track");
     const auto nc_detector_bin { nc.addDim("detector_bin", n_bins) };
 
-    const auto& wavelengths = *l1_measurement.front().wavelength; 
+    auto& wavelengths = *l1_measurement.front().wavelength;
     const auto n_cols { wavelengths.front().size() };
     const auto nc_cols { nc.addDim("cols", n_cols) };
     
-    const auto n_detector_rows {(*l1_measurement.front().wavelength).size()};
-    const auto n_binned_rows = static_cast <int>(round(n_bins/n_cols));
+    const auto n_detector_rows = (*l1_measurement.front().wavelength).size();
 
+    // if l1.wavelength_binned is not empty, we have binned images.
     int n_rows;
-    if (n_binned_rows == n_detector_rows ){
-        // No binning
-        n_rows = n_detector_rows;
+    if (l1_measurement.front().wavelength_binned == nullptr){
+        // detector_rows
+        n_rows = (*l1_measurement.front().wavelength).size();
+        wavelengths = *l1_measurement.front().wavelength;
     } else {
-        n_rows = n_binned_rows;
+        // binned_rows
+        n_rows = (*l1_measurement.front().wavelength_binned).size();
+        wavelengths = *l1_measurement.front().wavelength_binned;
     }
 
     const auto nc_rows { nc.addDim("rows", n_rows) };
@@ -448,6 +452,7 @@ void L1Measurement::readSceneData(const netCDF::NcFile& nc){
 
     // set wavelengths
     for (L1& l1 : l1_measurement) {
+        l1.wavelength_binned.reset();
         l1.wavelength.reset();
         l1.observation_wl = wavelength_lbl;
     }
@@ -515,7 +520,7 @@ void L1Measurement::copyGeometry(const std::string& config)
     }
 }
 
-void L1Measurement::binWavelength(L1& l1, CKD const& ckd) {
+void L1Measurement::extractSpectraWavelength(L1& l1, CKD const& ckd) {
     // Same function as algorithm/extract_spectra.cpp but for binning wavelength map
     // Taken out of image loop as it unly needs to be done once for one image
     // Only runs when creating 'observation' data

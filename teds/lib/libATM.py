@@ -805,7 +805,7 @@ def combine_meteo_standard_atm_new(meteo, atm_std, config):
     #extract specific settings 
     afgl_only     = config["afgl"]["afgl_only"]
 
-    gases_microHH = config["meteo"]["gases"]
+    gases_microHH = config["io_files"]["meteo"]["gases"]
     gases_afgl    = config["afgl"]["gases"]
     gases_all = list(set(gases_microHH)|set(gases_afgl))
     gases_afgl_microHH = list(set(gases_microHH)&set(gases_afgl))

@@ -676,7 +676,7 @@ def convolvedata(data, config):
     data.__setattr__("albedo_conv", convolution_2d(data.albedo, conv_settings))
     
 
-    for gas in config['conv_gases']:
+    for gas in config['selected_gases']:
         concgas = data.__getattribute__("dcol_"+gas)
         conv_gas = np.zeros_like(concgas)
         for iz in tqdm(range(data.zlay[0,0,:].size)):
@@ -688,3 +688,60 @@ def convolvedata(data, config):
     
     return data
 
+def expand_geometry(atm, gm):
+    """
+        input:
+            atm  model atmosphere
+            gm   gm for target area
+        output:
+            gm_out gm on model grid
+    """
+    #start with an empty gm_data class
+    gm_out = Emptyclass()
+    ygrid, xgrid = np.meshgrid(atm.ypos, atm.xpos)
+    gm_out.__setattr__("xpos", xgrid)
+    gm_out.__setattr__("ypos", ygrid)
+
+    #Next the (x,y) coordinates of the gm_org grid and flatten it
+    yval = np.ma.getdata(gm.ypos).ravel()
+    xval = np.ma.getdata(gm.xpos).ravel()
+    
+    deltax = np.diff(atm.xpos).mean()
+    deltay = np.diff(atm.ypos).mean()
+    #define a bounding box that covers the target exceeds the coordiantes of atm_org by deltax, deltay
+    xbb = np.concatenate((atm.xpos, 
+                            np.ones(atm.ypos.size)*(atm.xpos.max()+deltax),
+                            atm.xpos,
+                            np.ones(atm.ypos.size)*(atm.xpos.min()-deltax)))        
+    ybb = np.concatenate((np.ones(atm.xpos.size)*(atm.ypos.max()+deltay),
+                            atm.ypos,
+                            np.ones(atm.xpos.size)*(atm.ypos.min()-deltay),
+                            atm.ypos))
+    xybb = np.column_stack((ybb, xbb))
+
+    #find the points of (gm_org.xpos, gm_org.ypos) that is closest to the point of xybb   
+    nnx = xybb.shape[0]
+    index = np.empty([nnx,2], dtype = int)
+    for ip in range(nnx):
+        distance = np.square(gm.ypos-xybb[ip,0]) + np.square(gm.xpos-xybb[ip,1])
+        index[ip,:] = np.unravel_index(distance.argmin(), distance.shape)
+            
+    #add the bounding box to the set of interpolation points
+    xval = np.concatenate((xval, xbb))
+    yval = np.concatenate((yval, ybb))
+    XY   = np.column_stack((yval, xval))
+    
+    for gm_para in ['sza','vza','saa','vaa']:
+        
+        #assign the data which is closest to a given point of the bounding box to this point  
+        data = gm.__getattribute__(gm_para)
+        data_bb = np.array([data[tuple(index[ip,:])] for ip in range(nnx)])            
+        data = np.concatenate((data.ravel(), data_bb))
+        
+        interpdata = griddata(XY, data, (gm_out.ypos, gm_out.xpos), method='cubic', )
+        interpdata[interpdata> data.max()]=data.max()   #cut off large values
+        interpdata[interpdata< data.min()]=data.min()   #and the same for small values
+        
+        gm_out.__setattr__(gm_para, interpdata)
+
+    return(gm_out)

@@ -124,7 +124,7 @@ auto driver_nitro(const SettingsL1B& settings,
     if (is_spectra){
         spdlog::info("{: ^30}", "ExtractSpectra wavelength"); // Remove this later
         auto& l1 { l1_measurement.front() };
-        l1_measurement.binWavelength(l1, ckd);
+        l1_measurement.extractSpectraWavelength(l1, ckd);
     }
 
     timer_total.stop();

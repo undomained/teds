@@ -8,6 +8,7 @@ import sys
 import numpy as np
 import yaml
 from tqdm import tqdm
+import matplotlib.pyplot as plt
 
 from ..lib import libNumTools, libRT, libSURF, libATM
 from ..lib.libWrite import writevariablefromname
@@ -175,108 +176,61 @@ def Carbon_radiation_scene_generation(config: dict) -> None:
       config
         Configuration dictionary
 
-    """
-    #get the geometry data
-    
-
+    """    
     #get data 
     atm_org = get_geosgm_data(config['io_files']['input_sgm_geo'])
+    #get gm data
     gm_org  = get_gm_data(config['io_files']['input_gm'])
     # create a transform method 
     trans = TransformCoords(atm_org.co2_src_zlatlon[1:])
     # convert lat-lon of gm to x-y and get bounds
     gm_org.xpos, gm_org.ypos = trans.latlon2xymts(gm_org.lat, gm_org.lon)
 
+    #prepare the input data to calculate the radiation scene
+    
     if(config['convolve_atm_input']):
-#    if(True):
 
+        # This option takes the gm data from gm_org and convolves the atmospheric 
+        # and albedo data with the SEDF. It provide one atmosphere for each observation grid point
+        # It has the advantage to have a well-defined reference scene for each observation.
+        # Its disaadvantage is that it cannot be used to study sub-pixel effects
+    
         gm_data = gm_org
-
         #convolution with instrument spatial response
         atm_conv = libNumTools.convolvedata(atm_org, config)
-         
         #interpolate convolved data to gm grid
-        albedo, atm = libNumTools.interpolate_data_regular(atm_conv, gm_data, config["conv_gases"])
+        albedo, atm = libNumTools.interpolate_data_regular(atm_conv, gm_data, config["selected_gases"])
+        #store sgm data that are used for RT simulations        
+        sgm_output_atm_ref(config['io_files']['output_geo_ref'], atm, albedo, gm_data, config["selected_gases"])
 
-        #store sgm data that are used for RT simulations
-        
-        sgm_output_atm_ref(config['io_files']['output_geo_ref'], atm, albedo, gm_data, config["conv_gases"])
     else:
                 
-        gm_data = Emptyclass()
-        
-        ygrid, xgrid = np.meshgrid(atm_org.ypos, atm_org.xpos)
-        gm_data.__setattr__("xpos", xgrid)
-        gm_data.__setattr__("ypos", ygrid)
+        # This option uses the atmospheric grid given by atm.org and extrapolates the geometry given 
+        # in gm_org to the atmospheric mesh
 
-        yval = np.ma.getdata(gm_org.ypos).ravel()
-        xval = np.ma.getdata(gm_org.xpos).ravel()
-        
-        deltax = 10
-        deltay = 10
-        #define a surounding box that covers the target box gm_org
-        xsr = np.concatenate((atm_org.xpos, 
-                             np.ones(atm_org.ypos.size)*(atm_org.xpos.max()+deltax),
-                             atm_org.xpos,
-                             np.ones(atm_org.ypos.size)*(atm_org.xpos.min()-deltax)))
-        
-        ysr = np.concatenate((np.ones(atm_org.xpos.size)*(atm_org.ypos.max()+deltay),
-                             atm_org.ypos,
-                             np.ones(atm_org.xpos.size)*(atm_org.ypos.min()-deltay),
-                             atm_org.ypos))
-        
-        xy_sr = np.column_stack((ysr, xsr))
+        #first we take over and reformate the model atmosphere form atm_org for the selected gases.
+        albedo, atm = convert(atm_org, config["selected_gases"])
 
-        #find coordinates of gm_org.xpos and gm_org.ypos that is closest to xy_sr     
-        nnx = xy_sr.shape[0]
-        index = np.empty([nnx,2], dtype = int)
-        for ip in range(nnx):
-            distance = np.square(gm_org.ypos-xy_sr[ip,0]) + np.square(gm_org.xpos-xy_sr[ip,1])
-            index[ip,:] = np.unravel_index(distance.argmin(), distance.shape)
-        
-#        plt.scatter(xsr, ysr, marker = '.', color = 'blue')
-#        for ip in range(nnx):
-#            id0 = index[ip,0]
-#            id1 = index[ip,1]
-#            plt.plot([xy_sr[ip,1],gm_org.xpos[id0,id1]] ,[xy_sr[ip,0], gm_org.ypos[id0,id1]] , color = 'green')
-#        plt.show()
-        
-        #add the surounding box to the set of interpolation points
-        xval = np.concatenate((xval, xsr))
-        yval = np.concatenate((yval, ysr))
-        dxdy = np.column_stack((yval, xval))
-        
-        albedo, atm = convert(atm_org, config["conv_gases"])
+        #The orginal gm data for SZA, SAA. VZA, VAA are extrapolated to the atmospheric mesh 
+        gm_data = libNumTools.expand_geometry(atm_org, gm_org)
 
-        for gm_para in ['sza','vza','saa','vaa']:
-            
-            data = gm_org.__getattribute__(gm_para)
-            data_sr = np.array([data[tuple(index[ip,:])] for ip in range(nnx)])            
-            data = np.concatenate((data.ravel(), data_sr))
-            
-            interpdata = griddata(dxdy, data, (gm_data.ypos, gm_data.xpos), method='cubic', )
-            interpdata[interpdata> data.max()]=data.max()
-            interpdata[interpdata< data.min()]=data.min()
-            
-            gm_data.__setattr__(gm_para, interpdata)
+        #fig, (ax0, ax1) = plt.subplots(2, 1)
+        #im1 = ax0.pcolormesh(gm_org.ypos,gm_org.xpos,gm_org.vza)
+        #fig.colorbar(im1, ax=ax0)
+        #im2 = ax0.pcolormesh(gm_data.ypos,gm_data.xpos,gm_data,vza)
+        #fig.colorbar(im2, ax=ax1)
 
-            # if(gm_para =='sza'):
-            #     fig, (ax0, ax1) = plt.subplots(2, 1)
-            #     im1 = ax0.pcolormesh(gm_org.ypos,gm_org.xpos,gm_org.__getattribute__(gm_para))
-            #     fig.colorbar(im1, ax=ax0)
-            #     im2 = ax1.pcolormesh(ygrid,xgrid,interpdata)
-            #     fig.colorbar(im2, ax=ax1)
+    # Independently from config['convolve_atm_input'], we have atmospheric data and geometry given on the same grid.
+    # for the dataset atm, albedo, gm_data, we perform the RT simulation
     
-    # Internal lbl spectral grid
+    # line-by-line spectral grid
     wave_start = config['spec_lbl_settings']['wave_start']
     wave_end   = config['spec_lbl_settings']['wave_end']
     dwave_lbl  = config['spec_lbl_settings']['dwave']
     wave_lbl   = np.arange(wave_start, wave_end, dwave_lbl)  # nm
     
-    # Download molecular absorption parameter
-    
-    # get reference model atmosphere for wehich we calculate X sections
-    # Vertical layering
+    # define reference model atmosphere for which we calculate X sections
+    # First, vertical layering
     nlay = config['atmosphere']['nlay']
     dzlay = config['atmosphere']['dzlay']
     psurf = config['atmosphere']['psurf']
@@ -285,7 +239,7 @@ def Carbon_radiation_scene_generation(config: dict) -> None:
     zlay = (np.arange(nlay-1, -1, -1)+0.5)*dzlay  # altitude of layer midpoint
     zlev = np.arange(nlev-1, -1, -1)*dzlay  # altitude of layer interfaces = levels
     
-    # os.path.exists(xsec_file) or conf['xsec_forced']
+    # Second, online calculation of cross section or retrieving data from dummy file depending on config
     if ((not os.path.exists(config['io_files']['dump_xsec'])) or config['xsec_forced']):
         
         iso_ids = [('CH4', 32), ('H2O', 1), ('CO2', 7)]  # see hapi manual  sec 6.6
@@ -311,26 +265,35 @@ def Carbon_radiation_scene_generation(config: dict) -> None:
         # Read optics.prop dictionary from pickle file
         optics.prop = pickle.load(open(config['io_files']['dump_xsec'], 'rb'))
 
+    # Next we perform the RT simuations for the generated input. 
+    # Two differnent cases depending on config['convolve_atm_input']
+    # (1) For spatially convolved scenes, spectra are provided on the line-by-line spectral grid
+    # (2) For scenes that are not spatially convolved, we provide spectra convolved with the ISRF
+    #  
     rad_output = {}
 
     # solar irradiance spectrum
     sun = libRT.read_sun_spectrum_TSIS1HSRS(config['io_files']['input_sun_reference'])
     sun_lbl= np.interp(wave_lbl, sun['wl'], sun['phsm2nm'])
 
+    # dimensions
     nalt, nact = gm_data.sza.shape
+    nwav_lbl = wave_lbl.size
 
     if(config['convolve_atm_input']):     
         rad_output['wavelength'] = wave_lbl  # nm
-        nwav_lbl = wave_lbl.size
         rad_output['solar irradiance'] = sun_lbl
 
         # Calculate surface data
         surface = libSURF.surface_prop(wave_lbl)
-        
         rad = np.empty([nalt, nact, nwav_lbl])
+ 
+        print('Radiative tranfer simulation...')
         for ialt in tqdm(range(nalt)):
             for iact in range(nact):
+                #extract the atmosphere that belongs to (ialt, iact)
                 atm_ext = extract_atm(atm,ialt,iact)
+                #calculate optical depths
                 optics.set_opt_depth_species(atm_ext, ['molec_01', 'molec_32', 'molec_07'])
                 # Earth radiance spectra
                 alb = [albedo[ialt, iact]]
@@ -349,14 +312,17 @@ def Carbon_radiation_scene_generation(config: dict) -> None:
         
         rad_output['wavelength'] = wave_conv
 
+        #function for ISRF convolution
         isrf_convolution = libNumTools.get_isrf(wave_conv, wave_lbl, config['isrf_settings'])
-
+        #convolved solar spectrum
         rad_output['solar irradiance'] = isrf_convolution(sun_lbl)
 
         # Calculate surface data
         surface = libSURF.surface_prop(wave_lbl)
 
         rad = np.empty([nalt, nact, nwav_conv])
+
+        print('Radiative tranfer simulation...')
         for ialt in tqdm(range(nalt)):
             for iact in range(nact):
                 atm_ext = extract_atm(atm,ialt,iact)
@@ -373,10 +339,7 @@ def Carbon_radiation_scene_generation(config: dict) -> None:
         
     rad_output['radiance'] = rad
 
-    # =============================================================================
     # sgm output to radiometric file
-    # =============================================================================
-
     radsgm_output(config['io_files']['output_rad'], rad_output)
 
     print('=>Carbon radsgm calculation finished successfully')

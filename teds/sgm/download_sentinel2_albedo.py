@@ -183,3 +183,4 @@ def download_sentinel2_albedo(config: dict) -> None:
         albedo_combined = merge_arrays(albedos_partial)
         albedos.append(albedo_combined)
     write_albedo_to_netcdf(config['sentinel2']['albedo_file'], albedos)
+    return(albedos)

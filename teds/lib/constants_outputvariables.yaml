@@ -740,7 +740,7 @@ albedo_B08:
   valid_max: 1.0
   FillValue: -32767
 
-albedo_B08A:
+albedo_B8A:
   name: albedo B08A
   long_name: 'S2 albedo band B08A'
   units: '-'

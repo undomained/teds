@@ -419,9 +419,6 @@ def geometry_module(config, logger=None):
         # configure satellite and propagate orbit
         vza, vaa, sza, saa, lat_grid, lon_grid = get_orbit(logger, config)
 
-    elif (config['profile'] == "S2_microHH"):
-        vza, vaa, sza, saa, lat_grid, lon_grid = get_S2_microHH(logger, config)
-
     else:
         error_string = f"something went wrong in gm, code=3, unrecognized profile choise: {config['profile']}\nCan not continue. Stopping now!"
         logger.error(error_string)

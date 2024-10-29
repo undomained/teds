@@ -100,18 +100,22 @@ void ISRF::algoExecute(L1& l1, const Dataset& input_data) {
                 l1.observation_sig[i_act].begin() + i_input_0,
                 l1.observation_sig[i_act].begin() + i_input_1 + 1);
 
+
             // Carry out convolution
             for (int k {}; k < this_isrf.size(); ++k) {
-                signal_conv[i_wl] +=
-                    norm_inv * this_isrf[k] * this_signal[k];
+                signal_conv[i_wl] += norm_inv * this_isrf[k] * this_signal[k];
             }
+        }
 
-            l1.observation_sig[i_act] = signal_conv;
-
+        l1.observation_sig[i_act] = signal_conv;
+        if (i_act ==0){
+            for (int i_wl {}; i_wl < ckd.n_lbl; i_wl++) {
+            spdlog::info("{}", l1.observation_sig[i_act][i_wl]);
+            }
         }
     }
 
-    /*
+    /* OLD VERSION
     int center_ix = (ckd.n_isrf_samples - 1) / 2;
     for (int i_act {}; i_act < ckd.n_act; ++i_act) {
         std::vector<double> signal_conv(ckd.n_lbl, 0.0);

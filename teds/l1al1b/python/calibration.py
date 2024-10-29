@@ -294,7 +294,7 @@ def map_from_detector(l1_products: L1,
                       wavelengths: npt.NDArray[np.float64],
                       spectrum_rows: npt.NDArray[np.float64],
                       spectrum_width: float,
-                      pixel_mask: npt.NDArray[np.bool],
+                      pixel_mask: npt.NDArray[bool],
                       bin_indices: npt.NDArray[np.int32]) -> None:
     """Map detector to spectra.
 

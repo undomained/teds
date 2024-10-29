@@ -261,7 +261,7 @@ def read_ckd(filename: str) -> CKD:
     return ckd
 
 
-def monotonic(x: npt.NDArray[np.float64], axis: int = -1) -> np.bool:
+def monotonic(x: npt.NDArray[np.float64], axis: int = -1) -> bool:
     """Test whether an array is strictly increasing/decreasing or not."""
     dx = np.diff(x, axis=axis)
     return np.all(dx < 0) or np.all(dx > 0)

@@ -42,7 +42,7 @@ def get_gm_data(filename):
     
     return gm_data
 
-def radsgm_output(filename_rad, rad_output):
+def radsgm_output(filename_rad, rad_output, gm_data):
     # write radiances
     nalt, nact, nwav = rad_output['radiance'].shape
     # open file
@@ -73,6 +73,19 @@ def radsgm_output(filename_rad, rad_output):
         'radiance_sgm', 
         ('along_track_sample', 'across_track_sample', 'wavelength'), 
         rad_output['radiance'])
+
+    # add coordinates to SGM atmosphere
+    _ = writevariablefromname(
+        nc, 
+        'latitude', 
+        ('along_track_sample', 'across_track_sample'), 
+        gm_data.lat)
+    
+    _ = writevariablefromname(
+        nc,
+        'longitude',
+        ('along_track_sample', 'across_track_sample'), 
+        gm_data.lon)
 
     return
 
@@ -340,7 +353,7 @@ def Carbon_radiation_scene_generation(config: dict) -> None:
     rad_output['radiance'] = rad
 
     # sgm output to radiometric file
-    radsgm_output(config['io_files']['output_rad'], rad_output)
+    radsgm_output(config['io_files']['output_rad'], rad_output, gm_data)
 
     print('=>Carbon radsgm calculation finished successfully')
     return

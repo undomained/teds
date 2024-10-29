@@ -1,5 +1,5 @@
-image_start: 60
-image_end: 70
+#image_start: 0
+#image_end: 70
 
 detector:
   binning_table_id: 1
@@ -23,9 +23,30 @@ noise:
 # stray:
 #   enabled: no
 
-io:
-  ckd: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/ckd/ckd_OWL640S_low_gain.nc
-  binning_table: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/ckd/binning_table.nc
-  l1b: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/sgm/Tango_Carbon_sgm_radiance_exp1.0.nc
-  l1a: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/level1a/Tango_Carbon_l1a_exp1.0.nc
+Matimba:
+  io:
+    ckd: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/ckd/ckd_OWL640S_low_gain.nc
+    binning_table: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/ckd/binning_table.nc
+    sgm: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/sgm/Tango_Carbon_sgm_radiance_exp1.0_Matimba.nc
+    l1a: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/level1a/Tango_Carbon_l1a_exp1.0_Matimba.nc
 
+Jaenschwalde:
+  io:
+    ckd: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/ckd/ckd_OWL640S_low_gain.nc
+    binning_table: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/ckd/binning_table.nc
+    sgm: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/sgm/Tango_Carbon_sgm_radiance_exp1.0_Jaenschwalde.nc
+    l1a: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/level1a/Tango_Carbon_l1a_exp1.0_Jaenschwalde.nc
+
+Belchatow:
+  io:
+    ckd: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/ckd/ckd_OWL640S_low_gain.nc
+    binning_table: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/ckd/binning_table.nc
+    sgm: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/sgm/Tango_Carbon_sgm_radiance_exp1.0_Bechatow.nc
+    l1a: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/level1a/Tango_Carbon_l1a_exp1.0_Belchatow.nc
+
+Lipetsk:
+  io:
+    ckd: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/ckd/ckd_OWL640S_low_gain.nc
+    binning_table: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/ckd/binning_table.nc
+    sgm: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/sgm/Tango_Carbon_sgm_radiance_exp1.0_Lipetsk.nc
+    l1a: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/level1a/Tango_Carbon_l1a_exp1.0_Lipetsk.nc

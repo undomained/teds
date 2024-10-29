@@ -23,9 +23,10 @@ swath:
 # geolocation:
 #   enabled: no
 
-io:
-  ckd: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/ckd/ckd_OWL640S_low_gain.nc
-  binning_table: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/ckd/binning_table.nc
-  l1b: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/level1b/Tango_Carbon_l1b_exp1.0.nc
-  l1a: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/level1a/Tango_Carbon_l1a_exp1.0.nc
-  geometry: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/gm/Tango_Carbon_gm_exp1.0.nc
+Jaenschwalde:
+  io:
+    ckd: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/ckd/ckd_OWL640S_low_gain.nc
+    binning_table: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/ckd/binning_table.nc
+    l1b: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/level1b/Tango_Carbon_l1b_exp1.0_Jaenschwalde.nc
+    l1a: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/level1a/Tango_Carbon_l1a_exp1.0_Jaenschwalde.nc
+    geometry: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/gm/Tango_Carbon_gm_exp1.0_Jaenschwalde.nc

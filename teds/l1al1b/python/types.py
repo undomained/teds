@@ -16,7 +16,7 @@ import numpy.typing as npt
 # Process ladder, an ordered list of possible states of data. Data
 # levels run from L1A to L1B.
 class ProcLevel(IntEnum):
-    l1a = auto(0)  # type: ignore
+    l1a = 0  # type: ignore
     raw = auto()
     dark = auto()
     noise = auto()
@@ -115,7 +115,7 @@ class CKD(TypedDict, total=False):
     # Number of detector pixels in the spectral direction
     n_detcols: int
     # Bad pixel mask
-    pixel_mask: npt.NDArray[np.bool]
+    pixel_mask: npt.NDArray[bool]
 
     dark: CKDDark
     noise: CKDNoise

@@ -37,7 +37,7 @@ from teds.l1al1b.python.io import read_proc_level
 from teds.l1al1b.python.io import write_l1
 from teds.l1al1b.python.types import ProcLevel
 from teds.l1al1b.python.types import L1
-from teds.lib.utils import merge_configs
+from teds.lib.io import merge_configs
 
 
 def check_config(config: dict) -> None:
@@ -55,8 +55,8 @@ def check_config(config: dict) -> None:
         input_file = Path(config['io'][key])
         if not input_file.is_file():
             raise SystemExit(f"ERROR: {input_file} not found")
-    if not os.access(config['io']['l1a'], os.W_OK):
-        raise SystemExit(f"ERROR: {config['io']['l1a']} not writable")
+    # if not os.access(config['io']['l1a'], os.W_OK):
+    #     raise SystemExit(f"ERROR: {config['io']['l1a']} not writable")
     proc_level = read_proc_level(config['io']['sgm'])
     log.info(f"Processing from {proc_level} to {config['cal_level']}")
 

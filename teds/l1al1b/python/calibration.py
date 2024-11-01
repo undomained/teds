@@ -19,7 +19,7 @@ from .types import L1
 from .types import ProcLevel
 
 
-def remove_coadding_and_binning(l1_products: L1,
+def remove_coadding_and_binning(l1_product: L1,
                                 bin_indices: npt.NDArray[np.int32],
                                 count_table: npt.NDArray[np.int32],
                                 method: str) -> None:
@@ -27,8 +27,8 @@ def remove_coadding_and_binning(l1_products: L1,
 
     Parameters
     ----------
-    l1_products
-        L1 products (signal and detector settings).
+    l1_product
+        L1 product (signal and detector settings).
     bin_indices
         Bin index of each pixel in an unbinned frame.
     count_table
@@ -44,50 +44,52 @@ def remove_coadding_and_binning(l1_products: L1,
 
     """
     # C++ code does this while reading data
-    l1_products['signal'] /= l1_products['coad_factors'][..., None]
+    l1_product['signal']
+    l1_product['signal'] /= l1_product['coad_factors'][..., None]
     # Signal corresponds now with exposure time, but
-    # l1_products['coad_factors'] is not adjusted to remember which
+    # l1_product['coad_factors'] is not adjusted to remember which
     # coaddition factors were used.
-    if method == 'none':
+    if method.lower() == 'none':
         # Binning unchanged but sum changed to mean for later
         # non-linearity correction.
-        l1_products['signal'] /= count_table
+        l1_product['signal'] /= count_table
         # Binning factors, not noise, C++ code writes 0s
-        l1_products['noise'] = np.tile(count_table,
-                                       (len(l1_products['signal']), 1))
+        l1_product['noise'] = np.tile(count_table,
+                                      (len(l1_product['signal']), 1))
     else:
-        l1_products['signal'] = unbin_data(
-            l1_products['signal'], bin_indices, count_table, method=method)
+        l1_product['signal'] = unbin_data(
+            l1_product['signal'], bin_indices, count_table, method=method)
         # Binning table id is kept in sync with the data
-        l1_products['binning_table_ids'] = np.zeros_like(
-            l1_products['binning_table_ids'])
+        l1_product['binning_table_ids'] = np.zeros_like(
+            l1_product['binning_table_ids'])
         # Original binning factors, C++ code writes 0s
-        l1_products['noise'] = unbin_data(
-            np.tile(count_table**2, (len(l1_products['signal']), 1)),
+        l1_product['noise'] = unbin_data(
+            np.tile(count_table**2, (len(l1_product['signal']), 1)),
             bin_indices,
             count_table)
-    l1_products['proc_level'] = ProcLevel.raw
+    l1_product['proc_level'] = ProcLevel.raw
 
 
-def remove_offset(l1_products: L1, offset: npt.NDArray[np.float64]) -> None:
+def remove_offset(l1_product: L1, offset: npt.NDArray[np.float64]) -> None:
     """Remove offset.
 
     Parameters
     ----------
-      l1_products
-        L1 products (signal and detector settings).
+      l1_product
+        L1 product (signal and detector settings).
       offset
         Detector map of offset [counts].
 
     """
     # Assuming bad pixels are NaN already
-    l1_products['signal'] -= offset.ravel()
+    l1_product['signal'] -= offset.ravel()
     # Uncertainty of offset not implemented and would mess with the
     # binning factors in RAW data. No change of processing level.
 
 
-def determine_noise(l1_products: L1,
+def determine_noise(l1_product: L1,
                     ckd: CKDNoise,
+                    pixel_mask: npt.NDArray[bool],
                     dark_current: npt.NDArray[np.float64]) -> None:
     """Determine expected noise in signal.
 
@@ -95,8 +97,8 @@ def determine_noise(l1_products: L1,
 
     Parameters
     ----------
-    l1_products
-        L1 products (signal and detector settings).
+    l1_product
+        L1 product (signal and detector settings).
     ckd
         Noise CKD consisting of maps of read_noise [counts] and the
         conversion gain [e/counts].
@@ -106,28 +108,29 @@ def determine_noise(l1_products: L1,
         Detector map of dark current [counts/s].
 
     """
-    orig_bin_factors = l1_products['noise']  # quirk of RAW data
+    orig_bin_factors = l1_product['noise']  # quirk of RAW data
     # The signal is split in contributions from light and dark in case
     # the dark signal is negative.
-    dark_signal = dark_current.ravel() * l1_products['exptimes'][..., None]
-    photoresponse_signal = l1_products['signal'] - dark_signal
+    dark_signal = dark_current.ravel() * l1_product['exptimes'][..., None]
+    photoresponse_signal = l1_product['signal'] - dark_signal
     # The absolute value of dark_signal should be taken because a
     # negative signal still increases the noise.
     variance = ckd['read_noise'].ravel()**2 + (
         photoresponse_signal + dark_signal)/ckd['conversion_gain'].ravel()
-    l1_products['noise'] = np.sqrt(
-        np.clip(variance, 0, None)/l1_products['coad_factors'][..., None])
-    if l1_products['binning_table_ids'][0] > 0:
-        l1_products['noise'] /= np.sqrt(orig_bin_factors)
+    l1_product['noise'] = np.sqrt(
+        np.clip(variance, 0, None)/l1_product['coad_factors'][..., None])
+    if l1_product['binning_table_ids'][0] > 0:
+        l1_product['noise'] /= np.sqrt(orig_bin_factors)
     # C++ code flags pixels with a nonpositive noise, but there are
     # two problems with that:
     # * in general, bad pixels should be flagged in the CKD
     # * in this case, a nonpositive noise is more likely a model problem
-    l1_products['noise'][variance <= 0] = np.nan
+    l1_product['noise'][variance <= 0] = np.nan
+    pixel_mask[variance.reshape(pixel_mask.shape) <= 0] = True
     # no change of processing level
 
 
-def remove_dark_signal(l1_products: L1,
+def remove_dark_signal(l1_product: L1,
                        dark_current: npt.NDArray[np.float64]) -> None:
     """Remove dark signal.
 
@@ -136,20 +139,20 @@ def remove_dark_signal(l1_products: L1,
 
     Parameters
     ----------
-    l1_products
-        L1 products (signal and detector settings).
+    l1_product
+        L1 product (signal and detector settings).
     dark_current
         Detector map of dark current [counts/s].
 
     """
     # Assuming bad pixels are NaN already
-    l1_products['signal'] -= (
-        dark_current.ravel() * l1_products['exptimes'][..., None])
+    l1_product['signal'] -= (
+        dark_current.ravel() * l1_product['exptimes'][..., None])
     # uncertainty of dark signal not implemented
-    l1_products['proc_level'] = ProcLevel.dark
+    l1_product['proc_level'] = ProcLevel.dark
 
 
-def remove_nonlinearity(l1_products: L1, ckd: CKDNonlin) -> None:
+def remove_nonlinearity(l1_product: L1, ckd: CKDNonlin) -> None:
     """Remove non-linearity.
 
     Only a dependence on signal is taken into account, not on
@@ -163,8 +166,8 @@ def remove_nonlinearity(l1_products: L1, ckd: CKDNonlin) -> None:
 
     Parameters
     ----------
-    l1_products
-        L1 products (signal and detector settings).
+    l1_product
+        L1 product (signal and detector settings).
     ckd
         Nonlinearity CKD consisting of an expected, linear signal
         [counts], and an observed, non-linear signal [counts].
@@ -172,36 +175,36 @@ def remove_nonlinearity(l1_products: L1, ckd: CKDNonlin) -> None:
     """
     # C++ code gives noise that is orders of magnitude too large
     dx = 0.001 * np.min(np.diff(ckd['expected']))
-    l1_products['noise'] *= (
-        (np.interp(l1_products['signal'] + dx,
+    l1_product['noise'] *= (
+        (np.interp(l1_product['signal'] + dx,
                    ckd['observed'],
                    ckd['expected'])
-         - np.interp(l1_products['signal'] - dx,
+         - np.interp(l1_product['signal'] - dx,
                      ckd['observed'],
                      ckd['expected']))
         / (2 * dx))
     # C++ code gives extremely large values instead of clipping
-    l1_products['signal'] = np.interp(
-        l1_products['signal'], ckd['observed'], ckd['expected'])
-    l1_products['proc_level'] = ProcLevel.nonlin
+    l1_product['signal'] = np.interp(
+        l1_product['signal'], ckd['observed'], ckd['expected'])
+    l1_product['proc_level'] = ProcLevel.nonlin
 
 
-def remove_prnu(l1_products: L1, prnu_qe: npt.NDArray[np.float64]) -> None:
+def remove_prnu(l1_product: L1, prnu_qe: npt.NDArray[np.float64]) -> None:
     """Remove PRNU and quantum efficiency.
 
     Parameters
     ----------
-    l1_products
-        L1 products (signal and detector settings).
+    l1_product
+        L1 product (signal and detector settings).
     prnu_qe
         Detector map of PRNU times quantum efficiency (not the
         correction).
 
     """
     # Assuming bad pixels are NaN already
-    l1_products['signal'] /= prnu_qe.ravel()
-    l1_products['noise'] /= prnu_qe.ravel()
-    l1_products['proc_level'] = ProcLevel.prnu
+    l1_product['signal'] /= prnu_qe.ravel()
+    l1_product['noise'] /= prnu_qe.ravel()
+    l1_product['proc_level'] = ProcLevel.prnu
 
 
 def convolve(
@@ -262,32 +265,53 @@ def convolve_with_all_kernels(image: npt.NDArray[np.float64],
     return image_convolved.reshape(original_shape)
 
 
-def stray_light(l1_products: L1, ckd: CKDStray) -> None:
+def remove_bad_values(pixel_mask: npt.NDArray[bool],
+                      image: npt.NDArray[np.float64]) -> None:
+    mask = pixel_mask.ravel()
+    for i_alt in range(image.shape[0]):
+        for i in range(image.shape[1]):
+            if mask[i]:
+                n_good = 0
+                image[i_alt, i] = 0.0
+                if i > 0 and not mask[i - 1]:
+                    image[i_alt, i] += image[i_alt, i-1]
+                    n_good += 1
+                if i < image.shape[1] - 1 and not mask[i + 1]:
+                    image[i_alt, i] += image[i_alt, i+1]
+                    n_good += 1
+                image[i_alt, i] /= max(1, n_good)
+
+
+def stray_light(l1_product: L1, ckd: CKDStray, van_cittert_steps: int) -> None:
     """Correct a detector image for stray light.
 
     Parameters
     ----------
-    l1_products
-        L1 products (signal and detector settings).
+    l1_product
+        L1 product (signal and detector settings).
     ckd
         Stray light CKD containing a list of the Fourier transforms of
         kernels, weights of subimages, and an 'edges' array which
         specifies the location of each subimage within the original
         image.
+    van_cittert_steps
+        Number of deconvolution iterations
 
     Returns
     -------
         Detector image corrected (cleaned) of stray light.
 
     """
-    eta = ckd['eta'].reshape(l1_products['signal'][0, :].shape[0])
-    for i_alt in range(l1_products['signal'].shape[0]):
-        image = l1_products['signal'][i_alt]
-        image_ideal = l1_products['signal'][i_alt]
-        for i_vc in range(3):
+    if van_cittert_steps == 0:
+        return
+    eta = ckd['eta'].reshape(l1_product['signal'][0, :].shape[0])
+    for i_alt in range(l1_product['signal'].shape[0]):
+        image = l1_product['signal'][i_alt]
+        image_ideal = l1_product['signal'][i_alt]
+        for i_vc in range(van_cittert_steps):
             stray_convolved = convolve_with_all_kernels(image_ideal, ckd)
             image_ideal = (image - stray_convolved) / (1 - eta)
-        l1_products['signal'][i_alt, :] = image_ideal
+        l1_product['signal'][i_alt, :] = image_ideal
 
 
 def map_from_detector(l1_products: L1,

@@ -8,7 +8,6 @@ import sys
 import numpy as np
 import yaml
 from tqdm import tqdm
-import matplotlib.pyplot as plt
 
 from ..lib import libNumTools, libRT, libSURF, libATM
 from ..lib.libWrite import writevariablefromname

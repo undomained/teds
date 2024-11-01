@@ -16,7 +16,7 @@ import numpy.typing as npt
 # Process ladder, an ordered list of possible states of data. Data
 # levels run from L1A to L1B.
 class ProcLevel(IntEnum):
-    l1a = 0  # type: ignore
+    l1a = 0
     raw = auto()
     dark = auto()
     noise = auto()
@@ -138,6 +138,7 @@ class L1(TypedDict, total=False):
     proc_level: ProcLevel
 
     # Signal and noise if processing at the detector level
+    signal_i32: npt.NDArray[np.int32]
     signal: npt.NDArray[np.float64]
     noise: npt.NDArray[np.float64]
     # Once spectra have been extracted from the detector, the signal
@@ -150,8 +151,8 @@ class L1(TypedDict, total=False):
 
     # Detector and other settings
     timestamps: npt.NDArray[np.float64]
-    binning_table_ids: npt.NDArray[np.float64]
-    coad_factors: npt.NDArray[np.float64]
+    binning_table_ids: npt.NDArray[np.int32]
+    coad_factors: npt.NDArray[np.int32]
     exptimes: npt.NDArray[np.float64]
 
     # Metadata for booking between different runs

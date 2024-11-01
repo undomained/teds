@@ -119,9 +119,8 @@ def read_binning_pattern(binning_file: str,
         count_table = np.ones(n_detrows * n_detcols, np.int32)
     else:
         if not Path(binning_file).is_file():
-            binning_text = ("binning file" if binning_file is None
-                            else binning_file)
-            raise SystemExit(f"ERROR: {binning_text} not found")
+            _text = "binning file" if binning_file is None else binning_file
+            raise SystemExit(f"ERROR: {_text} not found")
         ckd_binning = xr.load_dataset(binning_file,
                                       group=f'Table_{binning_table_id}')
         bin_indices = ckd_binning['binning_table'].values
@@ -175,21 +174,21 @@ def read_ckd(filename: str) -> CKD:
     ckd['pixel_mask'] = nc['pixel_mask'][:].astype(bool)
     if 'dark' in nc.groups:
         ckd['dark'] = {
-            'offset': nc['dark/offset'][:],  # counts
-            'current': nc['dark/current'][:],  # counts/s
+            'offset': nc['dark/offset'][:].data,  # counts
+            'current': nc['dark/current'][:].data,  # counts/s
         }
     if 'noise' in nc.groups:
         # Conversion_gain can be a detector map or 1 value, optionally
         # dependent on temperature. Best practice is to use the same
         # value for all pixels and move a dependence to the PRNU CKD.
         ckd['noise'] = {
-            'conversion_gain': 1 / nc['noise/g'][:],  # e/counts
-            'read_noise': nc['noise/n'][:],  # counts
+            'conversion_gain': 1 / nc['noise/g'][:].data,  # e/counts
+            'read_noise': nc['noise/n'][:].data,  # counts
         }
     if 'nonlinearity' in nc.groups:
         ckd['nonlin'] = {
-            'expected': nc['nonlinearity/y'][:],  # counts
-            'observed': nc['nonlinearity/knots'][:],  # counts
+            'expected': nc['nonlinearity/y'][:].data,  # counts
+            'observed': nc['nonlinearity/knots'][:].data,  # counts
         }
         if (
                 not (np.diff(ckd['nonlin']['expected']) > 0).all()
@@ -199,18 +198,16 @@ def read_ckd(filename: str) -> CKD:
     if 'prnu' in nc.groups:
         # PRNU including quantum efficiency
         ckd['prnu'] = {
-            'prnu_qe': nc['prnu/prnu'][:]
+            'prnu_qe': nc['prnu/prnu'][:].data
         }
-        # Not in C++ code
-        ckd['prnu']['prnu_qe'][ckd['prnu']['prnu_qe'] <= 0] = np.nan
     if 'stray' in nc.groups:
         ckd['stray'] = {}
         ckd['stray']['kernels_fft'] = []
         n_kernels = nc['stray'].dimensions['kernel'].size
-        kernel_n_rows = nc['stray/kernel_rows'][:]
-        kernel_n_cols = nc['stray/kernel_cols'][:]
-        kernel_fft_sizes = nc['stray/kernel_fft_sizes'][:]
-        kernels_fft = nc['stray/kernels_fft'][:]
+        kernel_n_rows = nc['stray/kernel_rows'][:].data
+        kernel_n_cols = nc['stray/kernel_cols'][:].data
+        kernel_fft_sizes = nc['stray/kernel_fft_sizes'][:].data
+        kernels_fft = nc['stray/kernels_fft'][:].data
         for i_kernel in range(n_kernels):
             global_beg = 2 * sum(kernel_fft_sizes[0:i_kernel])
             global_end = global_beg + 2 * kernel_fft_sizes[i_kernel]
@@ -230,21 +227,21 @@ def read_ckd(filename: str) -> CKD:
                 fft_packed[mid - 2:0:-1, kernel_n_cols[i_kernel]:0:-1])
             ckd['stray']['kernels_fft'].append(fft_full)
         # Internal scattering factor
-        ckd['stray']['eta'] = nc['stray/eta'][:]
+        ckd['stray']['eta'] = nc['stray/eta'][:].data
         # Margins between kernels and detector array: bottom, top,
         # left, right of kernel
-        ckd['stray']['edges'] = nc['stray/edges'][:].astype('i4')
-        ckd['stray']['weights'] = nc['stray/weights'][:]
+        ckd['stray']['edges'] = nc['stray/edges'][:].data
+        ckd['stray']['weights'] = nc['stray/weights'][:].data
     if 'radiometric' in nc.groups:
         # nm-1 sr-1 m-2 e count-1
         ckd['radiometric'] = {
-            'rad_corr': nc['radiometric/radiometric'][:],
+            'rad_corr': nc['radiometric/radiometric'][:].data,
         }
     if 'spectral' in nc.groups:
         # Smile (spectral distortion) description:
         # wavelength at each detector pixel
         ckd['spectral'] = {
-            'wavelengths': nc['spectral/wavelength'][:],  # nm
+            'wavelengths': nc['spectral/wavelength'][:].data,  # nm
         }
     if 'swath' in nc.groups:
         # not yet used
@@ -267,7 +264,7 @@ def monotonic(x: npt.NDArray[np.float64], axis: int = -1) -> bool:
     return np.all(dx < 0) or np.all(dx > 0)
 
 
-def read_geometry(l1_products: L1, config: dict) -> Geometry:
+def read_geometry(l1_product: L1, config: dict) -> Geometry:
     """Read geometry from an original geometry file or an L1 file.
 
     Geometry is not used for calculations in L1 processing. The
@@ -275,8 +272,8 @@ def read_geometry(l1_products: L1, config: dict) -> Geometry:
 
     Parameters
     ----------
-    l1_products
-        L1 products (signal and detector settings).
+    l1_product
+        L1 product (signal and detector settings).
     config
         Configuration parameters.
 
@@ -286,8 +283,8 @@ def read_geometry(l1_products: L1, config: dict) -> Geometry:
 
     """
     filename = config['io']['geometry']
-    original_image_start = l1_products['original_image_start']
-    original_image_end = l1_products['original_image_end']+1
+    original_image_start = l1_product['original_image_start']
+    original_image_end = l1_product['original_image_end']+1
     image_start = config['image_start']
     image_end = None if config['image_end'] is None else config['image_end']+1
     with Dataset(filename) as root:
@@ -346,76 +343,63 @@ def read_l1(filename: str,
 
     Returns
     -------
-        L1 products (signal and detector settings).
+        L1 product (signal and detector settings).
 
     """
     image_end = None if image_end is None else image_end+1
-    proc_level = read_proc_level(filename)
-    l1_products: L1 = {}
-    l1_products['proc_level'] = proc_level
+    l1_product: L1 = {'proc_level': read_proc_level(filename)}
     nc = Dataset(filename)
-    if proc_level <= ProcLevel.stray:
+    # Attempt to read variables that are present in the NetCDF file
+    if 'science_data' in nc.groups:
         grp = nc['science_data']
-        l1_products['signal'] = (
-            grp['detector_image'][image_start:image_end, :].astype('f8'))
-        if proc_level > ProcLevel.l1a:
-            l1_products['noise'] = (
-                grp['detector_stdev'][image_start:image_end, :])
-        n_data = l1_products['signal'].shape[0]
-    elif proc_level < ProcLevel.sgm:
+        l1_product['signal'] = (
+            grp['detector_image'][image_start:image_end, :].astype('f8').data)
+        if 'detector_stdev' in grp.variables:
+            l1_product['noise'] = (
+                grp['detector_stdev'][image_start:image_end, :].data)
+        n_data = l1_product['signal'].shape[0]
+    elif 'observation_data' in nc.groups:
         grp = nc['observation_data']
-        l1_products['spectra'] = grp['radiance'][image_start:image_end, :, :]
-        l1_products['spectra_noise'] = grp['radiance_stdev'][
-            image_start:image_end, :, :]
-        l1_products['wavelengths'] = grp['wavelength'][:]
-        n_data = l1_products['spectra'].shape[0]
-        if not monotonic(l1_products['wavelengths']):
-            raise SystemExit("ERROR: observation_data/wavelength in "
-                             f"{filename} is not monotonic")
-    else:  # SGM data
-        l1_products['spectra'] = nc['radiance'][image_start:image_end, :, :]
-        l1_products['wavelengths'] = nc['wavelength'][:]
-        try:
-            l1_products['solar_irradiance'] = nc['solar_irradiance'][:]
-        except KeyError:
-            l1_products['solar_irradiance'] = np.array(0, dtype=np.float64)
-        # C++ code fills with 1
-        l1_products['spectra_noise'] = np.full_like(l1_products['spectra'],
-                                                    np.nan)
-        n_data = l1_products['spectra'].shape[0]
-        if not monotonic(l1_products['wavelengths']):
-            raise SystemExit("ERROR: observation_data/wavelength in "
-                             f"{filename} is not monotonic")
-    if n_data == 0:
-        raise SystemExit(f"ERROR: data slice [{image_start}:{image_end}] is "
-                         "empty")
-    try:
+        l1_product['wavelengths'] = grp['wavelength'][:].data
+        l1_product['spectra'] = (
+            grp['radiance'][image_start:image_end, :, :].data)
+        l1_product['spectra_noise'] = grp['radiance_stdev'][
+            image_start:image_end, :, :].data
+        n_data = l1_product['spectra'].shape[0]
+    elif 'radiance' in nc.variables:
+        l1_product['wavelengths'] = nc['wavelength'][:].data
+        l1_product['spectra'] = (
+            nc['radiance'][image_start:image_end, :, :].data)
+        l1_product['spectra_noise'] = np.ones(l1_product['spectra'].shape)
+        n_data = l1_product['spectra'].shape[0]
+    if 'solar_irradiance' in nc.variables:
+        l1_product['solar_irradiance'] = nc['solar_irradiance'][:].data
+    else:
+        l1_product['solar_irradiance'] = np.array(0, dtype=np.float64)
+    if 'image_attributes' in nc.groups:
         grp = nc['image_attributes']
-        l1_products['timestamps'] = grp['image_time'][image_start:image_end]
-        l1_products['binning_table_ids'] = (
+        l1_product['timestamps'] = grp['image_time'][image_start:image_end]
+        l1_product['binning_table_ids'] = (
             grp['binning_table'][image_start:image_end])
-        l1_products['coad_factors'] = (
+        l1_product['coad_factors'] = (
             grp['nr_coadditions'][image_start:image_end])
-        l1_products['exptimes'] = grp['exposure_time'][image_start:image_end]
-    except IndexError:  # SGM/L1B data
-        # Apparently not relevant for L1B
-        l1_products['timestamps'] = np.zeros(n_data)
+        l1_product['exptimes'] = grp['exposure_time'][image_start:image_end]
+    else:
+        # Not relevant for L1B
+        l1_product['timestamps'] = np.zeros(n_data)
         # Assume data is unbinned if not specified
-        l1_products['binning_table_ids'] = np.zeros(n_data)
-        l1_products['coad_factors'] = np.ones(n_data)
-        l1_products['exptimes'] = np.full(n_data, np.nan)
-    if len(np.unique(l1_products['binning_table_ids'])) > 1:
-        raise SystemExit("ERROR: different binning tables in data set, use "
-                         "subset")
+        l1_product['binning_table_ids'] = np.zeros(n_data, dtype=np.int32)
+        l1_product['coad_factors'] = np.ones(n_data, dtype=np.int32)
+        l1_product['exptimes'] = np.full(n_data, np.nan)
     # Some attributes that are not in C++ code. The first and last
     # frame of the original file used during the current processing.
     try:
         # Currently processed data is not the original data, but has
         # been written by this code before.
-        l1_products['original_file'] = nc.original_file
-        l1_products['original_image_start'] = (
+        l1_product['original_file'] = nc.original_file
+        l1_product['original_image_start'] = (
             nc.original_image_start + image_start)
-        l1_products['original_image_end'] = (
+        l1_product['original_image_end'] = (
             nc.original_image_start + image_start + n_data - 1)
     except AttributeError:
         if 'configuration' in list(nc.variables):
@@ -424,22 +408,33 @@ def read_l1(filename: str,
             # was subsetted more than 1 processing earlier, the values
             # are wrong.
             previous_config = yaml.safe_load(str(nc['configuration'][:]))
-            l1_products['original_file'] = ''
-            l1_products['original_image_start'] = (
+            l1_product['original_file'] = ''
+            l1_product['original_image_start'] = (
                 previous_config['image_start']+image_start)
-            l1_products['original_image_end'] = (
+            l1_product['original_image_end'] = (
                 previous_config['image_start']+image_start+n_data-1)
         else:
             # currently processed data is the original data
-            l1_products['original_file'] = filename
-            l1_products['original_image_start'] = image_start
-            l1_products['original_image_end'] = image_start+n_data-1
-    return l1_products
+            l1_product['original_file'] = filename
+            l1_product['original_image_start'] = image_start
+            l1_product['original_image_end'] = image_start+n_data-1
+    # Reading of main variables done. Now perform a few sanity checks.
+    if 'wavelengths' in l1_product:
+        if not monotonic(l1_product['wavelengths']):
+            raise SystemExit("ERROR: observation_data/wavelength in "
+                             f"{filename} is not monotonic")
+    if n_data == 0:
+        raise SystemExit(f"ERROR: data slice [{image_start}:{image_end}] is "
+                         "empty")
+    if len(np.unique(l1_product['binning_table_ids'])) > 1:
+        raise SystemExit("ERROR: different binning tables in data set, use "
+                         "subset")
+    return l1_product
 
 
 def write_l1(filename: str,
              config: dict,
-             l1_products: L1,
+             l1_product: L1,
              geometry: bool = False) -> str:
     """Write a L1 file.
 
@@ -449,8 +444,8 @@ def write_l1(filename: str,
         Path of an L1A file, L1B file, or anything in between.
     config
         Configuration parameters.
-    l1_products
-        L1 products (signal and detector settings).
+    l1_product
+        L1 product (signal and detector settings).
     geometry
         Include geometry data if available and data consists of spectra.
 
@@ -471,30 +466,30 @@ def write_l1(filename: str,
     out.product_name = Path(filename).name
     out.date_created = datetime.now(timezone.utc).isoformat(timespec='seconds')
     # Not in C++ code
-    out.original_file = l1_products['original_file']
+    out.original_file = l1_product['original_file']
     # Not in C++ code
-    out.original_image_start = l1_products['original_image_start']
+    out.original_image_start = l1_product['original_image_start']
     # Not in C++ code
-    out.original_image_end = l1_products['original_image_end']
+    out.original_image_end = l1_product['original_image_end']
     out.git_commit = get_git_commit_hash()
     # out.history = ""
     # In C++ code for 'title', config['project'] is fixed to
     # 'Tango' and config['instrument'] is fixed to 'Carbon'
-    if l1_products['proc_level'] in (
+    if l1_product['proc_level'] in (
             ProcLevel.l1a, ProcLevel.l1b, ProcLevel.sgm):
-        if l1_products['proc_level'] == ProcLevel.l1a:
+        if l1_product['proc_level'] == ProcLevel.l1a:
             out.title = f'TANGO {config["instrument"]} level 1A data'
-        elif l1_products['proc_level'] == ProcLevel.l1b:
+        elif l1_product['proc_level'] == ProcLevel.l1b:
             out.title = f'TANGO {config["instrument"]} level 1B data'
-        elif l1_products['proc_level'] == ProcLevel.sgm:
+        elif l1_product['proc_level'] == ProcLevel.sgm:
             out.title = f'TANGO {config["instrument"]} SGM radiometric scene'
-        out.product_type = str(l1_products['proc_level'])
+        out.product_type = str(l1_product['proc_level'])
     else:
         out.title = f'TANGO {config["instrument"]} level 1X data'
         out.product_type = "L1X"
-        out.l1x_level = l1_products['proc_level'].value
+        out.l1x_level = l1_product['proc_level'].value
         # not in C++ code
-        out.l1x_level_name = str(l1_products['proc_level'])
+        out.l1x_level_name = str(l1_product['proc_level'])
     var_config = out.createVariable('configuration', str)
     config_text = (
         yaml.dump(config).replace(' true', ' yes').replace(' false', ' no'))
@@ -502,21 +497,21 @@ def write_l1(filename: str,
     var_config.comment = 'configuration parameters used to produce this file'
     # A variable should only be given the same name as a dimension in
     # a netCDF file when it is to be used as a coordinate variable.
-    if l1_products['proc_level'] <= ProcLevel.stray:
+    if l1_product['proc_level'] <= ProcLevel.stray:
         grp_data = out.createGroup('science_data')
-        dim_data = out.createDimension('image', l1_products['signal'].shape[0])
-        dim_bins = out.createDimension('bin', l1_products['signal'].shape[1])
+        dim_data = out.createDimension('image', l1_product['signal'].shape[0])
+        dim_bins = out.createDimension('bin', l1_product['signal'].shape[1])
     else:
         dim_data = out.createDimension('along_track_sample',
-                                       l1_products['spectra'].shape[0])
+                                       l1_product['spectra'].shape[0])
         dim_act = out.createDimension('across_track_sample',
-                                      l1_products['spectra'].shape[1])
+                                      l1_product['spectra'].shape[1])
         # 'wavelength' is also a variable, suggest 'spectral_sample'
         dim_waves = out.createDimension('wavelength',
-                                        l1_products['spectra'].shape[2])
-        if l1_products['proc_level'] < ProcLevel.sgm:
+                                        l1_product['spectra'].shape[2])
+        if l1_product['proc_level'] < ProcLevel.sgm:
             grp_data = out.createGroup('observation_data')
-    if l1_products['proc_level'] < ProcLevel.l1b:
+    if l1_product['proc_level'] < ProcLevel.l1b:
         grp_attr = out.createGroup('image_attributes')
         var_timestamps = grp_attr.createVariable(
             'image_time',
@@ -524,7 +519,7 @@ def write_l1(filename: str,
             (dim_data,),
             compression='zlib',
             fill_value=default_fillvals['f8'])
-        var_timestamps[:] = np.nan_to_num(l1_products['timestamps'],
+        var_timestamps[:] = np.nan_to_num(l1_product['timestamps'],
                                           nan=default_fillvals['f8'])
         var_timestamps.long_name = 'time'  # C++ code has 'image time'
         var_timestamps.units = 'seconds since 2022-03-21'  # weird date
@@ -537,7 +532,7 @@ def write_l1(filename: str,
             compression='zlib',
             fill_value=default_fillvals['i1'])
         var_binning_table_ids[:] = np.nan_to_num(
-            l1_products['binning_table_ids'], nan=default_fillvals['i1'])
+            l1_product['binning_table_ids'], nan=default_fillvals['i1'])
         var_binning_table_ids.long_name = 'binning table ID'
         var_coad_factors = grp_attr.createVariable(
             'nr_coadditions',
@@ -546,7 +541,7 @@ def write_l1(filename: str,
             compression='zlib',
             fill_value=default_fillvals['u2'])
         var_coad_factors[:] = np.nan_to_num(
-            l1_products['coad_factors'], nan=default_fillvals['u2'])
+            l1_product['coad_factors'], nan=default_fillvals['u2'])
         var_coad_factors.long_name = 'coaddition factor'
         var_coad_factors.comment = 'number of detector read-outs summed'
         var_exptimes = grp_attr.createVariable(
@@ -556,11 +551,11 @@ def write_l1(filename: str,
             compression='zlib',
             fill_value=default_fillvals['f8'])
         var_exptimes[:] = np.nan_to_num(
-            l1_products['exptimes'], nan=default_fillvals['f8'])
+            l1_product['exptimes'], nan=default_fillvals['f8'])
         var_exptimes.long_name = 'exposure time'
         var_exptimes.units = 's'
         var_exptimes.comment = 'exposure time per detector read-out'
-    if l1_products['proc_level'] == ProcLevel.l1a:
+    if l1_product['proc_level'] == ProcLevel.l1a:
         # In C++ code only L1A signal data are compressed
         var_signal = grp_data.createVariable('detector_image',
                                              'i4',
@@ -570,12 +565,12 @@ def write_l1(filename: str,
                                              chunksizes=[1, len(dim_bins)],
                                              fill_value=default_fillvals['i4'])
         var_signal[:] = np.nan_to_num(
-            l1_products['signal'], nan=default_fillvals['i4']).astype(int)
+            l1_product['signal'], nan=default_fillvals['i4']).astype(int)
         var_signal.long_name = 'signal'
         var_signal.units = 'counts'
         var_signal.valid_min = 0
         var_signal.valid_max = 60000
-    elif l1_products['proc_level'] <= ProcLevel.stray:
+    elif l1_product['proc_level'] <= ProcLevel.stray:
         # C++ code does not use fill values
         var_signal = grp_data.createVariable('detector_image',
                                              'f8',
@@ -583,7 +578,7 @@ def write_l1(filename: str,
                                              compression='zlib',
                                              fill_value=default_fillvals['f8'])
         var_signal[:] = np.nan_to_num(
-            l1_products['signal'], nan=default_fillvals['f8'])
+            l1_product['signal'], nan=default_fillvals['f8'])
         var_signal.long_name = 'signal'  # C++ code has 'detector images'
         var_signal.units = 'counts'
         var_signal.valid_min = -1e100
@@ -594,8 +589,8 @@ def write_l1(filename: str,
                                             compression='zlib',
                                             fill_value=default_fillvals['f8'])
         var_noise[:] = np.nan_to_num(
-            l1_products['noise'], nan=default_fillvals['f8'])
-        if l1_products['proc_level'] != ProcLevel.raw:
+            l1_product['noise'], nan=default_fillvals['f8'])
+        if l1_product['proc_level'] != ProcLevel.raw:
             # C++ code has 'standard deviation of detector bin'
             var_noise.long_name = 'noise'
             var_noise.units = 'counts'
@@ -603,18 +598,18 @@ def write_l1(filename: str,
             var_noise.long_name = 'binning factor'
         var_noise.valid_min = 0.0
         var_noise.valid_max = 1e100
-    elif l1_products['proc_level'] < ProcLevel.sgm:
+    elif l1_product['proc_level'] < ProcLevel.sgm:
         var_waves = grp_data.createVariable('wavelength', 'f4',
                                             (dim_act, dim_waves),
                                             compression='zlib',
                                             fill_value=default_fillvals['f4'])
-        var_waves[:] = np.nan_to_num(
-            l1_products['wavelengths'], nan=default_fillvals['f4'])
+        var_waves[:] = np.nan_to_num(l1_product['wavelengths'],
+                                     nan=default_fillvals['f4'])
         var_waves.long_name = 'wavelength'
         var_waves.units = 'nm'
         var_waves.valid_min = 0.0
-        var_waves.valid_max = 999.0
-        is_l1b = l1_products['proc_level'] >= ProcLevel.l1b
+        var_waves.valid_max = 8000.0
+        is_l1b = l1_product['proc_level'] >= ProcLevel.l1b
         ftype = 'f4' if is_l1b else 'f8'
         var_spectra = grp_data.createVariable(
             'radiance',
@@ -622,9 +617,9 @@ def write_l1(filename: str,
             (dim_data, dim_act, dim_waves),
             compression='zlib',
             fill_value=default_fillvals[ftype])
-        var_spectra[:] = np.nan_to_num(
-            l1_products['spectra'], nan=default_fillvals[ftype])
-        if l1_products['proc_level'] > ProcLevel.swath:
+        var_spectra[:] = np.nan_to_num(l1_product['spectra'],
+                                       nan=default_fillvals[ftype])
+        if l1_product['proc_level'] > ProcLevel.swath:
             var_spectra.long_name = 'spectral photon radiance'
             var_spectra.units = 'nm-1 s-1 sr-1 m-2'
         else:  # not in C++ code
@@ -639,9 +634,10 @@ def write_l1(filename: str,
             (dim_data, dim_act, dim_waves),
             compression='zlib',
             fill_value=default_fillvals[ftype])
-        var_noise[:] = np.nan_to_num(
-            # C++ code writes 1s
-            l1_products['spectra_noise'], nan=default_fillvals[ftype])
+        # C++ code writes 1s
+        # if 'spectra_noise' not in l1_product:
+        #     l1_product['spectra_noise'] = np.ones(l1_product['spectra'].shape)
+        var_noise[:] = l1_product['spectra_noise']
         # C++ code has 'standard deviation of radiance in bin'
         var_noise.long_name = 'spectral photon radiance noise'
         var_noise.units = 'nm-1 s-1 sr-1 m-2'
@@ -655,8 +651,8 @@ def write_l1(filename: str,
             dim_waves,
             compression='zlib',
             fill_value=default_fillvals['f8'])
-        var_waves[:] = np.nan_to_num(
-            l1_products['wavelengths'], nan=default_fillvals['f8'])
+        var_waves[:] = np.nan_to_num(l1_product['wavelengths'],
+                                     nan=default_fillvals['f8'])
         var_waves.long_name = 'wavelength'
         var_waves.units = 'nm'
         var_waves.valid_min = 0.0
@@ -668,22 +664,22 @@ def write_l1(filename: str,
             (dim_data, dim_act, dim_waves),
             compression='zlib',
             fill_value=default_fillvals[ftype])
-        var_spectra[:] = np.nan_to_num(
-            l1_products['spectra'], nan=default_fillvals[ftype])
+        var_spectra[:] = np.nan_to_num(l1_product['spectra'],
+                                       nan=default_fillvals[ftype])
         # C++ code has 'line-by-line radiance'
         var_spectra.long_name = 'spectral photon radiance'
         # C++ code has 'ph nm-1 s-1 sr-1 m-2'
         var_spectra.units = 'nm-1 s-1 sr-1 m-2'
         var_spectra.valid_min = np.array(0, ftype)
         var_spectra.valid_max = np.array(1e28, ftype)
-        if l1_products['solar_irradiance']:
+        if l1_product['solar_irradiance']:
             var_irr = out.createVariable(
                 'solar_irradiance',
                 ftype,
                 dim_waves,
                 compression='zlib',
                 fill_value=default_fillvals[ftype])
-            var_irr[:] = np.nan_to_num(l1_products['solar_irradiance'],
+            var_irr[:] = np.nan_to_num(l1_product['solar_irradiance'],
                                        nan=default_fillvals[ftype])
             # C++ code has 'line-by-line solar irradiance'
             var_irr.long_name = 'spectral photon irradiance'
@@ -691,9 +687,9 @@ def write_l1(filename: str,
             var_irr.units = 'nm-1 s-1 m-2'
             var_irr.valid_min = np.array(0, ftype)
             var_irr.valid_max = np.array(1e30, ftype)
-    if geometry and (l1_products['proc_level'] > ProcLevel.stray):
+    if geometry and (l1_product['proc_level'] > ProcLevel.stray):
         # C++ code writes 0s in data towards L1A.
-        geo: Geometry = read_geometry(l1_products, config)
+        geo: Geometry = read_geometry(l1_product, config)
         grp_geo = out.createGroup('geolocation_data')
         var_latitude = grp_geo.createVariable(
             'latitude',

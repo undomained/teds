@@ -119,19 +119,19 @@ def process_l1b(config_user: dict | None = None) -> None:
     check_config(config)
     ckd = read_ckd(config['io']['ckd'])
     log.info('Reading input data')
-    l1_products: L1 = read_l1(
+    l1_product: L1 = read_l1(
         config['io']['l1a'], config['image_start'], config['image_end'])
 
     # Read binning table corresponding to input data
     log.info('Reading binning table')
-    data_binning_table_id = int(l1_products['binning_table_ids'][0])
+    data_binning_table_id = int(l1_product['binning_table_ids'][0])
     bin_indices, count_table = read_binning_pattern(
         config['io']['binning_table'],
         data_binning_table_id,
         ckd['n_detrows'],
         ckd['n_detcols'])
     # Binning CKD instead of unbinning data
-    if config['unbinning'] == 'none' and not (
+    if config['unbinning'].lower() == 'none' and not (
             bin_indices.ravel()
             == np.arange(ckd['n_detrows'] * ckd['n_detcols'])).all():
         ckd['pixel_mask'] = bin_data(
@@ -165,73 +165,65 @@ def process_l1b(config_user: dict | None = None) -> None:
     print_heading('Retrieval')
     # Output processing level
     cal_level = ProcLevel[config['cal_level'].lower()]
-    if step_needed(ProcLevel.raw, l1_products['proc_level'], cal_level):
+    if step_needed(ProcLevel.raw, l1_product['proc_level'], cal_level):
         log.info('Removing binning')
         cal.remove_coadding_and_binning(
-            l1_products, bin_indices, count_table, config['unbinning'])
+            l1_product, bin_indices, count_table, config['unbinning'])
         # Apply pixel mask just before the first pixel-dependent
         # step towards L1B. C++ code keeps bad signals except when
         # saving L1B data and does not process them.
         log.info('Including pixel mask')
-        l1_products['signal'][:, ckd['pixel_mask'].ravel()] = np.nan
+        l1_product['signal'][:, ckd['pixel_mask'].ravel()] = np.nan
     if config['dark']['enabled'] and step_needed(
-            ProcLevel.dark, l1_products['proc_level'], cal_level):
+            ProcLevel.dark, l1_product['proc_level'], cal_level):
         log.info('Removing offset')
-        cal.remove_offset(l1_products, ckd['dark']['offset'])
+        cal.remove_offset(l1_product, ckd['dark']['offset'])
     # C++ code checks 'noise'
-    if step_needed(ProcLevel.dark, l1_products['proc_level'], cal_level):
+    if step_needed(ProcLevel.dark, l1_product['proc_level'], cal_level):
         log.info('Determining noise')
         # C++ code does not have first check
         if config['dark']['enabled'] and config['noise']['enabled']:
-            cal.determine_noise(
-                l1_products, ckd['noise'], ckd['dark']['current'])
+            cal.determine_noise(l1_product,
+                                ckd['noise'],
+                                ckd['pixel_mask'],
+                                ckd['dark']['current'])
         else:
-            l1_products['noise'] = np.full_like(l1_products['signal'], np.nan)
+            l1_product['noise'] = np.full_like(l1_product['signal'], np.nan)
     if config['dark']['enabled'] and step_needed(
-            ProcLevel.dark, l1_products['proc_level'], cal_level):
+            ProcLevel.dark, l1_product['proc_level'], cal_level):
         log.info('Removing dark signal')
-        cal.remove_dark_signal(l1_products, ckd['dark']['current'])
+        cal.remove_dark_signal(l1_product, ckd['dark']['current'])
     if config['nonlin']['enabled'] and step_needed(
-            ProcLevel.nonlin, l1_products['proc_level'], cal_level):
+            ProcLevel.nonlin, l1_product['proc_level'], cal_level):
         log.info('Removing non-linearity')
-        cal.remove_nonlinearity(l1_products, ckd['nonlin'])
+        cal.remove_nonlinearity(l1_product, ckd['nonlin'])
     if config['prnu']['enabled'] and step_needed(
-            ProcLevel.prnu, l1_products['proc_level'], cal_level):
+            ProcLevel.prnu, l1_product['proc_level'], cal_level):
         log.info('Removing PRNU')
-        cal.remove_prnu(l1_products, ckd['prnu']['prnu_qe'])
-    if step_needed(
-            ProcLevel.stray, l1_products['proc_level'], cal_level):
+        cal.remove_prnu(l1_product, ckd['prnu']['prnu_qe'])
+    cal.remove_bad_values(ckd['pixel_mask'], l1_product['signal'])
+    cal.remove_bad_values(ckd['pixel_mask'], l1_product['noise'])
+    if step_needed(ProcLevel.stray, l1_product['proc_level'], cal_level):
         log.info('Removing stray light')
-        cal.stray_light(l1_products, ckd['stray'])
-    if step_needed(
-            ProcLevel.swath, l1_products['proc_level'], cal_level):
+        cal.stray_light(
+            l1_product, ckd['stray'], config['stray']['van_cittert_steps'])
+    if step_needed(ProcLevel.swath, l1_product['proc_level'], cal_level):
         log.info('Mapping from detector')
-        cal.map_from_detector(l1_products,
+        cal.map_from_detector(l1_product,
                               ckd['spectral']['wavelengths'],
                               ckd['swath']['spectrum_rows'],
                               config['swath']['spectrum_width'],
                               ckd['pixel_mask'],
                               bin_indices)
-    if step_needed(ProcLevel.l1b, l1_products['proc_level'], cal_level):
+    if step_needed(ProcLevel.l1b, l1_product['proc_level'], cal_level):
         # C++ code keeps this step optional with config['l1b']['enabled']
         log.info('Converting to radiance')
         # exposure time should never be needed explicitly
-        cal.convert_to_radiance(l1_products,
-                                ckd['radiometric']['rad_corr'],
-                                l1_products['exptimes'])
-    # C++ code does not have second test
-    if (
-            config['reverse_wavelength']
-            and l1_products['proc_level'] > ProcLevel.stray):
-        l1_products['wavelengths'] = np.flip(l1_products['wavelengths'],
-                                             axis=-1)
-        l1_products['spectra'] = np.flip(l1_products['spectra'], axis=-1)
-        l1_products['spectra_noise'] = np.flip(l1_products['spectra_noise'],
-                                               axis=-1)
-
+        cal.convert_to_radiance(
+            l1_product, ckd['radiometric']['rad_corr'], l1_product['exptimes'])
     # Write output data
     log.info('Writing output data')
-    write_l1(config['io']['l1b'], config, l1_products, geometry=True)
+    write_l1(config['io']['l1b'], config, l1_product, geometry=True)
 
     # If this is shown then the simulation ran successfully
     print_heading('Success')

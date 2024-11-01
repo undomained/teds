@@ -120,17 +120,17 @@ def process_im(config_user: dict | None = None) -> None:
     check_config(config)
     ckd = read_ckd(config['io']['ckd'])
     log.info('Reading input data')
-    l1_products: L1 = read_l1(
+    l1_product: L1 = read_l1(
         config['io']['sgm'], config['image_start'], config['image_end'])
 
     # Read binning table corresponding to input data
     log.info('Reading binning table')
-    data_binning_table_id = int(l1_products['binning_table_ids'][0])
+    data_binning_table_id = int(l1_product['binning_table_ids'][0])
     # Last test skips when data is from C++ code
     if (
-            l1_products['proc_level'] != 'l1a'
+            l1_product['proc_level'] != 'l1a'
             and data_binning_table_id > 0
-            and l1_products['original_file'] != ''):
+            and l1_product['original_file'] != ''):
         raise SystemExit("ERROR: binned data cannot be processed towards L1A")
     # C++ code reads the config binning table instead of that
     # specified in the data the config binning table is only needed
@@ -144,65 +144,65 @@ def process_im(config_user: dict | None = None) -> None:
     print_heading('Forward model')
     # Output processing level
     cal_level = ProcLevel[config['cal_level'].lower()]
-    if step_needed(ProcLevel.sgm, l1_products['proc_level'], cal_level):
+    if step_needed(ProcLevel.sgm, l1_product['proc_level'], cal_level):
         # in C++ code also performed if cal_level = 'l1b' or 'sgm'
         log.info('Changing wavelength grid')
-        cal.change_wavelength_grid(l1_products,
+        cal.change_wavelength_grid(l1_product,
                                    ckd['spectral']['wavelengths'],
                                    config['isrf']['enabled'],
                                    config['isrf']['fwhm_gauss'],
                                    config['isrf']['shape'])
     if config['l1b']['enabled'] and step_needed(
-            ProcLevel.l1b, l1_products['proc_level'], cal_level):
+            ProcLevel.l1b, l1_product['proc_level'], cal_level):
         log.info('Converting from radiance')
-        cal.convert_from_radiance(l1_products,
+        cal.convert_from_radiance(l1_product,
                                   ckd['radiometric']['rad_corr'],
                                   config['detector']['exposure_time'])
-    if step_needed(ProcLevel.swath, l1_products['proc_level'], cal_level):
+    if step_needed(ProcLevel.swath, l1_product['proc_level'], cal_level):
         log.info('Mapping to detector')
         cal.map_to_detector(
-            l1_products, ckd['swath']['spectrum_rows'], ckd['n_detrows'])
+            l1_product, ckd['swath']['spectrum_rows'], ckd['n_detrows'])
     if config['stray']['enabled'] and step_needed(
-            ProcLevel.stray, l1_products['proc_level'], cal_level):
+            ProcLevel.stray, l1_product['proc_level'], cal_level):
         log.info('Including stray light')
-        cal.stray_light(l1_products, ckd['stray'])
+        cal.stray_light(l1_product, ckd['stray'])
     if step_needed(
-            ProcLevel.prnu, l1_products['proc_level'], cal_level):
+            ProcLevel.prnu, l1_product['proc_level'], cal_level):
         # Apply pixel mask just before the first pixel-dependent
         # step towards L1A. C++ code keeps bad signals and does
         # not process them (mostly). C++ code pixel mask has a
         # different format than in CKD but is not written, so not
         # helpful.
         log.info('Including pixel mask')
-        l1_products['signal'][:, ckd['pixel_mask'].ravel()] = np.nan
-        l1_products['noise'][:, ckd['pixel_mask'].ravel()] = np.nan
+        l1_product['signal'][:, ckd['pixel_mask'].ravel()] = np.nan
+        l1_product['noise'][:, ckd['pixel_mask'].ravel()] = np.nan
     if config['prnu']['enabled'] and step_needed(
-            ProcLevel.prnu, l1_products['proc_level'], cal_level):
+            ProcLevel.prnu, l1_product['proc_level'], cal_level):
         log.info('Including PRNU')
-        cal.include_prnu(l1_products, ckd['prnu']['prnu_qe'])
+        cal.include_prnu(l1_product, ckd['prnu']['prnu_qe'])
     if config['nonlin']['enabled'] and step_needed(
-            ProcLevel.nonlin, l1_products['proc_level'], cal_level):
+            ProcLevel.nonlin, l1_product['proc_level'], cal_level):
         log.info('Including non-linearity')
-        cal.include_nonlinearity(l1_products, ckd['nonlin'])
+        cal.include_nonlinearity(l1_product, ckd['nonlin'])
     if config['dark']['enabled'] and step_needed(
-            ProcLevel.dark, l1_products['proc_level'], cal_level):
+            ProcLevel.dark, l1_product['proc_level'], cal_level):
         log.info('Including dark signal')
-        cal.include_dark_signal(l1_products, ckd['dark']['current'])
+        cal.include_dark_signal(l1_product, ckd['dark']['current'])
     if config['noise']['enabled'] and step_needed(
-            ProcLevel.noise, l1_products['proc_level'], cal_level):
+            ProcLevel.noise, l1_product['proc_level'], cal_level):
         log.info('Including noise')
-        cal.include_noise(l1_products,
+        cal.include_noise(l1_product,
                           ckd['noise'],
                           ckd['dark']['current'],
                           config['noise']['seed'])
     if config['dark']['enabled'] and step_needed(
-            ProcLevel.dark, l1_products['proc_level'], cal_level):
+            ProcLevel.dark, l1_product['proc_level'], cal_level):
         log.info('Including offset')
-        cal.include_offset(l1_products, ckd['dark']['offset'])
-    if step_needed(ProcLevel.raw, l1_products['proc_level'], cal_level):
+        cal.include_offset(l1_product, ckd['dark']['offset'])
+    if step_needed(ProcLevel.raw, l1_product['proc_level'], cal_level):
         log.info('Including binning')
         cal.include_coadding_and_binning(
-            l1_products,
+            l1_product,
             config['detector']['nr_coadditions'],
             config['io']['binning_table'],
             config['detector']['binning_table_id'],
@@ -211,7 +211,7 @@ def process_im(config_user: dict | None = None) -> None:
 
     # Write output data
     log.info('Writing output data')
-    write_l1(config['io']['l1a'], config, l1_products, geometry=True)
+    write_l1(config['io']['l1a'], config, l1_product, geometry=True)
 
     # If this is shown then the simulation ran successfully
     print_heading('Success')

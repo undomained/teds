@@ -330,7 +330,7 @@ def gen_stray(conf: dict, nc_ckd: Dataset) -> None:
     nc_var[:] = nc_ckd_in['weights'][:]
 
     nc_var = nc_grp.createVariable(
-        'edges', 'f8', ('kernel', 'edges_of_box'))
+        'edges', 'i4', ('kernel', 'edges_of_box'))
     nc_var.long_name = 'distances of subimage edges from the detector edges'
     nc_var[:] = nc_ckd_in['edges'][:]
 

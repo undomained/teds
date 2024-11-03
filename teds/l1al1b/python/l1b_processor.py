@@ -201,8 +201,10 @@ def process_l1b(config_user: dict | None = None) -> None:
             ProcLevel.prnu, l1_product['proc_level'], cal_level):
         log.info('Removing PRNU')
         cal.remove_prnu(l1_product, ckd['prnu']['prnu_qe'])
-    cal.remove_bad_values(ckd['pixel_mask'], l1_product['signal'])
-    cal.remove_bad_values(ckd['pixel_mask'], l1_product['noise'])
+    if 'signal' in l1_product:
+        log.info('Smoothing over bad values')
+        cal.remove_bad_values(ckd['pixel_mask'], l1_product['signal'])
+        cal.remove_bad_values(ckd['pixel_mask'], l1_product['noise'])
     if step_needed(ProcLevel.stray, l1_product['proc_level'], cal_level):
         log.info('Removing stray light')
         cal.stray_light(

@@ -126,8 +126,8 @@ def determine_noise(l1_product: L1,
     # * in general, bad pixels should be flagged in the CKD
     # * in this case, a nonpositive noise is more likely a model problem
     l1_product['noise'][variance <= 0] = np.nan
-    pixel_mask[variance.reshape(pixel_mask.shape) <= 0] = True
-    # no change of processing level
+    for i_alt in range(variance.shape[0]):
+        pixel_mask[variance[i_alt, :].reshape(pixel_mask.shape) <= 0] = True
 
 
 def remove_dark_signal(l1_product: L1,

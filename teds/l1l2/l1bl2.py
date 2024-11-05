@@ -951,12 +951,6 @@ def level1b_to_level2_processor_RTorCH4(config):
         retend = datetime.datetime.now()
         print('Retrieval completed in', retend-retstart)
 
-        scaling = {
-            'CO2': 1E-6,
-            'CH4': 1E-9,
-            'H2O': 1E-6
-        }
-
         l2 = {}
         l2['albedo'] = out_alb[:,:,0]
         l2['spectralchi2'] = out_chi2[:,:,-1]
@@ -988,9 +982,9 @@ def level1b_to_level2_processor_RTorCH4(config):
             X = cscale * colsum/airsum
             prec = X * np.sqrt(out_Ainv[:,:,spi,spi])
             prec[nanmask] = np.nan
-            l2[f'X{spn}'] = X/scaling[spn]
+            l2[f'X{spn}'] = X
             l2[f'X{spn}'][nanmask] = np.nan
-            l2[f'precisionX{spn}'] = prec/scaling[spn]
+            l2[f'precisionX{spn}'] = prec
 
             delta_prof = np.einsum(
                 "lc,lcz->lcz",
@@ -1001,11 +995,16 @@ def level1b_to_level2_processor_RTorCH4(config):
             # N.B. column averaging kernels generally differ from Jochen's
             # version due to different priors.
 
+        scaling = {
+            'CO2': 1E-6,
+            'CH4': 1E-9,
+            'H2O': 1E-6
+        }
         # Proxy model
         xch4_model = 1.8E-6
         xco2_model = 405.E-6
-        l2['proxyXCO2'] = l2['XCO2']/l2['XCH4']*xch4_model
-        l2['proxyXCH4'] = l2['XCH4']/l2['XCO2']*xco2_model
+        l2['proxyXCO2'] = l2['XCO2']/l2['XCH4']*xch4_model/scaling['CO2']
+        l2['proxyXCH4'] = l2['XCH4']/l2['XCO2']*xco2_model/scaling['CH4']
         rel_error = np.sqrt(
             (l2['precisionXCO2']/l2['XCO2'])**2
             + (l2['precisionXCH4']/l2['XCH4'])**2
@@ -1022,6 +1021,10 @@ def level1b_to_level2_processor_RTorCH4(config):
         l2['qa_valueproxyXCH4'] = 100 * np.ones(
             l2['proxyXCH4'].shape, dtype=np.int16
         )
+
+        for spn in scaling.keys():
+            l2[f'X{spn}'] /= scaling[spn]
+            l2[f'precisionX{spn}'] /= scaling[spn]
 
         level2_output_RTorCH4(
             config, l2, species_names, N_alt, N_act, N_layers

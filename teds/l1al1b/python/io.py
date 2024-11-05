@@ -14,13 +14,13 @@ import importlib
 import os
 
 from netCDF4 import Dataset
-from netCDF4 import default_fillvals
 import numpy as np
 import numpy.typing as npt
 import subprocess
 import xarray as xr
 import yaml
 
+from .types import BinningTable
 from .types import CKD
 from .types import Geometry
 from .types import L1
@@ -89,12 +89,11 @@ def print_system_info() -> None:
           host_system.decode('utf-8').split('\n')[0])
 
 
-def read_binning_pattern(binning_file: str,
-                         binning_table_id: int,
-                         n_detrows: int,
-                         n_detcols: int) -> tuple[npt.NDArray[np.int32],
-                                                  npt.NDArray[np.int32]]:
-    """Read a binning pattern.
+def read_binning_table(binning_file: str,
+                       binning_table_id: int,
+                       n_detector_rows: int,
+                       n_detector_cols: int) -> BinningTable:
+    """Read the binning pattern.
 
     Parameters
     ----------
@@ -102,33 +101,35 @@ def read_binning_pattern(binning_file: str,
         Path of file with binning patterns.
     binning_table_id
         Identifier of binning pattern, 0 is unbinned.
-    n_detrows
+    n_detector_rows
         Number of detector rows.
-    n_detcols
+    n_detector_cols
         Number of detector columns.
 
     Returns
     -------
-        Two-dimensional (unbinned) detector map of bin indices and
-        one-dimensional list of number of detector pixels per bin.
+        Binning table consisting of a two-dimensional (unbinned)
+        detector map of bin indices and one-dimensional list of number
+        of detector pixels per bin.
 
     """
     if binning_table_id == 0:
-        bin_indices = np.arange(n_detrows * n_detcols, dtype=np.int32).reshape(
-            n_detrows, n_detcols)
-        count_table = np.ones(n_detrows * n_detcols, np.int32)
+        bin_indices = np.arange(n_detector_rows * n_detector_cols,
+                                dtype=np.int32).reshape(
+            n_detector_rows, n_detector_cols)
+        count_table = np.ones(n_detector_rows * n_detector_cols, np.int32)
     else:
         if not Path(binning_file).is_file():
             _text = "binning file" if binning_file is None else binning_file
             raise SystemExit(f"ERROR: {_text} not found")
-        ckd_binning = xr.load_dataset(binning_file,
-                                      group=f'Table_{binning_table_id}')
-        bin_indices = ckd_binning['binning_table'].values
+        binning_table = xr.load_dataset(binning_file,
+                                        group=f'Table_{binning_table_id}')
+        bin_indices = binning_table['binning_table'].values
         uniq_bin_indices, tmp_count_table = np.unique(bin_indices,
                                                       return_counts=True)
         count_table = np.zeros(np.max(uniq_bin_indices) + 1, np.int32)
         count_table[uniq_bin_indices] = tmp_count_table
-    return bin_indices, count_table
+    return {'bin_indices': bin_indices, 'count_table': count_table}
 
 
 def read_proc_level(filename: str) -> ProcLevel:
@@ -168,93 +169,85 @@ def read_ckd(filename: str) -> CKD:
     """
     nc = Dataset(filename)
     ckd: CKD = {}
-    ckd['n_detrows'] = nc.dimensions['detector_row'].size
-    ckd['n_detcols'] = nc.dimensions['detector_column'].size
+    ckd['n_detector_rows'] = nc.dimensions['detector_row'].size
+    ckd['n_detector_cols'] = nc.dimensions['detector_column'].size
     # False good, True bad
-    ckd['pixel_mask'] = nc['pixel_mask'][:].astype(bool)
-    if 'dark' in nc.groups:
-        ckd['dark'] = {
-            'offset': nc['dark/offset'][:].data,  # counts
-            'current': nc['dark/current'][:].data,  # counts/s
-        }
-    if 'noise' in nc.groups:
-        # Conversion_gain can be a detector map or 1 value, optionally
-        # dependent on temperature. Best practice is to use the same
-        # value for all pixels and move a dependence to the PRNU CKD.
-        ckd['noise'] = {
-            'conversion_gain': 1 / nc['noise/g'][:].data,  # e/counts
-            'read_noise': nc['noise/n'][:].data,  # counts
-        }
-    if 'nonlinearity' in nc.groups:
-        ckd['nonlin'] = {
-            'expected': nc['nonlinearity/y'][:].data,  # counts
-            'observed': nc['nonlinearity/knots'][:].data,  # counts
-        }
-        if (
-                not (np.diff(ckd['nonlin']['expected']) > 0).all()
-                or not (np.diff(ckd['nonlin']['observed']) > 0).all()):
-            raise SystemExit(f"ERROR: nonlinearity data in {filename} are not "
-                             "strictly increasing")
-    if 'prnu' in nc.groups:
-        # PRNU including quantum efficiency
-        ckd['prnu'] = {
-            'prnu_qe': nc['prnu/prnu'][:].data
-        }
-    if 'stray' in nc.groups:
-        ckd['stray'] = {}
-        ckd['stray']['kernels_fft'] = []
-        n_kernels = nc['stray'].dimensions['kernel'].size
-        kernel_n_rows = nc['stray/kernel_rows'][:].data
-        kernel_n_cols = nc['stray/kernel_cols'][:].data
-        kernel_fft_sizes = nc['stray/kernel_fft_sizes'][:].data
-        kernels_fft = nc['stray/kernels_fft'][:].data
-        for i_kernel in range(n_kernels):
-            global_beg = 2 * sum(kernel_fft_sizes[0:i_kernel])
-            global_end = global_beg + 2 * kernel_fft_sizes[i_kernel]
-            kernel_fft = kernels_fft[global_beg:global_end]
-            fft_re_packed = np.reshape(
-                kernel_fft[::2],
-                (kernel_n_rows[i_kernel] // 2 + 1, kernel_n_cols[i_kernel]))
-            fft_im_packed = np.reshape(kernel_fft[1::2], fft_re_packed.shape)
-            fft_packed = fft_re_packed + 1j * fft_im_packed
-            fft_full = np.zeros((kernel_n_rows[i_kernel],
-                                 kernel_n_cols[i_kernel]),
-                                dtype='complex128')
-            mid = kernel_n_rows[i_kernel] // 2 + 1
-            fft_full[:mid, :] = fft_packed
-            fft_full[mid::, 0] = np.conjugate(fft_packed[mid - 2:0:-1, 0])
-            fft_full[mid::, 1:] = np.conjugate(
-                fft_packed[mid - 2:0:-1, kernel_n_cols[i_kernel]:0:-1])
-            ckd['stray']['kernels_fft'].append(fft_full)
-        # Internal scattering factor
-        ckd['stray']['eta'] = nc['stray/eta'][:].data
-        # Margins between kernels and detector array: bottom, top,
-        # left, right of kernel
-        ckd['stray']['edges'] = nc['stray/edges'][:].data
-        ckd['stray']['weights'] = nc['stray/weights'][:].data
-    if 'radiometric' in nc.groups:
-        # nm-1 sr-1 m-2 e count-1
-        ckd['radiometric'] = {
-            'rad_corr': nc['radiometric/radiometric'][:].data,
-        }
-    if 'spectral' in nc.groups:
-        # Smile (spectral distortion) description:
-        # wavelength at each detector pixel
-        ckd['spectral'] = {
-            'wavelengths': nc['spectral/wavelength'][:].data,  # nm
-        }
-    if 'swath' in nc.groups:
-        # not yet used
-        ckd['swath'] = {
-            'line_of_sights': nc['swath/line_of_sight'][:],
-            # keystone (spatial distortion) description: for each ACT
-            # ground pixel (spectrum), the row index (float) at each
-            # column is given.
-            'spectrum_rows': nc['swath/row_index'][:],
-        }
-        if not monotonic(ckd['swath']['spectrum_rows'], axis=0):
-            raise SystemExit(f"ERROR: swath/row_index in {filename} is not "
-                             "monotonic")
+    ckd['pixel_mask'] = nc['pixel_mask'][:].astype(bool).ravel()
+    # Dark CKD
+    ckd['dark'] = {
+        'offset': nc['dark/offset'][:].data.ravel(),  # counts
+        'current': nc['dark/current'][:].data.ravel(),  # counts/s
+    }
+    # Noise. conversion_gain can be a detector map or 1 value,
+    # optionally dependent on temperature. Best practice is to use the
+    # same value for all pixels and move a dependence to the PRNU CKD.
+    ckd['noise'] = {
+        'conversion_gain': 1 / nc['noise/g'][:].data.ravel(),  # e/counts
+        'read_noise': nc['noise/n'][:].data.ravel(),  # counts
+    }
+    # Nonlinearity
+    ckd['nonlin'] = {
+        'expected': nc['nonlinearity/y'][:].data,  # counts
+        'observed': nc['nonlinearity/knots'][:].data,  # counts
+    }
+    if (
+            not (np.diff(ckd['nonlin']['expected']) > 0).all()
+            or not (np.diff(ckd['nonlin']['observed']) > 0).all()):
+        raise SystemExit(f"ERROR: nonlinearity data in {filename} are not "
+                         "strictly increasing")
+    # PRNU including quantum efficiency
+    ckd['prnu'] = {'prnu_qe': nc['prnu/prnu'][:].data.ravel()}
+    # Stray light
+    ckd['stray'] = {}
+    ckd['stray']['kernels_fft'] = []
+    n_kernels = nc['stray'].dimensions['kernel'].size
+    kernel_n_rows = nc['stray/kernel_rows'][:].data
+    kernel_n_cols = nc['stray/kernel_cols'][:].data
+    kernel_fft_sizes = nc['stray/kernel_fft_sizes'][:].data
+    kernels_fft = nc['stray/kernels_fft'][:].data
+    for i_kernel in range(n_kernels):
+        global_beg = 2 * sum(kernel_fft_sizes[0:i_kernel])
+        global_end = global_beg + 2 * kernel_fft_sizes[i_kernel]
+        kernel_fft = kernels_fft[global_beg:global_end]
+        fft_re_packed = np.reshape(
+            kernel_fft[::2],
+            (kernel_n_rows[i_kernel] // 2 + 1, kernel_n_cols[i_kernel]))
+        fft_im_packed = np.reshape(kernel_fft[1::2], fft_re_packed.shape)
+        fft_packed = fft_re_packed + 1j * fft_im_packed
+        fft_full = np.zeros((kernel_n_rows[i_kernel],
+                             kernel_n_cols[i_kernel]),
+                            dtype='complex128')
+        mid = kernel_n_rows[i_kernel] // 2 + 1
+        fft_full[:mid, :] = fft_packed
+        fft_full[mid::, 0] = np.conjugate(fft_packed[mid - 2:0:-1, 0])
+        fft_full[mid::, 1:] = np.conjugate(
+            fft_packed[mid - 2:0:-1, kernel_n_cols[i_kernel]:0:-1])
+        ckd['stray']['kernels_fft'].append(fft_full)
+    # Internal scattering factor
+    ckd['stray']['eta'] = nc['stray/eta'][:].data
+    # Margins between kernels and detector array: bottom, top,
+    # left, right of kernel
+    ckd['stray']['edges'] = nc['stray/edges'][:].data
+    ckd['stray']['weights'] = nc['stray/weights'][:].data
+    ckd['swath'] = {
+        'line_of_sights': nc['swath/line_of_sight'][:].data,
+        'act_angles': nc['swath/act_angle'][:].data,
+        'wavelengths': nc['swath/wavelength'][:].data,
+        'act_map': nc['swath/act_map'][:].data,
+        'wavelength_map': nc['swath/wavelength_map'][:].data,
+        'row_map': nc['swath/row_map'][:].data,
+        'col_map': nc['swath/col_map'][:].data,
+    }
+    # Smile (spectral distortion) description:
+    # wavelength at each detector pixel
+    ckd['spectral'] = {
+        'wavelengths': nc['spectral/wavelength'][:].data,  # nm
+    }
+    waves = ckd['spectral']['wavelengths']
+    if waves[0, 0] > waves[0, 1]:
+        ckd['spectral']['wavelengths'] = np.flip(waves, axis=-1)
+    # Radiometric, nm-1 sr-1 m-2 e count-1
+    ckd['radiometric'] = {'rad_corr': nc['radiometric/radiometric'][:].data}
     return ckd
 
 
@@ -283,44 +276,95 @@ def read_geometry(l1_product: L1, config: dict) -> Geometry:
 
     """
     filename = config['io']['geometry']
-    original_image_start = l1_product['original_image_start']
-    original_image_end = l1_product['original_image_end']+1
     image_start = config['image_start']
     image_end = None if config['image_end'] is None else config['image_end']+1
+    print(image_start, image_end)
     with Dataset(filename) as root:
         groups = list(root.groups)
-        variables = list(root.variables)
     geo: Geometry = {}
     if 'geolocation_data' in groups:  # L1 file
         # Assumption: the input file currently processed or a file
         # with the same geometry data
         nc = Dataset(filename)
         grp = nc['geolocation_data']
-        geo['latitude'] = grp['latitude'][image_start:image_end, :]
-        geo['longitude'] = grp['longitude'][image_start:image_end, :]
-        geo['height'] = grp['height'][image_start:image_end, :]
-        geo['saa'] = grp['solar_azimuth'][image_start:image_end, :]
-        geo['sza'] = grp['solar_zenith'][image_start:image_end, :]
-        geo['vaa'] = grp['sensor_azimuth'][image_start:image_end, :]
-        geo['vza'] = grp['sensor_zenith'][image_start:image_end, :]
-    elif all(x in variables for x
-             in ['lat', 'lon', 'saa', 'sza', 'vaa', 'vza']):  # geometry file
-        # Assumption: the geometry file is consistent with the data in
-        # l1_data['original_file']
+        geo: Geometry = {
+            'latitude': grp['latitude'][image_start:image_end, :],
+            'longitude': grp['longitude'][image_start:image_end, :],
+            'height': grp['height'][image_start:image_end, :],
+            'saa': grp['solar_azimuth'][image_start:image_end, :],
+            'sza': grp['solar_zenith'][image_start:image_end, :],
+            'vaa': grp['sensor_azimuth'][image_start:image_end, :],
+            'vza': grp['sensor_zenith'][image_start:image_end, :],
+        }
+    else:
         nc = Dataset(filename)
-        _beg = original_image_start
-        _end = original_image_end
-        geo['latitude'] = nc['lat'][_beg:_end, :]
-        geo['longitude'] = nc['lon'][_beg:_end, :]
-        geo['saa'] = nc['saa'][_beg:_end, :]
-        geo['sza'] = nc['sza'][_beg:_end, :]
-        geo['vaa'] = nc['vaa'][_beg:_end, :]
-        geo['vza'] = nc['vza'][_beg:_end, :]
         if 'height' in groups:
-            geo['height'] = nc['height'][_beg:_end, :]
+            _height = nc['height'][:]
         else:
-            geo['height'] = np.zeros_like(geo['latitude'])
+            _height = np.zeros_like(nc['lat'][image_start:image_end, :])
+        geo: Geometry = {
+            'latitude': nc['lat'][image_start:image_end, :],
+            'longitude': nc['lon'][image_start:image_end, :],
+            'saa': nc['saa'][image_start:image_end, :],
+            'sza': nc['sza'][image_start:image_end, :],
+            'vaa': nc['vaa'][image_start:image_end, :],
+            'vza': nc['vza'][image_start:image_end, :],
+            'height': _height
+        }
     return geo
+
+
+def copy_geometry(l1a_filename: str,
+                  geo_filename: str,
+                  i_alt_start: int,
+                  l1_product: L1) -> None:
+    """Copy geolocation data from the geometry file directly to the
+    L1B product.
+
+    This is a placeholder function until geolocation is properly
+    implemented.
+
+    Parameters
+    ----------
+    l1a_filename
+        Path to the input L1A file. Only used for reading the
+        configuration used in the IM which contains the original
+        image_start.
+    geo_filename
+        Path to a file containing the geometry to be copied.
+    i_alt_start
+        First along track position of geometry to be copied. This is
+        in reference to the current list of L1 products. In reference
+        to the geometry file, this value is added to image_start read
+        from the L1A file.
+    l1_product
+        L1 product (signal and detector settings). Used for
+        getting the current size of the L1 product (number of along
+        track positions) and for storing the geometry.
+
+    """
+    nc_l1a = Dataset(l1a_filename)
+    configuration = yaml.safe_load(nc_l1a['configuration'][:])
+    image_start = configuration['image_start']
+    _beg = i_alt_start + image_start
+    if 'signal' in l1_product:
+        _end = _beg + l1_product['signal'].shape[0]
+    else:
+        _end = _beg + l1_product['spectra'].shape[0]
+    nc_geo = Dataset(geo_filename)
+    if 'height' in nc_geo.variables:
+        _height = nc_geo['height'][:]
+    else:
+        _height = np.zeros_like(nc_geo['lat'][:])
+    l1_product['geometry']: Geometry = {
+        'latitude': nc_geo['lat'][_beg:_end, :],
+        'longitude': nc_geo['lon'][_beg:_end, :],
+        'vza': nc_geo['vza'][_beg:_end, :],
+        'vaa': nc_geo['vaa'][_beg:_end, :],
+        'sza': nc_geo['sza'][_beg:_end, :],
+        'saa': nc_geo['saa'][_beg:_end, :],
+        'height': _height[_beg:_end, :],
+    }
 
 
 def read_l1(filename: str,
@@ -346,18 +390,18 @@ def read_l1(filename: str,
         L1 product (signal and detector settings).
 
     """
-    image_end = None if image_end is None else image_end+1
+    image_end = None if image_end is None else image_end + 1
     l1_product: L1 = {'proc_level': read_proc_level(filename)}
     nc = Dataset(filename)
     # Attempt to read variables that are present in the NetCDF file
     if 'science_data' in nc.groups:
         grp = nc['science_data']
-        l1_product['signal'] = (
+        l1_product['image'] = (
             grp['detector_image'][image_start:image_end, :].astype('f8').data)
         if 'detector_stdev' in grp.variables:
             l1_product['noise'] = (
                 grp['detector_stdev'][image_start:image_end, :].data)
-        n_data = l1_product['signal'].shape[0]
+        n_alt = l1_product['image'].shape[0]
     elif 'observation_data' in nc.groups:
         grp = nc['observation_data']
         l1_product['wavelengths'] = grp['wavelength'][:].data
@@ -365,17 +409,14 @@ def read_l1(filename: str,
             grp['radiance'][image_start:image_end, :, :].data)
         l1_product['spectra_noise'] = grp['radiance_stdev'][
             image_start:image_end, :, :].data
-        n_data = l1_product['spectra'].shape[0]
+        n_alt = l1_product['spectra'].shape[0]
     elif 'radiance' in nc.variables:
         l1_product['wavelengths'] = nc['wavelength'][:].data
         l1_product['spectra'] = (
             nc['radiance'][image_start:image_end, :, :].data)
-        l1_product['spectra_noise'] = np.ones(l1_product['spectra'].shape)
-        n_data = l1_product['spectra'].shape[0]
+        n_alt = l1_product['spectra'].shape[0]
     if 'solar_irradiance' in nc.variables:
         l1_product['solar_irradiance'] = nc['solar_irradiance'][:].data
-    else:
-        l1_product['solar_irradiance'] = np.array(0, dtype=np.float64)
     if 'image_attributes' in nc.groups:
         grp = nc['image_attributes']
         l1_product['timestamps'] = grp['image_time'][image_start:image_end]
@@ -385,48 +426,16 @@ def read_l1(filename: str,
             grp['nr_coadditions'][image_start:image_end])
         l1_product['exptimes'] = grp['exposure_time'][image_start:image_end]
     else:
-        # Not relevant for L1B
-        l1_product['timestamps'] = np.zeros(n_data)
-        # Assume data is unbinned if not specified
-        l1_product['binning_table_ids'] = np.zeros(n_data, dtype=np.int32)
-        l1_product['coad_factors'] = np.ones(n_data, dtype=np.int32)
-        l1_product['exptimes'] = np.full(n_data, np.nan)
-    # Some attributes that are not in C++ code. The first and last
-    # frame of the original file used during the current processing.
-    try:
-        # Currently processed data is not the original data, but has
-        # been written by this code before.
-        l1_product['original_file'] = nc.original_file
-        l1_product['original_image_start'] = (
-            nc.original_image_start + image_start)
-        l1_product['original_image_end'] = (
-            nc.original_image_start + image_start + n_data - 1)
-    except AttributeError:
-        if 'configuration' in list(nc.variables):
-            # Currently processed data is not the original data, but
-            # has been written by the C++ code. If the original data
-            # was subsetted more than 1 processing earlier, the values
-            # are wrong.
-            previous_config = yaml.safe_load(str(nc['configuration'][:]))
-            l1_product['original_file'] = ''
-            l1_product['original_image_start'] = (
-                previous_config['image_start']+image_start)
-            l1_product['original_image_end'] = (
-                previous_config['image_start']+image_start+n_data-1)
-        else:
-            # currently processed data is the original data
-            l1_product['original_file'] = filename
-            l1_product['original_image_start'] = image_start
-            l1_product['original_image_end'] = image_start+n_data-1
+        l1_product['timestamps'] = np.zeros(n_alt)
+        l1_product['binning_table_ids'] = np.zeros(n_alt)
+        l1_product['coad_factors'] = np.zeros(n_alt)
+        l1_product['exptimes'] = np.zeros(n_alt)
     # Reading of main variables done. Now perform a few sanity checks.
-    if 'wavelengths' in l1_product:
-        if not monotonic(l1_product['wavelengths']):
-            raise SystemExit("ERROR: observation_data/wavelength in "
-                             f"{filename} is not monotonic")
-    if n_data == 0:
+    if n_alt == 0:
         raise SystemExit(f"ERROR: data slice [{image_start}:{image_end}] is "
                          "empty")
-    if len(np.unique(l1_product['binning_table_ids'])) > 1:
+    if 'binning_table_ids' in l1_product and len(np.unique(
+            l1_product['binning_table_ids'])) > 1:
         raise SystemExit("ERROR: different binning tables in data set, use "
                          "subset")
     return l1_product
@@ -434,8 +443,7 @@ def read_l1(filename: str,
 
 def write_l1(filename: str,
              config: dict,
-             l1_product: L1,
-             geometry: bool = False) -> str:
+             l1_product: L1) -> str:
     """Write a L1 file.
 
     Parameters
@@ -454,8 +462,7 @@ def write_l1(filename: str,
         Name of the NetCDF created
 
     """
-    # Fill values are set explicitly to the netCDF default where the
-    # C++ code always uses -32767.
+    default_fill_value = -32767
     out = Dataset(filename, 'w')
     out.Conventions = "CF-1.11"
     out.project = 'TANGO'
@@ -465,12 +472,6 @@ def write_l1(filename: str,
     out.processing_version = config['processing_version']
     out.product_name = Path(filename).name
     out.date_created = datetime.now(timezone.utc).isoformat(timespec='seconds')
-    # Not in C++ code
-    out.original_file = l1_product['original_file']
-    # Not in C++ code
-    out.original_image_start = l1_product['original_image_start']
-    # Not in C++ code
-    out.original_image_end = l1_product['original_image_end']
     out.git_commit = get_git_commit_hash()
     # out.history = ""
     # In C++ code for 'title', config['project'] is fixed to
@@ -495,18 +496,15 @@ def write_l1(filename: str,
         yaml.dump(config).replace(' true', ' yes').replace(' false', ' no'))
     var_config[:] = np.array([config_text], dtype='object')
     var_config.comment = 'configuration parameters used to produce this file'
-    # A variable should only be given the same name as a dimension in
-    # a netCDF file when it is to be used as a coordinate variable.
     if l1_product['proc_level'] <= ProcLevel.stray:
         grp_data = out.createGroup('science_data')
-        dim_data = out.createDimension('image', l1_product['signal'].shape[0])
-        dim_bins = out.createDimension('bin', l1_product['signal'].shape[1])
+        dim_alt = out.createDimension('image', l1_product['image'].shape[0])
+        dim_bins = out.createDimension('bin', l1_product['image'].shape[1])
     else:
-        dim_data = out.createDimension('along_track_sample',
-                                       l1_product['spectra'].shape[0])
+        dim_alt = out.createDimension('along_track_sample',
+                                      l1_product['spectra'].shape[0])
         dim_act = out.createDimension('across_track_sample',
                                       l1_product['spectra'].shape[1])
-        # 'wavelength' is also a variable, suggest 'spectral_sample'
         dim_waves = out.createDimension('wavelength',
                                         l1_product['spectra'].shape[2])
         if l1_product['proc_level'] < ProcLevel.sgm:
@@ -514,262 +512,172 @@ def write_l1(filename: str,
     if l1_product['proc_level'] < ProcLevel.l1b:
         grp_attr = out.createGroup('image_attributes')
         var_timestamps = grp_attr.createVariable(
-            'image_time',
-            'f8',
-            (dim_data,),
-            compression='zlib',
-            fill_value=default_fillvals['f8'])
-        var_timestamps[:] = np.nan_to_num(l1_product['timestamps'],
-                                          nan=default_fillvals['f8'])
-        var_timestamps.long_name = 'time'  # C++ code has 'image time'
-        var_timestamps.units = 'seconds since 2022-03-21'  # weird date
+            'image_time', 'f8', (dim_alt,), fill_value=default_fill_value)
+        var_timestamps.long_name = 'image time'
+        var_timestamps.units = 'seconds since 2022-03-21'
         var_timestamps.valid_min = 0.0
-        var_timestamps.valid_max = 92304.0  # weird value
+        var_timestamps.valid_max = 172800.0  # 2 x day
+        var_timestamps[:] = l1_product['timestamps']
         var_binning_table_ids = grp_attr.createVariable(
-            'binning_table',
-            'i1',
-            (dim_data,),
-            compression='zlib',
-            fill_value=default_fillvals['i1'])
-        var_binning_table_ids[:] = np.nan_to_num(
-            l1_product['binning_table_ids'], nan=default_fillvals['i1'])
+            'binning_table', 'i1', (dim_alt,))
+        var_binning_table_ids[:] = l1_product['binning_table_ids']
         var_binning_table_ids.long_name = 'binning table ID'
         var_coad_factors = grp_attr.createVariable(
-            'nr_coadditions',
-            'u2',
-            (dim_data,),
-            compression='zlib',
-            fill_value=default_fillvals['u2'])
-        var_coad_factors[:] = np.nan_to_num(
-            l1_product['coad_factors'], nan=default_fillvals['u2'])
+            'nr_coadditions', 'u2', (dim_alt,))
+        var_coad_factors[:] = l1_product['coad_factors']
         var_coad_factors.long_name = 'coaddition factor'
         var_coad_factors.comment = 'number of detector read-outs summed'
         var_exptimes = grp_attr.createVariable(
-            'exposure_time',
-            'f8',
-            (dim_data,),
-            compression='zlib',
-            fill_value=default_fillvals['f8'])
-        var_exptimes[:] = np.nan_to_num(
-            l1_product['exptimes'], nan=default_fillvals['f8'])
+            'exposure_time', 'f8', (dim_alt,), fill_value=default_fill_value)
         var_exptimes.long_name = 'exposure time'
         var_exptimes.units = 's'
         var_exptimes.comment = 'exposure time per detector read-out'
+        var_exptimes[:] = l1_product['exptimes']
     if l1_product['proc_level'] == ProcLevel.l1a:
-        # In C++ code only L1A signal data are compressed
         var_signal = grp_data.createVariable('detector_image',
                                              'i4',
-                                             (dim_data, dim_bins),
+                                             (dim_alt, dim_bins),
                                              compression='zlib',
                                              complevel=5,
                                              chunksizes=[1, len(dim_bins)],
-                                             fill_value=default_fillvals['i4'])
-        var_signal[:] = np.nan_to_num(
-            l1_product['signal'], nan=default_fillvals['i4']).astype(int)
-        var_signal.long_name = 'signal'
+                                             fill_value=default_fill_value)
+        var_signal.long_name = 'image'
         var_signal.units = 'counts'
         var_signal.valid_min = 0
         var_signal.valid_max = 60000
+        var_signal[:] = l1_product['image'].astype(int)
     elif l1_product['proc_level'] <= ProcLevel.stray:
-        # C++ code does not use fill values
         var_signal = grp_data.createVariable('detector_image',
                                              'f8',
-                                             (dim_data, dim_bins),
+                                             (dim_alt, dim_bins),
                                              compression='zlib',
-                                             fill_value=default_fillvals['f8'])
-        var_signal[:] = np.nan_to_num(
-            l1_product['signal'], nan=default_fillvals['f8'])
-        var_signal.long_name = 'signal'  # C++ code has 'detector images'
+                                             fill_value=default_fill_value)
+        var_signal.long_name = 'signal of each detector pixel'
         var_signal.units = 'counts'
         var_signal.valid_min = -1e100
         var_signal.valid_max = 1e100
+        var_signal[:] = l1_product['image']
         var_noise = grp_data.createVariable('detector_stdev',
                                             'f8',
-                                            (dim_data, dim_bins),
+                                            (dim_alt, dim_bins),
                                             compression='zlib',
-                                            fill_value=default_fillvals['f8'])
-        var_noise[:] = np.nan_to_num(
-            l1_product['noise'], nan=default_fillvals['f8'])
-        if l1_product['proc_level'] != ProcLevel.raw:
-            # C++ code has 'standard deviation of detector bin'
-            var_noise.long_name = 'noise'
-            var_noise.units = 'counts'
-        else:  # not in C++ code
-            var_noise.long_name = 'binning factor'
+                                            fill_value=default_fill_value)
+        var_noise.long_name = 'standard deviation of detector bin'
+        var_noise.units = 'counts'
         var_noise.valid_min = 0.0
         var_noise.valid_max = 1e100
-    elif l1_product['proc_level'] < ProcLevel.sgm:
-        var_waves = grp_data.createVariable('wavelength', 'f4',
+        if 'noise' not in l1_product:
+            l1_product['noise'] = np.ones(l1_product['image'].shape)
+        var_noise[:] = l1_product['noise']
+    else:
+        var_waves = grp_data.createVariable('wavelength', 'f8',
                                             (dim_act, dim_waves),
                                             compression='zlib',
-                                            fill_value=default_fillvals['f4'])
-        var_waves[:] = np.nan_to_num(l1_product['wavelengths'],
-                                     nan=default_fillvals['f4'])
+                                            fill_value=default_fill_value)
         var_waves.long_name = 'wavelength'
         var_waves.units = 'nm'
         var_waves.valid_min = 0.0
         var_waves.valid_max = 8000.0
-        is_l1b = l1_product['proc_level'] >= ProcLevel.l1b
-        ftype = 'f4' if is_l1b else 'f8'
+        var_waves[:] = l1_product['wavelengths']
         var_spectra = grp_data.createVariable(
             'radiance',
-            ftype,
-            (dim_data, dim_act, dim_waves),
+            'f8',
+            (dim_alt, dim_act, dim_waves),
             compression='zlib',
-            fill_value=default_fillvals[ftype])
-        var_spectra[:] = np.nan_to_num(l1_product['spectra'],
-                                       nan=default_fillvals[ftype])
+            fill_value=default_fill_value)
+        var_spectra[:] = l1_product['spectra']
         if l1_product['proc_level'] > ProcLevel.swath:
             var_spectra.long_name = 'spectral photon radiance'
             var_spectra.units = 'nm-1 s-1 sr-1 m-2'
-        else:  # not in C++ code
-            var_spectra.long_name = 'signal'
+        else:
+            var_spectra.long_name = 'signal of each detector pixel'
             var_spectra.units = 'counts'
-        var_spectra.valid_min = (
-            np.array(0, ftype) if is_l1b else np.array(-1e20, ftype))
-        var_spectra.valid_max = np.array(1e20, ftype)
+        var_spectra.valid_min = 0.0
+        var_spectra.valid_max = 1e20
         var_noise = grp_data.createVariable(
             'radiance_stdev',
-            ftype,
-            (dim_data, dim_act, dim_waves),
-            compression='zlib',
-            fill_value=default_fillvals[ftype])
-        # C++ code writes 1s
-        # if 'spectra_noise' not in l1_product:
-        #     l1_product['spectra_noise'] = np.ones(l1_product['spectra'].shape)
-        var_noise[:] = l1_product['spectra_noise']
-        # C++ code has 'standard deviation of radiance in bin'
-        var_noise.long_name = 'spectral photon radiance noise'
-        var_noise.units = 'nm-1 s-1 sr-1 m-2'
-        var_noise.valid_min = (
-            np.array(0, ftype) if is_l1b else np.array(-1e20, ftype))
-        var_noise.valid_max = np.array(1e20, ftype)
-    else:  # SGM data (subset), C++ does not give this option
-        var_waves = out.createVariable(
-            'wavelength',
             'f8',
-            dim_waves,
+            (dim_alt, dim_act, dim_waves),
             compression='zlib',
-            fill_value=default_fillvals['f8'])
-        var_waves[:] = np.nan_to_num(l1_product['wavelengths'],
-                                     nan=default_fillvals['f8'])
-        var_waves.long_name = 'wavelength'
-        var_waves.units = 'nm'
-        var_waves.valid_min = 0.0
-        var_waves.valid_max = 8000.0
-        ftype = 'f8'
-        var_spectra = out.createVariable(
-            'radiance',
-            ftype,
-            (dim_data, dim_act, dim_waves),
-            compression='zlib',
-            fill_value=default_fillvals[ftype])
-        var_spectra[:] = np.nan_to_num(l1_product['spectra'],
-                                       nan=default_fillvals[ftype])
-        # C++ code has 'line-by-line radiance'
-        var_spectra.long_name = 'spectral photon radiance'
-        # C++ code has 'ph nm-1 s-1 sr-1 m-2'
-        var_spectra.units = 'nm-1 s-1 sr-1 m-2'
-        var_spectra.valid_min = np.array(0, ftype)
-        var_spectra.valid_max = np.array(1e28, ftype)
-        if l1_product['solar_irradiance']:
-            var_irr = out.createVariable(
-                'solar_irradiance',
-                ftype,
-                dim_waves,
-                compression='zlib',
-                fill_value=default_fillvals[ftype])
-            var_irr[:] = np.nan_to_num(l1_product['solar_irradiance'],
-                                       nan=default_fillvals[ftype])
-            # C++ code has 'line-by-line solar irradiance'
-            var_irr.long_name = 'spectral photon irradiance'
-            # C++ code has 'ph nm-1 s-1 m-2'
-            var_irr.units = 'nm-1 s-1 m-2'
-            var_irr.valid_min = np.array(0, ftype)
-            var_irr.valid_max = np.array(1e30, ftype)
-    if geometry and (l1_product['proc_level'] > ProcLevel.stray):
-        # C++ code writes 0s in data towards L1A.
-        geo: Geometry = read_geometry(l1_product, config)
+            fill_value=default_fill_value)
+        var_noise.long_name = 'standard deviation of radiance in bin'
+        var_noise.units = 'nm-1 s-1 sr-1 m-2'
+        var_noise.valid_min = 0.0
+        var_noise.valid_max = 1e20
+        if 'spectra_noise' not in l1_product:
+            l1_product['spectra_noise'] = np.ones(l1_product['spectra'].shape)
+        var_noise[:] = l1_product['spectra_noise']
+    if 'geometry' in l1_product:
         grp_geo = out.createGroup('geolocation_data')
         var_latitude = grp_geo.createVariable(
             'latitude',
             'f4',
-            (dim_data, dim_act),
+            (dim_alt, dim_act),
             compression='zlib',
-            fill_value=default_fillvals['f4'])
-        var_latitude[:] = np.nan_to_num(geo['latitude'],
-                                        nan=default_fillvals['f4'])
-        # C++ code has 'latitude at bin locations'
-        var_latitude.long_name = 'latitude'
+            fill_value=default_fill_value)
+        var_latitude[:] = l1_product['geometry']['latitude']
+        var_latitude.long_name = 'latitude at bin locations'
         var_latitude.units = 'degrees_north'
         var_latitude.valid_min = -90.0
         var_latitude.valid_max = 90.0
         var_longitude = grp_geo.createVariable(
             'longitude',
             'f4',
-            (dim_data, dim_act),
+            (dim_alt, dim_act),
             compression='zlib',
-            fill_value=default_fillvals['f4'])
-        var_longitude[:] = np.nan_to_num(geo['longitude'],
-                                         nan=default_fillvals['f4'])
-        # C++ code has 'longitude at bin locations'
-        var_longitude.long_name = 'longitude'
+            fill_value=default_fill_value)
+        var_longitude[:] = l1_product['geometry']['longitude']
+        var_longitude.long_name = 'longitude at bin locations'
         var_longitude.units = 'degrees_east'
         var_longitude.valid_min = -180.0
         var_longitude.valid_max = 180.0
         var_height = grp_geo.createVariable('height',
                                             'f4',
-                                            (dim_data, dim_act),
+                                            (dim_alt, dim_act),
                                             compression='zlib',
-                                            fill_value=default_fillvals['f4'])
-        var_height[:] = np.nan_to_num(geo['height'],
-                                      nan=default_fillvals['f4'])
-        # C++ code has 'height at bin locations'
-        var_height.long_name = 'height'
+                                            fill_value=default_fill_value)
+        var_height[:] = l1_product['geometry']['height']
+        var_height.long_name = 'height at bin locations'
         var_height.units = 'm'
         var_height.valid_min = -1000.0
         var_height.valid_max = 10000.0
         var_saa = grp_geo.createVariable('solar_azimuth',
                                          'f4',
-                                         (dim_data, dim_act),
+                                         (dim_alt, dim_act),
                                          compression='zlib',
-                                         fill_value=default_fillvals['f4'])
-        var_saa[:] = np.nan_to_num(geo['saa'], nan=default_fillvals['f4'])
-        # C++ code has 'solar azimuth angle at bin locations'
-        var_saa.long_name = 'solar azimuth angle'
+                                         fill_value=default_fill_value)
+        var_saa[:] = l1_product['geometry']['saa']
+        var_saa.long_name = 'solar azimuth angle at bin locations'
         var_saa.units = 'degrees'
         var_saa.valid_min = -180.0
         var_saa.valid_max = 180.0
         var_sza = grp_geo.createVariable('solar_zenith',
                                          'f4',
-                                         (dim_data, dim_act),
+                                         (dim_alt, dim_act),
                                          compression='zlib',
-                                         fill_value=default_fillvals['f4'])
-        var_sza[:] = np.nan_to_num(geo['sza'], nan=default_fillvals['f4'])
-        # C++ code has 'solar zenith angle at bin locations'
-        var_sza.long_name = 'solar zenith angle'
+                                         fill_value=default_fill_value)
+        var_sza[:] = l1_product['geometry']['sza']
+        var_sza.long_name = 'solar zenith angle at bin locations'
         var_sza.units = 'degrees'
         var_sza.valid_min = -90.0
         var_sza.valid_max = 90.0
         var_vaa = grp_geo.createVariable('sensor_azimuth',
                                          'f4',
-                                         (dim_data, dim_act),
+                                         (dim_alt, dim_act),
                                          compression='zlib',
-                                         fill_value=default_fillvals['f4'])
-        var_vaa[:] = np.nan_to_num(geo['vaa'], nan=default_fillvals['f4'])
-        # C++ code has 'sensor azimuth angle at bin locations'
-        var_vaa.long_name = 'sensor azimuth angle'
+                                         fill_value=default_fill_value)
+        var_vaa[:] = l1_product['geometry']['vaa']
+        var_vaa.long_name = 'sensor azimuth angle at bin locations'
         var_vaa.units = 'degrees'
         var_vaa.valid_min = -180.0
         var_vaa.valid_max = 180.0
         var_vza = grp_geo.createVariable('sensor_zenith',
                                          'f4',
-                                         (dim_data, dim_act),
+                                         (dim_alt, dim_act),
                                          compression='zlib',
-                                         fill_value=default_fillvals['f4'])
-        var_vza[:] = np.nan_to_num(geo['vza'], nan=default_fillvals['f4'])
-        # C++ code has 'sensor zenith angle at bin locations'
-        var_vza.long_name = 'sensor zenith angle'
+                                         fill_value=default_fill_value)
+        var_vza[:] = l1_product['geometry']['vza']
+        var_vza.long_name = 'sensor zenith angle at bin locations'
         var_vza.units = 'degrees'
         var_vza.valid_min = -90.0
         var_vza.valid_max = 90.0

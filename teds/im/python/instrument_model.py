@@ -20,17 +20,15 @@ Input files are:
 """
 from importlib.resources import files
 from pathlib import Path
-import argparse
-import os
 
 import numpy as np
 import yaml
 
-from . import uncalibration as cal
+from . import forward_models as fw
 from teds import log
 from teds.l1al1b.python.io import print_heading
 from teds.l1al1b.python.io import print_system_info
-from teds.l1al1b.python.io import read_binning_pattern
+from teds.l1al1b.python.io import read_binning_table
 from teds.l1al1b.python.io import read_ckd
 from teds.l1al1b.python.io import read_l1
 from teds.l1al1b.python.io import read_proc_level
@@ -55,8 +53,6 @@ def check_config(config: dict) -> None:
         input_file = Path(config['io'][key])
         if not input_file.is_file():
             raise SystemExit(f"ERROR: {input_file} not found")
-    # if not os.access(config['io']['l1a'], os.W_OK):
-    #     raise SystemExit(f"ERROR: {config['io']['l1a']} not writable")
     proc_level = read_proc_level(config['io']['sgm'])
     log.info(f"Processing from {proc_level} to {config['cal_level']}")
 
@@ -89,7 +85,27 @@ def step_needed(proc_step: ProcLevel,
     return in_level >= proc_step and out_level < proc_step
 
 
-def process_im(config_user: dict | None = None) -> None:
+def set_l1_meta(config: dict, l1_product: L1) -> None:
+    """Set L1 meta data from settings.
+
+    Meta data such as the exposure time are read from the L1A input
+    file by the L1B processor but ignored by the instrument
+    model. Instead, they are set by the user.
+
+    Parameters
+    ----------
+    config
+        Configuration dictionary
+    l1_product
+        L1 product (signal and detector settings).
+
+    """
+    l1_product['binning_table_ids'][:] = config['detector']['binning_table_id']
+    l1_product['coad_factors'][:] = config['detector']['nr_coadditions']
+    l1_product['exptimes'][:] = config['detector']['exposure_time']
+
+
+def run_instrument_model(config_user: dict | None = None) -> None:
     """Run a simulations of the instrument model.
 
     Read input, process data, and write output. If run without an
@@ -122,107 +138,65 @@ def process_im(config_user: dict | None = None) -> None:
     log.info('Reading input data')
     l1_product: L1 = read_l1(
         config['io']['sgm'], config['image_start'], config['image_end'])
-
+    set_l1_meta(config, l1_product)
     # Read binning table corresponding to input data
-    log.info('Reading binning table')
-    data_binning_table_id = int(l1_product['binning_table_ids'][0])
-    # Last test skips when data is from C++ code
-    if (
-            l1_product['proc_level'] != 'l1a'
-            and data_binning_table_id > 0
-            and l1_product['original_file'] != ''):
-        raise SystemExit("ERROR: binned data cannot be processed towards L1A")
-    # C++ code reads the config binning table instead of that
-    # specified in the data the config binning table is only needed
-    # for the conversion from RAW to L1A data.
-    bin_indices, count_table = read_binning_pattern(
-        config['io']['binning_table'],
-        data_binning_table_id,
-        ckd['n_detrows'],
-        ckd['n_detcols'])
+    binning_table = read_binning_table(config['io']['binning_table'],
+                                       config['detector']['binning_table_id'],
+                                       ckd['n_detector_rows'],
+                                       ckd['n_detector_cols'])
     # Processing steps
     print_heading('Forward model')
     # Output processing level
     cal_level = ProcLevel[config['cal_level'].lower()]
     if step_needed(ProcLevel.sgm, l1_product['proc_level'], cal_level):
-        # in C++ code also performed if cal_level = 'l1b' or 'sgm'
-        log.info('Changing wavelength grid')
-        cal.change_wavelength_grid(l1_product,
-                                   ckd['spectral']['wavelengths'],
-                                   config['isrf']['enabled'],
-                                   config['isrf']['fwhm_gauss'],
-                                   config['isrf']['shape'])
+        log.info('ISRF convolution')
+        fw.apply_isrf(l1_product,
+                      ckd['swath']['wavelengths'],
+                      config['isrf']['enabled'],
+                      config['isrf']['fwhm_gauss'],
+                      config['isrf']['shape'],
+                      config['isrf']['in_memory'])
     if config['l1b']['enabled'] and step_needed(
             ProcLevel.l1b, l1_product['proc_level'], cal_level):
-        log.info('Converting from radiance')
-        cal.convert_from_radiance(l1_product,
-                                  ckd['radiometric']['rad_corr'],
-                                  config['detector']['exposure_time'])
+        log.info('Radiometric')
+        fw.radiometric(l1_product, ckd['radiometric']['rad_corr'])
     if step_needed(ProcLevel.swath, l1_product['proc_level'], cal_level):
-        log.info('Mapping to detector')
-        cal.map_to_detector(
-            l1_product, ckd['swath']['spectrum_rows'], ckd['n_detrows'])
+        log.info('Detector mapping')
+        fw.map_to_detector(l1_product, ckd['swath'])
     if config['stray']['enabled'] and step_needed(
             ProcLevel.stray, l1_product['proc_level'], cal_level):
-        log.info('Including stray light')
-        cal.stray_light(l1_product, ckd['stray'])
-    if step_needed(
-            ProcLevel.prnu, l1_product['proc_level'], cal_level):
-        # Apply pixel mask just before the first pixel-dependent
-        # step towards L1A. C++ code keeps bad signals and does
-        # not process them (mostly). C++ code pixel mask has a
-        # different format than in CKD but is not written, so not
-        # helpful.
-        log.info('Including pixel mask')
-        l1_product['signal'][:, ckd['pixel_mask'].ravel()] = np.nan
-        l1_product['noise'][:, ckd['pixel_mask'].ravel()] = np.nan
+        log.info('Stray light')
+        fw.stray_light(l1_product, ckd['stray'])
     if config['prnu']['enabled'] and step_needed(
             ProcLevel.prnu, l1_product['proc_level'], cal_level):
-        log.info('Including PRNU')
-        cal.include_prnu(l1_product, ckd['prnu']['prnu_qe'])
+        log.info('PRNU')
+        fw.prnu(l1_product, ckd['prnu']['prnu_qe'])
     if config['nonlin']['enabled'] and step_needed(
             ProcLevel.nonlin, l1_product['proc_level'], cal_level):
-        log.info('Including non-linearity')
-        cal.include_nonlinearity(l1_product, ckd['nonlin'])
+        log.info('Nonlinearity')
+        fw.nonlinearity(l1_product, ckd['nonlin'])
     if config['dark']['enabled'] and step_needed(
-            ProcLevel.dark, l1_product['proc_level'], cal_level):
-        log.info('Including dark signal')
-        cal.include_dark_signal(l1_product, ckd['dark']['current'])
+            ProcLevel.dark_current, l1_product['proc_level'], cal_level):
+        log.info('Dark signal')
+        fw.dark_current(l1_product, ckd['dark']['current'])
     if config['noise']['enabled'] and step_needed(
             ProcLevel.noise, l1_product['proc_level'], cal_level):
-        log.info('Including noise')
-        cal.include_noise(l1_product,
-                          ckd['noise'],
-                          ckd['dark']['current'],
-                          config['noise']['seed'])
+        log.info('Noise')
+        fw.noise(l1_product,
+                 ckd['noise'],
+                 ckd['dark']['current'],
+                 config['noise']['seed'])
     if config['dark']['enabled'] and step_needed(
-            ProcLevel.dark, l1_product['proc_level'], cal_level):
-        log.info('Including offset')
-        cal.include_offset(l1_product, ckd['dark']['offset'])
+            ProcLevel.dark_offset, l1_product['proc_level'], cal_level):
+        log.info('Dark offset')
+        fw.dark_offset(l1_product, ckd['dark']['offset'])
     if step_needed(ProcLevel.raw, l1_product['proc_level'], cal_level):
-        log.info('Including binning')
-        cal.include_coadding_and_binning(
-            l1_product,
-            config['detector']['nr_coadditions'],
-            config['io']['binning_table'],
-            config['detector']['binning_table_id'],
-            ckd['n_detrows'],
-            ckd['n_detcols'])
+        log.info('Coadding and binning')
+        fw.coadding_and_binning(l1_product, binning_table)
 
     # Write output data
     log.info('Writing output data')
-    write_l1(config['io']['l1a'], config, l1_product, geometry=True)
+    write_l1(config['io']['l1a'], config, l1_product)
 
     # If this is shown then the simulation ran successfully
     print_heading('Success')
-
-
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(
-        description="Level 1 processing: conversion between detector (L1A) "
-        "and radiance (L1B) data.")
-    parser.add_argument(
-        'config_file', help="path of the YAML file with the configuration")
-    args = parser.parse_args()
-    config = yaml.safe_load(open(args.config_file))
-    process_im(config)

@@ -2,6 +2,6 @@
 # the LICENSE file in the root directory of this project.
 '''Functions for using the instrument model.'''
 
-from teds.im.python.instrument_model import process_im  # noqa: F401
+from teds.im.python.instrument_model import run_instrument_model  # noqa: F401
 
 __path__[0] = __path__[0] + '/python'

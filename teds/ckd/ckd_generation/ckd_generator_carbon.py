@@ -14,16 +14,14 @@ Usage: python ckd_generator.py ckd.yaml
 '''
 
 from netCDF4 import Dataset
-from scipy.interpolate import bisplrep
-from scipy.interpolate import bisplev
 from scipy.interpolate import CubicSpline
+from scipy.interpolate import interpn
 from scipy.interpolate import PchipInterpolator
+from scipy.interpolate import RBFInterpolator
 from teds import log
 import numpy as np
 import yaml
 import sys
-
-default_fill_value = -32767
 
 
 def gen_header(conf: dict, nc_ckd: Dataset) -> None:
@@ -132,11 +130,11 @@ def gen_nonlin(conf: dict, nc_ckd: Dataset) -> None:
     nc_var = nc_grp.createVariable('knots', 'f8', 'knots')
     nc_var.long_name = 'spline knots of the measured signal'
     nc_var.units = 'counts'
-    nc_var[:] = np.linspace(-100, 10000, n_knots)
+    nc_var[:] = np.linspace(-1000, 10000, n_knots)
     nc_var = nc_grp.createVariable('y', 'f8', 'knots')
     nc_var.long_name = 'spline values of the measured signal'
     nc_var.units = 'counts'
-    nc_var[:] = np.linspace(-100, 10000, n_knots)
+    nc_var[:] = np.linspace(-1000, 10000, n_knots)
 
 
 def gen_swath_spectral(conf: dict, nc_ckd: Dataset) -> None:
@@ -150,10 +148,24 @@ def gen_swath_spectral(conf: dict, nc_ckd: Dataset) -> None:
         NetCDF file to save the result to
 
     """
-    act = (-1.7146, -1.1409, -0.56762, 0.00584267, 0.57931, 1.1526, 1.7262)
-    wavelengths = (1.59, 1.61, 1.6325, 1.65, 1.675)
-    wavelengths_new = (1.585, 1.61, 1.6325, 1.65, 1.679)
-    row_indices_in = [
+    # User defined number of ACT angles and their range
+    n_act = nc_ckd.dimensions['across_track_sample'].size
+    act_beg, act_end = conf['swath']['act_angles']
+    l1b_act_angles = np.linspace(act_beg, act_end, n_act)
+    # User defined range of intermediate interpolation wavelenegths
+    n_inter_wave = conf['swath']['n_intermediate_wavelength']
+    wave_beg, wave_end = conf['swath']['intermediate_wavelength']
+    intermediate_wavelengths = np.linspace(wave_beg, wave_end, n_inter_wave)
+
+    # STEP 1 - Spot measurement data.
+
+    # Spot across track angles, deg
+    spot_act = (
+        -1.7146, -1.1409, -0.56762, 0.00584267, 0.57931, 1.1526, 1.7262)
+    # Spot wavelengths, nm
+    spot_wavelengths = (1590.0, 1610.0, 1632.5, 1650.0, 1675.0)
+    # Spot distances from the center detector row, mm
+    row_distances = [
         [-3.760067, -3.755833, -3.749533, -3.746533, -3.7609],
         [-2.511, -2.508033, -2.5034, -2.500633, -2.508167],
         [-1.257133, -1.2556, -1.253167, -1.251533, -1.2547],
@@ -161,8 +173,9 @@ def gen_swath_spectral(conf: dict, nc_ckd: Dataset) -> None:
         [1.257, 1.2555, 1.2531, 1.2515, 1.2547],
         [2.510867, 2.5079, 2.5033, 2.5006, 2.5082],
         [3.7599, 3.755733, 3.749467, 3.746533, 3.7609],
-       ]
-    col_indices_in = [
+    ]
+    # Spot distances from the center detector column, mm
+    col_distances = [
         [3.9143, 1.9941, 0.0393533, -1.961433, -4.54967],
         [4.041167, 2.1146, 0.1542133, -1.85, -4.441167],
         [4.1177, 2.1873, 0.22349, -1.7841, -4.3759],
@@ -170,12 +183,13 @@ def gen_swath_spectral(conf: dict, nc_ckd: Dataset) -> None:
         [4.1178, 2.1873, 0.22352, -1.7841, -4.3759],
         [4.041267, 2.1147, 0.1542767, -1.850733, -4.4411],
         [3.9144, 1.9942, 0.03944433, -1.961367, -4.549567],
-       ]
+    ]
+    # Convert distances to fractional row and column indices of the pixels
     pixel_size = 0.015  # mm
-    row_indices = np.asarray(row_indices_in) / pixel_size
-    col_indices = np.asarray(col_indices_in) / pixel_size
-    # The spot measurement data assumes a 512x640 detector. For any
-    # other dimensions the generated pixel indices need to be scaled
+    row_indices = np.asarray(row_distances) / pixel_size
+    col_indices = np.asarray(col_distances) / pixel_size
+    # Spot measurement data assumes a 512x640 detector. For any other
+    # dimensions the generated pixel indices need to be scaled
     # appropriately.
     row_indices *= conf['main']['n_detector_rows'] / 512
     col_indices *= conf['main']['n_detector_cols'] / 640
@@ -183,45 +197,154 @@ def gen_swath_spectral(conf: dict, nc_ckd: Dataset) -> None:
     row_indices += conf['main']['n_detector_rows'] / 2
     col_indices += conf['main']['n_detector_cols'] / 2
 
-    for i_act in range(len(act)):
-        row_indices[i_act, :] = (
-            CubicSpline(wavelengths, row_indices[i_act, :])(wavelengths_new))
-        col_indices[i_act, :] = (
-            CubicSpline(wavelengths, col_indices[i_act, :])(wavelengths_new))
-    wavelengths_new = wavelengths
-    los_spline = bisplrep(np.asarray(5 * [act]).transpose().flatten(),
-                          col_indices.flatten(),
-                          row_indices.flatten(),
-                          kx=3,
-                          ky=3)
-    min_act = -1.714
-    max_act = 1.714
-    act_angles = np.linspace(
-        min_act, max_act, nc_ckd.dimensions['across_track_sample'].size)
-    row_indices = bisplev(act_angles, np.arange(0.0, 640.0, 1.0), los_spline)
+    # STEP 2 - ACT & wavelength mapping to pixels
+
+    # All row and column indices used in spot measurements
+    spot_rows_cols = np.column_stack((row_indices.ravel(),
+                                      col_indices.ravel()))
+    # ACT angles of all spot measurements. Like spot_act but values
+    # are repeated across wavelengths.
+    spot_act_all = np.repeat(spot_act, len(spot_wavelengths))
+    # Wavelengths of all spot measurements. Like spot_wavelengths but
+    # values are repeated across ACT angles.
+    spot_wavelengths_all = np.tile(spot_wavelengths, len(spot_act))
+    # Regular detector grid
+    det_grid = np.mgrid[:conf['main']['n_detector_rows'],
+                        :conf['main']['n_detector_cols']].reshape(2, -1).T
+    # Interpolate spot measurement ACT angles to all pixels (to all
+    # integer row and column indices).
+    act_map = RBFInterpolator(
+        spot_rows_cols,
+        spot_act_all,
+        kernel='cubic')(det_grid).reshape(conf['main']['n_detector_rows'],
+                                          conf['main']['n_detector_cols'])
+    # Similarly, interpolate spot measurement wavelengths to all pixels
+    wavelength_map = RBFInterpolator(
+        spot_rows_cols,
+        spot_wavelengths_all,
+        kernel='cubic')(det_grid).reshape(conf['main']['n_detector_rows'],
+                                          conf['main']['n_detector_cols'])
+
+    # STEP 3 - Row & column index mapping to L1B ACTs & wavelengths
+
+    # ACT angles and wavelengths of all pixels. In L1B, we need to
+    # interpolate from this to the target ACT and wavelength values.
+    act_wavelength_map = np.column_stack((act_map.ravel(),
+                                          wavelength_map.ravel()))
+    # Row of each detector pixel
+    det_rows = np.repeat(np.arange(conf['main']['n_detector_rows']),
+                         conf['main']['n_detector_cols'])
+    # Column of each detector pixel
+    det_cols = np.tile(np.arange(conf['main']['n_detector_cols']),
+                       conf['main']['n_detector_rows'])
+    # Grid of target L1B act angles and wavelengths
+    l1b_grid = np.array(np.meshgrid(l1b_act_angles,
+                                    intermediate_wavelengths,
+                                    indexing='ij')).reshape(2, -1).T
+    # Row index of each L1B spectrum
+    log.info('  Generating row index of each L1B spectrum')
+    row_map = RBFInterpolator(
+        act_wavelength_map,
+        det_rows,
+        kernel='cubic',
+        neighbors=49)(l1b_grid).reshape(len(l1b_act_angles),
+                                        len(intermediate_wavelengths))
+    # Column index of each L1B spectrum
+    log.info('  Generating column index of each L1B spectrum')
+    col_map = RBFInterpolator(
+        act_wavelength_map,
+        det_cols,
+        kernel='cubic',
+        neighbors=49)(l1b_grid).reshape(len(l1b_act_angles),
+                                        len(intermediate_wavelengths))
+
+    # STEP 4 - Generate wavelengths for each spectrum and detector
+    #          column (spectral CKD).
+
+    # In order to determine the L1B wavelength grids, first generate
+    # the mapping of row index vs ACT angle and detector
+    # column. Interpolate from the spot ACT/column grid to the target
+    # ACT/column grid where the target ACT angles are given by user
+    # and the target column grid is from 0...640.
+    spot_act_cols = np.column_stack((spot_act_all.ravel(),
+                                     col_indices.ravel()))
+    act_col_grid = np.array(np.meshgrid(
+        l1b_act_angles,
+        np.arange(conf['main']['n_detector_cols']),
+        indexing='ij')).reshape(2, -1).T
+    act_to_row_map = RBFInterpolator(
+        spot_act_cols,
+        row_indices.ravel(),
+        kernel='cubic')(act_col_grid).reshape(len(l1b_act_angles),
+                                              conf['main']['n_detector_cols'])
+    # Now that we know the row indices corresponding to all ACT
+    # angles, interpolate wavelengths onto those row indices and
+    # columns 0...640.
+    target_row_col_grid = np.column_stack((
+        act_to_row_map.ravel(),
+        np.tile(np.arange(conf['main']['n_detector_cols']),
+                len(l1b_act_angles))))
+    target_wavelength_map = RBFInterpolator(
+        spot_rows_cols,
+        spot_wavelengths_all,
+        kernel='cubic')(target_row_col_grid).reshape(
+            len(l1b_act_angles),
+            conf['main']['n_detector_cols'])
+
+    # STEP 5 - Write results to CKD file
+
+    # Write swath group
     nc_grp = nc_ckd.createGroup('swath')
+    dim_wavelength = nc_grp.createDimension('wavelength',
+                                            len(intermediate_wavelengths))
+
+    nc_var = nc_grp.createVariable('wavelength', 'f8', (dim_wavelength,))
+    nc_var.long_name = 'intermediate wavelengths after ISRF convolution'
+    nc_var.units = 'nm'
+    nc_var[:] = intermediate_wavelengths
+
+    nc_var = nc_grp.createVariable('act_angle', 'f8', ('across_track_sample',))
+    nc_var.long_name = 'across track angles'
+    nc_var.units = 'deg'
+    nc_var[:] = l1b_act_angles
+
     nc_var = nc_grp.createVariable(
-        'row_index', 'f8', ('across_track_sample', 'detector_column'))
-    nc_var.long_name = 'row indices at which to extract the spectra'
-    nc_var[:] = np.flip(np.flip(row_indices, 0), 1)
+        'act_map', 'f8', ('detector_row', 'detector_column'))
+    nc_var.long_name = 'ACT angle of each detector pixel'
+    nc_var.units = 'deg'
+    nc_var[:] = act_map
+
+    nc_var = nc_grp.createVariable(
+        'wavelength_map', 'f8', ('detector_row', 'detector_column'))
+    nc_var.long_name = 'wavelength of each detector pixel'
+    nc_var.units = 'nm'
+    nc_var[:] = wavelength_map
+
+    nc_var = nc_grp.createVariable(
+        'row_map', 'f8', ('across_track_sample', dim_wavelength))
+    nc_var.long_name = 'row index of each L1B spectral element'
+    nc_var.units = '1'
+    nc_var[:] = row_map
+
+    nc_var = nc_grp.createVariable(
+        'col_map', 'f8', ('across_track_sample', dim_wavelength))
+    nc_var.long_name = 'column index of each L1B spectral element'
+    nc_var.units = '1'
+    nc_var[:] = col_map
+
     nc_var = nc_grp.createVariable(
         'line_of_sight', 'f8', ('across_track_sample', 'vector'))
-    nc_var[:] = (1.0, 0.0, 0.0)
-    nc_var.long_name = 'line of sight vectors'
-    # Spectral
-    wave_spline = bisplrep(np.asarray(5 * [act]).transpose().flatten(),
-                           col_indices.flatten(),
-                           np.asarray(7 * [wavelengths]).flatten(),
-                           kx=3,
-                           ky=3)
-    wavelength = bisplev(act_angles, np.arange(0.0, 640.0, 1.0), wave_spline)
+    nc_var.long_name = 'line of sight vector of each L1B spectrum'
+    nc_var.units = '1'
+    nc_var[:] = np.zeros((n_act, 3))
+
+    # Write spectral group
     nc_grp = nc_ckd.createGroup('spectral')
     nc_var = nc_grp.createVariable(
         'wavelength', 'f8', ('across_track_sample', 'detector_column'))
     nc_var.long_name = 'wavelengths of L1B spectra'
     nc_var.units = 'nm'
-    wavelength *= 1e3
-    nc_var[:] = wavelength
+    nc_var[:] = target_wavelength_map
 
 
 def gen_prnu(conf: dict, nc_ckd: Dataset) -> None:
@@ -250,28 +373,45 @@ def gen_prnu(conf: dict, nc_ckd: Dataset) -> None:
         qe[i] = spline(conf['main']['temperature'])
     # Next interpolate QE onto the L1B spectra
     qe_spline = CubicSpline(nc_ckd_in['wavelength'][:], qe)
-    spectra = np.zeros((n_act, conf['main']['n_detector_cols']))
     wavelength = nc_ckd['spectral/wavelength'][:]
+    spectra = np.zeros((n_act, conf['main']['n_detector_cols']))
     for i_act in range(n_act):
         spectra[i_act, :] = qe_spline(wavelength[i_act, :])
-    # At this point, we have a QE value for each spectrum (FOV) index and
-    # each detector column. Final step is to interpolate, per column, the
-    # QE values from FOV indices to detector rows using the FOV CKD.
-    # QE values of all pixels
-    qe_map = np.zeros((conf['main']['n_detector_rows'],
-                       conf['main']['n_detector_cols']))
-    # Interpolation target is a list of integer row numbers
-    row_indices_out = np.arange(0.0, conf['main']['n_detector_rows'], 1.0)
-    row_indices = nc_ckd['swath/row_index'][:]
-    row_indices = np.flip(row_indices, 0)
-    for i_col in range(conf['main']['n_detector_cols']):
-        drawing_spline = CubicSpline(row_indices[:, i_col],
-                                     spectra[:, i_col])
-        qe_map[:, i_col] = drawing_spline(row_indices_out)
-    spline = PchipInterpolator(nc_ckd_in['temperature'][:],
-                               np.nan_to_num(nc_ckd_in['prnu'][:]),
-                               0)
+    # At this point, we have a QE value for each L1B spectrum
+    act_angles = nc_ckd['swath/act_angle'][:]
+    act_wave_map_in = np.column_stack((
+        np.repeat(act_angles, conf['main']['n_detector_cols']),
+        wavelength.ravel()))
+    act_map = nc_ckd['swath/act_map'][:]
+    wave_map = nc_ckd['swath/wavelength_map'][:]
+    act_wave_map_out = np.column_stack((act_map.ravel(), wave_map.ravel()))
+    qe_map = RBFInterpolator(
+        act_wave_map_in,
+        spectra.ravel(),
+        kernel='cubic',
+        neighbors=49)(act_wave_map_out).reshape(
+            conf['main']['n_detector_rows'],
+            conf['main']['n_detector_cols'])
+    prnu_in = np.nan_to_num(nc_ckd_in['prnu'][:].astype('f8'))
+    spline = PchipInterpolator(nc_ckd_in['temperature'][:], prnu_in, 0)
     prnu = spline(conf['main']['temperature'])
+    # Extrapolate over bad values near the detector edges
+    margin = 2
+    row_beg = margin
+    row_end = prnu.shape[0] - margin
+    col_beg = margin
+    col_end = prnu.shape[1] - margin
+    prnu = prnu[row_beg:row_end, col_beg:col_end]
+    det_grid = np.mgrid[:conf['main']['n_detector_rows'],
+                        :conf['main']['n_detector_cols']].reshape(2, -1).T
+    prnu = interpn(
+        (np.arange(row_beg, row_end), np.arange(col_beg, col_end)),
+        prnu,
+        det_grid,
+        method='linear',
+        bounds_error=False,
+        fill_value=None).reshape((conf['main']['n_detector_rows'],
+                                  conf['main']['n_detector_cols']))
     # Combine PRNU and QE into one variable (for now)
     prnu = prnu * qe_map
     nc_grp = nc_ckd.createGroup('prnu')
@@ -374,7 +514,7 @@ def gen_pixel_mask(conf: dict, nc_ckd: Dataset) -> None:
     nc_var.flag_meanings = 'good bad'
     mask = np.logical_or(abs(nc_ckd['dark/current'][:]) > 1e4,
                          abs(nc_ckd['dark/offset'][:]) > 600.0)
-    mask = np.logical_or(mask, abs(nc_ckd['prnu/prnu'][:]) < 1e-10)
+    mask = np.logical_or(mask, nc_ckd['prnu/prnu'][:] < 1e-10)
     nc_var[:] = mask
 
 
@@ -388,28 +528,28 @@ def gen_ckd(conf: dict) -> None:
     log.info('Generating dimensions and global attributes')
     gen_header(conf, nc_ckd)
 
-    print('Generating dark offset and current')
+    log.info('Generating dark offset and current')
     gen_dark(conf, nc_ckd)
 
-    print('Generating noise CKD')
+    log.info('Generating noise CKD')
     gen_noise(conf, nc_ckd)
 
-    print('Generating nonlinearity CKD')
+    log.info('Generating nonlinearity CKD')
     gen_nonlin(conf, nc_ckd)
 
-    print('Generating swath and spectral CKD')
+    log.info('Generating swath and spectral CKD')
     gen_swath_spectral(conf, nc_ckd)
 
-    print('Generating PRNU and quantum efficiency CKD')
+    log.info('Generating PRNU and quantum efficiency CKD')
     gen_prnu(conf, nc_ckd)
 
-    print('Generating stray light CKD')
+    log.info('Generating stray light CKD')
     gen_stray(conf, nc_ckd)
 
-    print('Generating radiometric CKD')
+    log.info('Generating radiometric CKD')
     gen_radiometric(conf, nc_ckd)
 
-    print('Generating detector bad pixel mask')
+    log.info('Generating detector bad pixel mask')
     gen_pixel_mask(conf, nc_ckd)
 
     nc_ckd.close()

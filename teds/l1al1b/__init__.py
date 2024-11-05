@@ -2,6 +2,6 @@
 # the LICENSE file in the root directory of this project.
 '''Functions for using L1B processor.'''
 
-from teds.l1al1b.python.l1b_processor import process_l1b  # noqa: F401
+from teds.l1al1b.python.l1al1b import run_l1al1b  # noqa: F401
 
 __path__[0] = __path__[0] + '/python'

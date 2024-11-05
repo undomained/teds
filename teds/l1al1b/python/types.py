@@ -18,8 +18,9 @@ import numpy.typing as npt
 class ProcLevel(IntEnum):
     l1a = 0
     raw = auto()
-    dark = auto()
+    dark_offset = auto()
     noise = auto()
+    dark_current = auto()
     nonlin = auto()
     prnu = auto()
     stray = auto()
@@ -31,9 +32,10 @@ class ProcLevel(IntEnum):
         _names = (
             'L1A',
             'raw',
-            'dark',
+            'dark offset',
             'noise',
-            'non-linearity',
+            'dark current',
+            'nonlinearity',
             'PRNU',
             'stray light',
             'swath',
@@ -42,15 +44,23 @@ class ProcLevel(IntEnum):
         return _names[self.value]
 
 
-class CKDDark(TypedDict, total=False):
-    """Dark offset and current CKD."""
+class BinningTable(TypedDict):
+    """Binning table indices and counts"""
+    # Index of each detector pixel on the binned array
+    bin_indices: npt.NDArray[np.int32]
+    # Multiplicity of each binned pixel
+    count_table: npt.NDArray[np.int32]
+
+
+class CKDDark(TypedDict):
+    """Dark offset and dark current CKD."""
     # Dark offset (independent of integration time)
     offset: npt.NDArray[np.float64]
     # Dark current per second of integration time
     current: npt.NDArray[np.float64]
 
 
-class CKDNoise(TypedDict, total=False):
+class CKDNoise(TypedDict):
     """Noise CKD."""
     # Conversion gain (signal dependent noise term)
     conversion_gain: npt.NDArray[np.float64]
@@ -58,7 +68,7 @@ class CKDNoise(TypedDict, total=False):
     read_noise: npt.NDArray[np.float64]
 
 
-class CKDNonlin(TypedDict, total=False):
+class CKDNonlin(TypedDict):
     """Signal nonlinearity CKD."""
     # Expected, linear signal in counts
     expected: npt.NDArray[np.float64]
@@ -66,7 +76,7 @@ class CKDNonlin(TypedDict, total=False):
     observed: npt.NDArray[np.float64]
 
 
-class CKDPRNU(TypedDict, total=False):
+class CKDPRNU(TypedDict):
     """Photoresponse non-uniformity (PRNU) CKD."""
     # PRNU including quantum efficiency
     prnu_qe: npt.NDArray[np.float64]
@@ -87,22 +97,32 @@ class CKDStray(TypedDict, total=False):
     edges: npt.NDArray[np.int32]
 
 
-class CKDSwath(TypedDict, total=False):
+class CKDSwath(TypedDict):
     """CKD related to the satellite swath."""
+    # Across track angles
+    act_angles: npt.NDArray[np.float64]
+    # Intermediate wavelengths after ISRF convolution
+    wavelengths: npt.NDArray[np.float64]
+    # ACT angle of each detector pixel
+    act_map: npt.NDArray[np.float64]
+    # Wavelength of each detector pixel
+    wavelength_map: npt.NDArray[np.float64]
+    # Row index of each L1B spectral element
+    row_map: npt.NDArray[np.float64]
+    # Column index of each L1B spectral element
+    col_map: npt.NDArray[np.float64]
     # Line of sight vectors
     line_of_sights: npt.NDArray[np.float64]
-    # Row indices at which to extract each spectrum
-    spectrum_rows: npt.NDArray[np.float64]
 
 
-class CKDSpectral(TypedDict, total=False):
+class CKDSpectral(TypedDict):
     """Spectral CKD."""
     # Wavelengths assigned to each detector column of each L1B
     # spectrum
     wavelengths: npt.NDArray[np.float64]
 
 
-class CKDRadiometric(TypedDict, total=False):
+class CKDRadiometric(TypedDict):
     """Radiometric CKD."""
     # Radiometric calibration (correction) constants
     rad_corr: npt.NDArray[np.float64]
@@ -111,9 +131,9 @@ class CKDRadiometric(TypedDict, total=False):
 class CKD(TypedDict, total=False):
     """Dictionary describing all calibration parameter for Tango Carbon."""
     # Number of detector pixels in the spatial direction
-    n_detrows: int
+    n_detector_rows: int
     # Number of detector pixels in the spectral direction
-    n_detcols: int
+    n_detector_cols: int
     # Bad pixel mask
     pixel_mask: npt.NDArray[bool]
 
@@ -127,6 +147,18 @@ class CKD(TypedDict, total=False):
     radiometric: CKDRadiometric
 
 
+class Geometry(TypedDict):
+    """Viewing and solar geometry describing a slice or full orbit."""
+    latitude: npt.NDArray[np.float64]
+    longitude: npt.NDArray[np.float64]
+    height: npt.NDArray[np.float64]
+    # Solar/viewing azimuth/zenith angles
+    saa: npt.NDArray[np.float64]
+    sza: npt.NDArray[np.float64]
+    vaa: npt.NDArray[np.float64]
+    vza: npt.NDArray[np.float64]
+
+
 class L1(TypedDict, total=False):
     """Partially or fully calibrated level 1 data.
 
@@ -137,9 +169,9 @@ class L1(TypedDict, total=False):
     # Current calibration or processing level
     proc_level: ProcLevel
 
-    # Signal and noise if processing at the detector level
-    signal_i32: npt.NDArray[np.int32]
-    signal: npt.NDArray[np.float64]
+    # Signal and noise of each detector pixel
+    image_i32: npt.NDArray[np.int32]
+    image: npt.NDArray[np.float64]
     noise: npt.NDArray[np.float64]
     # Once spectra have been extracted from the detector, the signal
     # and noise arrays are discarded and we work with wavelengths and
@@ -155,19 +187,4 @@ class L1(TypedDict, total=False):
     coad_factors: npt.NDArray[np.int32]
     exptimes: npt.NDArray[np.float64]
 
-    # Metadata for booking between different runs
-    original_file: str
-    original_image_start: int
-    original_image_end: int
-
-
-class Geometry(TypedDict, total=False):
-    """Viewing and solar geometry describing a slice or full orbit."""
-    latitude: npt.NDArray[np.float64]
-    longitude: npt.NDArray[np.float64]
-    height: npt.NDArray[np.float64]
-    # Solar/viewing azimuth/zenith angles
-    saa: npt.NDArray[np.float64]
-    sza: npt.NDArray[np.float64]
-    vaa: npt.NDArray[np.float64]
-    vza: npt.NDArray[np.float64]
+    geometry: Geometry

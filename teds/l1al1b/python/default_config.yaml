@@ -13,15 +13,6 @@ cal_level: L1B
 image_start: 0
 image_end: null
 
-# 'none': bin CKD; 'nearest', 'linear', 'cubic': unbin signal with
-# given interpolation.
-unbinning: None
-
-reverse_wavelength: yes
-
-image_start: 0
-image_end: null
-
 dark:
   # Whether to calibrate for dark offset and current
   enabled: yes
@@ -41,10 +32,6 @@ prnu:
 stray:
   # Number of deconvolution iterations, 0 disables stray light calibration
   van_cittert_steps: 3
-
-swath:
-  # Width of each spectrum, in pixels, extracted from the detector
-  spectrum_width: 1.0
 
 # Input/output file paths
 io:

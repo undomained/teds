@@ -154,8 +154,7 @@ def run_instrument_model(config_user: dict | None = None) -> None:
                       ckd['swath']['wavelengths'],
                       config['isrf']['enabled'],
                       config['isrf']['fwhm_gauss'],
-                      config['isrf']['shape'],
-                      config['isrf']['in_memory'])
+                      config['isrf']['shape'])
     if config['l1b']['enabled'] and step_needed(
             ProcLevel.l1b, l1_product['proc_level'], cal_level):
         log.info('Radiometric')

@@ -25,11 +25,9 @@ detector:
 # CKD wavelength grid (no).
 isrf:
   enabled: yes
-  # Whether to store the entire ISRF in memory or compute it per spectrum
-  in_memory: no
   # FWHM of ISRF, not necessarily a Gauss here
   fwhm_gauss: 0.45
-  # Default is a Gauss
+  # ISRF shape parameter. Default is a Gauss.
   shape: 2
 
 dark:

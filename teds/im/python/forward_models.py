@@ -27,8 +27,7 @@ def apply_isrf(l1_product: L1,
                wavelengths_out: npt.NDArray[np.float64],
                convolve: bool,
                fwhm: float,
-               shape: float,
-               in_memory: bool) -> None:
+               shape: float) -> None:
     """Convolve spectra with the ISRF.
 
     The ISRF has a fixed shape as a function of wavelength and does not depend
@@ -57,39 +56,31 @@ def apply_isrf(l1_product: L1,
 
     """
     l1_product['proc_level'] = ProcLevel.l1b
-    wavelengths_in = l1_product['wavelengths']  # SGM data, so 1D
     n_alt = l1_product['spectra'].shape[0]
     n_act = l1_product['spectra'].shape[1]
     conv = np.empty((n_alt, n_act, len(wavelengths_out)))
-    wavelengths_out_tiled = np.tile(wavelengths_out, n_act).reshape(n_act, -1)
     if convolve:
-        # Convolve spectra with ISRF assuming wavelengths_in is monotonically
-        # increasing or decreasing (checked while
+        # Convolve spectra with ISRF assuming wavelengths_in is
+        # monotonically increasing or decreasing (checked while
         # reading). Extrapolated values are close to zero assuming no
-        # bad values in the spectra. In C++ code fixed to Gauss.
-        if in_memory:
-            kernel = convolution.Kernel(
-                wavelengths_in, wavelengths_out_tiled, fwhm, shape, in_memory)
-            for i_alt in tqdm(range(n_alt)):
-                conv[i_alt, :, :] = kernel.convolve(
-                    l1_product['spectra'][i_alt, :, :])
-        else:
-            for i_alt in tqdm(range(n_alt), unit=' ALT'):
-                for i_act in range(n_act):
-                    kernel = convolution.Kernel(
-                        wavelengths_in, wavelengths_out, fwhm, shape)
-                    conv[i_alt, i_act:i_act+1, :] = kernel.convolve(
-                        l1_product['spectra'][i_alt, i_act:i_act+1, :])
+        # bad values in the spectra.
+        kernel = convolution.Kernel(
+            l1_product['wavelengths'], wavelengths_out, fwhm, shape)
+        for i_alt in tqdm(range(n_alt), unit=' ALT'):
+            for i_act in range(n_act):
+                conv[i_alt, i_act, :] = kernel.convolve(
+                    l1_product['spectra'][i_alt, i_act, :])
         l1_product['spectra'] = conv
     else:
         for i_alt in tqdm(range(n_alt), unit=' ALT'):
             for i_act in range(n_act):
                 conv[i_alt, i_act, :] = np.interp(
                     wavelengths_out,
-                    wavelengths_in,
+                    l1_product['wavelengths'],
                     l1_product['spectra'][i_alt, i_act, :])
     l1_product['spectra'] = conv
-    l1_product['wavelengths'] = wavelengths_out_tiled
+    l1_product['wavelengths'] = np.tile(wavelengths_out, n_act).reshape(n_act,
+                                                                        -1)
 
 
 def radiometric(l1_product: L1, rad_corr: npt.NDArray[np.float64]) -> None:

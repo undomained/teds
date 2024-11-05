@@ -36,26 +36,22 @@ class Kernel:
             localization of the Gaussian.
 
         """
-        # Number of different kernels
-        n_kernels = wave_out.shape[0]
         # Number of rows in each kernel
-        n_rows = wave_out.shape[1]
+        n_rows = wave_out.shape[0]
         # Matrix representing the convolution kernels
-        self.kernels = np.empty((n_kernels, n_rows, len(wave_in)),
-                                dtype=np.float64)
+        self.kernel = np.empty((len(wave_out), len(wave_in)), dtype=np.float64)
         # Ranges of non-zero values for each kernel row
-        self.i_limits = np.empty((n_kernels, n_rows, 2), dtype=np.int32)
-        for i_kernel in range(n_kernels):
-            self._gen_kernel(fwhm,
-                             shape,
-                             cutoff,
-                             wave_in,
-                             wave_out[i_kernel],
-                             self.i_limits[i_kernel],
-                             self.kernels[i_kernel])
-        n_nonzeros = self.i_limits[:, :, 1] - self.i_limits[:, :, 0]
-        max_nonzero = n_nonzeros.flatten().max()
-        self.kernels = self.kernels[:, :, :max_nonzero]
+        self.i_limits = np.empty((n_rows, 2), dtype=np.int32)
+        self._gen_kernel(fwhm,
+                         shape,
+                         cutoff,
+                         wave_in,
+                         wave_out,
+                         self.i_limits,
+                         self.kernel)
+        n_nonzeros = self.i_limits[:, 1] - self.i_limits[:, 0]
+        max_nonzero = n_nonzeros.max()
+        self.kernel = self.kernel[:, :max_nonzero]
 
     @staticmethod
     @numba.njit
@@ -84,12 +80,9 @@ class Kernel:
     def convolve(self,
                  array: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
         """Convolve the kernel with an array."""
-        n_kernels, n_rows, n_cols = self.kernels.shape
-        conv = np.empty((n_kernels, n_rows))
-        for i_kernel in range(n_kernels):
-            for i_row in range(n_rows):
-                _lim = self.i_limits[i_kernel, i_row, :]
-                conv[i_kernel, i_row] = np.dot(
-                    self.kernels[i_kernel, i_row, :_lim[1]-_lim[0]],
-                    array[i_kernel, _lim[0]:_lim[1]])
+        conv = np.empty(self.kernel.shape[0])
+        for i_row in range(self.kernel.shape[0]):
+            _lim = self.i_limits[i_row, :]
+            conv[i_row] = np.dot(self.kernel[i_row, :_lim[1]-_lim[0]],
+                                 array[_lim[0]:_lim[1]])
         return conv

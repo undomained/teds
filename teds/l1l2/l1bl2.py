@@ -593,6 +593,14 @@ def level1b_to_level2_processor_RTorCH4(config):
 
     # Wavelength dimensions: across_track, wavelength
     obs_wls = l1b['wavelength']
+    wlmask = np.amin(
+        (
+            (obs_wls >= config['spec_settings']['wavestart'])
+            & (obs_wls <= config['spec_settings']['waveend'])
+        ),
+        axis=0
+    )
+    obs_wls = obs_wls[:,wlmask]
     N_obs_wls = obs_wls.shape[1]
     obs_fwhm = (
         config['isrf_settings']['fwhm'] * np.ones(N_obs_wls)
@@ -604,10 +612,10 @@ def level1b_to_level2_processor_RTorCH4(config):
 
     # Diagonal of all inverse covariance matrices
     # Shape: along_track, across_track, wavelength
-    invcov_diag = 1/np.clip(l1b['noise']**2, 1e-9, None)
+    invcov_diag = 1/np.clip(l1b['noise'][:,:,wlmask]**2, 1e-9, None)
 
     # Ignore pixels where one or more wavelength components are masked
-    ignore_pixels_full = np.any(~l1b['mask'], axis=2)
+    ignore_pixels_full = np.any(~(l1b['mask'][:,:,wlmask]), axis=2)
 
     # If there is a convergence_criteria block in the config file, use them;
     # otherwise, use backwards-compatible chi2_lim.
@@ -704,7 +712,7 @@ def level1b_to_level2_processor_RTorCH4(config):
         sun_lbl = T(sun_lbl)
         sza_full = T(sza_full)
         vza_full = T(vza_full)
-        radiance_full = T(l1b['radiance'])
+        radiance_full = T(l1b['radiance'][:,:,wlmask])
         invcov_diag = T(invcov_diag)
         ignore_pixels_full = torch.tensor(
             ignore_pixels_full,

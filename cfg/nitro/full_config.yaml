@@ -10,7 +10,7 @@ header:
 # Used by more than one step in the E2E simulator
 #########################################################
 io:
-    base_dir: '../data/no2/'
+    base_dir: '../data/no2/test'
 ## GM IO
     gm: 'geometry.nc'
 ## SGM IO
@@ -121,11 +121,11 @@ gm:
 #
     sensors:
       sensor_00__00:
-        n_ground_pixels: 100
+        n_ground_pixels: 10
         swath_width: 30.0   # km
         integration_time: 0.04 # seconds
         start_time: 13.73 # minutes wrt orbit epoch
-        end_time: 13.80   # minutes wrt orbit epoch
+        end_time: 13.74   # minutes wrt orbit epoch
         pitch: 0.0
         roll: 0.0
         yaw: 0.0
@@ -136,6 +136,17 @@ gm:
 #
 #########################################################
 sgm:
+    io:
+        albedo: '../data/no2/albedo_jaenschwalde.nc'
+        afgl: '../data/no2/prof.AFGL.US.std'
+        cams: '../data/cams/cams_global_forecast_20230523.nc' # hourly, 137 layers
+        microHH_folder: '../data/no2/microHH/Jaenschwalde/'
+        microHH_filesuffix: 'src3_20180523_0930'
+        dem: '../data/no2/dem.nc'
+        tmp_dir: '../data/no2/tmp/'
+        disamar_cfg_template: '../cfg/nitro/disamar_config_sim.in_template'
+        disamar_exe: '../data/no2/disamar/Disamar_old.exe'
+
     kernel_parameter:               #parameter to configure the 2D blurring of the scene
         type:    2D Gaussian        #type of kernel, current version has only one option
         fwhm_x:  300                #FWHM in ACT direction
@@ -148,18 +159,11 @@ sgm:
         afgl:
             nlay: 30                #number of atmospheric layers
             dzlay: 1000             #geometrical thickness of the layers [m]
-            path: '../data/no2/prof.AFGL.US.std'
-        cams:
-            path: '../data/cams/cams_global_forecast_20230523.nc' # only contains 00:00 and 12:00 timeslices, 137 layers
-            start: 2023-05-23T09:30:00  # different from GM date because it has to match microHH date
+        cams_datetime: 2023-05-23T09:30:00 # only used if microHH: use = False
         microHH:
             use: True               # replace lower atm with microHH
-            path_data: '../data/no2/microHH/Jaenschwalde/'
             gases: [no2]
-            filesuffix: src3_20180523_0930
-        dem:                       # correct surface pressure using tropomi dem (3k radius), only for CAMS
-            use: True
-            path: '../data/no2/dem.nc'
+        use_dem:  True               # correct surface pressure using tropomi dem (3k radius), only for CAMS
         cloud:                  # HG scattering clouds
             use: True
             cloud_fraction: 1.0
@@ -175,9 +179,6 @@ sgm:
                 stop: 50
 
     rtm:   # disamar (RTM) settings
-        tmp_dir:    '../data/no2/tmp/'
-        disamar_cfg_template: '../cfg/nitro/disamar_config_sim.in_template'
-        disamar_exe: '../data/no2/disamar/Disamar_old.exe'
         dismas_sim: True
         dismas_fwhm: 0.05           #nm
         n_threads: 16
@@ -190,8 +191,7 @@ sgm:
 
     sentinel2: # albedo download
         band_section: [B01,B02]
-        albedo_file: '../data/no2/albedo.nc'
-        forced: True
+        forced: False
 #########################################################
 #
 # IM specific

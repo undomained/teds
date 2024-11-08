@@ -42,6 +42,64 @@ io:
     l2: 'l2.nc'
 #########################################################
 #
+# CKD
+# Configuration file for CKD
+#
+#########################################################
+ckd:  
+    generate: True
+    # General paths
+    paths : 
+        'dir_nitro'             : './ckd/ckd_generation/nitro_ckds'
+        'dir_external'          : './ckd/ckd_generation/data_external/'
+        'ckd_nitro'             : '../data/no2/ckd/ckd_nitro.nc' 
+#        'im_inputs_tno'         : './ckd/ckd_generation/data_external/TANGO_Nitro_011_InstrumentModelInputs_20241002.xlsx'
+        'im_inputs_tno'         : './ckd/ckd_generation/data_external/TANGO_Nitro_V005_Nominal_Instrument_Model_Inputs_17102024.xlsx'
+    # Dimensions
+    dimensions: 
+        detector_row : 2870  # n_rows
+        detector_column : 1681  # n_cols
+        across_track : 100
+        lbl_samples : 2141 # number of wavelength samples in scene
+        vector       : 3
+        number_of_views         : 1
+        single_double           : 1 
+        stray: 
+            kernel              : 21  # kernel size
+            kernel_fft_size     : 19705600  # n_cols
+            edges_of_box        : 4
+    # Global attributes
+    attributes: 
+        institution     : 'KNMI Royal Netherlands Meteorological Institute'
+        conventions     : 'CF-1.6'
+        project         : 'TANGO'
+        instrument      : 'Nitro Instrument'
+        product_name    : 'ckd_nitro.nc'
+        version         : '0.0'
+        creator_name    : 'KNMI RDSW L01'
+        creator_url     : 'knmi.nl'
+        publisher_name  : 'KNMI RDSW'
+        publisher_url   : 'knmi.nl'
+        arrcamera       : '3DCM800 Space Camera Head (3D Plus)'
+    # Single value parameters
+    noise_conversion_gain: 0.023    # noise_g, src: carbon ckd
+    read_out_noise: 2.56            # e-, src: SNR budget
+    dark_current: 10                # e/s, at 25C
+    prnu: 5                         # in %, src: SNR budget
+    fov: 3.44                       # in degrees, src: SNR budget
+    spectral_resolution: 0.6        # in nm
+    image_extent_act: 9.9           # in mm, across track direction
+    image_extent_spec: 5.77         # in mm, spectral direction
+    detector_pixel_size: 0.00345    # in mm
+    lbl_min_wl: 395                 # nm, line by line spectrum minimum wavelength
+    lbl_max_wl: 502                 # nm, line by line spectrum maximum wavelength
+    det_min_wl: 405                 # nm, detector minimum wavelength
+    det_max_wl: 490                 # nm, detector maximum wavelength
+    rcc: 4222381848451.05           # radiometric calibration constant temporary,
+    etendue: 0.0349                 # mm2 sr
+
+#########################################################
+#
 # GM
 # Configuration file for running the geometry module
 #
@@ -78,6 +136,17 @@ gm:
 #
 #########################################################
 sgm:
+    io:
+        albedo: '../data/no2/scenes/belchatow/albedo.nc'
+        afgl: '../data/no2/prof.AFGL.US.std'
+        cams: '../data/cams/cams_global_forecast_20230523.nc' # hourly, 137 layers
+        microHH_folder: '../data/no2/microHH/Belchatow/'
+        microHH_filesuffix: 'src3_20180606_1100'
+        dem: '../data/no2/dem.nc'
+        tmp_dir: '../data/no2/tmp/'
+        disamar_cfg_template: '../cfg/nitro/disamar_config_sim.in_template'
+        disamar_exe: '../data/no2/disamar/Disamar_old.exe'
+
     kernel_parameter:               #parameter to configure the 2D blurring of the scene
         type:    2D Gaussian        #type of kernel, current version has only one option
         fwhm_x:  300                #FWHM in ACT direction
@@ -90,18 +159,11 @@ sgm:
         afgl:
             nlay: 30                #number of atmospheric layers
             dzlay: 1000             #geometrical thickness of the layers [m]
-            path: '../data/no2/prof.AFGL.US.std'
-        cams:
-            path: '../data/cams/cams_global_forecast_20230523.nc' # only contains 00:00 and 12:00 timeslices, 137 layers
-            start: 2023-05-23T11:00:00  # different from GM date because it has to match microHH date
+        cams_datetime: 2023-05-23T09:30:00 # only used if microHH: use = False
         microHH:
             use: True               # replace lower atm with microHH
-            path_data: '../data/no2/microHH/Belchatow/'
             gases: [no2]
-            filesuffix: src3_20180606_1100
-        dem:                       # correct surface pressure using tropomi dem (3k radius), only for CAMS
-            use: True
-            path: '../data/no2/dem.nc'
+        use_dem:  True               # correct surface pressure using tropomi dem (3k radius), only for CAMS
         cloud:                  # HG scattering clouds
             use: False
             cloud_fraction: 1.0
@@ -117,9 +179,6 @@ sgm:
                 stop: 50
 
     rtm:   # disamar (RTM) settings
-        tmp_dir:    '../data/no2/tmp/'
-        disamar_cfg_template: '../cfg/nitro/disamar_config_sim.in_template'
-        disamar_exe: '../data/no2/disamar/Disamar_old.exe'
         dismas_sim: True
         dismas_fwhm: 0.05           #nm
         n_threads: 16
@@ -132,7 +191,6 @@ sgm:
 
     sentinel2: # albedo download
         band_section: [B01,B02]
-        albedo_file: '../data/no2/scenes/belchatow/albedo.nc'
         forced: False
 #########################################################
 #

@@ -942,16 +942,16 @@ or the single item is turned into a list, and the new value is appended.'''
             fp.close()
 
 
-def disamar_add_gas_cfg(cfg, tmp_dir_disamar):
+def disamar_add_gas_cfg(template, gases, tmp_dir_disamar):
     # Add subsection for each gas to disamar config template
 
     template_tmp = tmp_dir_disamar+'/disamar_template.in'
 
-    shutil.copyfile(cfg['rtm']['disamar_cfg_template'],template_tmp)
+    shutil.copyfile(template,template_tmp)
 
     with open(template_tmp,'a+') as f:
 
-        for gas in cfg['atm']['gases']:
+        for gas in gases:
             o3_climatology = ''
             match gas:
                 case 'no2':
@@ -1060,8 +1060,6 @@ class rt_run(object):  #IGNORE:C0103
         self._quiet = quiet
 
         if not disamar:
-            disamar = "/usr/people/sneep/Documents/Disamar/Disamar.exe"
-        if not os.path.exists(disamar):
             raise ValueError('Disamar executable not found: {0}'.format(disamar))
         self.disamar = disamar
 

@@ -359,7 +359,8 @@ def get_specific_config(orig_config, kind):
     # Get the header
     specific_config['header'] = orig_config['header']
     # Get the module IO settings
-    specific_config['io'] = {}
+    if 'io' not in specific_config.keys():
+        specific_config['io'] = {}
 
     if kind == 'gm':
         # Combine path and file name

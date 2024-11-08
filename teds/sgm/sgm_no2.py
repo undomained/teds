@@ -118,7 +118,7 @@ def time_units_in_seconds(time_units):
         log.error('Time unit not understood: ', tu)
         return(-1)
 
-def get_cams_profiles( cfg, time, lats, lons):
+def get_cams_profiles( path, gases, time, lats, lons):
 
 
     mmr_to_ppmv = {}
@@ -127,13 +127,18 @@ def get_cams_profiles( cfg, time, lats, lons):
 
     cams = {}
 
-    with nc.Dataset(cfg['atm']['cams']['path'], 'r') as f:
-        time_units = f['time'].units
-        epoch_date = np.array( (time_units.split(' ')[-2]).split('-')).astype(int)
-        epoch_time = np.array( (time_units.split(' ')[-1]).split(':')).astype(int)
-        epoch = datetime.datetime(epoch_date[0], epoch_date[1], epoch_date[2], epoch_time[0], epoch_time[1], epoch_time[2])
+    with nc.Dataset(path, 'r') as f:
+        # time_units = f['time'].units
+        # epoch_date = np.array( (time_units.split(' ')[-2]).split('-')).astype(int)
+        # epoch_time = np.array( (time_units.split(' ')[-1]).split(':')).astype(int)
+        # epoch = datetime.datetime(epoch_date[0], epoch_date[1], epoch_date[2], epoch_time[0], epoch_time[1], epoch_time[2])
 
-        d_time_hours = (time-epoch).total_seconds() / time_units_in_seconds(time_units) * np.ones(lats.shape)
+        # d_time_hours = (time-epoch).total_seconds() / time_units_in_seconds(time_units) * np.ones(lats.shape)
+
+        # only interpolate using time
+        t = time.time()
+        d_time_hours = t.hour + (t.minute / 60) *np.ones(lats.shape)
+
 
         for key in f.variables.keys():
             cams[key] = f[key][:].data
@@ -162,7 +167,7 @@ def get_cams_profiles( cfg, time, lats, lons):
     profile_data['zgeop'] = libNumTools.ndim_lin_interpol_get_values( cams['Z'][time_slice,:,:], idx, w, shape)  # hPa
 
 
-    variables = cfg['atm']['gases'].copy()
+    variables = gases.copy()
     variables.append('t')
 
     for var in variables:
@@ -876,7 +881,9 @@ def scene_generation_module_nitro(config):
     # 2) get microHH data
     # =============================================================================================
     if config['atm']['microHH']['use']:
-        log.info(f"Loading microHH data: {config['atm']['microHH']['path_data']}")
+        log.info(f"Loading microHH data: {config['io']['microHH_folder']}")
+        config['atm']['microHH']['path_data'] = config['io']['microHH_folder']
+        config['atm']['microHH']['filesuffix'] = config['io']['microHH_filesuffix']
         microhh_data = libATM.get_atmosphericdata_new(gm_data['lat'], gm_data['lon'], config['atm']['microHH'])
         lat = microhh_data.lat
         lon = microhh_data.lon
@@ -890,12 +897,12 @@ def scene_generation_module_nitro(config):
     # =============================================================================================
 
     # download albedo and store as netcdf
-    file_exists = os.path.isfile(config['sentinel2']['albedo_file'])
+    file_exists = os.path.isfile(config['io']['albedo'])
     if (not file_exists or (config['sentinel2']['forced'])):
         download_sentinel2_albedo(config)
 
     # load albedo netcdf
-    albedo = get_sentinel2_albedo(config['sentinel2']['albedo_file'])
+    albedo = get_sentinel2_albedo(config['io']['albedo'])
 
     # interpolate albedo grid to microHH grid
     albedo = libSGM.interp_sentinel2_albedo(albedo, lat, lon)
@@ -907,14 +914,14 @@ def scene_generation_module_nitro(config):
 
         case 'afgl':
 
-            log.info(f"Loading afgl atmosphere: {config['atm']['afgl']['path']}")
+            log.info(f"Loading afgl atmosphere: {config['io']['afgl']}")
 
             # 4A) get a model atm from AFGL files
 
             nlay = config['atm']['afgl']['nlay']  # number of layers
             dzlay = config['atm']['afgl']['dzlay']
             # we assume the same standard atm for all pixels of the granule
-            atm = libATM.get_AFGL_atm_homogenous_distribution(config['atm']['afgl']['path'], nlay, dzlay)
+            atm = libATM.get_AFGL_atm_homogenous_distribution(config['io']['afgl'], nlay, dzlay)
             
             config['atm']['afgl'] =  {}
             config['atm']['meteo'] = {}
@@ -938,18 +945,22 @@ def scene_generation_module_nitro(config):
             
         case 'cams':
 
-            log.info(f"Loading CAMS atmosphere: {config['atm']['cams']['path']}")
+            log.info(f"Loading CAMS atmosphere: {config['io']['cams']}")
 
             # 4B) get atm from CAMS
 
-            # interpolate CAMS field
-            atm = get_cams_profiles(config, config['atm']['cams']['start'], lat, lon)
-            atm = Dict2Class(atm)
-            if config['atm']['dem']['use']:
+            if config['atm']['microHH']['use']: # use microHH time, otherwise use config cams_datetime
+                microhh_datetime = datetime.datetime.strptime('T'.join(config['io']['microHH_filesuffix'].split('_')[1:]), "%Y%m%dT%H%M")
+                config['atm']['cams_datetime'] = microhh_datetime
 
-                log.info(f"Loading DEM: {config['atm']['dem']['path']}")
+            # interpolate CAMS field
+            atm = get_cams_profiles(config['io']['cams'], config['atm']['gases'], config['atm']['cams_datetime'], lat, lon)
+            atm = Dict2Class(atm)
+            if config['atm']['use_dem']:
+
+                log.info(f"Loading DEM: {config['io']['dem']}")
                 # correct surface pressure with DEM
-                atm.zsfc = get_dem(config['atm']['dem']['path'], lat, lon)
+                atm.zsfc = get_dem(config['io']['dem'], lat, lon)
                 atm.psfc = atm.psl * np.exp( -1 * atm.zsfc / 8000.) # use 8 km scale height
 
             if config['atm']['microHH']['use']:
@@ -1015,17 +1026,19 @@ def scene_generation_module_nitro(config):
 
 
     timestamp = datetime.datetime.now().strftime('%Y%m%dT%H%M%S')
-    tmp_dir = '{}/{}'.format( config['rtm']['tmp_dir'], timestamp)
+    tmp_dir = '{}/{}'.format( config['io']['tmp_dir'], timestamp)
     if not os.path.isdir(tmp_dir):
         log.info(f'Creating tmp directory DISAMAR: {tmp_dir}')
 
         os.makedirs(tmp_dir, exist_ok=True)
 
 
-    if os.path.isfile(config['rtm']['disamar_cfg_template']):
-        tmp_template_disamar = libRT_no2.disamar_add_gas_cfg(config, tmp_dir)
+    if os.path.isfile(config['io']['disamar_cfg_template']):
+        tmp_template_disamar = libRT_no2.disamar_add_gas_cfg(config['io']['disamar_cfg_template'],
+                                                             config['atm']['gases'],
+                                                             tmp_dir)
     else:
-        log.error(f"File {config['rtm']['disamar_cfg_template']} not found")
+        log.error(f"File {config['io']['disamar_cfg_template']} not found")
 
     dis_cfg_filenames=[]
 
@@ -1047,7 +1060,7 @@ def scene_generation_module_nitro(config):
     with multiprocessing.Pool(config['rtm']['n_threads']) as pool:
         # stat = pool.starmap(run_disamar, zip(dis_cfg_filenames, repeat(config['rtm']['disamar_exe'])),chunksize=1)
 
-        args = [(cfg, config['rtm']['disamar_exe']) for cfg in dis_cfg_filenames]
+        args = [(cfg, config['io']['disamar_exe']) for cfg in dis_cfg_filenames]
         stat = list(tqdm.tqdm(pool.imap(run_disamar_star, args), total=len(dis_cfg_filenames)))
 
     if sum(stat) != 0:

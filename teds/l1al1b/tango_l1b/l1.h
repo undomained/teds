@@ -47,7 +47,6 @@ struct L1 {
     std::vector<std::vector<double>> observation_sig; // spectra.signal alternative for nitro
     std::vector<std::vector<double>> observation_std; // spectra.stdev alternative for nitro
     std::shared_ptr<std::vector<std::vector<double>>> observation_wl; // wavelength of incoming line-by-line spectra
-    std::shared_ptr<std::vector<std::vector<double>>> observation_wl_out; // wavelength of outgoing observation spectra
     std::shared_ptr<std::vector<std::vector<double>>> wavelength_binned; //for wavelength map in case of binning
 
     // Geolocation data

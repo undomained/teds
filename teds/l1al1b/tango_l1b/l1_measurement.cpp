@@ -187,14 +187,34 @@ void L1Measurement::writeObservationData(netCDF::NcFile& nc) {
     auto& l1 { l1_measurement[0] };
 
     auto& wavelengths = *l1_measurement.front().observation_wl;
-    if (l1_measurement.front().observation_wl == nullptr){
-        wavelengths = *l1_measurement.front().observation_wl_out;
-    }
 
     const auto n_wavelength { wavelengths.front().size() };
     const auto nc_wavelength { nc.addDim("wavelength", n_wavelength) };
     
     auto nc_grp { nc.addGroup("observation_data") };
+
+
+    std::string& units = l1_measurement.front().units;
+    NcVar nc_rad = addVariable(nc_grp, "radiance", "radiance", units , fill::d, -1e100, 1e100, {nc_images, nc_across_track, nc_wavelength});
+    NcVar nc_std = addVariable(nc_grp, "radiance_stdev", "standard deviation of radiance in bin",units, fill::d, -1e100, 1e100, {nc_images, nc_across_track, nc_wavelength});
+
+    std::vector<double> buf(n_images * n_across_track * n_wavelength);
+    std::vector<double> buf2(n_images * n_across_track * n_wavelength);
+
+    spdlog::info("n_images: {}, n_across_track: {}, n_wavelength: {}", n_images, n_across_track, n_wavelength);
+    for (size_t i {}; i < n_images; i++) {
+        for (size_t j {}; j < n_across_track; j++) {
+            for (size_t k {}; k < n_wavelength; k++) {
+                int index = i * n_across_track * n_wavelength + j * n_wavelength + k;
+//                spdlog::info("i: {}, j: {}, k: {} index: {}, signal: {}", i, j, k, index, l1_measurement[i].observation_sig[j][k]);
+                buf[index] = l1_measurement[i].observation_sig[j][k];
+                buf2[index] = l1_measurement[i].observation_std[j][k];
+            }
+        }
+    }
+    spdlog::info("Writing radiance and radiance_std with units: {}", units);
+    nc_rad.putVar(buf.data());
+    nc_std.putVar(buf2.data());
 
     // add wavelength
     NcVar nc_wl = addVariable(nc_grp, "wavelength", "radiance wavelengths", "nm", fill::f, 0.0f, 999.0f, {nc_across_track, nc_wavelength});
@@ -205,26 +225,6 @@ void L1Measurement::writeObservationData(netCDF::NcFile& nc) {
         }
     }
     nc_wl.putVar(buf3.data());
-
-    std::string& units = l1_measurement.front().units;
-    NcVar nc_rad = addVariable(nc_grp, "radiance", "radiance", units , fill::f, 0.0f, 1e20f, {nc_images, nc_across_track, nc_wavelength});
-    NcVar nc_std = addVariable(nc_grp, "radiance_stdev", "standard deviation of radiance in bin",units, fill::f, 0.0f, 1e20f, {nc_images, nc_across_track, nc_wavelength});
-
-    std::vector<double> buf(n_images * n_across_track * n_wavelength);
-    std::vector<double> buf2(n_images * n_across_track * n_wavelength);
-
-    for (size_t i {}; i < n_images; i++) {
-        for (size_t j {}; j < n_across_track; j++) {
-            for (size_t k {}; k < n_wavelength; k++) {
-                int index = i * n_across_track * n_wavelength + j * n_wavelength + k;
-                buf[index] = l1_measurement[i].observation_sig[j][k];
-                buf2[index] = l1_measurement[i].observation_std[j][k];
-            }
-        }
-    }
-    spdlog::info("Writing radiance and radiance_std with units: {}", units);
-    nc_rad.putVar(buf.data());
-    nc_std.putVar(buf2.data());
 
 }
 
@@ -290,6 +290,7 @@ void L1Measurement::writeGeolocationData(netCDF::NcFile& nc) {
     // Edwards splitup functions copied from io.cpp with l1_products -> l1_measurement
     spdlog::info("Writing Geolocation Data");
 
+    // TODO: this still needs fixing for science data
     // At the moment for nitro we have detector image with second dimension row
     // instead of across track
     // spectra is empty.
@@ -298,11 +299,12 @@ void L1Measurement::writeGeolocationData(netCDF::NcFile& nc) {
     //
     // const auto n_across_track { l1_measurement.front().spectra.size() };
     // across_track is row for science data
-    const auto n_across_track {(*l1_measurement.front().wavelength).size()};
+    // const auto n_across_track {(*l1_measurement.front().wavelength).size()};
 
-    // const auto nc_across_track { nc.addDim("across_track", n_across_track) };
     const auto nc_across_track = nc.getDim("across_track");
     const auto nc_images = nc.getDim("along_track");
+
+    const auto n_across_track { nc.getDim("across_track").getSize() };
     const std::vector<netCDF::NcDim> geometry_shape { nc_images, nc_across_track };
 
     std::vector<float> lat(n_images * n_across_track);
@@ -603,7 +605,7 @@ void L1Measurement::extractSpectraWavelength(L1& l1, CKD const& ckd) {
             (*wavelength_out)[i_act][i_col] /= total_weight;
         }
     }
-    l1.observation_wl_out = wavelength_out;
+    l1.observation_wl = wavelength_out;
 }
 
 } // namespace tango

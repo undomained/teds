@@ -6,14 +6,14 @@ algos_im:
     - Dark_Current
     - Noise
     - Dark_Offset
-    - Coaddition
-#    - Binning
+#    - Coaddition
+    - Binning
 #   - Straylight (waiting for data)
     - DAC
 algos_l1b:
 #   - Binning # Where do we put this?
     - Noise # annotation, no correction
-    - Coaddition # modifies noise, figure out best order. 
+#    - Coaddition # modifies noise, figure out best order. 
     - DAC
     - Dark_Offset
     - Dark_Current

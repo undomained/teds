@@ -616,6 +616,13 @@ def level1b_to_level2_processor_RTorCH4(config):
 
     # Ignore pixels where one or more wavelength components are masked
     ignore_pixels_full = np.any(~(l1b['mask'][:,:,wlmask]), axis=2)
+    for i in range(N_act):
+        ign = np.sum(ignore_pixels_full[:,i])
+        if ign > 0:
+            print(
+                f"NOTICE: ignoring {ign} bad pixel(s) in ACT column {i}",
+                file=sys.stderr
+            )
 
     # If there is a convergence_criteria block in the config file, use them;
     # otherwise, use backwards-compatible chi2_lim.
@@ -791,11 +798,16 @@ def level1b_to_level2_processor_RTorCH4(config):
 
                 idx = torch.argmax(radiance, dim=1)
                 pixidx = torch.arange(N)
-                alb_first_guess = (
-                    torch.pi * radiance[pixidx,idx]
-                    / sun_obs[chunk][pixidx,idx]
-                    / torch.cos(sza*torch.pi/180.)
+                alb_first_guess = torch.clamp(
+                    (
+                        torch.pi * radiance[pixidx,idx]
+                        / sun_obs[chunk][pixidx,idx]
+                        / torch.cos(sza*torch.pi/180.)
+                    ),
+                    min=0,
+                    max=1
                 )
+                alb_first_guess[torch.isnan(alb_first_guess)] = 0.5
                 # Use first guess for baseline albedo; set higher-order
                 # coefficients to 0.
                 alb = torch.stack(
@@ -847,8 +859,7 @@ def level1b_to_level2_processor_RTorCH4(config):
                     )
                     # If the step introduces NaNs, infinities, or column
                     # scales below 0, it is mathematically invalid and must be
-                    # rejected outright.  We further impose some constraints
-                    # on the regime of physically reasonable parameters.
+                    # rejected outright.
                     valid_mask &= (
                         torch.all(torch.isfinite(new_col_scales), dim=1)
                         & torch.all(torch.isfinite(new_alb), dim=1)
@@ -871,6 +882,10 @@ def level1b_to_level2_processor_RTorCH4(config):
                     iterations[batch,chunk_inds] += torch.where(
                         valid_mask, 1, 0
                     ).cpu().numpy()
+
+                    if torch.all(~valid_mask):
+                        # No more valid pixels in batch
+                        break
 
                     # Test for convergence
                     if prev_chi2 is not None:

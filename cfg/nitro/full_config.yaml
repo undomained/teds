@@ -10,7 +10,7 @@ header:
 # Used by more than one step in the E2E simulator
 #########################################################
 io:
-    base_dir: '../data/no2/test'
+    base_dir: '../data/no2'
 ## GM IO
     gm: 'geometry.nc'
 ## SGM IO
@@ -53,12 +53,11 @@ ckd:
         'dir_nitro'             : './ckd/ckd_generation/nitro_ckds'
         'dir_external'          : './ckd/ckd_generation/data_external/'
         'ckd_nitro'             : '../data/no2/ckd/ckd_nitro.nc' 
-#        'im_inputs_tno'         : './ckd/ckd_generation/data_external/TANGO_Nitro_011_InstrumentModelInputs_20241002.xlsx'
         'im_inputs_tno'         : './ckd/ckd_generation/data_external/TANGO_Nitro_V005_Nominal_Instrument_Model_Inputs_17102024.xlsx'
     # Dimensions
     dimensions: 
-        detector_row : 2870  # n_rows
-        detector_column : 1681  # n_cols
+        detector_row : 3611  # n_rows
+        detector_column : 2794  # n_cols
         across_track : 100
         lbl_samples : 2141 # number of wavelength samples in scene
         vector       : 3

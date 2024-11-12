@@ -707,7 +707,16 @@ def level1b_to_level2_processor_RTorCH4(config):
         ):
             dtype = torch.float64
         cpu = torch.device('cpu')
-        device = torch.device('cuda') if torch.cuda.is_available() else cpu
+        device = cpu
+
+        if not (
+            'force_cpu' in config['retrieval_init']
+            and config['retrieval_init']['force_cpu']
+        ):
+            device = (
+                torch.device('cuda') if torch.cuda.is_available() else cpu
+            )
+
         T = lambda a: torch.tensor(a, device=device, dtype=dtype)
 
         obs_wls = T(obs_wls)

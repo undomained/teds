@@ -35,7 +35,7 @@ and activate it with
 
    source venv/bin/activate
 
-You will notice that the shell's prompt has changed to remind you that you are in a virtual environment. Any packages installed with the Python ``pip`` command are now part of the current project only. Correct versions of packages that are required for this project are listed in ``pyproject.toml`` and ``requirements.txt``. Install them all by issuing
+You will notice that the shell's prompt has changed to remind you that you are in a virtual environment. Any packages installed with the Python :command:`pip` command are now part of the current project only. Correct versions of packages that are required for this project are listed in :file:`pyproject.toml` and :file:`requirements.txt`. Install them all by issuing
 
 .. code-block:: bash
 
@@ -43,7 +43,7 @@ You will notice that the shell's prompt has changed to remind you that you are i
    pip install --editable .
    pip install -r requirements.txt
 
-The second command installs all dependencies found in ``pyproject.toml`` and creates an *editable* build of ``teds`` suitable for development. The third command installs additional development tools such as linters and documentation tools. The reason for the split is an when distributing the package, only the second command needs to be run without the ``--editable`` flag. This leaves out everything not required for the end user.
+The second command installs all dependencies found in :file:`pyproject.toml` and creates an *editable* build of TEDS suitable for development. The third command installs additional development tools such as linters and documentation tools. The reason for the split is an when distributing the package, only the second command needs to be run without the :token:`--editable` flag. This leaves out everything not required for the end user.
 
 If your working directory is the same as where the virtual environment is located, the TEDS package should automatically be found by Python scripts. If not, you might need to update your ``PYTHONPATH``.
 
@@ -63,7 +63,7 @@ First step is to obtain CMake. On Ubuntu and similar distributions it can likely
 
    sudo apt install cmake
 
-Running CMake (the configuration step) creates a set of persistent variables which are contained in a file called ``CMakeCache.txt`` in the build directory. These are referred to as cache variables and they are the user-configurable settings of the project. All the important decisions such as which compiler to use, which libraries to link against, etc., are stored as cache variables. There are several ways of setting the cache variables, one of which is to define them in a file that can be read by CMake. This is called the initial cache file, template of which are provided with the source code so you don't have to compose it from scratch.
+Running CMake (the configuration step) creates a set of persistent variables which are contained in a file called :file:`CMakeCache.txt` in the build directory. These are referred to as cache variables and they are the user-configurable settings of the project. All the important decisions such as which compiler to use, which libraries to link against, etc., are stored as cache variables. There are several ways of setting the cache variables, one of which is to define them in a file that can be read by CMake. This is called the initial cache file, template of which are provided with the source code so you don't have to compose it from scratch.
 
 Both C++ codes depend on the following libraries:
 
@@ -79,7 +79,7 @@ You can install the first four with your Linux distribution's package manager. F
 
    sudo apt install libspdlog-dev libyaml-cpp-dev libnetcdf-c++-dev liblapack-dev
 
-A copy of ``pocketfft`` is hosted at Bitbucket. You can clone it with
+A copy of pocketfft is hosted at Bitbucket. You can clone it with
 
 .. code-block:: bash
 
@@ -87,7 +87,7 @@ A copy of ``pocketfft`` is hosted at Bitbucket. You can clone it with
 
 That said, you only need to ensure that NetCDF and Lapack are present. The rest, if not found, are downloaded and built automatically.
 
-Both C++ codes depend on an OpenMP capable C++ compiler is required. Any recent version of the GNU C++ compiler ``g++`` will do. If not already present, install by issuing
+Both C++ codes depend on an OpenMP capable C++ compiler is required. Any recent version of the GNU C++ compiler :command:`g++` will do. If not already present, install by issuing
 
 .. code-block:: bash
 
@@ -106,7 +106,7 @@ Start by navigating into the source directory and make a copy of the initial cac
    cd <teds>
    cp initial_cache.cmake initial_cache_local.cmake
 
-where ``<teds>`` denotes the root source directory of the TEDS project. Next, edit the initial cache file to reflect your environment, although the default values might already be fine (in which case there is no need to make a local copy of the file). When done editing, create a build directory and run CMake from that using the initial cache file:
+where :file:`<teds>` denotes the root source directory of the TEDS project. Next, edit the initial cache file to reflect your environment, although the default values might already be fine (in which case there is no need to make a local copy of the file). When done editing, create a build directory and run CMake from that using the initial cache file:
 
 .. code-block:: bash
 
@@ -124,7 +124,7 @@ Note that editing the initial cache file has no effect after the first configuri
 
 .. tip::
 
-   Alternatively, if you want to keep the build directory intact while editing a CMake cache variable such as a compiler flag or a library to be linked against, you can use a graphical CMake front end or specify a given variable from the command line (the latter will not be demonstrated here). The two commonly used graphical front ends are the command line based ``ccmake`` and the Qt-based ``cmake-gui``, obtained by issuing
+   Alternatively, if you want to keep the build directory intact while editing a CMake cache variable such as a compiler flag or a library to be linked against, you can use a graphical CMake front end or specify a given variable from the command line (the latter will not be demonstrated here). The two commonly used graphical front ends are the command line based :command:`ccmake` and the Qt-based :command:`cmake-gui`, obtained by issuing
 
    .. code-block:: bash
 
@@ -132,13 +132,13 @@ Note that editing the initial cache file has no effect after the first configuri
       # or
       sudo apt-get install cmake-gui
 
-   When using ``ccmake`` issue
+   When using :command:`ccmake` issue
 
    .. code-block:: bash
 
       ccmake .
 
-   from the build directory. Some CMake variables and options appear, most of which should be self-explanatory. A short help text to each variable is displayed at the bottom in a status bar. Pressing ``t`` reveals all options. When done editing, press `c` to reconfigure and ``g`` to generate the native build files. Pay attention when ``ccmake`` warns you that the cache variables have been reset. This will happen, e.g., when changing the compiler, and will necessitate the reconfiguring of some variables.
+   from the build directory. Some CMake variables and options appear, most of which should be self-explanatory. A short help text to each variable is displayed at the bottom in a status bar. Pressing :kbd:`t` reveals all options. When done editing, press :kbd:`c` to reconfigure and :kbd:`g` to generate the native build files. Pay attention when :command:`ccmake` warns you that the cache variables have been reset. This will happen, e.g., when changing the compiler, and will necessitate the reconfiguring of some variables.
 
 If CMake ran successfully the next step is to compile the executable. The default build system generated by CMake is GNU makefiles on Linux. Unless you are using a different build system, you can compile with
 
@@ -152,13 +152,13 @@ If you are not sure which build system you are using, run
 
    cmake --build . # make is probably fine though
 
-from the build directory. If successful, an executables called ``tango_l1b.x`` and ``tango_im.x`` are produced in the build directory.
+from the build directory. If successful, an executables called :file:`tango_l1b.x` and :file:`tango_im.x` are produced in the build directory.
 
-The L1A-L1B processor can also be built independently because unlike the instrument model, it forms part of the operational processor. For that, navigate into its sources directory ``<teds>/teds/l1al1b`` and follow the same steps as above. If all went well then only the ``tango_l1b.x`` executable is produced.
+The L1A-L1B processor can also be built independently because unlike the instrument model, it forms part of the operational processor. For that, navigate into its sources directory :file:`<teds>/teds/l1al1b` and follow the same steps as above. If all went well then only the :file:`tango_l1b.x` executable is produced.
 
 .. tip::
 
-   A different build system can be chosen by passing an argument to the CMake generator function. For instance, for using Ninja, use ``-G Ninja`` during the initial configuring,
+   A different build system can be chosen by passing an argument to the CMake generator function. For instance, for using Ninja, use :command:`-G Ninja` during the initial configuring,
 
    .. code-block:: bash
 
@@ -175,4 +175,4 @@ The L1A-L1B processor can also be built independently because unlike the instrum
 CMake configuration variables
 +++++++++++++++++++++++++++++++
 
-See ``initial_cache.cmake`` in the root directory of either C++ code for a list of configuration variables. You can copy and work with that file directly. There is thus no need to list them separately here.
+See :file:`initial_cache.cmake` in the root directory of either C++ code for a list of configuration variables. You can copy and work with that file directly. There is thus no need to list them separately here.

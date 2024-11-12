@@ -12,7 +12,7 @@ Each rule or concept is described in the following chapters but in summary, run 
    pytest
    bash clang_format_check.sh clang-format-18
 
-The exact statements that are automatically run with each push in a container set up for this project are found in ``bitbucket-pipelines.yml`` in the root directory.
+The exact statements that are automatically run with each push in a container set up for this project are found in :file:`bitbucket-pipelines.yml` in the root directory.
 
 It is worth mentioning that all guidelines listed in section are quite standard and used by the majority of the Python and C++ communities. Adopting and getting used to these will hopefully also benefit you with any future projects.
 
@@ -50,9 +50,9 @@ on each file you want to remove from version control (don’t remove them with `
 
    git commit
 
-which prompts you with the commit message before the actual commit is performed. Attention: never run ``git commit -a`` unless you are an experienced Git user!
+which prompts you with the commit message before the actual commit is performed. Attention: never run :command:`git commit -a` unless you are an experienced Git user!
 
-The basics of how to write commit messages are well explained in this blog post: https://chris.beams.io/posts/git-commit. In short, start with a summary line consisting of no more than 50 characters, not followed by a period. Leave a blank line followed by further description if necessary. For small commits, just the summary line may be sufficient. Write the whole commit message in the imperative tense (i.e. "Fix typo" not "Fixed typo"). These might seem like arbitrary rules but getting in the habit of creating quality commit messages makes using and collaborating with Git a lot easier! For instance, go ahead and issue ``git log --oneline`` in the source directory. You will notice that only the header line is taken from the commit messages. If these are well written it makes searching for a particular commit a lot easier.
+The basics of how to write commit messages are well explained in this blog post: https://chris.beams.io/posts/git-commit. In short, start with a summary line consisting of no more than 50 characters, not followed by a period. Leave a blank line followed by further description if necessary. For small commits, just the summary line may be sufficient. Write the whole commit message in the imperative tense (i.e. "Fix typo" not "Fixed typo"). These might seem like arbitrary rules but getting in the habit of creating quality commit messages makes using and collaborating with Git a lot easier! For instance, go ahead and issue :command:`git log --oneline` in the source directory. You will notice that only the header line is taken from the commit messages. If these are well written it makes searching for a particular commit a lot easier.
 
 Finally, issue
 
@@ -136,15 +136,15 @@ Style guide
 
 This project follows the PEP 8 style guide which is universally adopted by most Python projects. It is also the standard used for the Python standard library development and is described in full here: https://peps.python.org/pep-0008/.
 
-In order to see if your code conforms to the standard, configure your editor to highlight parts of the code that do not conform or use an external tool to do so. One such tool is ``flake8`` which is part of ``requirements.txt`` (the executable is in your path if the virtual environment is activated). You can test the correctness of a source file by running ``flake8 file.py``. This tool compares the source file(s) to a set of rules defined by PEP 8 and generates a report per source file. If everything conforms to the standard there should be no output. Writing readable code is important for *i)* reducing the likelihood of future bugs and *ii)* reducing the time it takes for someone (including yourself) to read and contribute to the code.
+In order to see if your code conforms to the standard, configure your editor to highlight parts of the code that do not conform or use an external tool to do so. One such tool is :command:`flake8` which is part of :file:`requirements.txt` (the executable is in your path if the virtual environment is activated). You can test the correctness of a source file by running :command:`flake8 file.py`. This tool compares the source file(s) to a set of rules defined by PEP 8 and generates a report per source file. If everything conforms to the standard there should be no output. Writing readable code is important for *i)* reducing the likelihood of future bugs and *ii)* reducing the time it takes for someone (including yourself) to read and contribute to the code.
 
-``flake8_check.sh``, found in the root source directory, checks all Python source files with some exceptions listed in the script. It is run as one of the steps in the Bitbucket pipeline when new code is pushed. If there are style errors in any of the source files the pipeline fails.
+:command:`flake8_check.sh`, found in the root source directory, checks all Python source files with some exceptions listed in the script. It is run as one of the steps in the Bitbucket pipeline when new code is pushed. If there are style errors in any of the source files the pipeline fails.
 
 In addition to PEP 8, here are some additional rules specific to the TEDS project:
 
 * Do not use non-ASCII symbols.
 * Do not use an empty class for the purpose of amending it across functions. Use a dictionary or, better, inherit from an existing class.
-* Try not to commit commented out code. If it's work in progress, just skip over that part of the code when committing (``git add --patch``) and come back later.
+* Try not to commit commented out code. If it's work in progress, just skip over that part of the code when committing (:command:`git add --patch`) and come back later.
 * Do not commit things like TODO lists unless you are convinced they are informative for everybody.
 * Group imports as follows: standard system libraries followed by third party libraries followed by local libraries. Separate the groups by blank lines. Within a group, sort the imports alphabetically. This also means that ``from ...`` should come before ``import ...``. Do not import multiple things on one line.
 
@@ -164,7 +164,7 @@ Imagine you come across the following piece of code:
 
 What is ``input``? A string, a dictionary, or something else? And what is ``albedo``, an Xarray object perhaps? Without looking at other parts of the code, there is no way to be sure. Sometimes you need to traverse several layers of abstraction to find out the object types. The dynamic nature of Python allows us to develop code fast but it also poses a challenge in keeping the codebase robust and maintainable.
 
-This is where type hinting comes in. Python will always remain a dynamically typed language, meaning the interpreter will not check the type of function arguments or return values. However, by using a special syntax to specify the types of variables, tools such as ``mypy`` can check and flag if a variable type in some context is different from its expected type. In other words, it ensures that the code does what you said it would do in terms of the function signature. A complete description of type hints is given by PEP 484: https://peps.python.org/pep-0484/.
+This is where type hinting comes in. Python will always remain a dynamically typed language, meaning the interpreter will not check the type of function arguments or return values. However, by using a special syntax to specify the types of variables, tools such as :command:`mypy` can check and flag if a variable type in some context is different from its expected type. In other words, it ensures that the code does what you said it would do in terms of the function signature. A complete description of type hints is given by PEP 484: https://peps.python.org/pep-0484/.
 
 The syntax of type hints is simple:
 
@@ -175,9 +175,9 @@ The syntax of type hints is simple:
        return s
 
 
-The type is given after the colon, optionally followed by a default value. An added benefit of type hinting is ensuring good documentation. By specifying all types in the function signature (``mypy`` ensures a consistent style) there is no need to include them in the doc-string.
+The type is given after the colon, optionally followed by a default value. An added benefit of type hinting is ensuring good documentation. By specifying all types in the function signature (:command:`mypy` ensures a consistent style) there is no need to include them in the doc-string.
 
-In TEDS, ``mypy`` is a type hinting tool that is run as part of the regression suite after each push to the repository. If there are any errors the pipeline will fail and the error should be resolved.
+In TEDS, :command:`mypy` is a type hinting tool that is run as part of the regression suite after each push to the repository. If there are any errors the pipeline will fail and the error should be resolved.
 
 
 Docstrings
@@ -213,9 +213,9 @@ Regression tests
 
 When contributing a new feature or fix, it is important not to break anything in other parts of the code. To make sure that previously developed and tested software still performs after a change - in other words that there has not been a regression -  we run *regression tests* before every commit. If any of the tests fail, the conflict must be resolved so that all tests pass.
 
-For the Python code, this project depends on the Pytest testing framework. In order to run all tests, call ``pytest`` from the root source directory. In order to run tests for one module only, use the test script's path as an argument, e.g. ``pytest tests/im/test_im.py``. For other uses of Pytest, have a look at Pytest's documentation (read a couple of the first How-to guides at least).
+For the Python code, this project depends on the Pytest testing framework. In order to run all tests, call :command:`pytest` from the root source directory. In order to run tests for one module only, use the test script's path as an argument, e.g. :command:`pytest tests/im/test_im.py`. For other uses of Pytest, have a look at Pytest's documentation (read a couple of the first How-to guides at least).
 
-Besides running tests in your development environment, the test suite is run automatically in a *runner* with each push to Bitbucket. The status of the latest run of the test suite is seen at the repository's overview page: https://bitbucket.org/sron_earth/teds (on the right side you will find something like "Pipeline # for master"). Detailed logs of all tests are found by clicking on Pipelines on the left side of the page.
+Besides running tests in your development environment, the test suite is run automatically in a :dfn:`runner` with each push to Bitbucket. The status of the latest run of the test suite is seen at the repository's overview page: https://bitbucket.org/sron_earth/teds (on the right side you will find something like "Pipeline # for master"). Detailed logs of all tests are found by clicking on Pipelines on the left side of the page.
 
 A new piece of code or a bug fix typically warrants a new test or amendments to existing tests. It is thus normal for tests to keep growing over time and sometimes even exceed the amount of normal code. In order to see how much code is covered by tests, run
 
@@ -232,7 +232,7 @@ For a more visual representation that you can open in a web browser, run
 
    coverage html
 
-and open ``htmlcov/index.html``. Then, by clicking on a source file you'll see exactly which lines are not passing through the tests. The coverage tool is only meant as a guide to show you how effective are the tests. A minimum percentage of code coverage is not enforced for this project.
+and open :file:`htmlcov/index.html`. Then, by clicking on a source file you'll see exactly which lines are not passing through the tests. The coverage tool is only meant as a guide to show you how effective are the tests. A minimum percentage of code coverage is not enforced for this project.
 
 
 C++
@@ -241,9 +241,9 @@ C++
 Style guide
 ^^^^^^^^^^^
 
-In TEDS, we make use of two C++ linters of which only one is mandatory. Code linting is an automated process that checks code syntax and readability by comparing it to a set of rules. It's basically the same thing as what ``flake8`` does for Python.
+In TEDS, we make use of two C++ linters of which only one is mandatory. Code linting is an automated process that checks code syntax and readability by comparing it to a set of rules. It's basically the same thing as what :command:`flake8` does for Python.
 
-The first tool, called ``clang-format``, checks for formatting violations. You can run it by issuing
+The first tool, called :command:`clang-format`, checks for formatting violations. You can run it by issuing
 
 .. code-block:: bash
 
@@ -255,11 +255,11 @@ on a source file or
 
    bash clang_format_check.py <clang-format>
 
-in the root source directory where ``<clang-format>`` is the ``clang-format`` executable. If the script returns a diff then there are source code formatting errors which should be resolved before committing.
+in the root source directory where :command:`<clang-format>` is the :command:`clang-format` executable. If the script returns a diff then there are source code formatting errors which should be resolved before committing.
 
-The second tool, called ``clang-tidy``, is a Clang based C++ linter for diagnosing style violations, interface misuse, and violations of best practices. Just like with regression tests, before comitting, it would be good to run ``clang-tidy`` on the source code but it is not enforced at the moment because it will require some effort to make the code fully compliant.
+The second tool, called :command:`clang-tidy`, is a Clang based C++ linter for diagnosing style violations, interface misuse, and violations of best practices. Just like with regression tests, before comitting, it would be good to run :command:`clang-tidy` on the source code but it is not enforced at the moment because it will require some effort to make the code fully compliant.
 
-CMake has built-in support for ``clang-tidy`` so all you need to do is run
+CMake has built-in support for :command:`clang-tidy` so all you need to do is run
 
 .. code-block:: bash
 
@@ -271,13 +271,13 @@ in the build directory and recompile. You can keep this on but if it noticeably 
 
    cmake -U CMAKE_CXX_CLANG_TIDY .
 
-``clang-format`` is run automatically along with regression tests at each push to the repository whereas ``clang-tidy`` is not. We leave it up to the developer to run ``clang-tidy`` and inspect its output manually for now.
+:command:`clang-format` is run automatically along with regression tests at each push to the repository whereas :command:`clang-tidy` is not. We leave it up to the developer to run :command:`clang-tidy` and inspect its output manually for now.
 
 
 Coding rules
 ^^^^^^^^^^^^
 
-The general rule is to follow the C++20 standard. Other than that we don't list the rules in detail because ``clang-tidy`` and ``clang-format`` are already quite exhaustive. If those pass then normally the code is correctly formatted.
+The general rule is to follow the C++20 standard. Other than that we don't list the rules in detail because :command:`clang-tidy` and :command:`clang-format` are already quite exhaustive. If those pass then normally the code is correctly formatted.
 
 That said, here is a small selection of rules we want to draw the contributor's attention to:
 
@@ -300,7 +300,7 @@ The C++ tests are written using the Catch2 testing framework. Catch2 needs to be
 
    cmake --build . --target test
 
-in either the IM or L1A-L1B processor build directory. Each test is an executable in ``tests`` in the build directory so you can also run them manually one by one.
+in either the IM or L1A-L1B processor build directory. Each test is an executable in :file:`tests` in the build directory so you can also run them manually one by one.
 
 
 Code coverage
@@ -324,7 +324,7 @@ Bitbucket pipelines
 
 All tests (e.g. code analysis and regression) are run in a Docker container each time new code is pushed to the repository. As a developer, there is normally no need to run the container yourself. You might wish to do so, however, if the regression tests pass on your computer but fail in the runner. Then entering the container allows you to debug the issue in the exact same environment as where the tests are run.
 
-The recipe for how the Docker image is built is found in ``CI/docker_image/Dockerfile``. You can build it yourself, if you wish, by issuing
+The recipe for how the Docker image is built is found in :file:`CI/docker_image/Dockerfile`. You can build it yourself, if you wish, by issuing
 
 .. code-block:: bash
 
@@ -343,7 +343,7 @@ The image presents a minimal environment, based on Ubuntu 24.04, with all the TE
 
    sudo docker run -it --rm raullaasner/tango
 
-When done, issue ``Ctrl+D`` to exit and delete the container.
+When done, issue :kbd:`Ctrl+D` to exit and delete the container.
 
 Commands that are run inside the container each time new code is pushed are found in ``bitbucket-pipelines.yml`` in the root source directory. Those steps constitute the so-called pipeline. You can see the status of each pipeline at https://bitbucket.org/sron_earth/teds/pipelines. If the pipeline succeeded then on the main repository page, https://bitbucket.org/sron_earth/teds, you can find a green tick mark (usually lower right corner of the page). If the latest pipeline failed then there is a red cross mark. That is a signal to other developers and users that there could be issues with the code and they should not use the most recent version until the issues are resolved.
 
@@ -359,13 +359,13 @@ When making changes to the documentation, you can view the result by running
 
    make html
 
-in the ``doc`` directory and opening ``build/html/index.html`` in a web browser. When done editing, commit and push to the repository. Read the Docs service will automatically pick up the changes and update https://teds.rtfd.io/ within minutes.
+in the :file:`doc` directory and opening :file:`build/html/index.html` in a web browser. When done editing, commit and push to the repository. Read the Docs service will automatically pick up the changes and update https://teds.rtfd.io/ within minutes.
 
 
 Debugging with GDB
 -------------------
 
-A debugger is a tool to run the target program under controlled conditions that allow the programmer to track its operations step by step and monitor changes in computer resources. It can give you more control in pinpointing the source of an unexpected state of the program (e.g. the calculation terminates early or finishes but yields incorrect results) compared to running the program normally (with either release or debug flags). The only requirement for running the GNU Debugger (GDB) is to include the ``-ggdb`` compiler flag. There are many tutorials about the GDB out there so we only list a few example commands here:
+A debugger is a tool to run the target program under controlled conditions that allow the programmer to track its operations step by step and monitor changes in computer resources. It can give you more control in pinpointing the source of an unexpected state of the program (e.g. the calculation terminates early or finishes but yields incorrect results) compared to running the program normally (with either release or debug flags). The only requirement for running the GNU Debugger (GDB) is to include the :token:`-ggdb` compiler flag. There are many tutorials about the GDB out there so we only list a few example commands here:
 
 - Start the GDB with the IM or L1B executable as an argument and then run with a configuration file as input:
 
@@ -374,7 +374,7 @@ A debugger is a tool to run the target program under controlled conditions that 
      gdb ./tango_l1b.x
      run l1b.yaml
 
-- Insert a breakpoint to monitor line 6 in ``file.cpp``,
+- Insert a breakpoint to monitor line 6 in :file:`file.cpp`,
 
   .. code-block:: bash
 
@@ -461,14 +461,14 @@ Perf is a performance analyzing tool that ships with the Linux kernel. It can me
 
    perf list
 
-In this section, we present a few example commands to get you started with using Perf on the L1A-L1B processor. First, recompile the code using normal release flags plus the ``-ggdb`` flag. The ``perf stat`` command keeps a running count of events during execution and presents a summary at the end of the calculation. For instance, running
+In this section, we present a few example commands to get you started with using Perf on the L1A-L1B processor. First, recompile the code using normal release flags plus the :token:`-ggdb` flag. The :command:`perf stat` command keeps a running count of events during execution and presents a summary at the end of the calculation. For instance, running
 
 .. code-block:: bash
 
    perf stat -e cycles,instructions,cache-references,cache-misses,L1-dcache-loads,\
    L1-dcache-load-misses,branches,branch-misses tango_l1b.x im.yaml
 
-where the ``-e`` flag specifies which events are measured, will output something like::
+where the :token:`-e` flag specifies which events are measured, will output something like::
 
   30,284,358,788 cycles:u                (62.47%)
   69,653,498,559 instructions:u          (62.49%) # 2.30 insn per cycle
@@ -484,14 +484,14 @@ where the ``-e`` flag specifies which events are measured, will output something
 
 The absolute number of events such as CPU cycles or instructions are usually not very meaningful. Ratios such as instructions per cycle (IPC) or the number of CPU cache misses vs all cache access attempts are a better measure of performance. A good value for IPC depends on the processor.
 
-In order to identify the hotspots, i.e. to measure events attributed to a specific function or line of code, Perf does event-based sampling which is a statistical process. This means that not every event is explicitly counted. Instead, a sample is registered after a certain number of CPU cycles have passsed. The number of events attributed to a section of the code is thus approximate and for a low number of events care must be taken in interpreting the results. Identification of hotspots is a 2-step process. First collect the samples with ``perf record``:
+In order to identify the hotspots, i.e. to measure events attributed to a specific function or line of code, Perf does event-based sampling which is a statistical process. This means that not every event is explicitly counted. Instead, a sample is registered after a certain number of CPU cycles have passsed. The number of events attributed to a section of the code is thus approximate and for a low number of events care must be taken in interpreting the results. Identification of hotspots is a 2-step process. First collect the samples with :command:`perf record`:
 
 .. code-block:: bash
 
    perf record -e cycles,instructions,cache-references,cache-misses,branches,\
    branch-misses,L1-dcache-loads,L1-dcache-load-misses tango_l1b im.yaml
 
-Then analyze the results using ``perf report``:
+Then analyze the results using :command:`perf report`:
 
 .. code-block:: bash
 

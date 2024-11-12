@@ -121,7 +121,8 @@ auto driver(const SettingsL1B& settings,
         if (l1.level < ProcLevel::swath
             && settings.cal_level >= ProcLevel::swath) {
             timers[static_cast<int>(ProcLevel::swath)].start();
-            mapFromDetector(ckd, settings.swath.b_spline_order, l1);
+            mapFromDetector(
+              ckd, binning_table, settings.swath.b_spline_order, l1);
             timers[static_cast<int>(ProcLevel::swath)].stop();
         }
         // Interpolate from intermediate to the main CKD wavelength

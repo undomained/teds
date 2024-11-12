@@ -50,7 +50,10 @@ auto strayLight(const CKD& ckd,
                 L1& l1) -> void;
 
 // Extract a set of spectra from one detector image
-auto mapFromDetector(const CKD& ckd, const int b_spline_order, L1& l1) -> void;
+auto mapFromDetector(const CKD& ckd,
+                     const BinningTable& binning_table,
+                     const int b_spline_order,
+                     L1& l1) -> void;
 
 // Mapping from the detector yields spectra on the intermediate
 // wavelengths grid. Spectra need to be interpolated onto the CKD

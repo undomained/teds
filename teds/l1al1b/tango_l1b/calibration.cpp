@@ -103,10 +103,12 @@ auto prnu(const CKD& ckd, const bool enabled, L1& l1) -> void
 
 auto removeBadValues(const CKD& ckd, L1& l1) -> void
 {
+    const int n_rows { static_cast<int>(l1.image.size())
+                       / ckd.n_detector_cols };
     std::vector<double> x_values {};
     std::vector<double> y_values_image {};
     std::vector<double> y_values_stdev {};
-    for (int i_row {}; i_row < ckd.n_detector_rows; ++i_row) {
+    for (int i_row {}; i_row < n_rows; ++i_row) {
         x_values.clear();
         y_values_image.clear();
         y_values_stdev.clear();
@@ -210,12 +212,29 @@ auto strayLight(const CKD& ckd,
     binning_table.bin(image_ideal, l1.image);
 }
 
-auto mapFromDetector(const CKD& ckd, const int b_spline_order, L1& l1) -> void
+auto mapFromDetector(const CKD& ckd,
+                     const BinningTable& binning_table,
+                     const int b_spline_order,
+                     L1& l1) -> void
 {
     l1.level = ProcLevel::swath;
-    std::vector<double> rows(ckd.n_detector_rows);
+    // Assume there is binning only across rows. From that determine
+    // the number of rows of the binned detector image.
+    const int n_rows { binning_table.nBins() / ckd.n_detector_cols };
+    std::vector<double> rows(n_rows, 0.0);
+    for (int i {}; i < n_rows; ++i) {
+        const double cur_bin_size { static_cast<double>(
+          binning_table.binSize(i * ckd.n_detector_cols)) };
+        if (i == 0) {
+            rows[i] = 0.5 * cur_bin_size - 0.5;
+        } else {
+            const double prev_bin_size { static_cast<double>(
+              binning_table.binSize((i - 1) * ckd.n_detector_cols)) };
+            const double bin_size_half { 0.5 * (prev_bin_size - cur_bin_size) };
+            rows[i] = rows[i - 1] + cur_bin_size + bin_size_half;
+        }
+    }
     std::vector<double> cols(ckd.n_detector_cols);
-    std::iota(rows.begin(), rows.end(), 0.0);
     std::iota(cols.begin(), cols.end(), 0.0);
     const BSpline2D bspline_2d_image { b_spline_order, rows, cols, l1.image };
     bspline_2d_image.eval(ckd.swath.row_map, ckd.swath.col_map, l1.spectra);

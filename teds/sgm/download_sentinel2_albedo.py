@@ -126,7 +126,7 @@ def write_albedo_to_netcdf(albedo_file: str, albedos: list[DataArray]) -> None:
     nc.close()
 
 
-def download_sentinel2_albedo(config: dict) -> None:
+def download_sentinel2_albedo(config: dict) -> list[DataArray]:
     """Download Sentinel 2 albedo.
 
     Args:
@@ -183,4 +183,4 @@ def download_sentinel2_albedo(config: dict) -> None:
         albedo_combined = merge_arrays(albedos_partial)
         albedos.append(albedo_combined)
     write_albedo_to_netcdf(config['sentinel2']['albedo_file'], albedos)
-    return(albedos)
+    return albedos

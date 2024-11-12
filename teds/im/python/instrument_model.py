@@ -21,7 +21,6 @@ Input files are:
 from importlib.resources import files
 from pathlib import Path
 
-import numpy as np
 import yaml
 
 from . import forward_models as fw

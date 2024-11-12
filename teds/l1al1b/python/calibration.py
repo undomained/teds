@@ -83,8 +83,7 @@ def noise(l1_product: L1,
     variance = (ckd['read_noise']**2
                 + np.abs(l1_product['image']) / ckd['conversion_gain'])
     l1_product['noise'] = np.sqrt(
-        variance / (l1_product['coad_factors'][..., None]
-                    * np.sqrt(count_table)))
+        variance / (l1_product['coad_factors'][..., None] * count_table))
 
 
 def dark_current(l1_product: L1,
@@ -308,7 +307,7 @@ def map_from_detector(l1_product: L1,
     n_cols = ckd['act_map'].shape[1]
     n_rows = len(count_table) // n_cols
     n_act, n_wavelengths = ckd['row_map'].shape
-    l1_product['spectra'] = np.empty((n_alt, n_act, wavelengths.shape[1]))
+    l1_product['spectra'] = np.empty((n_alt, n_act, len(ckd['wavelengths'])))
     l1_product['spectra_noise'] = np.empty(l1_product['spectra'].shape)
     row_col_map = np.column_stack((ckd['row_map'].ravel(),
                                    ckd['col_map'].ravel()))
@@ -323,29 +322,21 @@ def map_from_detector(l1_product: L1,
     col_indices = np.arange(n_cols)
     for i_alt in tqdm(range(n_alt)):
         # Compute spectra and noise at intermediate wavelengths
-        inter_spectra = interpn(
+        l1_product['spectra'][i_alt, :, :] = interpn(
             (row_indices, col_indices),
             l1_product['image'][i_alt, :].reshape((n_rows, n_cols)),
             row_col_map,
-            method='cubic',
+            method='quintic',
             bounds_error=False,
             fill_value=None).reshape((n_act, n_wavelengths))
-        inter_noise = interpn(
+        l1_product['spectra_noise'][i_alt, :, :] = interpn(
             (row_indices, col_indices),
             l1_product['noise'][i_alt, :].reshape((n_rows, n_cols)),
             row_col_map,
-            method='cubic',
+            method='quintic',
             bounds_error=False,
             fill_value=None).reshape((n_act, n_wavelengths))
-        # Next interpolate onto the target wavelengths
-        for i_act in range(n_act):
-            spline = CubicSpline(ckd['wavelengths'], inter_spectra[i_act, :])
-            l1_product['spectra'][i_alt, i_act, :] = spline(
-                wavelengths[i_act, :])
-            spline = CubicSpline(ckd['wavelengths'], inter_noise[i_act, :])
-            l1_product['spectra_noise'][i_alt, i_act, :] = spline(
-                wavelengths[i_act, :])
-    l1_product['wavelengths'] = wavelengths
+    l1_product['wavelengths'] = ckd['wavelengths']
 
 
 def change_wavelength_grid(l1_product: L1,
@@ -365,10 +356,10 @@ def change_wavelength_grid(l1_product: L1,
     new_spectra_noise = np.empty(new_spectra.shape)
     for i_alt in range(n_alt):
         for i_act in range(n_act):
-            spline = CubicSpline(l1_product['wavelengths'][i_act, :],
+            spline = CubicSpline(l1_product['wavelengths'],
                                  l1_product['spectra'][i_alt, i_act, :])
             new_spectra[i_alt, i_act, :] = spline(wavelengths_out[i_act, :])
-            spline = CubicSpline(l1_product['wavelengths'][i_act, :],
+            spline = CubicSpline(l1_product['wavelengths'],
                                  l1_product['spectra_noise'][i_alt, i_act, :])
             new_spectra_noise[i_alt, i_act, :] = spline(
                 wavelengths_out[i_act, :])

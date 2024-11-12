@@ -3,6 +3,9 @@
 
 #include "ckd.h"
 
+#include "constants.h"
+
+#include <algorithm>
 #include <cstdint>
 #include <netcdf>
 #include <spdlog/spdlog.h>
@@ -23,13 +26,13 @@ static auto getAndReshape(const netCDF::NcVar& nc_var,
     }
 }
 
-CKD::CKD(const std::string& filename, const double spectrum_width)
+CKD::CKD(const std::string& filename)
 {
     const netCDF::NcFile nc { filename, netCDF::NcFile::read };
     n_detector_rows = static_cast<int>(nc.getDim("detector_row").getSize());
     n_detector_cols = static_cast<int>(nc.getDim("detector_column").getSize());
     npix = n_detector_cols * n_detector_rows;
-    n_act = static_cast<int>(nc.getDim("across_track").getSize());
+    n_act = static_cast<int>(nc.getDim("across_track_sample").getSize());
     // Read the pixel mask which is possibly not yet in its final
     // state. It may be updated by one or more detector calibration
     // steps.
@@ -39,155 +42,107 @@ CKD::CKD(const std::string& filename, const double spectrum_width)
     for (int i {}; i < npix; ++i) {
         pixel_mask[i] = static_cast<bool>(pixel_mask_u8[i]);
     }
-    if (const netCDF::NcGroup grp { nc.getGroup("dark") }; !grp.isNull()) {
-        spdlog::info("Reading dark CKD");
-        dark.enabled = true;
-        dark.offset.resize(npix);
-        dark.current.resize(npix);
-        grp.getVar("offset").getVar(dark.offset.data());
-        grp.getVar("current").getVar(dark.current.data());
-    }
-    if (const netCDF::NcGroup grp { nc.getGroup("noise") }; !grp.isNull()) {
-        spdlog::info("Reading noise CKD");
-        noise.enabled = true;
-        noise.g.resize(npix);
-        noise.n2.resize(npix);
-        grp.getVar("g").getVar(noise.g.data());
-        grp.getVar("n").getVar(noise.n2.data());
-        for (double& val : noise.n2) {
-            val *= val;
-        }
-    }
-    if (const netCDF::NcGroup grp { nc.getGroup("nonlinearity") };
-        !grp.isNull()) {
-        spdlog::info("Reading nonlinearity CKD");
-        nonlin.enabled = true;
-        const auto n_knots { grp.getDim("knots").getSize() };
-        std::vector<double> knots(n_knots);
-        std::vector<double> y(n_knots);
-        grp.getVar("knots").getVar(knots.data());
-        grp.getVar("y").getVar(y.data());
-        nonlin.spline = { knots, y };
-    }
-    if (const netCDF::NcGroup grp { nc.getGroup("prnu") }; !grp.isNull()) {
-        spdlog::info("Reading dark CKD");
-        prnu.enabled = true;
-        prnu.prnu.resize(npix);
-        grp.getVar("prnu").getVar(prnu.prnu.data());
-    }
-    if (const netCDF::NcGroup grp { nc.getGroup("stray") }; !grp.isNull()) {
-        spdlog::info("Reading stray light CKD");
-        stray.enabled = true;
-        stray.n_kernels = static_cast<int>(grp.getDim("kernel").getSize());
-        stray.kernel_rows.resize(stray.n_kernels);
-        grp.getVar("kernel_rows").getVar(stray.kernel_rows.data());
-        stray.kernel_cols.resize(stray.n_kernels);
-        grp.getVar("kernel_cols").getVar(stray.kernel_cols.data());
-        stray.kernel_fft_sizes.resize(stray.n_kernels);
-        grp.getVar("kernel_fft_sizes").getVar(stray.kernel_fft_sizes.data());
-        stray.kernels_fft.resize(stray.n_kernels);
-        for (int i {}; i < stray.n_kernels; ++i) {
-            stray.kernels_fft[i].resize(stray.kernel_fft_sizes[i]);
-        }
-        std::vector<size_t> start { 0 };
-        for (int i_kernel {}; i_kernel < stray.n_kernels; ++i_kernel) {
-            // Need to multiply by 2 because of complex numbers
-            const std::vector<size_t> count {
-                2 * static_cast<size_t>(stray.kernel_fft_sizes.at(i_kernel))
-            };
-            grp.getVar("kernels_fft")
-              .getVar(start, count, stray.kernels_fft.at(i_kernel).data());
-            start.front() += count.front();
-        }
-        stray.eta.resize(npix);
-        grp.getVar("eta").getVar(stray.eta.data());
-        stray.weights.resize(stray.n_kernels, std::vector<double>(npix));
-        std::vector<double> buf(stray.n_kernels * npix);
-        grp.getVar("weights").getVar(buf.data());
-        for (int i {}; i < stray.n_kernels; ++i) {
-            for (int j {}; j < npix; ++j) {
-                stray.weights[i][j] = buf[i * npix + j];
-            }
-        }
-        stray.edges.resize(4 * stray.n_kernels);
-        grp.getVar("edges").getVar(stray.edges.data());
-    }
-    if (const netCDF::NcGroup grp { nc.getGroup("swath") }; !grp.isNull()) {
-        spdlog::info("Reading swath CKD");
-        swath.enabled = true;
-        swath.row_indices.resize(n_act, std::vector<double>(n_detector_cols));
-        getAndReshape(grp.getVar("row_index"), swath.row_indices);
-        genPixelIndices(spectrum_width);
-    }
-    if (const netCDF::NcGroup grp { nc.getGroup("spectral") }; !grp.isNull()) {
-        spdlog::info("Reading spectral CKD");
-        wave.enabled = true;
-        wave.wavelength.resize(n_act, std::vector<double>(n_detector_cols));
-        getAndReshape(grp.getVar("wavelength"), wave.wavelength);
-    }
-    if (const netCDF::NcGroup grp { nc.getGroup("radiometric") };
-        !grp.isNull()) {
-        spdlog::info("Reading radiometric CKD");
-        rad.enabled = true;
-        rad.rad.resize(n_act, std::vector<double>(n_detector_cols));
-        getAndReshape(grp.getVar("radiometric"), rad.rad);
-    }
-}
 
-auto CKD::genPixelIndices(const double spectrum_width) -> void
-{
-    // Convert fractional detector row coordinates into pixel indices
-    // and weight factors.
-    const double spectrum_width_half { spectrum_width / 2 };
-    swath.n_indices = static_cast<int>(std::ceil(spectrum_width) + 1);
-    swath.pix_indices.resize(
-      n_act, std::vector<int>(n_detector_cols * swath.n_indices));
-    swath.weights.resize(
-      n_act, std::vector<double>(n_detector_cols * swath.n_indices));
-    // Based on the argument spectrum_width, each spectral element
-    // spans N rows on the detector. The weight of the first and last
-    // rows are determined by where exactly the edge of the spectrum
-    // falls. All middle rows have the same constant weight (1 before
-    // normalization).
-    for (int i_act {}; i_act < n_act; ++i_act) {
-        for (int i {}; i < n_detector_cols; ++i) {
-            const double row_first_d { swath.row_indices[i_act][i] + 0.5
-                                       - spectrum_width_half };
-            const double row_last_d { swath.row_indices[i_act][i] + 0.5
-                                      + spectrum_width_half };
-            const int row_first_i { static_cast<int>(row_first_d) };
-            const int row_last_i { static_cast<int>(row_last_d) };
-            auto& indices { swath.pix_indices[i_act] };
-            auto& weights { swath.weights[i_act] };
-            indices[i * swath.n_indices] = row_first_i * n_detector_cols + i;
-            indices[(i + 1) * swath.n_indices - 1] =
-              row_last_i * n_detector_cols + i;
-            weights[i * swath.n_indices] = std::ceil(row_first_d) - row_first_d;
-            weights[(i + 1) * swath.n_indices - 1] =
-              row_last_d - std::floor(row_last_d);
-            for (int i_ind { 1 }; i_ind < swath.n_indices - 1; ++i_ind) {
-                const int idx { i * swath.n_indices + i_ind };
-                indices[idx] = (row_first_i + i_ind) * n_detector_cols + i;
-                weights[idx] = 1.0;
-            }
-            const int idx { i * swath.n_indices };
-            if (indices[idx] == indices[idx + 1]) {
-                weights[idx + 1] = 0.0;
-            }
-            if (indices[idx + swath.n_indices - 1]
-                  == indices[idx + swath.n_indices - 2]
-                && swath.n_indices > 2) {
-                weights[idx + swath.n_indices - 2] = 0.0;
-            }
-            double weights_norm {};
-            for (int i_ind {}; i_ind < swath.n_indices; ++i_ind) {
-                weights_norm += weights[i * swath.n_indices + i_ind];
-            }
-            for (int i_ind {}; i_ind < swath.n_indices; ++i_ind) {
-                weights[i * swath.n_indices + i_ind] /= weights_norm;
-            }
+    spdlog::info("Reading dark CKD");
+    netCDF::NcGroup grp {};
+    grp = nc.getGroup("dark");
+    dark.offset.resize(npix);
+    dark.current.resize(npix);
+    grp.getVar("offset").getVar(dark.offset.data());
+    grp.getVar("current").getVar(dark.current.data());
+
+    spdlog::info("Reading noise CKD");
+    grp = nc.getGroup("noise");
+    noise.g.resize(npix);
+    noise.n2.resize(npix);
+    grp.getVar("g").getVar(noise.g.data());
+    grp.getVar("n").getVar(noise.n2.data());
+    for (double& val : noise.n2) {
+        val *= val;
+    }
+
+    spdlog::info("Reading nonlinearity CKD");
+    grp = nc.getGroup("nonlinearity");
+    const auto n_knots { grp.getDim("knots").getSize() };
+    std::vector<double> knots(n_knots);
+    std::vector<double> y(n_knots);
+    grp.getVar("knots").getVar(knots.data());
+    grp.getVar("y").getVar(y.data());
+    nonlin.spline = { knots, y };
+
+    spdlog::info("Reading dark CKD");
+    grp = nc.getGroup("prnu");
+    prnu.prnu.resize(npix);
+    grp.getVar("prnu").getVar(prnu.prnu.data());
+
+    spdlog::info("Reading stray light CKD");
+    grp = nc.getGroup("stray");
+    stray.n_kernels = static_cast<int>(grp.getDim("kernel").getSize());
+    stray.kernel_rows.resize(stray.n_kernels);
+    grp.getVar("kernel_rows").getVar(stray.kernel_rows.data());
+    stray.kernel_cols.resize(stray.n_kernels);
+    grp.getVar("kernel_cols").getVar(stray.kernel_cols.data());
+    stray.kernel_fft_sizes.resize(stray.n_kernels);
+    grp.getVar("kernel_fft_sizes").getVar(stray.kernel_fft_sizes.data());
+    stray.kernels_fft.resize(stray.n_kernels);
+    for (int i {}; i < stray.n_kernels; ++i) {
+        stray.kernels_fft[i].resize(stray.kernel_fft_sizes[i]);
+    }
+    std::vector<size_t> start { 0 };
+    for (int i_kernel {}; i_kernel < stray.n_kernels; ++i_kernel) {
+        // Need to multiply by 2 because of complex numbers
+        const std::vector<size_t> count {
+            2 * static_cast<size_t>(stray.kernel_fft_sizes.at(i_kernel))
+        };
+        grp.getVar("kernels_fft")
+          .getVar(start, count, stray.kernels_fft.at(i_kernel).data());
+        start.front() += count.front();
+    }
+    stray.eta.resize(npix);
+    grp.getVar("eta").getVar(stray.eta.data());
+    stray.weights.resize(stray.n_kernels, std::vector<double>(npix));
+    std::vector<double> buf(stray.n_kernels* npix);
+    grp.getVar("weights").getVar(buf.data());
+    for (int i {}; i < stray.n_kernels; ++i) {
+        for (int j {}; j < npix; ++j) {
+            stray.weights[i][j] = buf[i * npix + j];
         }
     }
+    stray.edges.resize(4 * stray.n_kernels);
+    grp.getVar("edges").getVar(stray.edges.data());
+
+    spdlog::info("Reading swath CKD");
+    grp = nc.getGroup("swath");
+    const auto n_intermediate_waves { grp.getDim("wavelength").getSize() };
+    swath.wavelengths.resize(n_intermediate_waves);
+    grp.getVar("wavelength").getVar(swath.wavelengths.data());
+    swath.act_angles.resize(n_act);
+    grp.getVar("act_angle").getVar(swath.act_angles.data());
+    swath.act_map.resize(npix);
+    grp.getVar("act_map").getVar(swath.act_map.data());
+    swath.wavelength_map.resize(npix);
+    grp.getVar("wavelength_map").getVar(swath.wavelength_map.data());
+    swath.row_map.resize(n_act * n_intermediate_waves);
+    grp.getVar("row_map").getVar(swath.row_map.data());
+    swath.col_map.resize(n_act * n_intermediate_waves);
+    grp.getVar("col_map").getVar(swath.col_map.data());
+    swath.los.resize(n_act * dims::vec);
+    grp.getVar("line_of_sight").getVar(swath.los.data());
+
+    spdlog::info("Reading spectral CKD");
+    grp = nc.getGroup("spectral");
+    wave.wavelengths.resize(n_act, std::vector<double>(n_detector_cols));
+    getAndReshape(grp.getVar("wavelength"), wave.wavelengths);
+    if (wave.wavelengths.front()[1] < wave.wavelengths.front()[0]) {
+        for (auto& waves : wave.wavelengths) {
+            std::ranges::reverse(waves);
+        }
+    }
+
+    spdlog::info("Reading radiometric CKD");
+    grp = nc.getGroup("radiometric");
+    rad.rad.resize(n_act, std::vector<double>(n_detector_cols));
+    getAndReshape(grp.getVar("radiometric"), rad.rad);
 }
 
 } // namespace tango

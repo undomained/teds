@@ -4,7 +4,7 @@
 target_sources(tango_im PRIVATE
   driver.cpp
   settings_im.cpp
-  uncalibration.cpp
+  forward_models.cpp
 )
 
 target_sources(tango_im.x PRIVATE main.cpp)

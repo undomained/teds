@@ -487,7 +487,7 @@ def level1b_to_level2_processor_RTorCH4(config):
     )  # nm
     N_lbl_wls = len(wave_lbl)
 
-    # Geometry dimensions: along_track, across_track
+    # Geometry dimensions: along_track_sample, across_track_sample
     sza_full = l1b['sza']
     vza_full = l1b['vza']
     N_alt, N_act = sza_full.shape
@@ -591,7 +591,7 @@ def level1b_to_level2_processor_RTorCH4(config):
         init_conc
     )
 
-    # Wavelength dimensions: across_track, wavelength
+    # Wavelength dimensions: across_track_sample, wavelength
     obs_wls = l1b['wavelength']
     wlmask = np.amin(
         (
@@ -1063,13 +1063,12 @@ def level1b_to_level2_processor_RTorCH4(config):
         )
 
 
-
 def level1b_to_level2_processor(config, sw_diag_output = False):
     # get the l1b files
 
     print('level 1B to 2 proessor ...')
     l1b = get_l1b(config['io_files']['input_l1b'])
-    
+
     # get sgm geo data
     surf_sgm, atm_sgm = get_sgm_atm(config['io_files']['input_sgm'])
 
@@ -1155,9 +1154,6 @@ def level1b_to_level2_processor(config, sw_diag_output = False):
     l2product = np.ndarray((nalt, nact), np.object_)
     measurement = np.ndarray((nalt, nact), np.object_)
 
-#    plt.plot(l1b['wavelength'][0,mask[0,0,:]], l1b['radiance'][0,0,mask[0,0,:]])
-#    plt.plot(l1b['wavelength'][10,mask[0,9,:]], l1b['radiance'][0,9,mask[0,9,:]])
-#    sys.exit()
     # We introduce two types of ialt indices, ialt points to l1b data structure and ilat_l2 to l2 data structure.
     # Later is different to l1b structure because of option for image selection (sw_ALT_select).
 

@@ -12,15 +12,17 @@ target_sources(tango_l1b PRIVATE
   settings_l1b.cpp
   yaml.cpp
   # Math
+  linalg.cpp
   algorithm.cpp
   linear_spline.cpp
   cubic_spline.cpp
+  b_spline.cpp
+  b_spline_2d.cpp
   fourier.cpp
   # Processing
   binning_table.cpp
   calibration.cpp
   ckd.cpp
-  spectrum.cpp
 )
 target_sources(tango_l1b.x PRIVATE main.cpp)
 

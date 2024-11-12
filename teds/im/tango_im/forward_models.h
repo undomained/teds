@@ -40,9 +40,9 @@ auto applyISRF(const CKD& ckd,
 // Undo radiometric calibration
 auto radiometric(const CKD& ckd, const bool enabled, L1& l1) -> void;
 
-// Draw spectra on the detector. After this spectra will be
-// deallocated and we work with the detector image.
-auto drawOnDetector(const CKD& ckd, L1& l1) -> void;
+// Map spectra to the detector. After this spectra will be deallocated
+// and we work with the detector image.
+auto mapToDetector(const CKD& ckd, const int b_spline_order, L1& l1) -> void;
 
 // Add stray light to the image
 auto strayLight(const CKD& ckd, const bool enabled, L1& l1) -> void;

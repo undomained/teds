@@ -21,6 +21,7 @@ auto SettingsIM::scanKeys() -> void
 
     scan(isrf.enabled);
     scan(isrf.fwhm_gauss);
+    scan(isrf.shape);
 
     scan(dark.enabled);
 
@@ -32,6 +33,8 @@ auto SettingsIM::scanKeys() -> void
     scan(prnu.enabled);
 
     scan(stray.enabled);
+
+    scan(swath.b_spline_order);
 
     scan(rad.enabled);
 

@@ -13,11 +13,10 @@ namespace tango {
     int i_begin {};
     int i_end { static_cast<int>(list.size() - 1) };
     int i_mid {};
-    if (x <= list.front() || x >= list.back()) {
-        return fill::i;
-    } else if (x == list.front()) {
+    if (x <= list.front()) {
         return i_begin;
-    } else if (x == list.back()) {
+    }
+    if (x >= list.back()) {
         return i_end;
     }
     while (true) {

@@ -13,17 +13,11 @@ namespace tango {
 
 class CKD
 {
-private:
-    // Generate integer pixel indices and weights from the fractional
-    // row indices. The argument is the width of a spectrum on the
-    // detector in units of pixel rows.
-    auto genPixelIndices(const double spectrum_width) -> void;
-
 public:
     CKD() = default;
     // Construct the CKD from a NetCDF file. The second argument
     // defines the number of pixels comprising one spectral element.
-    CKD(const std::string& filename, const double spectrum_width = 1.0);
+    CKD(const std::string& filename);
 
     // Number of detector pixels in the spatial direction
     int n_detector_rows {};
@@ -41,9 +35,6 @@ public:
     // Dark
     struct
     {
-        // This and other processing steps are enabled if the relevant
-        // section is found in the CKD file.
-        bool enabled { false };
         // Dark offset (independent of integration time)
         std::vector<double> offset {};
         // Dark current per second of integration time
@@ -53,7 +44,6 @@ public:
     // Noise
     struct
     {
-        bool enabled { false };
         // Conversion gain (signal dependent noise term)
         std::vector<double> g {};
         // Square of read noise (signal independent noise term)
@@ -63,7 +53,6 @@ public:
     // Nonlinearity
     struct
     {
-        bool enabled { false };
         // Nonlinearity is stored in a single pixel-independent spline
         LinearSpline spline {};
     } nonlin;
@@ -71,7 +60,6 @@ public:
     // PRNU
     struct
     {
-        bool enabled { false };
         // Photoresponse non-uniformity
         std::vector<double> prnu {};
     } prnu;
@@ -79,7 +67,6 @@ public:
     // Stray light
     struct
     {
-        bool enabled { false };
         // Number of stray light kernels
         int n_kernels {};
         // Number of rows of each kernel
@@ -103,16 +90,18 @@ public:
     // Swath
     struct
     {
-        bool enabled { false };
-        // Row indices at which to extract each spectrum
-        // Dimensions: (n_act, n_detector_cols)
-        std::vector<std::vector<double>> row_indices {};
-        // Number of pixels from which one spectral element is constructed
-        int n_indices {};
-        // Pixels from which one spectral element is constructed
-        std::vector<std::vector<int>> pix_indices {};
-        // Weights of pixels comprising a given spectral element
-        std::vector<std::vector<double>> weights {};
+        // Across track angles
+        std::vector<double> act_angles {};
+        // Intermediate wavelengths after ISRF convolution
+        std::vector<double> wavelengths {};
+        // ACT angle of each detector pixel
+        std::vector<double> act_map {};
+        // Wavelength of each detector pixel
+        std::vector<double> wavelength_map {};
+        // Row index of each L1B spectral element
+        std::vector<double> row_map {};
+        // Column index of each L1B spectral element
+        std::vector<double> col_map {};
         // Line of sight vectors
         // Dimensions: (n_act, 3)
         std::vector<double> los {};
@@ -122,16 +111,14 @@ public:
     // Spectral
     struct
     {
-        bool enabled { false };
         // Wavelengths assigned to each detector column of each L1B spectrum.
         // Dimensions: (n_act, n_detector_cols).
-        std::vector<std::vector<double>> wavelength {};
+        std::vector<std::vector<double>> wavelengths {};
     } wave;
 
     // Radiometric
     struct
     {
-        bool enabled { false };
         // Radiometric calibration constants
         // Dimensions: (n_act, n_detector_cols).
         std::vector<std::vector<double>> rad {};

@@ -681,4 +681,5 @@ def write_l1(filename: str,
         var_vza.units = 'degrees'
         var_vza.valid_min = -90.0
         var_vza.valid_max = 90.0
+    out.close()
     return filename

@@ -3,8 +3,8 @@
 
 #include "driver.h"
 
+#include "forward_models.h"
 #include "settings_im.h"
-#include "uncalibration.h"
 
 #include <netcdf>
 #include <spdlog/spdlog.h>
@@ -30,6 +30,53 @@ static auto setL1Meta(const SettingsIM& settings,
         l1.nr_coadditions =
           static_cast<uint16_t>(settings.detector.nr_coadditions);
         l1.exposure_time = settings.detector.exposure_time;
+    }
+}
+
+// Generate an ISRF kernel for convolving the radiances from the
+// line-by-line grid onto the intermediate grids from the CKD swath
+// section.
+static auto genISRFKernel(const double fwhm_gauss,
+                          const double shape,
+                          const std::vector<double>& lbl_wavelengths,
+                          const std::vector<double>& wavelengths,
+                          Eigen::SparseMatrix<double>& isrf)
+  -> void
+{
+    isrf =
+      Eigen::SparseMatrix<double>(wavelengths.size(), lbl_wavelengths.size());
+    const bool do_gaussian { std::abs(shape - 2.0) < 1e-30 };
+    const double sigma { fwhm_gauss / (2.0 * std::sqrt(2.0 * std::log(2.0))) };
+    const double sigma_2inv { 1.0 / (2.0 * sigma * sigma) };
+    std::vector<Eigen::Triplet<double>> triplets {};
+    std::vector<double> row_sums(isrf.rows(), 0.0); // For normalization
+    for (int i_wave {}; i_wave < isrf.rows(); ++i_wave) {
+        for (int i_lbl {}; i_lbl < isrf.cols(); ++i_lbl) {
+            // Convolution result for this CKD wavelength
+            double conv { wavelengths[i_wave] - lbl_wavelengths[i_lbl] };
+            // Reduce the computational cost by considering the
+            // limited extent of the Gaussian.
+            constexpr double wave_rel_threshold { 1.5 };
+            if (std::abs(conv) > wave_rel_threshold * fwhm_gauss) {
+                continue;
+            }
+            if (do_gaussian) {
+                conv = std::exp(-(conv * conv * sigma_2inv));
+            } else {
+                conv = std::pow(
+                  2.0, -std::pow(2 * std::abs(conv) / fwhm_gauss, shape));
+            }
+            row_sums[i_wave] += conv;
+            triplets.push_back({ i_wave, i_lbl, conv });
+        }
+    }
+    isrf.setFromTriplets(triplets.begin(), triplets.end());
+    // Normalize
+    for (int k {}; k < isrf.outerSize(); ++k) {
+        for (Eigen::SparseMatrix<double>::InnerIterator it { isrf, k }; it;
+             ++it) {
+            it.valueRef() /= row_sums[it.row()];
+        }
     }
 }
 
@@ -70,6 +117,18 @@ auto driver(const SettingsIM& settings,
            l1_products);
     setL1Meta(settings, l1_products);
 
+    // Generate the ISRF matrix
+    Eigen::SparseMatrix<double> isrf {};
+    if (settings.isrf.enabled && l1_products.front().level == ProcLevel::sgm
+        && settings.cal_level <= ProcLevel::sgm) {
+        spdlog::info("Generating ISRF matrix for convolution");
+        genISRFKernel(settings.isrf.fwhm_gauss,
+                      settings.isrf.shape,
+                      (*l1_products.front().wavelengths).front(),
+                      ckd.swath.wavelengths,
+                      isrf);
+    }
+
     // Run the forward model (main loop)
     printHeading("Forward model");
     std::array<Timer, static_cast<int>(ProcLevel::n_levels)> timers {};
@@ -84,7 +143,7 @@ auto driver(const SettingsIM& settings,
         if (l1.level == ProcLevel::sgm
             && settings.cal_level <= ProcLevel::sgm) {
             timers[static_cast<int>(ProcLevel::sgm)].start();
-            applyISRF(ckd, settings.isrf.enabled, settings.isrf.fwhm_gauss, l1);
+            applyISRF(ckd, settings.isrf.enabled, isrf, l1);
             timers[static_cast<int>(ProcLevel::sgm)].stop();
         }
         // Radiometric
@@ -97,7 +156,7 @@ auto driver(const SettingsIM& settings,
         if (l1.level >= ProcLevel::swath
             && settings.cal_level < ProcLevel::swath) {
             timers[static_cast<int>(ProcLevel::swath)].start();
-            drawOnDetector(ckd, l1);
+            mapToDetector(ckd, settings.swath.b_spline_order, l1);
             timers[static_cast<int>(ProcLevel::swath)].stop();
         }
         // Stray light
@@ -122,11 +181,11 @@ auto driver(const SettingsIM& settings,
             timers[static_cast<int>(ProcLevel::nonlin)].stop();
         }
         // Dark current
-        if (l1.level >= ProcLevel::dark
-            && settings.cal_level < ProcLevel::dark) {
-            timers[static_cast<int>(ProcLevel::dark)].start();
+        if (l1.level >= ProcLevel::dark_current
+            && settings.cal_level < ProcLevel::dark_current) {
+            timers[static_cast<int>(ProcLevel::dark_current)].start();
             darkCurrent(ckd, settings.dark.enabled, l1);
-            timers[static_cast<int>(ProcLevel::dark)].stop();
+            timers[static_cast<int>(ProcLevel::dark_current)].stop();
         }
         // Noise
         if (l1.level >= ProcLevel::noise
@@ -136,11 +195,11 @@ auto driver(const SettingsIM& settings,
             timers[static_cast<int>(ProcLevel::noise)].stop();
         }
         // Dark offset
-        if (l1.level >= ProcLevel::dark
-            && settings.cal_level < ProcLevel::dark) {
-            timers[static_cast<int>(ProcLevel::dark)].start();
+        if (l1.level >= ProcLevel::dark_offset
+            && settings.cal_level < ProcLevel::dark_offset) {
+            timers[static_cast<int>(ProcLevel::dark_offset)].start();
             darkOffset(ckd, settings.dark.enabled, l1);
-            timers[static_cast<int>(ProcLevel::dark)].stop();
+            timers[static_cast<int>(ProcLevel::dark_offset)].stop();
         }
         // Coaddition, binning, and ADC conversion
         if (l1.level >= ProcLevel::raw
@@ -153,7 +212,13 @@ auto driver(const SettingsIM& settings,
     timer_total.stop();
     spdlog::info("Processing images 100.0%");
     // For writing to output switch out the LBL wavelength grid
-    *l1_products.front().wavelength = ckd.wave.wavelength;
+    if (l1_products.front().wavelengths->front().size()
+        == ckd.wave.wavelengths.front().size()) {
+        *l1_products.front().wavelengths = ckd.wave.wavelengths;
+    } else {
+        *l1_products.front().wavelengths =
+          std::vector<std::vector<double>>(ckd.n_act, ckd.swath.wavelengths);
+    }
 
     Timer timer_output {};
     timer_output.start();
@@ -174,10 +239,12 @@ auto driver(const SettingsIM& settings,
                  timers[static_cast<int>(ProcLevel::prnu)].time());
     spdlog::info("        Nonlinearity: {:8.3f} s",
                  timers[static_cast<int>(ProcLevel::nonlin)].time());
-    spdlog::info("Dark offset, current: {:8.3f} s",
-                 timers[static_cast<int>(ProcLevel::dark)].time());
+    spdlog::info("         Dark current: {:8.3f} s",
+                 timers[static_cast<int>(ProcLevel::dark_current)].time());
     spdlog::info("               Noise: {:8.3f} s",
                  timers[static_cast<int>(ProcLevel::noise)].time());
+    spdlog::info("         Dark offset: {:8.3f} s",
+                 timers[static_cast<int>(ProcLevel::dark_offset)].time());
     spdlog::info("      ADC conversion: {:8.3f} s",
                  timers[static_cast<int>(ProcLevel::l1a)].time());
     spdlog::info("      Writing output: {:8.3f} s", timer_output.time());

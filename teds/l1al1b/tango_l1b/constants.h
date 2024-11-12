@@ -28,8 +28,9 @@ enum class ProcLevel
 {
     l1a,
     raw, // Like L1A but data stored as floating point numbers
-    dark,
+    dark_offset,
     noise,
+    dark_current,
     nonlin,
     prnu,
     stray,

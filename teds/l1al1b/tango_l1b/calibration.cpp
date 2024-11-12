@@ -3,6 +3,7 @@
 
 #include "calibration.h"
 
+#include "b_spline_2d.h"
 #include "binning_table.h"
 #include "ckd.h"
 #include "cubic_spline.h"
@@ -10,103 +11,30 @@
 #include "l1.h"
 
 #include <algorithm>
+#include <numeric>
 
 namespace tango {
 
-// Smooth over bad values. This is necessary for algorithms such as
-// stray light correction which use all pixels.
-static auto fillHoles(const std::vector<bool>& pixel_mask,
-                      std::vector<double>& image) -> void
-{
-    const int i_last { static_cast<int>(image.size() - 1) };
-    for (int i {}; i < static_cast<int>(image.size()); ++i) {
-        if (pixel_mask[i]) {
-            // Unless we are at either end of the image array or one
-            // or both of the neighboring pixels are bad, take the
-            // average of the neighboring values.
-            int n_good {};
-            image[i] = 0.0;
-            if (i > 0 && !pixel_mask[i - 1]) {
-                image[i] += image[i - 1];
-                ++n_good;
-            }
-            if (i < i_last && !pixel_mask[i + 1]) {
-                image[i] += image[i + 1];
-                ++n_good;
-            }
-            image[i] /= std::max(1, n_good);
-        }
-    }
-}
-
-auto binningTable(const BinningTable& binning_table,
-                  const Unbin unbin,
-                  const int n_rows,
-                  const int n_cols,
+auto binningTable(const CKD& ckd,
+                  const BinningTable& binning_table,
                   L1& l1) -> void
 {
-    auto pixel_mask { l1.pixel_mask };
-    if (unbin != Unbin::none) {
-        binning_table.bin(pixel_mask);
-    }
+    l1.level = ProcLevel::raw;
     for (int i {}; i < static_cast<int>(l1.image.size()); ++i) {
-        if (!pixel_mask[i]) {
+        if (!ckd.pixel_mask[i]) {
             l1.image[i] /= binning_table.binSize(i);
         }
     }
-    l1.level = ProcLevel::raw;
-    if (unbin == Unbin::none) {
-        return;
-    }
-    // This algorithm assumes no binning across columns
-    std::vector<double> row_indices {};
-    for (int i_row {}; i_row < n_rows;) {
-        const int bin_size { binning_table.binSize(
-          binning_table.binIndex(i_row * n_cols)) };
-        row_indices.push_back(i_row + 0.5 * bin_size - 0.5);
-        i_row += bin_size;
-    }
-    const int n_rows_binned { static_cast<int>(row_indices.size()) };
-    std::vector<double> row_values(n_rows_binned);
-    std::vector<double> image_unbinned(n_rows * n_cols);
-    if (unbin == Unbin::nearest) {
-        binning_table.unbin(l1.image, image_unbinned);
-    } else {
-        fillHoles(pixel_mask, l1.image);
-        for (int i_col {}; i_col < n_cols; ++i_col) {
-            for (int i_row {}; i_row < n_rows_binned; ++i_row) {
-                row_values[i_row] = l1.image[i_row * n_cols + i_col];
-            }
-            if (unbin == Unbin::linear) {
-                const LinearSpline spline { row_indices, row_values };
-                for (int i_row {}; i_row < n_rows; ++i_row) {
-                    image_unbinned[i_row * n_cols + i_col] =
-                      spline.eval(static_cast<double>(i_row));
-                }
-            } else if (unbin == Unbin::cubic) {
-                const CubicSpline spline { row_indices, row_values };
-                for (int i_row {}; i_row < n_rows; ++i_row) {
-                    image_unbinned[i_row * n_cols + i_col] =
-                      spline.eval(static_cast<double>(i_row));
-                }
-            }
-        }
-    }
-    l1.image = std::move(image_unbinned);
-    l1.stdev.resize(l1.image.size());
-    // Image dimensions have changed and this should be reflected in
-    // the binning_table NetCDF attribute in case such a product is
-    // produced.
-    l1.binning_table_id = 0;
 }
 
 auto darkOffset(const CKD& ckd, const bool enabled, L1& l1) -> void
 {
+    l1.level = ProcLevel::dark_offset;
     if (!enabled) {
         return;
     }
     for (int i {}; i < static_cast<int>(l1.image.size()); ++i) {
-        if (!l1.pixel_mask[i]) {
+        if (!ckd.pixel_mask[i]) {
             l1.image[i] -= ckd.dark.offset[i];
         }
     }
@@ -117,65 +45,90 @@ auto noise(const CKD& ckd,
            const BinningTable& binning_table,
            L1& l1) -> void
 {
+    l1.level = ProcLevel::noise;
     if (!enabled) {
         l1.stdev.assign(l1.image.size(), 1.0);
         return;
     }
     for (int i {}; i < static_cast<int>(l1.image.size()); ++i) {
-        if (l1.pixel_mask[i]) {
-            continue;
-        }
-        const double var { ckd.noise.g[i] * l1.image[i] + ckd.noise.n2[i] };
-        if (var <= 0.0) {
-            l1.pixel_mask[i] = true;
-        } else if (l1.binning_table_id != 0) {
+        if (!ckd.pixel_mask[i]) {
+            const double var { ckd.noise.g[i] * std::abs(l1.image[i])
+                               + ckd.noise.n2[i] };
             l1.stdev[i] =
               std::sqrt(var / (l1.nr_coadditions * binning_table.binSize(i)));
-        } else {
-            l1.stdev[i] = std::sqrt(var / l1.nr_coadditions);
         }
     }
 }
 
 auto darkCurrent(const CKD& ckd, const bool enabled, L1& l1) -> void
 {
+    l1.level = ProcLevel::dark_current;
     if (!enabled) {
         return;
     }
     for (int i {}; i < static_cast<int>(l1.image.size()); ++i) {
-        if (!l1.pixel_mask[i]) {
+        if (!ckd.pixel_mask[i]) {
             l1.image[i] -= ckd.dark.current[i] * l1.exposure_time;
         }
     }
-    l1.level = ProcLevel::dark;
 }
 
 auto nonlinearity(const CKD& ckd, const bool enabled, L1& l1) -> void
 {
+    l1.level = ProcLevel::nonlin;
     if (!enabled) {
         return;
     }
     for (int i {}; i < static_cast<int>(l1.image.size()); ++i) {
-        if (!l1.pixel_mask[i]) {
+        if (!ckd.pixel_mask[i]) {
             l1.stdev[i] *= ckd.nonlin.spline.deriv(l1.image[i]);
             l1.image[i] = ckd.nonlin.spline.eval(l1.image[i]);
         }
     }
-    l1.level = ProcLevel::nonlin;
 }
 
 auto prnu(const CKD& ckd, const bool enabled, L1& l1) -> void
 {
+    l1.level = ProcLevel::prnu;
     if (!enabled) {
         return;
     }
     for (int i {}; i < static_cast<int>(l1.image.size()); ++i) {
-        if (!l1.pixel_mask[i]) {
+        if (!ckd.pixel_mask[i]) {
             l1.image[i] /= ckd.prnu.prnu[i];
             l1.stdev[i] /= ckd.prnu.prnu[i];
         }
     }
-    l1.level = ProcLevel::prnu;
+}
+
+auto removeBadValues(const CKD& ckd, L1& l1) -> void
+{
+    std::vector<double> x_values {};
+    std::vector<double> y_values_image {};
+    std::vector<double> y_values_stdev {};
+    for (int i_row {}; i_row < ckd.n_detector_rows; ++i_row) {
+        x_values.clear();
+        y_values_image.clear();
+        y_values_stdev.clear();
+        for (int i_col {}; i_col < ckd.n_detector_cols; ++i_col) {
+            const int idx { i_row * ckd.n_detector_cols + i_col };
+            if (!ckd.pixel_mask[idx]) {
+                x_values.push_back(static_cast<double>(i_col));
+                y_values_image.push_back(l1.image[idx]);
+                y_values_stdev.push_back(l1.stdev[idx]);
+            }
+        }
+        const CubicSpline spline_image { x_values, y_values_image };
+        for (int i_col {}; i_col < ckd.n_detector_cols; ++i_col) {
+            l1.image[i_row * ckd.n_detector_cols + i_col] =
+              spline_image.eval(static_cast<double>(i_col));
+        }
+        const CubicSpline spline_stdev { x_values, y_values_stdev };
+        for (int i_col {}; i_col < ckd.n_detector_cols; ++i_col) {
+            l1.stdev[i_row * ckd.n_detector_cols + i_col] =
+              spline_stdev.eval(static_cast<double>(i_col));
+        }
+    }
 }
 
 auto strayLight(const CKD& ckd,
@@ -183,17 +136,13 @@ auto strayLight(const CKD& ckd,
                 const int n_van_cittert,
                 L1& l1) -> void
 {
+    l1.level = ProcLevel::stray;
     if (n_van_cittert == 0) {
         return;
     }
-    fillHoles(l1.pixel_mask, l1.image);
     // Unbin the image using the stray light binning table
     std::vector<double> image_unbin(ckd.npix);
-    if (l1.binning_table_id == 0) {
-        image_unbin = std::move(l1.image);
-    } else {
-        binning_table.unbin(l1.image, image_unbin);
-    }
+    binning_table.unbin(l1.image, image_unbin);
     // "Ideal" image, i.e. the one without stray light
     std::vector<double> image_ideal { image_unbin };
     // Part of the unbinned detector image
@@ -258,36 +207,72 @@ auto strayLight(const CKD& ckd,
               (image_unbin[i] - conv_result[i]) / (1 - ckd.stray.eta[i]);
         }
     }
-    if (l1.binning_table_id == 0) {
-        l1.image = std::move(image_ideal);
-    } else {
-        binning_table.bin(image_ideal, l1.image);
-    }
-    l1.level = ProcLevel::stray;
+    binning_table.bin(image_ideal, l1.image);
 }
 
-auto extractSpectra(const CKD& ckd, const bool enabled, L1& l1) -> void
+auto mapFromDetector(const CKD& ckd, const int b_spline_order, L1& l1) -> void
 {
-    l1.spectra.resize(ckd.n_act);
-    for (int i_act {}; i_act < ckd.n_act; ++i_act) {
-        l1.spectra[i_act].extract(
-          ckd, l1.image, l1.stdev, l1.pixel_mask, i_act);
-    }
+    l1.level = ProcLevel::swath;
+    std::vector<double> rows(ckd.n_detector_rows);
+    std::vector<double> cols(ckd.n_detector_cols);
+    std::iota(rows.begin(), rows.end(), 0.0);
+    std::iota(cols.begin(), cols.end(), 0.0);
+    const BSpline2D bspline_2d_image { b_spline_order, rows, cols, l1.image };
+    bspline_2d_image.eval(ckd.swath.row_map, ckd.swath.col_map, l1.spectra);
+    const BSpline2D bspline_2d_noise { b_spline_order, rows, cols, l1.stdev };
+    bspline_2d_noise.eval(
+      ckd.swath.row_map, ckd.swath.col_map, l1.spectra_stdev);
     l1.image = std::vector<double> {};
     l1.stdev = std::vector<double> {};
-    l1.level = ProcLevel::swath;
+}
+
+auto changeWavelengthGrid(const CKD& ckd, L1& l1) -> void
+{
+    const int n_waves_in { static_cast<int>(ckd.swath.wavelengths.size()) };
+    std::vector<double> spectra_out(ckd.n_act * ckd.n_detector_cols);
+    std::vector<double> spectra_stdev_out(ckd.n_act * ckd.n_detector_cols);
+    for (int i_act {}; i_act < ckd.n_act; ++i_act) {
+        const std::vector<double> spectrum {
+            l1.spectra.begin() + i_act * n_waves_in,
+            l1.spectra.begin() + (i_act + 1) * n_waves_in
+        };
+        const CubicSpline spline { ckd.swath.wavelengths, spectrum };
+        for (int i {}; i < ckd.n_detector_cols;++i) {
+            spectra_out[i_act * ckd.n_detector_cols + i] =
+              spline.eval(ckd.wave.wavelengths[i_act][i]);
+        }
+    }
+    for (int i_act {}; i_act < ckd.n_act; ++i_act) {
+        const std::vector<double> spectrum {
+            l1.spectra_stdev.begin() + i_act * n_waves_in,
+            l1.spectra_stdev.begin() + (i_act + 1) * n_waves_in
+        };
+        const CubicSpline spline { ckd.swath.wavelengths, spectrum };
+        for (int i {}; i < ckd.n_detector_cols;++i) {
+            spectra_stdev_out[i_act * ckd.n_detector_cols + i] =
+              spline.eval(ckd.wave.wavelengths[i_act][i]);
+        }
+    }
+    l1.spectra = std::move(spectra_out);
+    l1.spectra_stdev = std::move(spectra_stdev_out);
 }
 
 auto radiometric(const CKD& ckd, const bool enabled, L1& l1) -> void
 {
+    // Radiometric calibration is the last step to get to L1B
+    l1.level = ProcLevel::l1b;
     if (!enabled) {
         return;
     }
+    const double exposure_time_inv { 1.0 / l1.exposure_time };
     for (int i_act {}; i_act < ckd.n_act; ++i_act) {
-        l1.spectra[i_act].calibrate(ckd, l1.exposure_time, i_act);
+        for (int i {}; i < ckd.n_detector_cols; ++i) {
+            l1.spectra[i_act * ckd.n_detector_cols + i] *=
+              ckd.rad.rad[i_act][i] * exposure_time_inv;
+            l1.spectra_stdev[i_act * ckd.n_detector_cols + i] *=
+              ckd.rad.rad[i_act][i] * exposure_time_inv;
+        }
     }
-    // Radiometric calibration is the last step to get to L1B
-    l1.level = ProcLevel::l1b;
 }
 
 } // namespace tango

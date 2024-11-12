@@ -12,11 +12,7 @@
 
 #pragma once
 
-// #include "binning_table.h"
-
 #include "constants.h"
-// #include "settings_l1b.h"
-#include "spectrum.h"
 
 #include <memory>
 
@@ -25,15 +21,16 @@ namespace tango {
 struct L1
 {
     // Science data
-    std::vector<bool> pixel_mask {};
     std::vector<double> image {};
     std::vector<int> image_i32 {};
     std::vector<double> stdev {};
-    std::vector<Spectrum> spectra {};
+    std::vector<double> spectra {};
+    std::vector<double> spectra_stdev {};
+    std::vector<double> spectra_mask {};
     // Wavelength grid currently associated with the spectra (either
     // line-by-line or that of the CKD). It is the same for all
     // images.
-    std::shared_ptr<std::vector<std::vector<double>>> wavelength {};
+    std::shared_ptr<std::vector<std::vector<double>>> wavelengths {};
 
     // Geolocation data
     struct

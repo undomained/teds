@@ -3,6 +3,7 @@
 
 #include "cubic_spline.h"
 
+#include "algorithm.h"
 #include "linalg.h"
 
 #include <cmath>
@@ -93,24 +94,10 @@ CubicSpline::CubicSpline(const std::vector<double>& x_values,
 
 auto CubicSpline::lookupIdx(const double x) const -> int
 {
-    return static_cast<int>((x - knots.front()) / range * (knots.size() - 1));
-}
-
-auto CubicSpline::binaryFindIdx(const double x) const -> int
-{
-    int i_begin {};
-    int i_end { static_cast<int>(knots.size() - 1) };
-    int i_mid {};
-    while (true) {
-        i_mid = (i_begin + i_end) / 2;
-        if (x < knots[i_mid]) {
-            i_end = i_mid - 1;
-        } else if (x < knots[i_mid + 1]) {
-            return i_mid;
-        } else {
-            i_begin = i_mid + 1;
-        }
-    }
+    return std::min(
+      std::max(
+        0, static_cast<int>((x - knots.front()) / range * (knots.size() - 1))),
+      static_cast<int>(knots.size() - 1));
 }
 
 auto CubicSpline::eval(const double x) const -> double
@@ -121,9 +108,9 @@ auto CubicSpline::eval(const double x) const -> double
         return values.front() + A.front() * (x - knots.front());
     }
     if (x >= knots.back()) {
-        return values.back() + A.back() * (knots.back() - x);
+        return values.back() + A.back() * (x - knots.back());
     }
-    const int idx { equal_spacing ? lookupIdx(x) : binaryFindIdx(x) };
+    const int idx { equal_spacing ? lookupIdx(x) : binaryFindIdx(knots, x) };
     const double Dx { x - knots[idx] };
     const double Dx2 { Dx * Dx };
     const double Dx3 { Dx2 * Dx };

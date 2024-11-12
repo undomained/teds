@@ -139,14 +139,14 @@ def run_l1al1b(config_user: dict | None = None) -> None:
     # Output processing level
     cal_level = ProcLevel[config['cal_level'].lower()]
     if step_needed(ProcLevel.raw, l1_product['proc_level'], cal_level):
-        log.info('Removing binning')
+        log.info('Coadding and binning')
         cal.coadding_and_binning(l1_product, binning_table['count_table'])
     if config['dark']['enabled'] and step_needed(
             ProcLevel.dark_offset, l1_product['proc_level'], cal_level):
-        log.info('Removing offset')
+        log.info('Dark offset')
         cal.dark_offset(l1_product, ckd['dark']['offset'])
     if step_needed(ProcLevel.noise, l1_product['proc_level'], cal_level):
-        log.info('Determining noise')
+        log.info('Noise')
         # C++ code does not have first check
         if config['dark']['enabled'] and config['noise']['enabled']:
             cal.noise(l1_product,
@@ -157,15 +157,15 @@ def run_l1al1b(config_user: dict | None = None) -> None:
             l1_product['noise'] = np.full_like(l1_product['image'], np.nan)
     if config['dark']['enabled'] and step_needed(
             ProcLevel.dark_current, l1_product['proc_level'], cal_level):
-        log.info('Removing dark signal')
+        log.info('Dark current')
         cal.dark_current(l1_product, ckd['dark']['current'])
     if config['nonlin']['enabled'] and step_needed(
             ProcLevel.nonlin, l1_product['proc_level'], cal_level):
-        log.info('Removing non-linearity')
+        log.info('Nonlinearity')
         cal.nonlinearity(l1_product, ckd['pixel_mask'], ckd['nonlin'])
     if config['prnu']['enabled'] and step_needed(
             ProcLevel.prnu, l1_product['proc_level'], cal_level):
-        log.info('Removing PRNU')
+        log.info('PRNU')
         cal.prnu(l1_product, ckd['pixel_mask'], ckd['prnu']['prnu_qe'])
     if 'image' in l1_product:
         log.info('Smoothing over bad values')
@@ -173,7 +173,9 @@ def run_l1al1b(config_user: dict | None = None) -> None:
             ckd['n_detector_cols'], ckd['pixel_mask'], l1_product['image'])
         cal.remove_bad_values(
             ckd['n_detector_cols'], ckd['pixel_mask'], l1_product['noise'])
-    if step_needed(ProcLevel.stray, l1_product['proc_level'], cal_level):
+    if (
+            step_needed(ProcLevel.stray, l1_product['proc_level'], cal_level)
+            and config['stray']['van_cittert_steps'] > 0):
         log.info('Stray light')
         cal.stray_light(l1_product,
                         binning_table,
@@ -192,7 +194,7 @@ def run_l1al1b(config_user: dict | None = None) -> None:
             'Interpolating from intermediate to main CKD wavelength grids')
         cal.change_wavelength_grid(l1_product, ckd['spectral']['wavelengths'])
     if step_needed(ProcLevel.l1b, l1_product['proc_level'], cal_level):
-        log.info('Converting to radiance')
+        log.info('Radiometric')
         cal.radiometric(
             l1_product, ckd['radiometric']['rad_corr'], l1_product['exptimes'])
     log.info('Writing output data')

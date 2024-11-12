@@ -77,6 +77,9 @@ public:
             0.1,
             "the ISRF FWHM used for convolving the line-by-line spectra",
         };
+        Setting<double> shape { { "isrf", "shape" },
+                                2.0,
+                                "ISRF shape parameter. Default is a Gauss." };
     } isrf;
 
     struct
@@ -135,6 +138,15 @@ public:
             "correction (0 disables this step)",
         };
     } stray;
+
+    struct
+    {
+        Setting<int> b_spline_order {
+            { "swath", "b_spline_order" },
+            5,
+            "order of 2D b-spline used for mapping spectra to the detector"
+        };
+    } swath;
 
     struct
     {

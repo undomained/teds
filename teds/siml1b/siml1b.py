@@ -48,11 +48,11 @@ def sim_output(filename, gm_data, l1b_output):
 
     nalt, nact, nwav = l1b_output['radiance'].shape
     output.createDimension('wavelength', nwav)
-    output.createDimension('across_track', nact)
-    output.createDimension('along_track', nalt)
+    output.createDimension('across_track_sample', nact)
+    output.createDimension('along_track_sample', nalt)
 
     nc_grp = output.createGroup('geolocation_data')
-    _dims = ('along_track', 'across_track')
+    _dims = ('along_track_sample', 'across_track_sample')
 
     nc_var = nc_grp.createVariable(
         'latitude', 'f4', _dims, fill_value=-32767.0)
@@ -103,7 +103,7 @@ def sim_output(filename, gm_data, l1b_output):
     nc_var[:] = gm_data['vaa']
 
     nc_grp = output.createGroup('observation_data')
-    _dims = ('across_track', 'wavelength')
+    _dims = ('across_track_sample', 'wavelength')
 
     l1b_wave = np.zeros((nact, nwav))
     for iact in range(nact):
@@ -111,7 +111,7 @@ def sim_output(filename, gm_data, l1b_output):
     writevariablefromname(
         nc_grp, 'wavelength', _dims, l1b_output['wavelength'])
 
-    _dims = ('along_track', 'across_track', 'wavelength')
+    _dims = ('along_track_sample', 'across_track_sample', 'wavelength')
 
     writevariablefromname(nc_grp, 'radiance', _dims, l1b_output['radiance'])
 
@@ -183,7 +183,7 @@ def simplified_instrument_model_and_l1b_processor(config):
             # noise contribution
             ynoise[ialt, iact, :] = 1./snr[ialt, iact, :]*noise_dis*ymeas[ialt, iact, :]
     if(config['sim_with_noise']):
-        l1b_output['radiance'] = ymeas+ynoise
+        l1b_output['radiance'] = ymeas + ynoise
     else:
         l1b_output['radiance'] = ymeas
 

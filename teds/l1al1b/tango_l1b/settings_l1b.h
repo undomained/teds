@@ -40,12 +40,6 @@ public:
         "If given, the last calibration step to be executed. Allowed values:\n"
         "offset, noise, current, nonlin, prnu, stray, swath, l1b.",
     };
-    Setting<bool> reverse_wavelength {
-        { "reverse_wavelength" },
-        false,
-        "Whether to reverse the wavelength ordering in the L1B product. This\n"
-        "affects wavelengths and observables such as radiance."
-    };
     Setting<int> image_start {
         { "image_start" },
         {},
@@ -54,13 +48,6 @@ public:
     Setting<std::optional<int>> image_end {
         { "image_end" },
         "last image to be processed (inclusive, counting starts at 0)",
-    };
-    Setting<Unbin> unbinning {
-        { "unbinning" },
-        Unbin::none,
-        "If set, unbin the detector images instead of binning the CKD.\n"
-        "Allowed values: none (default), nearest (nearest neighbor), linear\n"
-        "(linear spline), cubic (cubic spline)."
     };
 
     struct
@@ -116,10 +103,10 @@ public:
             true,
             "whether to include geolocation",
         };
-        Setting<double> spectrum_width {
-            { "swath", "spectrum_width" },
-            1.0,
-            "width of each spectrum, in pixels, extracted from the detector"
+        Setting<int> b_spline_order {
+            { "swath", "b_spline_order" },
+            5,
+            "order of 2D b-spline used for mapping spectra from the detector"
         };
     } swath;
 

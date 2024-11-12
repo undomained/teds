@@ -195,10 +195,12 @@ auto splitString(const std::string& list,
         return "L1A";
     case ProcLevel::raw:
         return "raw";
-    case ProcLevel::dark:
-        return "dark";
+    case ProcLevel::dark_offset:
+        return "dark offset";
     case ProcLevel::noise:
         return "noise";
+    case ProcLevel::dark_current:
+        return "dark current";
     case ProcLevel::nonlin:
         return "nonlinearity";
     case ProcLevel::prnu:
@@ -365,18 +367,15 @@ auto readL1(const std::string& filename,
         }
         for (size_t i_alt {}; i_alt < n_images; ++i_alt) {
             auto& l1 { l1_products[i_alt] };
-            l1.spectra.resize(n_act);
-            l1.wavelength = wavelength_lbl;
-            for (size_t i_act {}; i_act < n_act; ++i_act) {
-                l1.spectra[i_act].signal.resize(n_wavelength);
-                l1.spectra[i_act].stdev.resize(n_wavelength);
-                l1.spectra[i_act].mask.resize(n_wavelength, false);
-                for (size_t i {}; i < n_wavelength; ++i) {
-                    const size_t idx { (i_alt * n_act + i_act) * n_wavelength
-                                       + i };
-                    l1.spectra[i_act].signal[i] = spectra[idx];
-                    l1.spectra[i_act].stdev[i] = spectra_stdev[idx];
-                }
+            l1.wavelengths = wavelength_lbl;
+            const size_t spectra_size { n_act * n_wavelength };
+            l1.spectra.resize(spectra_size);
+            l1.spectra_stdev.resize(spectra_size);
+            l1.spectra_mask.resize(spectra_size, false);
+            for (size_t i {}; i < spectra_size; ++i) {
+                const size_t idx { i_alt * spectra_size + i };
+                l1.spectra[i] = spectra[idx];
+                l1.spectra_stdev[i] = spectra_stdev[idx];
             }
         }
     }
@@ -448,7 +447,7 @@ auto writeL1(const std::string& filename,
         nc_var.putAtt("_FillValue", netCDF::ncDouble, fill::d);
         nc_var.putAtt("units", "seconds since 2022-03-21");
         nc_var.putAtt("valid_min", netCDF::ncDouble, 0.0);
-        nc_var.putAtt("valid_max", netCDF::ncDouble, 92304.0);
+        nc_var.putAtt("valid_max", netCDF::ncDouble, 172800.0);  // 2 x day
         std::vector<double> buf {};
         buf.assign(n_images, 0.0);
         nc_var.putVar(buf.data());
@@ -529,8 +528,8 @@ auto writeL1(const std::string& filename,
             nc_var.putVar(buf.data());
         }
     } else {
-        const auto n_across_track { l1_products.front().spectra.size() };
-        const auto wavelengths { *l1_products.front().wavelength };
+        const auto wavelengths { *l1_products.front().wavelengths };
+        const auto n_across_track { wavelengths.size() };
         const auto n_wavelength { wavelengths.front().size() };
         const auto nc_across_track { nc.addDim("across_track_sample",
                                                n_across_track) };
@@ -541,94 +540,50 @@ auto writeL1(const std::string& filename,
         auto nc_grp { nc.addGroup("observation_data") };
 
         nc_var = nc_grp.addVar(
-          "wavelength", netCDF::ncFloat, { nc_across_track, nc_wavelength });
+          "wavelength", netCDF::ncDouble, { nc_across_track, nc_wavelength });
         nc_var.putAtt("long_name", "wavelength");
-        nc_var.putAtt("_FillValue", netCDF::ncFloat, fill::f);
-        nc_var.putAtt("valid_min", netCDF::ncFloat, 0.0f);
-        nc_var.putAtt("valid_max", netCDF::ncFloat, 999.0f);
+        nc_var.putAtt("_FillValue", netCDF::ncDouble, fill::d);
+        nc_var.putAtt("valid_min", netCDF::ncDouble, 0.0);
+        nc_var.putAtt("valid_max", netCDF::ncDouble, 2000.0);
         nc_var.putAtt("units", "nm");
-        std::vector<float> buf(n_across_track * n_wavelength);
+        std::vector<double> buf(n_across_track * n_wavelength);
         for (size_t i {}; i < n_across_track; ++i) {
             for (size_t j {}; j < n_wavelength; ++j) {
-                buf[i * n_wavelength + j] =
-                  static_cast<float>(wavelengths[i][j]);
+                buf[i * n_wavelength + j] = wavelengths[i][j];
             }
         }
         nc_var.putVar(buf.data());
-
-        const auto flattenSignal { [&](auto& buf) {
-            for (size_t i {}; i < n_images; ++i) {
-                for (size_t j {}; j < n_across_track; ++j) {
-                    for (size_t k {}; k < n_wavelength; ++k) {
-                        buf[(i * n_across_track + j) * n_wavelength + k] =
-                          static_cast<float>(
-                            l1_products[i].spectra[j].signal[k]);
-                    }
-                }
+        nc_var = nc_grp.addVar("radiance",
+                               netCDF::ncDouble,
+                               { nc_images, nc_across_track, nc_wavelength });
+        nc_var.putAtt("long_name", "spectral photon radiance");
+        nc_var.putAtt("_FillValue", netCDF::ncDouble, fill::f);
+        nc_var.putAtt("units", "nm-1 s-1 sr-1 m-2");
+        nc_var.putAtt("valid_min", netCDF::ncDouble, 0.0);
+        nc_var.putAtt("valid_max", netCDF::ncDouble, 1e20);
+        buf.resize(n_images * n_across_track * n_wavelength);
+        for (size_t i_alt {}; i_alt < n_images; ++i_alt) {
+            for (size_t i {}; i < n_across_track * n_wavelength; ++i) {
+                buf[i_alt * n_across_track * n_wavelength + i] =
+                  l1_products[i_alt].spectra[i];
             }
-        } };
-        const auto flattenStdev { [&](auto& buf) {
-            for (size_t i {}; i < n_images; ++i) {
-                for (size_t j {}; j < n_across_track; ++j) {
-                    for (size_t k {}; k < n_wavelength; ++k) {
-                        buf[(i * n_across_track + j) * n_wavelength + k] =
-                          static_cast<float>(
-                            l1_products[i].spectra[j].stdev[k]);
-                    }
-                }
-            }
-        } };
-        if (level == ProcLevel::l1b) {
-            nc_var =
-              nc_grp.addVar("radiance",
-                            netCDF::ncFloat,
-                            { nc_images, nc_across_track, nc_wavelength });
-            nc_var.putAtt("long_name", "spectral photon radiance");
-            nc_var.putAtt("_FillValue", netCDF::ncFloat, fill::f);
-            nc_var.putAtt("units", "nm-1 s-1 sr-1 m-2");
-            nc_var.putAtt("valid_min", netCDF::ncFloat, 0.0f);
-            nc_var.putAtt("valid_max", netCDF::ncFloat, 1e20f);
-            std::vector<float> buf(n_images * n_across_track * n_wavelength);
-            flattenSignal(buf);
-            nc_var.putVar(buf.data());
-            nc_var =
-              nc_grp.addVar("radiance_stdev",
-                            netCDF::ncFloat,
-                            { nc_images, nc_across_track, nc_wavelength });
-            nc_var.putAtt("long_name",
-                          "standard deviation of radiance in bin ");
-            nc_var.putAtt("_FillValue", netCDF::ncFloat, fill::f);
-            nc_var.putAtt("units", "nm-1 s-1 sr-1 m-2");
-            nc_var.putAtt("valid_min", netCDF::ncFloat, 0.0f);
-            nc_var.putAtt("valid_max", netCDF::ncFloat, 1e20f);
-            flattenStdev(buf);
-            nc_var.putVar(buf.data());
-        } else {
-            nc_var =
-              nc_grp.addVar("radiance",
-                            netCDF::ncDouble,
-                            { nc_images, nc_across_track, nc_wavelength });
-            nc_var.putAtt("long_name", "spectral photon radiance");
-            nc_var.putAtt("_FillValue", netCDF::ncDouble, fill::f);
-            nc_var.putAtt("units", "nm-1 s-1 sr-1 m-2");
-            nc_var.putAtt("valid_min", netCDF::ncDouble, -1e20);
-            nc_var.putAtt("valid_max", netCDF::ncDouble, 1e20);
-            std::vector<double> buf(n_images * n_across_track * n_wavelength);
-            flattenSignal(buf);
-            nc_var.putVar(buf.data());
-            nc_var =
-              nc_grp.addVar("radiance_stdev",
-                            netCDF::ncDouble,
-                            { nc_images, nc_across_track, nc_wavelength });
-            nc_var.putAtt("long_name",
-                          "standard deviation of radiance in bin ");
-            nc_var.putAtt("_FillValue", netCDF::ncDouble, fill::f);
-            nc_var.putAtt("units", "nm-1 s-1 sr-1 m-2");
-            nc_var.putAtt("valid_min", netCDF::ncDouble, -1e20);
-            nc_var.putAtt("valid_max", netCDF::ncDouble, 1e20);
-            flattenStdev(buf);
-            nc_var.putVar(buf.data());
         }
+        nc_var.putVar(buf.data());
+        nc_var = nc_grp.addVar("radiance_stdev",
+                               netCDF::ncDouble,
+                               { nc_images, nc_across_track, nc_wavelength });
+        nc_var.putAtt("long_name", "standard deviation of radiance in bin ");
+        nc_var.putAtt("_FillValue", netCDF::ncDouble, fill::f);
+        nc_var.putAtt("units", "nm-1 s-1 sr-1 m-2");
+        nc_var.putAtt("valid_min", netCDF::ncDouble, 0.0);
+        nc_var.putAtt("valid_max", netCDF::ncDouble, 1e20);
+        for (size_t i_alt {}; i_alt < n_images; ++i_alt) {
+            for (size_t i {}; i < n_across_track * n_wavelength; ++i) {
+                buf[i_alt * n_across_track * n_wavelength + i] =
+                  l1_products[i_alt].spectra_stdev[i];
+            }
+        }
+        nc_var.putVar(buf.data());
         // Geolocation
         const std::vector<netCDF::NcDim> geometry_shape { nc_images,
                                                           nc_across_track };
@@ -734,7 +689,6 @@ auto copyGeometry(const std::string& l1a_filename,
                   std::vector<L1>& l1_products) -> void
 {
     const netCDF::NcFile nc_geo { geo_filename, netCDF::NcFile::read };
-    const netCDF::NcGroup nc { nc_geo.getGroup("/") };
     const auto n_alt { nc_geo.getDim("along_track_sample").getSize() };
     const auto n_act { nc_geo.getDim("across_track_sample").getSize() };
     std::vector<double> lat(n_alt * n_act);

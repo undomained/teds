@@ -8,7 +8,6 @@ import numpy as np
 from scipy.interpolate import RegularGridInterpolator
 import logging
 from xarray import DataArray
-from .libNumTools import convolution_2d
 
 
 def interp_sentinel2_albedo(s2_albedos: list[DataArray],

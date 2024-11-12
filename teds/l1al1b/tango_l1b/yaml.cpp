@@ -8,8 +8,9 @@
 const std::map<std::string, tango::ProcLevel> proc_level_to_enum {
     { "l1a", tango::ProcLevel::l1a },
     { "raw", tango::ProcLevel::raw },
-    { "dark", tango::ProcLevel::dark },
+    { "dark_offset", tango::ProcLevel::dark_offset },
     { "noise", tango::ProcLevel::noise },
+    { "dark_current", tango::ProcLevel::dark_current },
     { "nonlin", tango::ProcLevel::nonlin },
     { "prnu", tango::ProcLevel::prnu },
     { "stray", tango::ProcLevel::stray },

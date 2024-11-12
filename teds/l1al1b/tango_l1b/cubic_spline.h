@@ -25,7 +25,6 @@ private:
     std::vector<double> B {};
     std::vector<double> C {};
     auto lookupIdx(const double x) const -> int;
-    auto binaryFindIdx(const double x) const -> int;
 
 public:
     CubicSpline(const std::vector<double>& x_values,

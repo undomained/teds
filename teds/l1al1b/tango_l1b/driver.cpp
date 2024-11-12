@@ -33,7 +33,7 @@ auto driver(const SettingsL1B& settings,
 
     // Read in the CKD
     printHeading("Reading CKD and input data");
-    CKD ckd(settings.io.ckd, settings.swath.spectrum_width);
+    CKD ckd(settings.io.ckd);
 
     // Initialize L1 products by reading all L1A data (everything is
     // stored in memory).
@@ -50,15 +50,12 @@ auto driver(const SettingsL1B& settings,
         settings.io.binning_table,
         static_cast<int>(l1_products.front().binning_table_id)
     };
-    if (settings.unbinning == Unbin::none) {
-        binning_table.bin(ckd.pixel_mask);
-        binning_table.bin(ckd.dark.offset);
-        binning_table.bin(ckd.dark.current);
-        binning_table.bin(ckd.noise.g);
-        binning_table.bin(ckd.noise.n2);
-        binning_table.bin(ckd.prnu.prnu);
-        binning_table.binPixelIndices(ckd.swath.pix_indices);
-    }
+    binning_table.bin(ckd.pixel_mask);
+    binning_table.bin(ckd.dark.offset);
+    binning_table.bin(ckd.dark.current);
+    binning_table.bin(ckd.noise.g);
+    binning_table.bin(ckd.noise.n2);
+    binning_table.bin(ckd.prnu.prnu);
 
     // Run retrieval
     printHeading("Retrieval");
@@ -69,40 +66,31 @@ auto driver(const SettingsL1B& settings,
     for (int i_alt = 0; i_alt < static_cast<int>(l1_products.size()); ++i_alt) {
         printPercentage(i_alt, l1_products.size(), "Processing images");
         auto& l1 { l1_products[i_alt] };
-        // Initialize pixel mask with that from the CKD
-        l1.pixel_mask = ckd.pixel_mask;
-
         // Normalize by bin sizes and unbin detector image if requested
         if (l1.level == ProcLevel::l1a
             && settings.cal_level >= ProcLevel::raw) {
-            binningTable(binning_table,
-                         settings.unbinning,
-                         ckd.n_detector_rows,
-                         ckd.n_detector_cols,
-                         l1);
+            binningTable(ckd, binning_table, l1);
         }
         // Dark offset
-        if (l1.level < ProcLevel::dark
-            && settings.cal_level >= ProcLevel::dark) {
-            timers[static_cast<int>(ProcLevel::dark)].start();
+        if (l1.level < ProcLevel::dark_offset
+            && settings.cal_level >= ProcLevel::dark_offset) {
+            timers[static_cast<int>(ProcLevel::dark_offset)].start();
             darkOffset(ckd, settings.dark.enabled, l1);
-            timers[static_cast<int>(ProcLevel::dark)].stop();
+            timers[static_cast<int>(ProcLevel::dark_offset)].stop();
         }
         // Noise
         if (l1.level < ProcLevel::noise
             && settings.cal_level >= ProcLevel::noise) {
             timers[static_cast<int>(ProcLevel::noise)].start();
-            // If the unbinning setting is none the the detector image
-            // is still binned.
             noise(ckd, settings.noise.enabled, binning_table, l1);
             timers[static_cast<int>(ProcLevel::noise)].stop();
         }
         // Dark current
-        if (l1.level < ProcLevel::dark
-            && settings.cal_level >= ProcLevel::dark) {
-            timers[static_cast<int>(ProcLevel::dark)].start();
+        if (l1.level < ProcLevel::dark_current
+            && settings.cal_level >= ProcLevel::dark_current) {
+            timers[static_cast<int>(ProcLevel::dark_current)].start();
             darkCurrent(ckd, settings.dark.enabled, l1);
-            timers[static_cast<int>(ProcLevel::dark)].stop();
+            timers[static_cast<int>(ProcLevel::dark_current)].stop();
         }
         // Nonlinearity
         if (l1.level < ProcLevel::nonlin
@@ -118,11 +106,13 @@ auto driver(const SettingsL1B& settings,
             prnu(ckd, settings.prnu.enabled, l1);
             timers[static_cast<int>(ProcLevel::prnu)].stop();
         }
+        if (!l1.image.empty()) {
+            removeBadValues(ckd, l1);
+        }
         // Stray light
         if (l1.level < ProcLevel::stray
             && settings.cal_level >= ProcLevel::stray) {
             timers[static_cast<int>(ProcLevel::stray)].start();
-            // Same comment about unbinning as for noise above
             strayLight(
               ckd, binning_table, settings.stray.van_cittert_steps, l1);
             timers[static_cast<int>(ProcLevel::stray)].stop();
@@ -131,8 +121,15 @@ auto driver(const SettingsL1B& settings,
         if (l1.level < ProcLevel::swath
             && settings.cal_level >= ProcLevel::swath) {
             timers[static_cast<int>(ProcLevel::swath)].start();
-            extractSpectra(ckd, settings.swath.enabled, l1);
+            mapFromDetector(ckd, settings.swath.b_spline_order, l1);
             timers[static_cast<int>(ProcLevel::swath)].stop();
+        }
+        // Interpolate from intermediate to the main CKD wavelength
+        // grids if necessary.
+        if (!l1.spectra.empty()
+            && l1.spectra.size() / ckd.n_act
+                 != ckd.wave.wavelengths.front().size()) {
+            changeWavelengthGrid(ckd, l1);
         }
         // Radiometric
         if (l1.level < ProcLevel::l1b && settings.cal_level >= ProcLevel::l1b) {
@@ -140,23 +137,12 @@ auto driver(const SettingsL1B& settings,
             radiometric(ckd, settings.rad.enabled, l1);
             timers[static_cast<int>(ProcLevel::l1b)].stop();
         }
-        if (settings.reverse_wavelength) {
-            for (auto& spectrum : l1.spectra) {
-                std::ranges::reverse(spectrum.signal);
-                std::ranges::reverse(spectrum.stdev);
-            }
-        }
     }
     timer_total.stop();
     spdlog::info("Processing images 100.0%");
-    if (settings.reverse_wavelength) {
-        for (auto& wavelengths : ckd.wave.wavelength) {
-            std::ranges::reverse(wavelengths);
-        }
-    }
     // For writing to output, store the CKD wavelength grid in L1
-    l1_products.front().wavelength =
-      std::make_shared<std::vector<std::vector<double>>>(ckd.wave.wavelength);
+    l1_products.front().wavelengths =
+      std::make_shared<std::vector<std::vector<double>>>(ckd.wave.wavelengths);
 
     // Placeholder until we have geolocation
     copyGeometry(
@@ -171,10 +157,12 @@ auto driver(const SettingsL1B& settings,
     // Overview of timings
     spdlog::info("");
     spdlog::info("Timings:");
+    spdlog::info("         Dark offset: {:8.3f} s",
+                 timers[static_cast<int>(ProcLevel::dark_offset)].time());
     spdlog::info("               Noise: {:8.3f} s",
                  timers[static_cast<int>(ProcLevel::noise)].time());
-    spdlog::info("Dark offset, current: {:8.3f} s",
-                 timers[static_cast<int>(ProcLevel::dark)].time());
+    spdlog::info("        Dark current: {:8.3f} s",
+                 timers[static_cast<int>(ProcLevel::dark_current)].time());
     spdlog::info("        Nonlinearity: {:8.3f} s",
                  timers[static_cast<int>(ProcLevel::nonlin)].time());
     spdlog::info("                PRNU: {:8.3f} s",

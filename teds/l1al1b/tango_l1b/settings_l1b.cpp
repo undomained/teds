@@ -12,10 +12,8 @@ auto SettingsL1B::scanKeys() -> void
     scan(instrument);
     scan(processing_version);
     scan(cal_level);
-    scan(reverse_wavelength);
     scan(image_start);
     scan(image_end);
-    scan(unbinning);
 
     scan(dark.enabled);
 
@@ -26,7 +24,7 @@ auto SettingsL1B::scanKeys() -> void
     scan(stray.van_cittert_steps);
 
     scan(swath.enabled);
-    scan(swath.spectrum_width);
+    scan(swath.b_spline_order);
 
     scan(rad.enabled);
 

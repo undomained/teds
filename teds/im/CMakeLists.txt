@@ -17,6 +17,8 @@ add_subdirectory(tango_im)
 
 # Dependencies
 target_link_libraries(tango_im PUBLIC tango_l1b)
+find_package(Eigen3 3.3 REQUIRED)
+target_link_libraries(tango_im PUBLIC Eigen3::Eigen)
 
 # Information about the environment that shown when running the
 # instrument model

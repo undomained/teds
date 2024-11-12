@@ -514,7 +514,7 @@ def gen_pixel_mask(conf: dict, nc_ckd: Dataset) -> None:
     nc_var.flag_meanings = 'good bad'
     mask = np.logical_or(abs(nc_ckd['dark/current'][:]) > 1e4,
                          abs(nc_ckd['dark/offset'][:]) > 600.0)
-    mask = np.logical_or(mask, nc_ckd['prnu/prnu'][:] < 1e-10)
+    mask = np.logical_or(mask, nc_ckd['prnu/prnu'][:] < 1e-3)
     nc_var[:] = mask
 
 

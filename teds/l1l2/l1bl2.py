@@ -470,6 +470,29 @@ def level1b_to_level2_processor_RTorCH4(config):
 
     l1b = get_l1b(config['io_files']['input_l1b'])
 
+    alt_slice = slice(None, None)
+    if (
+        'sw_ALT_select' in config['retrieval_init']
+        and config['retrieval_init']['sw_ALT_select']
+    ):
+        alt_slice = slice(
+            config['retrieval_init']['first_ALT_index'],
+            config['retrieval_init']['last_ALT_index']+1
+        )
+
+    for k in (
+        'radiance',
+        'noise',
+        'sza',
+        'saa',
+        'vza',
+        'vaa',
+        'latitude',
+        'longitude',
+        'mask'
+    ):
+        l1b[k] = l1b[k][alt_slice]
+
     # Hardcode the number of albedo coefficients for now
     N_alb = 2
 
@@ -478,6 +501,10 @@ def level1b_to_level2_processor_RTorCH4(config):
 
     # get sgm geo data
     surf_sgm, atm_sgm = get_sgm_atm(config['io_files']['input_sgm'])
+    for k in surf_sgm.keys():
+        surf_sgm[k] = surf_sgm[k][alt_slice]
+    for k in atm_sgm.keys():
+        atm_sgm[k] = atm_sgm[k][alt_slice]
 
     # mask on radiance nan values
     mask = l1b['mask']

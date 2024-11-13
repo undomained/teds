@@ -669,6 +669,7 @@ def level1b_to_level2_processor_RTorCH4(config):
     out_col_scales = np.nan * np.ones((N_alt, N_act, N_species))
     out_alb = np.nan * np.ones((N_alt, N_act, N_alb))
     out_chi2 = np.nan * np.ones((N_alt, N_act, N_iter+1,))
+    out_waveshift = np.nan * np.ones((N_alt, N_act))
     out_Ainv = None
     out_B = None
     out_col_kern_base = np.nan * np.ones((N_alt, N_act, N_species, N_layers))
@@ -686,12 +687,18 @@ def level1b_to_level2_processor_RTorCH4(config):
 
     print(f'Using {N_chunks} ACT chunk'+('s' if N_chunks != 1 else ''))
 
-    # dealloc_chunk: if True, we do not keep a radtran object for each ACT
+    # dealloc_chunk: if True, we do not keep a radtran/ISRF object for each ACT
     # chunk, instead creating a new object every time it is needed. This saves
     # memory at the cost of greater processing overhead.
     deallocate_chunk = (
         'deallocate_chunk' in config['expert_settings']
         and config['expert_settings']['deallocate_chunk']
+    )
+
+    # fit_waveshift: if True, we fit a spectral shift per pixel
+    fit_waveshift = (
+        'fit_spectral_shift' in config['retrieval_init']
+        and config['retrieval_init']['fit_spectral_shift']
     )
 
     # We use Gauss-Newton, so we don't need autograd at all -> no_grad context
@@ -842,7 +849,10 @@ def level1b_to_level2_processor_RTorCH4(config):
                     init_col_scales_full[batch,chunk_inds,:]
                 )
 
-                waveshift = None
+                waveshift = (
+                    None if not fit_waveshift
+                    else torch.zeros(N, device=device, dtype=dtype)
+                )
 
                 # Inverse covariance
                 invcov = torch.einsum(
@@ -896,6 +906,9 @@ def level1b_to_level2_processor_RTorCH4(config):
                     col_scales[~valid_mask] = torch.nan
                     alb[valid_mask] = new_alb[valid_mask]
                     alb[~valid_mask] = torch.nan
+                    if waveshift is not None:
+                        waveshift[valid_mask] = new_ws[valid_mask]
+                        waveshift[~valid_mask] = torch.nan
 
                     out_chi2[batch,chunk_inds,i] = chi2.cpu().detach().numpy()
                     iterations[batch,chunk_inds] += torch.where(
@@ -985,6 +998,11 @@ def level1b_to_level2_processor_RTorCH4(config):
                     dev_tau_lbl
                 ).cpu().detach().numpy()
 
+                if waveshift is not None:
+                    out_waveshift[batch,chunk_inds] = (
+                        waveshift.cpu().detach().numpy()
+                    )
+
                 if deallocate_chunk:
                     radtran[chunk] = None
                     isrfs[chunk] = None
@@ -1008,9 +1026,9 @@ def level1b_to_level2_processor_RTorCH4(config):
         l2['longitude'] = l1b['longitude']
         l2['surface_pressure'] = np.zeros((N_alt, N_act)) + 1013.
         l2['surface_elevation'] = np.zeros((N_alt, N_act))
-        l2['spectralshift'] = np.zeros((N_alt, N_act))
         l2['spectralsqueeze'] = np.zeros((N_alt, N_act))
         l2['central_layer_height'] = zlay
+        l2['spectralshift'] = out_waveshift
 
         col_profiles = col_profiles.cpu().detach().numpy()
 

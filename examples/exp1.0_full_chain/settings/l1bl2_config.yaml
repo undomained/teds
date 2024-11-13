@@ -11,6 +11,7 @@ retrieval_init:                 #initialization parameter for inversion
     prior_XCH4: 0.0000017       #prior CH4 concentration
     prior_XH2O: 0.001           #prior H2O concentration
     no_clobber: False           #if True, don't overwrite existing output files
+    fit_spectral_shift: True    #fit a constant spectral shift per pixel
 
 # Note on special options:
 

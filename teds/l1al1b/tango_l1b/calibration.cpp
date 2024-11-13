@@ -256,7 +256,7 @@ auto changeWavelengthGrid(const CKD& ckd, L1& l1) -> void
             l1.spectra.begin() + (i_act + 1) * n_waves_in
         };
         const CubicSpline spline { ckd.swath.wavelengths, spectrum };
-        for (int i {}; i < ckd.n_detector_cols;++i) {
+        for (int i {}; i < ckd.n_detector_cols; ++i) {
             spectra_out[i_act * ckd.n_detector_cols + i] =
               spline.eval(ckd.wave.wavelengths[i_act][i]);
         }
@@ -267,7 +267,7 @@ auto changeWavelengthGrid(const CKD& ckd, L1& l1) -> void
             l1.spectra_stdev.begin() + (i_act + 1) * n_waves_in
         };
         const CubicSpline spline { ckd.swath.wavelengths, spectrum };
-        for (int i {}; i < ckd.n_detector_cols;++i) {
+        for (int i {}; i < ckd.n_detector_cols; ++i) {
             spectra_stdev_out[i_act * ckd.n_detector_cols + i] =
               spline.eval(ckd.wave.wavelengths[i_act][i]);
         }

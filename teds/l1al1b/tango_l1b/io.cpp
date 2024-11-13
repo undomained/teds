@@ -447,7 +447,7 @@ auto writeL1(const std::string& filename,
         nc_var.putAtt("_FillValue", netCDF::ncDouble, fill::d);
         nc_var.putAtt("units", "seconds since 2022-03-21");
         nc_var.putAtt("valid_min", netCDF::ncDouble, 0.0);
-        nc_var.putAtt("valid_max", netCDF::ncDouble, 172800.0);  // 2 x day
+        nc_var.putAtt("valid_max", netCDF::ncDouble, 172800.0); // 2 x day
         std::vector<double> buf {};
         buf.assign(n_images, 0.0);
         nc_var.putVar(buf.data());

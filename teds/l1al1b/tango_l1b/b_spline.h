@@ -45,8 +45,8 @@ public:
     auto deBoor(const std::vector<double>& control_points,
                 const double x) const -> double;
     // Construct B-spline matrix for a set of data x-values
-    auto evalBasis(const std::vector<double>& x_data, std::vector<double>& B)
-      -> void;
+    auto evalBasis(const std::vector<double>& x_data,
+                   std::vector<double>& B) -> void;
     ~BSpline() = default;
 };
 

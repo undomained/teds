@@ -101,7 +101,7 @@ CKD::CKD(const std::string& filename)
     stray.eta.resize(npix);
     grp.getVar("eta").getVar(stray.eta.data());
     stray.weights.resize(stray.n_kernels, std::vector<double>(npix));
-    std::vector<double> buf(stray.n_kernels* npix);
+    std::vector<double> buf(stray.n_kernels * npix);
     grp.getVar("weights").getVar(buf.data());
     for (int i {}; i < stray.n_kernels; ++i) {
         for (int j {}; j < npix; ++j) {

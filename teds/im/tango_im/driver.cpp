@@ -40,8 +40,7 @@ static auto genISRFKernel(const double fwhm_gauss,
                           const double shape,
                           const std::vector<double>& lbl_wavelengths,
                           const std::vector<double>& wavelengths,
-                          Eigen::SparseMatrix<double>& isrf)
-  -> void
+                          Eigen::SparseMatrix<double>& isrf) -> void
 {
     isrf =
       Eigen::SparseMatrix<double>(wavelengths.size(), lbl_wavelengths.size());

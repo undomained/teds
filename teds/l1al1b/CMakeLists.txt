@@ -32,7 +32,7 @@ set(SPDLOG_PATH "" CACHE STRING "Path to spdlog installation directory")
 set(YAML_CPP_PATH "" CACHE STRING "Path to yaml-cpp installation directory")
 set(POCKETFFT_PATH "" CACHE STRING "Path to pocketfft.h")
 option(BUILD_SHARED_LIBS
-  "If enabled, builds a shared library, else static" OFF)
+  "If enabled, builds a shared library, else static" ON)
 option(INCLUDE_COVERAGE "Defines new target called 'coverage'" OFF)
 set(COVERAGE_FLAGS "--coverage" CACHE STRING
   "Additional compiler flags used when running code coverage")

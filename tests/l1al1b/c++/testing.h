@@ -45,13 +45,11 @@ auto readCKD(const std::string& fixture_dir, tango::CKD& ckd) -> void
         ckd.pixel_mask[i] = static_cast<int>(std::round(buf[i])) == 1;
     }
     // Dark CKD
-    ckd.dark.enabled = true;
     readArrayFromTxt(fixture_dir + "/ckd_dark_offset.txt", buf);
     ckd.dark.offset = buf;
     readArrayFromTxt(fixture_dir + "/ckd_dark_current.txt", buf);
     ckd.dark.current = buf;
     // Noise CKD
-    ckd.noise.enabled = true;
     readArrayFromTxt(fixture_dir + "/ckd_conversion_gain.txt", buf);
     ckd.noise.g = buf;
     readArrayFromTxt(fixture_dir + "/ckd_read_noise.txt", buf);
@@ -60,7 +58,6 @@ auto readCKD(const std::string& fixture_dir, tango::CKD& ckd) -> void
         val *= val;
     }
     // Nonlinearity CKD
-    ckd.nonlin.enabled = true;
     readArrayFromTxt(fixture_dir + "/ckd_nonlin.txt", buf);
     std::vector<double> x_values(buf.size() / 2);
     std::vector<double> y_values(buf.size() / 2);
@@ -70,7 +67,6 @@ auto readCKD(const std::string& fixture_dir, tango::CKD& ckd) -> void
     }
     ckd.nonlin.spline = { x_values, y_values };
     // PRNU CKD
-    ckd.prnu.enabled = true;
     readArrayFromTxt(fixture_dir + "/ckd_prnu.txt", buf);
     ckd.prnu.prnu = buf;
 }
@@ -81,7 +77,6 @@ auto readL1(const std::string& fixture_dir, tango::L1& l1) -> void
     std::vector<double> buf {};
     readArrayFromTxt(fixture_dir + "/detector_image.txt", buf);
     l1.image = buf;
-    l1.pixel_mask.assign(buf.size(), false);
     l1.stdev.assign(buf.size(), 1.0);
     l1.exposure_time = 0.0460833;
     l1.nr_coadditions = 1;

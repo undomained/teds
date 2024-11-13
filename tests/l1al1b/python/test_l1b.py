@@ -7,27 +7,27 @@ import teds.l1al1b.calibration as cal
 
 
 def test_dark_offset(l1, ckd_dark):
-    cal.remove_offset(l1, ckd_dark['offset'])
-    assert abs(l1['signal']).sum() == approx(7600086.354532824)
+    cal.dark_offset(l1, ckd_dark['offset'])
+    assert abs(l1['image']).sum() == approx(7600086.354532824)
 
 
-def test_noise(l1, ckd_dark, ckd_noise):
-    cal.determine_noise(l1, ckd_noise, ckd_dark['current'])
+def test_noise(l1, binning_table, ckd_dark, ckd_noise):
+    cal.noise(l1, binning_table['count_table'], ckd_noise, ckd_dark['current'])
     assert abs(l1['noise']).sum() == approx(3441708450.447448)
 
 
 def test_dark_current(l1, ckd_dark):
-    cal.remove_dark_signal(l1, ckd_dark['current'])
-    assert abs(l1['signal']).sum() == approx(26064709.448407017)
+    cal.dark_current(l1, ckd_dark['current'])
+    assert abs(l1['image']).sum() == approx(26064709.448407017)
 
 
-def test_nonlinearity(l1, ckd_nonlin):
-    cal.remove_nonlinearity(l1, ckd_nonlin)
-    assert abs(l1['signal']).sum() == approx(8261203.0)
-    assert abs(l1['noise']).sum() == approx(3198.5)
+def test_nonlinearity(l1, ckd_pixel_mask, ckd_nonlin):
+    cal.nonlinearity(l1, ckd_pixel_mask, ckd_nonlin)
+    assert abs(l1['image']).sum() == approx(8261203.0)
+    assert abs(l1['noise']).sum() == approx(3264.0)
 
 
-def test_prnu(l1, ckd_prnu):
-    cal.remove_prnu(l1, ckd_prnu['prnu_qe'])
-    assert abs(l1['signal']).sum() == approx(11443847.197698373)
-    assert abs(l1['noise']).sum() == approx(4624.803962459934)
+def test_prnu(l1, ckd_pixel_mask, ckd_prnu):
+    cal.prnu(l1, ckd_pixel_mask, ckd_prnu['prnu_qe'])
+    assert abs(l1['image']).sum() == approx(10834706.965660967)
+    assert abs(l1['noise']).sum() == approx(4563.8899392561925)

@@ -2,7 +2,7 @@
 
 #include "../../l1al1b/c++/testing.h"
 
-#include <tango_im/uncalibration.h>
+#include <tango_im/forward_models.h>
 
 using Catch::Matchers::WithinRel;
 

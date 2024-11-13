@@ -22,7 +22,7 @@ TEST_CASE("unit tests")
     SECTION("Dark offset")
     {
         tango::darkOffset(ckd, true, l1);
-        CHECK_THAT(absSum(l1.image), WithinRel(7600086.3545328248, 1e-6));
+        CHECK_THAT(absSum(l1.image), WithinRel(7627694.4368265271, 1e-6));
     }
 
     SECTION("Noise")
@@ -32,13 +32,13 @@ TEST_CASE("unit tests")
         };
         tango::noise(ckd, true, binning_table, l1);
         CHECK_THAT(absSum(l1.image), WithinRel(8261203.0, 1e-6));
-        CHECK_THAT(absSum(l1.stdev), WithinRel(26884.6936471068, 1e-6));
+        CHECK_THAT(absSum(l1.stdev), WithinRel(24981.7265996802, 1e-6));
     }
 
     SECTION("Dark current")
     {
         tango::darkCurrent(ckd, true, l1);
-        CHECK_THAT(absSum(l1.image), WithinRel(26064709.4484070353, 1e-6));
+        CHECK_THAT(absSum(l1.image), WithinRel(8238421.598286096, 1e-6));
     }
 
     SECTION("Nonlinearity")
@@ -51,7 +51,7 @@ TEST_CASE("unit tests")
     SECTION("PRNU")
     {
         tango::prnu(ckd, true, l1);
-        CHECK_THAT(absSum(l1.image), WithinRel(11443847.1976984218, 1e-6));
-        CHECK_THAT(absSum(l1.stdev), WithinRel(4624.8039624599, 1e-6));
+        CHECK_THAT(absSum(l1.image), WithinRel(10834706.9656610023, 1e-6));
+        CHECK_THAT(absSum(l1.stdev), WithinRel(4563.8899392562, 1e-6));
     }
 }

@@ -735,7 +735,7 @@ class RTForwardModel(object):
         J = self.isrf.convolve(J_in)
 
         J_out = J if waveshift is None else torch.cat(
-            (J, self.isrf.convolve_gradient(rad_trans)),
+            (J, self.isrf.convolve_gradient(rad_trans).unsqueeze(-1)),
             dim=2
         )
 

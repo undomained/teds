@@ -57,6 +57,14 @@ RUN . ./spack-$spack_version/share/spack/setup-env.sh \
     && spack install --fail-fast \
     && spack gc -y
 
+# Build TEDS Python requirements
+RUN wget https://bitbucket.org/sron_earth/teds/get/4bb6de69df5b.zip \
+    && unzip 4bb6de69df5b.zip \
+    && /opt/view/bin/python -m venv /venv \
+    && . /venv/bin/activate \
+    && pip install --upgrade pip \
+    && pip install -r sron_earth-teds-4bb6de69df5b/requirements.txt
+
 # Expose the environment
 RUN . ./spack-$spack_version/share/spack/setup-env.sh \
     && spack env activate --sh -d spack-environment >> /etc/profile.d/z10_spack_environment.sh
@@ -68,6 +76,7 @@ COPY --from=builder-science /opt/software /opt/software
 COPY --from=builder-science /opt/._view /opt/._view
 COPY --from=builder-science /opt/view /opt/view
 COPY --from=builder-science /etc/profile.d /etc/profile.d
+COPY --from=builder-science /venv /venv
 
 ENTRYPOINT ["/bin/bash", "--rcfile", "/etc/profile", "-l", "-c"]
 CMD ["/bin/bash"]

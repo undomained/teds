@@ -15,10 +15,7 @@ pipelines:
         name: Python
         script:
           - . /etc/profile
-          - python -m venv venv
-          - source venv/bin/activate
-          - pip install --upgrade pip
-          - pip install -r requirements.txt
+          - source /venv/bin/activate
           - bash flake8_check.sh
           - mypy teds
           - pytest

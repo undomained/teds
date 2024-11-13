@@ -335,9 +335,10 @@ def level2_output_RTorCH4(
     dimension_list is a list of dimension names. type is the NetCDF variable
     type; if it is omitted, 'f8' is assumed.
     """
-    # We try to use config['io_files']['output_l2'] as the output file.
-    # However, if it already exists or otherwise cannot be opened for writing
-    # (e.g. because it's being locked by another program), we will try a few
+    # We normally use config['io_files']['output_l2'] as the output file.
+    # However, if config['retrieval_init']['no_clobber'] is True and the
+    # output file already exists or otherwise cannot be opened for writing
+    # (e.g.  because it's being locked by another program), we will try a few
     # other paths to prevent a long retrieval being lost at the very end.
     outpath = config['io_files']['output_l2']
     outdir = os.path.dirname(outpath)
@@ -347,16 +348,22 @@ def level2_output_RTorCH4(
         for _ in range(8)
     ]) + '_' + outfile
 
-    try_paths = [
-        outpath,
-        os.path.join(outdir, randoutfile),
-        os.path.join('.', randoutfile),
-        os.path.join('/tmp', randoutfile)
-    ]
+    try_paths = [outpath]
+    no_clobber = False
+    if (
+        'no_clobber' in config['retrieval_init']
+        and config['retrieval_init']['no_clobber']
+    ):
+        no_clobber = True
+        try_paths += [
+            os.path.join(outdir, randoutfile),
+            os.path.join('.', randoutfile),
+            os.path.join('/tmp', randoutfile)
+        ]
 
     out = None
     for p in try_paths:
-        if os.path.exists(p):
+        if no_clobber and os.path.exists(p):
             continue
 
         try:
@@ -683,8 +690,8 @@ def level1b_to_level2_processor_RTorCH4(config):
     # chunk, instead creating a new object every time it is needed. This saves
     # memory at the cost of greater processing overhead.
     deallocate_chunk = (
-        'deallocate_chunk' in config['retrieval_init']
-        and config['retrieval_init']['deallocate_chunk']
+        'deallocate_chunk' in config['expert_settings']
+        and config['expert_settings']['deallocate_chunk']
     )
 
     # We use Gauss-Newton, so we don't need autograd at all -> no_grad context
@@ -702,16 +709,16 @@ def level1b_to_level2_processor_RTorCH4(config):
 #    ) as prof:
         dtype = torch.float32
         if (
-            'use_float64' in config['retrieval_init']
-            and config['retrieval_init']['use_float64']
+            'use_float64' in config['expert_settings']
+            and config['expert_settings']['use_float64']
         ):
             dtype = torch.float64
         cpu = torch.device('cpu')
         device = cpu
 
         if not (
-            'force_cpu' in config['retrieval_init']
-            and config['retrieval_init']['force_cpu']
+            'force_cpu' in config['expert_settings']
+            and config['expert_settings']['force_cpu']
         ):
             device = (
                 torch.device('cuda') if torch.cuda.is_available() else cpu
@@ -738,7 +745,7 @@ def level1b_to_level2_processor_RTorCH4(config):
         # The forward model and irradiance at observed wavelengths are
         # computed at the first batch.
         radtran = [None]*N_chunks
-        isrfs = [rt.GeneralisedNormalISRF(isrf_beta) for _ in range(N_chunks)]
+        isrfs = [None]*N_chunks
         sun_obs = [None]*N_chunks
 
         retstart = datetime.datetime.now()
@@ -766,6 +773,9 @@ def level1b_to_level2_processor_RTorCH4(config):
                     xsec,
                     col_profiles[batch,chunk_inds]
                 )
+
+                if isrfs[chunk] is None:
+                    isrfs[chunk] = rt.GeneralisedNormalISRF(isrf_beta)
 
                 if radtran[chunk] is None:
                     radtran[chunk] = rt.RTForwardModel(
@@ -977,6 +987,8 @@ def level1b_to_level2_processor_RTorCH4(config):
 
                 if deallocate_chunk:
                     radtran[chunk] = None
+                    isrfs[chunk] = None
+                    sun_obs[chunk] = None
 
         max_iter_done = np.amax(iterations[~np.isnan(iterations)])
         out_chi2 = out_chi2[:,:,:max_iter_done+1]

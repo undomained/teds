@@ -758,7 +758,8 @@ def level1b_to_level2_processor_RTorCH4(config):
                 torch.device('cuda') if torch.cuda.is_available() else cpu
             )
 
-        T = lambda a: torch.tensor(a, device=device, dtype=dtype)
+        def T(a):
+            return torch.tensor(a, device=device, dtype=dtype)
 
         obs_wls = T(obs_wls)
         obs_fwhm = T(obs_fwhm)
@@ -769,7 +770,7 @@ def level1b_to_level2_processor_RTorCH4(config):
         sun_lbl = T(sun_lbl)
         sza_full = T(sza_full)
         vza_full = T(vza_full)
-        radiance_full = T(l1b['radiance'][:,:,wlmask])
+        radiance_full = T(l1b['radiance'][:, :, wlmask])
         invcov_diag = T(invcov_diag)
         ignore_pixels_full = torch.tensor(
             ignore_pixels_full,

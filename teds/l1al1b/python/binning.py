@@ -1,16 +1,16 @@
 # This source code is licensed under the 3-clause BSD license found in
 # the LICENSE file in the root directory of this project.
 """Binning and unbinning related operations."""
+from .types import BinningTable
 from scipy.interpolate import RBFInterpolator
+from typing import TypeVar
 import numpy as np
 import numpy.typing as npt
 
-from .types import BinningTable
+BinType = TypeVar('BinType', npt.NDArray[np.float64], npt.NDArray[np.bool_])
 
 
-def bin_data(binning_table: BinningTable,
-             data: npt.NDArray[np.float64] | npt.NDArray[bool]) -> (
-                 npt.NDArray[np.float64] | npt.NDArray[bool]):
+def bin_data(binning_table: BinningTable, data: BinType) -> BinType:
     """Bin each frame in a set of frames and take the sum per bin.
 
     The sum over all data remains the same. If the set of frames

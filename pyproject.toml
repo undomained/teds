@@ -43,6 +43,10 @@ module = [
     'shapely',
     'geopandas',
     'scipy.*',
+    'numba.*',
+    'cartopy.*',
+    'matplotlib.*',
+    'mpl_toolkits.*'
 ]
 ignore_missing_imports = true
 

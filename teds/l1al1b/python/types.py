@@ -135,7 +135,7 @@ class CKD(TypedDict, total=False):
     # Number of detector pixels in the spectral direction
     n_detector_cols: int
     # Bad pixel mask
-    pixel_mask: npt.NDArray[bool]
+    pixel_mask: npt.NDArray[np.bool_]
 
     dark: CKDDark
     noise: CKDNoise

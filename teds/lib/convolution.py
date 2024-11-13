@@ -55,7 +55,13 @@ class Kernel:
 
     @staticmethod
     @numba.njit
-    def _gen_kernel(fwhm, shape, cutoff, wave_in, wave_out, i_limits, kernel):
+    def _gen_kernel(fwhm: float,
+                    shape: float,
+                    cutoff: float,
+                    wave_in: npt.NDArray[np.float64],
+                    wave_out: npt.NDArray[np.float64],
+                    i_limits: npt.NDArray[np.int32],
+                    kernel: npt.NDArray[np.float64]) -> None:
         do_gaussian = abs(shape - 2.0) < 1e-30
         sigma = fwhm / (2.0 * math.sqrt(2.0 * math.log(2.0)))
         sigma_2inv = 1 / (math.sqrt(2.0) * sigma)

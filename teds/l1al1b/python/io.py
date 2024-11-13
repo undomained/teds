@@ -251,7 +251,7 @@ def read_ckd(filename: str) -> CKD:
     return ckd
 
 
-def monotonic(x: npt.NDArray[np.float64], axis: int = -1) -> bool:
+def monotonic(x: npt.NDArray[np.float64], axis: int = -1) -> np.bool_:
     """Test whether an array is strictly increasing/decreasing or not."""
     dx = np.diff(x, axis=axis)
     return np.all(dx < 0) or np.all(dx > 0)
@@ -278,10 +278,8 @@ def read_geometry(l1_product: L1, config: dict) -> Geometry:
     filename = config['io']['geometry']
     image_start = config['image_start']
     image_end = None if config['image_end'] is None else config['image_end']+1
-    print(image_start, image_end)
     with Dataset(filename) as root:
         groups = list(root.groups)
-    geo: Geometry = {}
     if 'geolocation_data' in groups:  # L1 file
         # Assumption: the input file currently processed or a file
         # with the same geometry data
@@ -302,7 +300,7 @@ def read_geometry(l1_product: L1, config: dict) -> Geometry:
             _height = nc['height'][:]
         else:
             _height = np.zeros_like(nc['lat'][image_start:image_end, :])
-        geo: Geometry = {
+        geo = {
             'latitude': nc['lat'][image_start:image_end, :],
             'longitude': nc['lon'][image_start:image_end, :],
             'saa': nc['saa'][image_start:image_end, :],
@@ -348,7 +346,7 @@ def copy_geometry(l1a_filename: str,
     image_start = configuration['image_start']
     _beg = i_alt_start + image_start
     if 'signal' in l1_product:
-        _end = _beg + l1_product['signal'].shape[0]
+        _end = _beg + l1_product['image'].shape[0]
     else:
         _end = _beg + l1_product['spectra'].shape[0]
     nc_geo = Dataset(geo_filename)
@@ -356,7 +354,7 @@ def copy_geometry(l1a_filename: str,
         _height = nc_geo['height'][:]
     else:
         _height = np.zeros_like(nc_geo['lat'][:])
-    l1_product['geometry']: Geometry = {
+    l1_product['geometry'] = {
         'latitude': nc_geo['lat'][_beg:_end, :],
         'longitude': nc_geo['lon'][_beg:_end, :],
         'vza': nc_geo['vza'][_beg:_end, :],
@@ -427,8 +425,8 @@ def read_l1(filename: str,
         l1_product['exptimes'] = grp['exposure_time'][image_start:image_end]
     else:
         l1_product['timestamps'] = np.zeros(n_alt)
-        l1_product['binning_table_ids'] = np.zeros(n_alt)
-        l1_product['coad_factors'] = np.zeros(n_alt)
+        l1_product['binning_table_ids'] = np.zeros(n_alt, dtype=np.int32)
+        l1_product['coad_factors'] = np.zeros(n_alt, dtype=np.int32)
         l1_product['exptimes'] = np.zeros(n_alt)
     # Reading of main variables done. Now perform a few sanity checks.
     if n_alt == 0:

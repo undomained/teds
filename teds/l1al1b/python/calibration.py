@@ -106,7 +106,7 @@ def dark_current(l1_product: L1,
 
 
 def nonlinearity(l1_product: L1,
-                 pixel_mask: npt.NDArray[bool],
+                 pixel_mask: npt.NDArray[np.bool_],
                  ckd: CKDNonlin) -> None:
     """Remove nonlinearity.
 
@@ -147,7 +147,7 @@ def nonlinearity(l1_product: L1,
 
 
 def prnu(l1_product: L1,
-         pixel_mask: npt.NDArray[bool],
+         pixel_mask: npt.NDArray[np.bool_],
          prnu_qe: npt.NDArray[np.float64]) -> None:
     """Remove PRNU and quantum efficiency.
 
@@ -227,7 +227,7 @@ def convolve_with_all_kernels(image: npt.NDArray[np.float64],
 
 
 def remove_bad_values(n_cols: int,
-                      pixel_mask: npt.NDArray[bool],
+                      pixel_mask: npt.NDArray[np.bool_],
                       images: npt.NDArray[np.float64]) -> None:
     """Smooth over bad values in detector images.
 

@@ -1,12 +1,16 @@
-import sys
+# This source code is licensed under the 3-clause BSD license found in
+# the LICENSE file in the root directory of this project.
+from typing import Any
 
 import numpy as np
+import sys
 import torch
+
 
 class ISRF(object):
     """Base class for instrument spectral response function."""
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: str, **kwargs: int) -> None:
         pass
 
     def set_parameters(
@@ -15,7 +19,7 @@ class ISRF(object):
         obs_fwhm: torch.Tensor,
         lbl_wls: torch.Tensor,
         cache_hint: bool
-    ):
+    ) -> None:
         """Set parameters for the ISRF.
 
         If `cache_hint` is True, indicates the ISRF object may assume the
@@ -36,9 +40,9 @@ class ISRF(object):
         @param cache_hint Flag indicating if the ISRF can use cached
         parameters.
         """
-        raise NotImplemented()
+        raise NotImplementedError()
 
-    def tensor(self):
+    def tensor(self) -> torch.Tensor | None:
         """Output a tensor of shape (N × N_obs_wls × N_lbl_wls) corresponding
         to the convolution operation, so that, given a target tensor `t` of
         shape (N × N_lbl_wls), the following holds:
@@ -51,20 +55,20 @@ class ISRF(object):
 
         @return Tensor of shape (N × N_obs_wls × N_lbl_wls)
         """
-        raise NotImplemented()
+        raise NotImplementedError()
 
-    def gradient(self):
+    def gradient(self) -> torch.Tensor | None:
         """Output a tensor of shape (N × N_obs_wls × N_lbl_wls) corresponding
         to the gradient of `self.tensor()` w.r.t. observed wavelength.
 
         @return Tensor of shape (N × N_obs_wls × N_lbl_wls)
         """
-        raise NotImplemented()
+        raise NotImplementedError()
 
     def convolve(
         self,
         target: torch.Tensor
-    ):
+    ) -> torch.Tensor | None:
         """Convolve a tensor with the ISRF. The target is a tensor of
         dimension (N × N_lbl_wls [× P]), and the convolution should return a
         tensor of dimension (N × N_obs_wls [× P]).
@@ -72,12 +76,12 @@ class ISRF(object):
         @param target Tensor to convolve with the ISRF. (N × N_lbl_wls [× P])
         @return Tensor of shape (N × N_obs_wls [× P])
         """
-        raise NotImplemented()
+        raise NotImplementedError()
 
     def convolve_gradient(
         self,
         target: torch.Tensor
-    ):
+    ) -> torch.Tensor | None:
         """Convolve a tensor with the ISRF's gradient. The target is a tensor
         of dimension (N × N_lbl_wls [× P]), and the convolution should return a
         tensor of dimension (N × N_obs_wls [× P]).
@@ -86,14 +90,15 @@ class ISRF(object):
         (N × N_lbl_wls [× P])
         @return Tensor of shape (N × N_obs_wls [× P])
         """
-        raise NotImplemented()
+        raise NotImplementedError()
+
 
 class GeneralisedNormalISRF(ISRF):
     """Class representing a generalised normal ISRF.
 
     N.B. this class uses caching."""
 
-    def __init__(self, beta=2, epsilon=1e-6):
+    def __init__(self, beta: float = 2, epsilon: float = 1e-6) -> None:
         """Initialiser. Create a generalised normal ISRF with shape factor
         beta.
 
@@ -101,12 +106,12 @@ class GeneralisedNormalISRF(ISRF):
         """
         self.beta = beta
         self.epsilon = epsilon
-        self.N = None
-        self.N_obs_wls = None
-        self.N_lbl_wls = None
-        self.isrf_tensor = None
-        self.gradient_tensor = None
-        self.device = None
+        self.N: int | None = None
+        self.N_obs_wls: int | None = None
+        self.N_lbl_wls: int | None = None
+        self.isrf_tensor: torch.Tensor | None = None
+        self.gradient_tensor: torch.Tensor | None = None
+        self.device: torch.device | None = None
         self.dtype = torch.float32
 
     def set_parameters(
@@ -115,7 +120,7 @@ class GeneralisedNormalISRF(ISRF):
         obs_fwhm: torch.Tensor,
         lbl_wls: torch.Tensor,
         cache_hint: bool
-    ):
+    ) -> None:
         if self.isrf_tensor is not None and cache_hint:
             return
 
@@ -187,13 +192,13 @@ class GeneralisedNormalISRF(ISRF):
             )
         ) * self.isrf_tensor
 
-    def tensor(self):
+    def tensor(self) -> torch.Tensor | None:
         return self.isrf_tensor
 
-    def gradient(self):
+    def gradient(self) -> torch.Tensor | None:
         return self.gradient_tensor
 
-    def convolve(self, target):
+    def convolve(self, target: torch.Tensor) -> torch.Tensor | None:
         if len(target.shape) == 2:
             return torch.einsum(
                 "Nol,Nl->No",
@@ -207,7 +212,7 @@ class GeneralisedNormalISRF(ISRF):
                 target
             )
 
-    def convolve_gradient(self, target):
+    def convolve_gradient(self, target: torch.Tensor) -> torch.Tensor:
         if len(target.shape) == 2:
             return torch.einsum(
                 "Nol,Nl->No",
@@ -220,23 +225,25 @@ class GeneralisedNormalISRF(ISRF):
                 self.gradient_tensor,
                 target
             )
+
 
 class GaussianISRF(GeneralisedNormalISRF):
-    def __init__(self, epsilon=1e-6):
+    def __init__(self, epsilon: float = 1e-6) -> None:
         GeneralisedNormalISRF.__init__(self, 2, epsilon)
+
 
 class BasicRadiativeTransfer(object):
     """Simplistic single-scattering radiative transfer class. Compute
     top-of-atmosphere Earth-reflected radiance given scattering geometry,
     optical depth, albedo and solar irradiance."""
-    epsilon = 1e-9 # Fudge factor to prevent division by 0
+    epsilon = 1e-9  # Fudge factor to prevent division by 0
 
     def __init__(
         self,
-        sza,
-        vza,
-        **kwargs
-    ):
+        sza: torch.Tensor,
+        vza: torch.Tensor,
+        **kwargs: int
+    ) -> None:
         """Initialise RT for given scattering geometry.
 
         @param sza Solar zenith angle per pixel.
@@ -269,7 +276,13 @@ class BasicRadiativeTransfer(object):
 
         self.mu_eff = torch.abs(1/self.mu_sol)+torch.abs(1/self.mu_view)
 
-    def radiance_toa(self, tau, albedo, irradiance_lbl, grad=True):
+    def radiance_toa(self,
+                     tau: torch.Tensor,
+                     albedo: torch.Tensor,
+                     irradiance_lbl: torch.Tensor,
+                     grad: bool = True) -> (
+                         tuple[torch.Tensor, torch.Tensor, torch.Tensor]
+                         | torch.Tensor):
         """Compute top-of-atmosphere reflected radiance using simple
         optical depth model, albedo, and solar irradiance.
 
@@ -308,33 +321,36 @@ class BasicRadiativeTransfer(object):
         )
         if grad:
             dev_tau = -torch.einsum("N,Nl->Nl", self.mu_eff, rad_trans)
-            self.last_output__radiance_toa = (rad_trans, dev_tau, dev_alb)
+            self.last_output__radiance_toa: tuple[
+                torch.Tensor, torch.Tensor, torch.Tensor] | torch.Tensor = (
+                    rad_trans, dev_tau, dev_alb)
         else:
             self.last_output__radiance_toa = rad_trans
 
         return self.last_output__radiance_toa
 
+
 class RTForwardModel(object):
     """Basic tensorised forward model class."""
 
-    epsilon = 1e-9 # Fudge factor to prevent division by 0
+    epsilon = 1e-9  # Fudge factor to prevent division by 0
 
     def __init__(
         self,
-        obs_wls,
-        obs_fwhm,
-        lbl_wls,
-        tau_base,
-        sun_lbl,
-        sza,
-        vza,
-        tau_offset=None,
-        device=None,
-        dtype=None,
-        isrf=None,
-        rt_class=BasicRadiativeTransfer,
-        rt_args={}
-    ):
+        obs_wls: torch.Tensor,
+        obs_fwhm: torch.Tensor,
+        lbl_wls: torch.Tensor,
+        tau_base: torch.Tensor,
+        sun_lbl: torch.Tensor,
+        sza: torch.Tensor,
+        vza: torch.Tensor,
+        tau_offset: torch.Tensor | None = None,
+        device: torch.Tensor | None = None,
+        dtype: torch.dtype | None = None,
+        isrf: GaussianISRF | None = None,
+        rt_class: type[BasicRadiativeTransfer] = BasicRadiativeTransfer,
+        rt_args: dict = {}
+    ) -> None:
         """Initialiser. Tensor dimensions are inferred from the parameters
         passed to this function.
 
@@ -369,6 +385,7 @@ class RTForwardModel(object):
         self.N = sza.shape[0]
         self.device = device if device is not None else obs_wls.device
         self.dtype = dtype if dtype is not None else obs_wls.dtype
+        assert isinstance(self.device, torch.device)
 
         if len(obs_wls.shape) == 1:
             self.N_obs_wls = obs_wls.shape[0]
@@ -388,7 +405,6 @@ class RTForwardModel(object):
         else:
             self.obs_fwhm = torch.clone(obs_fwhm)
 
-
         self.lbl_wls = torch.clone(lbl_wls)
         self.N_lbl_wls = lbl_wls.shape[0]
 
@@ -400,7 +416,7 @@ class RTForwardModel(object):
             self.N_layers = tau_base.shape[2]
 
         self.sun_lbl = torch.clone(sun_lbl)
-        self.inversion_exceptions = []
+        self.inversion_exceptions: list[tuple[int, Exception]] = []
 
         self.rt_class = rt_class
         self.rt_args = rt_args
@@ -440,11 +456,11 @@ class RTForwardModel(object):
 
     def setup_measurement(
         self,
-        sza,
-        vza,
-        tau_base=None,
-        tau_offset=None,
-    ):
+        sza: torch.Tensor,
+        vza: torch.Tensor,
+        tau_base: torch.Tensor | None = None,
+        tau_offset: torch.Tensor | None = None,
+    ) -> None:
         """Setup measurement variables (geometry and optical depth base) while
         preserving more generic variables like wavelength definitions. This
         method may be used to switch to a different patch of the same scene
@@ -458,6 +474,7 @@ class RTForwardModel(object):
         LBL wavelength ([N ×] N_layers × N_lbl_wls) or None
         or N)"""
         self.rt_solver = self.rt_class(sza, vza, **(self.rt_args))
+        assert isinstance(self.device, torch.device)
 
         if tau_base is not None:
             if len(tau_base.shape) == 3:
@@ -489,14 +506,14 @@ class RTForwardModel(object):
 
         # Null out the albedo dimension and related constants, so they can be
         # recomputed the first time they are needed.
-        self.N_alb = None
-        self.N_params = None
-        self.N_params1 = None
+        self.N_alb: int | None = None
+        self.N_params: int | None = None
+        self.N_params1: int | None = None
         self.id_params = None
-        self.alb_wl_grid = None
-        self.alb_wls = None
+        self.alb_wl_grid: torch.Tensor | None = None
+        self.alb_wls: torch.Tensor | None = None
 
-    def compute_albedo(self, x_alb):
+    def compute_albedo(self, x_alb: torch.Tensor) -> torch.Tensor:
         """Compute albedo from polynomial in wavelength.
 
         Assume `self.N_alb` terms. If `self.N_alb` is `None`, set `self.N_alb`
@@ -505,6 +522,7 @@ class RTForwardModel(object):
         present, it is computed from `self.lbl_wls`.
         @param x_alb Series coefficients. (N × N_alb)
         @return Albedo expansion (N × N_lbl_wls)"""
+        assert isinstance(self.device, torch.device)
 
         if not hasattr(self, "N_alb") or self.N_alb is None:
             self.N_alb = x_alb.shape[1]
@@ -552,15 +570,18 @@ class RTForwardModel(object):
         self.last_output__compute_albedo = albedo
         return self.last_output__compute_albedo
 
-    def compute_optical_depth(self, column_scales):
+    def compute_optical_depth(
+            self,
+            column_scales: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         """Compute optical depth. Multiply the precomputed unscaled optical
         depths by the given column scales per species to obtain optical depth
         per layer per species per wavelength. Sum over species and add
         tau_offset to get optical depth per layer.
 
-        IMPORTANT NOTE: the first returned item -- optical depth per species
-        per layer -- does NOT include tau_total, whereas tau_total HAS been added
-        to the second returned item (optical depth per layer).
+        IMPORTANT NOTE: the first returned item -- optical depth per
+        species per layer -- does NOT include tau_total, whereas
+        tau_total HAS been added to the second returned item (optical
+        depth per layer).
 
         @param column_scales Gas column scales per pixel per species
         (N × N_species)
@@ -568,7 +589,9 @@ class RTForwardModel(object):
             Optical depth per molecule per species
                 (N × N_species × N_layers × N_lbl_wls),
             Optical depth per layer (N × N_layers × N_lbl_wls)
-        )"""
+        )
+
+        """
 
         # (N × N_species × N_layers × N_lbl_wls), (N × N_species) ->
         #   (N × N_species × N_layers × N_lbl_wls)
@@ -584,7 +607,14 @@ class RTForwardModel(object):
         self.last_output__compute_optical_depth = (tau_per_molec, tau_layers)
         return self.last_output__compute_optical_depth
 
-    def forward_lbl(self, column_scales, x_alb, grad=False):
+    def forward_lbl(self,
+                    column_scales: torch.Tensor,
+                    x_alb: torch.Tensor,
+                    grad: bool = False) -> (
+                        tuple[torch.Tensor, torch.Tensor, torch.Tensor]
+                        | tuple[torch.Tensor, torch.Tensor]
+                        | torch.Tensor
+                        | tuple[torch.Tensor, Any | torch.Tensor]):
         """Forward model, line-by-line; compute radiance and optionally
         Jacobian, but do not convolve with ISRF.
 
@@ -623,7 +653,11 @@ class RTForwardModel(object):
         )
 
         if not grad:
-            self.last_output__forward_lbl = self.rt_solver.radiance_toa(
+            self.last_output__forward_lbl: (
+                tuple[torch.Tensor, torch.Tensor, torch.Tensor]
+                | torch.Tensor
+                | tuple[torch.Tensor, Any | torch.Tensor]
+            ) = self.rt_solver.radiance_toa(
                 tau_layers,
                 albedo,
                 self.sun_lbl,
@@ -656,12 +690,12 @@ class RTForwardModel(object):
                     "Nsl,Nl->Nls",
                     self.tau_species_sum,
                     dev_tau
-                ), # Gradients w.r.t. column scales
+                ),  # Gradients w.r.t. column scales
                 torch.einsum(
                     "Nl,Nla->Nla",
                     dev_alb_out,
                     self.alb_wl_grid
-                ) # Gradients w.r.t. albedo factors
+                )  # Gradients w.r.t. albedo factors
             ),
             dim=2
         )
@@ -669,7 +703,15 @@ class RTForwardModel(object):
         self.last_output__forward_lbl = (rad_trans, J)
         return self.last_output__forward_lbl
 
-    def forward_inst(self, column_scales, x_alb, waveshift, grad=False):
+    def forward_inst(self, column_scales: torch.Tensor,
+                     x_alb: torch.Tensor,
+                     waveshift: torch.Tensor,
+                     grad: bool = False) -> (
+                         tuple[torch.Tensor, torch.Tensor, torch.Tensor]
+                         | torch.Tensor
+                         | tuple[torch.Tensor, Any | torch.Tensor]
+                         | None
+                         | tuple[torch.Tensor | None, torch.Tensor]):
         """Forward model, simulated instrument observation: compute radiance
         and optionally Jacobian, and convolve with ISRF.
 
@@ -686,6 +728,7 @@ class RTForwardModel(object):
             Jacobian (N × N_obs_wls × (N_species+N_alb[+1]))
         ). If grad=False: Radiance (N × N_obs_wls)
         """
+        assert isinstance(self.device, torch.device)
 
         obs_wls = (
             (
@@ -705,10 +748,9 @@ class RTForwardModel(object):
         if waveshift is not None:
             self.isrf_cache_good = False
 
-        rad_trans = None
-        J_in = None
+        J_in: torch.Tensor | None = None
         if grad:
-            rad_trans, J_in = self.forward_lbl(
+            rad_trans, J_in, *rest = self.forward_lbl(
                 column_scales, x_alb, grad=True
             )
         else:
@@ -726,13 +768,16 @@ class RTForwardModel(object):
         rad_out = self.isrf.convolve(rad_trans)
 
         if not grad:
-            self.last_output__forward_inst = rad_out
+            self.last_output__forward_inst: (
+                torch.Tensor
+                | None
+                | tuple[torch.Tensor | None, torch.Tensor]) = rad_out
             return self.last_output__forward_inst
 
-        N_params = self.N_params if waveshift is None else self.N_params1
-
         # Jacobian
+        assert isinstance(J_in, torch.Tensor)
         J = self.isrf.convolve(J_in)
+        assert isinstance(J, torch.Tensor)
 
         J_out = J if waveshift is None else torch.cat(
             (J, self.isrf.convolve_gradient(rad_trans).unsqueeze(-1)),
@@ -742,24 +787,25 @@ class RTForwardModel(object):
         self.last_output__forward_inst = (rad_out, J_out)
         return self.last_output__forward_inst
 
+
 class GaussNewtonRetrieval(object):
     def __init__(
         self,
-        radtran,
-        radiance = None,
-        inverse_covariance = None,
-        covariance = None,
-        uncertainty = None
-    ):
+        radtran: RTForwardModel,
+        radiance: torch.Tensor | None = None,
+        inverse_covariance: torch.Tensor | None = None,
+        covariance: torch.Tensor | None = None,
+        uncertainty: torch.Tensor | None = None
+    ) -> None:
         self.radtran = radtran
-        self.inv_cov = None
-        self.radiance = None
+        self.inv_cov: torch.Tensor | None = None
+        self.radiance: torch.Tensor | None = None
 
         self.device = self.radtran.device
         self.dtype = self.radtran.dtype
         self.epsilon = self.radtran.epsilon
 
-        self.id_params = None
+        self.id_params: torch.Tensor | None = None
 
         if (
             inverse_covariance is not None
@@ -777,11 +823,11 @@ class GaussNewtonRetrieval(object):
 
     def setup_measurement(
         self,
-        radiance,
-        inverse_covariance = None,
-        covariance = None,
-        uncertainty = None
-    ):
+        radiance: torch.Tensor | None,
+        inverse_covariance: torch.Tensor | None = None,
+        covariance: torch.Tensor | None = None,
+        uncertainty: torch.Tensor | None = None
+    ) -> None:
         """Set up measurement parameters for retrieval.
 
         The inverse covariance needed to compute χ² can be provided to this
@@ -809,6 +855,9 @@ class GaussNewtonRetrieval(object):
         @param covariance Covariance matrix (see text)
         @param uncertainty Radiance uncertainty (see text)"""
 
+        assert isinstance(radiance, torch.Tensor)
+        assert isinstance(self.device, torch.device)
+
         self.radiance = torch.clone(radiance)
 
         if (
@@ -823,6 +872,7 @@ class GaussNewtonRetrieval(object):
 
         if inverse_covariance is not None:
             if len(inverse_covariance.shape) == 3:
+                assert isinstance(inverse_covariance, torch.Tensor)
                 self.inv_cov = torch.clone(inverse_covariance)
             elif len(inverse_covariance.shape) == 2:
                 self.inv_cov = torch.einsum(
@@ -833,7 +883,7 @@ class GaussNewtonRetrieval(object):
                     ),
                     torch.clone(inverse_covariance)
                 )
-            elif len(inverse_covariance.shape)  == 1:
+            elif len(inverse_covariance.shape) == 1:
                 self.inv_cov = torch.einsum(
                     "N,oO->NoO",
                     torch.ones(
@@ -903,7 +953,7 @@ class GaussNewtonRetrieval(object):
             )
 
             for i in range(self.radtran.N):
-                self.inv_cov[i,:,:] = torch.linalg.solve(
+                self.inv_cov[i, :, :] = torch.linalg.solve(
                     cov[i],
                     id_obs
                 )
@@ -921,30 +971,38 @@ class GaussNewtonRetrieval(object):
             )
             if len(uncertainty.shape) == 2:
                 for i in range(self.radtran.N):
-                    self.inv_cov[i,:] = (
-                        self.inv_cov[i,:]
-                        * (uncertainty[i,:]*self.radiance[i,:]) ** -2
+                    self.inv_cov[i, :] = (
+                        self.inv_cov[i, :]
+                        * (uncertainty[i, :]*self.radiance[i, :]) ** -2
                     )
             elif len(uncertainty.shape) in (1, 0):
                 for i in range(self.radtran.N):
-                    self.inv_cov[i,:] = (
-                        self.inv_cov[i,:]
-                        * (uncertainty*self.radiance[i,:]) ** -2
-                )
-        self.inv_cov = torch.clamp(self.inv_cov, -1/self.epsilon, 1/self.epsilon)
+                    self.inv_cov[i, :] = (
+                        self.inv_cov[i, :]
+                        * (uncertainty*self.radiance[i, :]) ** -2
+                    )
+        assert isinstance(self.inv_cov, torch.Tensor)
+        self.inv_cov = torch.clamp(
+            self.inv_cov, -1 / self.epsilon, 1 / self.epsilon)
         self.inv_cov64 = self.inv_cov.to(torch.float64)
 
     def inversion_step(
         self,
-        column_scales,
-        x_alb,
-        waveshift,
-        delta=False,
-        ignore_pixels=None,
-        damping_parameter=None,
-        fwd_precomp=None,
-        aux_matrices=False
-    ):
+        column_scales: torch.Tensor,
+        x_alb: torch.Tensor,
+        waveshift: torch.Tensor,
+        delta: bool = False,
+        ignore_pixels: torch.Tensor | None = None,
+        damping_parameter: torch.Tensor | None = None,
+        fwd_precomp: tuple[torch.Tensor, torch.Tensor] | None = None,
+        aux_matrices: bool = False
+    ) -> (tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]
+          | tuple[torch.Tensor,
+                  torch.Tensor,
+                  torch.Tensor,
+                  torch.Tensor,
+                  torch.Tensor,
+                  torch.Tensor]):
         """Perform a single Gauss-Newton step.
         Inputs are the state vector components; see `forward`.
         If `damping_parameter` is specified, use a Levenberg-Marquardt-style
@@ -992,17 +1050,21 @@ class GaussNewtonRetrieval(object):
             ]
         )"""
         self.inversion_exceptions = []
-        y, J = (
-            fwd_precomp if fwd_precomp is not None
-            else self.radtran.forward_inst(
+        if fwd_precomp is not None:
+            y, J = fwd_precomp
+        else:
+            x = self.radtran.forward_inst(
                 column_scales, x_alb, waveshift, grad=True
             )
-        )
+            y, J, *rest = x  # type: ignore
+
         dy = self.radiance - y
 
         # Identity matrix for dimension of the state vector. Used for
         # torch.linalg.solve, which is preferred over torch.linalg.inv,
         # according to the documentation.
+        assert isinstance(self.device, torch.device)
+        assert isinstance(self.radtran.N_params, int)
         if self.id_params is None:
             self.id_params = torch.eye(
                 self.radtran.N_params,
@@ -1013,9 +1075,10 @@ class GaussNewtonRetrieval(object):
             self.params_offdiag = ~torch.eye(
                 self.radtran.N_params,
                 device=self.device,
-                dtype=bool
+                dtype=torch.bool
             )
 
+            assert isinstance(self.radtran.N_params1, int)
             self.id_params1 = torch.eye(
                 self.radtran.N_params1,
                 device=self.device,
@@ -1024,7 +1087,7 @@ class GaussNewtonRetrieval(object):
             self.params_offdiag1 = ~torch.eye(
                 self.radtran.N_params1,
                 device=self.device,
-                dtype=bool
+                dtype=torch.bool
             )
 
         N_params = (
@@ -1057,7 +1120,7 @@ class GaussNewtonRetrieval(object):
 
             if torch.all(damping_parameter > self.epsilon):
                 diag = torch.clone(A)
-                diag[:,params_offdiag] = 0
+                diag[:, params_offdiag] = 0
                 A += torch.einsum(
                     "N,NPp->NPp",
                     damping_parameter,
@@ -1069,14 +1132,14 @@ class GaussNewtonRetrieval(object):
         # FIXME vectorised inversion?
         # (N × N_params × N_params) -> (N × N_params × N_params)
         for i in range(self.radtran.N):
-            if ignore_pixels is None or ignore_pixels[i] == False:
+            if ignore_pixels is None or not ignore_pixels[i]:
                 try:
-                    Ainv[i,:,:] = torch.linalg.solve(A[i,:,:], id_params)
+                    Ainv[i, :, :] = torch.linalg.solve(A[i, :, :], id_params)
                 except Exception as e:
                     self.inversion_exceptions.append((i, e))
-                    Ainv[i,:,:] = torch.nan
+                    Ainv[i, :, :] = torch.nan
             else:
-                Ainv[i,:,:] = torch.nan
+                Ainv[i, :, :] = torch.nan
 
         # B = (J.T C^-1 J)^-1 (C^-1 J).T
         # (N × N_params × N_params), (N × N_obs_wls × N_params)
@@ -1093,20 +1156,20 @@ class GaussNewtonRetrieval(object):
         )
 
         # Update state vector
+        assert isinstance(self.radtran.N_alb, int)
         if not delta:
-            x[:,0:self.radtran.N_species] += column_scales
-            x[
-                :,
-                self.radtran.N_species
-                    :self.radtran.N_species+self.radtran.N_alb
-            ] += (
+            x[:, 0:self.radtran.N_species] += column_scales
+            x[:,
+              self.radtran.N_species:self.radtran.N_species+self.radtran.N_alb
+              ] += (
                 x_alb
-            )
+              )
             if waveshift is not None:
-                x[:,-1] += waveshift
+                x[:, -1] += waveshift
 
         # (N × N_obs_wls), (N, N_obs_wls, N_obs_wls), (N, obs_wls) ->
         #   (N)
+        assert isinstance(N_params, int)
         chi2 = torch.einsum(
             "NO,NOo,No->N",
             dy,
@@ -1129,13 +1192,11 @@ class GaussNewtonRetrieval(object):
             ).to(self.dtype)
 
         ret_tup = (
-            x[:,0:self.radtran.N_species],
-            x[
-                :,
-                self.radtran.N_species
-                    :self.radtran.N_species+self.radtran.N_alb
-            ],
-            x[:,-1] if waveshift is not None else None,
+            x[:, 0:self.radtran.N_species],
+            x[:,
+              self.radtran.N_species:self.radtran.N_species+self.radtran.N_alb
+              ],
+            x[:, -1] if waveshift is not None else None,
             chi2
         )
 

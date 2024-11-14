@@ -556,6 +556,46 @@ l2gainH2O:
   valid_max: 1.E+30
   FillValue: -32767
 
+l2gainvectorCO2:
+  name: 'inversion gain vector CO2'
+  long_name: 'CO2 column scale factor spectral gain vector from inversion'
+  units: '1/(photons/(nm m2 s sr))'
+  valid_min: -1.E+30
+  valid_max: 1.E+30
+  FillValue: -32767
+
+l2gainvectorCH4:
+  name: 'inversion gain vector CH4'
+  long_name: 'CH4 column scale factor spectral gain vector from inversion'
+  units: '1/(photons/(nm m2 s sr))'
+  valid_min: -1.E+30
+  valid_max: 1.E+30
+  FillValue: -32767
+
+l2gainvectorH2O:
+  name: 'inversion gain vector H2O'
+  long_name: 'H2O column scale factor spectral gain vector from inversion'
+  units: '1/(photons/(nm m2 s sr))'
+  valid_min: -1.E+30
+  valid_max: 1.E+30
+  FillValue: -32767
+
+proxygainCO2:
+  name: 'gain CO2 proxy'
+  long_name: 'CO2 proxy retrieval spectral gain vector'
+  units: 'ppm/(photons/(nm m2 s sr))'
+  valid_min: -1.E+30
+  valid_max: 1.E+30
+  FillValue: -32767
+
+proxygainCH4:
+  name: 'gain CH4 proxy'
+  long_name: 'CH4 proxy retrieval spectral gain vector'
+  units: 'ppb/(photons/(nm m2 s sr))'
+  valid_min: -1.E+30
+  valid_max: 1.E+30
+  FillValue: -32767
+
 radiance:
   name: radiance
   units: 'photons/(sr nm m2 s)'

@@ -307,6 +307,75 @@ def level2_diags_output(filename, l2product, measurement):
     _ = writevariablefromname(output_l2diag, "l2gainH2O", _dims, l2diag_gainH2O)
     output_l2diag.close()
 
+def level2_diags_RTorCH4(
+    config,
+    l2diag,
+    species_names,
+    nalt,
+    nact,
+    nwave,
+):
+    """Write level2 diagnostic output from RTorCH4 retrieval."""
+    # We normally use config['io_files']['output_l2_diag'] as the output file.
+    # However, if config['retrieval_init']['no_clobber'] is True and the
+    # output file already exists or otherwise cannot be opened for writing
+    # (e.g.  because it's being locked by another program), we will try a few
+    # other paths to prevent a long retrieval being lost at the very end.
+    outpath = config['io_files']['output_l2_diag']
+    outdir = os.path.dirname(outpath)
+    outfile = os.path.basename(outpath)
+    randoutfile = ''.join([
+        random.choice(string.ascii_letters+string.digits)
+        for _ in range(8)
+    ]) + '_' + outfile
+
+    try_paths = [outpath]
+    no_clobber = False
+    if (
+        'no_clobber' in config['retrieval_init']
+        and config['retrieval_init']['no_clobber']
+    ):
+        no_clobber = True
+        try_paths += [
+            os.path.join(outdir, randoutfile),
+            os.path.join('.', randoutfile),
+            os.path.join('/tmp', randoutfile)
+        ]
+
+    out = None
+    for p in try_paths:
+        if no_clobber and os.path.exists(p):
+            continue
+
+        try:
+            out = nc.Dataset(p, mode='w')
+            print('Writing level 2 diagnostics to', p)
+            break
+        except:
+            continue
+
+    out.title = 'Tango Carbon E2ES L2 diagnostics'
+    out.createDimension('bins_spectral', nwave)
+    out.createDimension('bins_along_track', nalt)
+    out.createDimension('bins_across_track', nact)
+    dims = ('bins_along_track', 'bins_across_track', 'bins_spectral')
+
+    keys = [
+        'l2wavelength',
+        'l2measurement',
+        'l2solarirradiance',
+        'proxygainCO2',
+        'proxygainCH4',
+    ]
+    for sp in species_names:
+        keys += [
+            f'l2gain{sp}',
+            f'l2gainvector{sp}'
+        ]
+
+    for k in keys:
+        writevariablefromname(out, k, dims, l2diag[k])
+
 def level2_output_RTorCH4(
     config,
     l2,
@@ -493,6 +562,22 @@ def level1b_to_level2_processor_RTorCH4(config):
     ):
         l1b[k] = l1b[k][alt_slice]
 
+    diag_output = False
+    if (
+        'diag_output' in config['retrieval_init']
+        and config['retrieval_init']['diag_output']
+    ):
+        if 'output_l2_diag' in config['io_files']:
+            diag_output = True
+        else:
+            print(
+                'WARNING: diagnostic output requested, '
+                'but `output_l2_diag` missing from '
+                '`io_files` section of configuration. '
+                'Diagnostic output will be disabled.',
+                file=sys.stderr
+            )
+
     # Hardcode the number of albedo coefficients for now
     N_alb = 2
 
@@ -612,9 +697,9 @@ def level1b_to_level2_processor_RTorCH4(config):
             airsum = np.sum(atm.air)*np.ones((N_alt, N_act))
         elif config['retrieval_init']['sw_prof_init'] == 'sgm':
             col_profiles[:,:,spi,:] = (
-                atm_sgm[f'dcol_{spn.lower()}'][:N_alt,:N_act,:]
+                atm_sgm[f'dcol_{spn.lower()}']
             )
-            airsum = atm_sgm['col_air'][:N_alt,:N_act]
+            airsum = atm_sgm['col_air']
 
     del atm
 
@@ -700,6 +785,11 @@ def level1b_to_level2_processor_RTorCH4(config):
     out_Ainv = None
     out_B = None
     out_col_kern_base = np.nan * np.ones((N_alt, N_act, N_species, N_layers))
+    out_y = None
+    out_sun_obs = None
+    if diag_output:
+        out_y = np.nan * np.ones((N_alt, N_act, N_obs_wls))
+        out_sun_obs = np.nan * np.ones((N_alt, N_act, N_obs_wls))
     iterations = np.zeros((N_alt, N_act), dtype=int)
     converged = np.zeros((N_alt, N_act), dtype=bool)
 
@@ -1026,6 +1116,12 @@ def level1b_to_level2_processor_RTorCH4(config):
                     dev_tau_lbl
                 ).cpu().detach().numpy()
 
+                if diag_output:
+                    out_y[batch,chunk_inds,:] = y.cpu().detach().numpy()
+                    out_sun_obs[batch,chunk_inds,:] = (
+                        sun_obs[chunk].cpu().detach().numpy()
+                    )
+
                 if waveshift is not None:
                     out_waveshift[batch,chunk_inds] = (
                         waveshift.cpu().detach().numpy()
@@ -1119,6 +1215,60 @@ def level1b_to_level2_processor_RTorCH4(config):
         level2_output_RTorCH4(
             config, l2, species_names, N_alt, N_act, N_layers
         )
+
+        if diag_output:
+            l2d = {
+                'l2measurement': out_y,
+                'l2solarirradiance': out_sun_obs
+            }
+            for spi, spn in enumerate(species_names):
+                l2d[f'l2gainvector{spn}'] = out_B[:,:,spi,:]
+                l2d[f'l2gain{spn}'] = out_B[:,:,spi,:] * np.expand_dims(
+                    l2[f'X{spn}'], -1
+                )
+
+            l2d[f'l2wavelength'] = np.einsum(
+                "a,co->aco",
+                np.ones(N_alt),
+                obs_wls.cpu().detach().numpy()
+            )
+
+            l2d['proxygainCO2'] = (
+                np.expand_dims(l2['proxyXCO2'], -1)
+                * (
+                    (
+                        l2d['l2gainvectorCO2']
+                        / np.expand_dims(l2['XCO2']*scaling['CO2'], -1)
+                    )
+                    - (
+                        l2d['l2gainvectorCH4']
+                        / np.expand_dims(l2['XCH4']*scaling['CH4'], -1)
+                    )
+                )
+            )*scaling['CO2']
+            l2d['proxygainCH4'] = (
+                np.expand_dims(l2['proxyXCH4'], -1)
+                * (
+                    (
+                        l2d['l2gainvectorCH4']
+                        / np.expand_dims(l2['XCH4']*scaling['CH4'], -1)
+                    )
+                    - (
+                        l2d['l2gainvectorCO2']
+                        / np.expand_dims(l2['XCO2']*scaling['CO2'], -1)
+                    )
+                )
+            )*scaling['CH4']
+            level2_diags_RTorCH4(
+                config,
+                l2d,
+                species_names,
+                N_alt,
+                N_act,
+                N_obs_wls,
+            )
+
+
 
 
 def level1b_to_level2_processor(config, sw_diag_output = False):

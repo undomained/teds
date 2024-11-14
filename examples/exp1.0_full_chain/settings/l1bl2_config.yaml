@@ -12,6 +12,7 @@ retrieval_init:                 #initialization parameter for inversion
     prior_XH2O: 0.001           #prior H2O concentration
     no_clobber: False           #if True, don't overwrite existing output files
     fit_spectral_shift: True    #fit a constant spectral shift per pixel
+    diag_output: True           #output diagnostic information
 
 # Note on special options:
 
@@ -67,6 +68,7 @@ io_files:
     input_hapi: '/home/jochen/TANGO_E2ES/EndtoEndProject/data/harpi/'
     input_sgm: '/home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/sgm/Tango_Carbon_sgm_atmosphere_ref_exp1.0.nc'
     output_l2: '/home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/level2/Tango_Carbon_l2_exp1.0.nc'
+    output_l2_diag: '/home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/level2/Tango_Carbon_l2_diag_exp1.0.nc'
     dump_xsec: '/home/jochen/TANGO_E2ES/EndtoEndProject/data/tmp/Tango_Carbon_xsec_exp1.0_l2.pkl'
 
 # Expert settings for debugging and performance tuning.

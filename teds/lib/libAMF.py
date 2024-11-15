@@ -30,13 +30,13 @@ def read_doas(file_doas, slice_alt, slice_act):
 def read_cloud(file_cloud, slice_alt, slice_act):
     cloud = {}
     with nc.Dataset(file_cloud) as f:
-        if 'cloud_fraction' in f.variables:
-            cloud['cot'] = f['cloud_optical_thickness'][slice_alt,slice_act]
-            cloud['cot_error_alb'] = f['cloud_optical_thickness_error_albedo'][slice_alt,slice_act]
-            cloud['cot_error_R'] = f['cloud_optical_thickness_error_reflectance'][slice_alt,slice_act]
-            cloud['cloud_bottom_pressure'] = f['cloud_bottom_pressure'][slice_alt,slice_act]
-            cloud['cloud_bottom_pressure_error'] = f['cloud_bottom_pressure_error'][slice_alt,slice_act]
-            cloud['cloud_fraction'] = f['cloud_fraction'][slice_alt,slice_act]
+        if 'cloud' in f.groups.keys():
+            cloud['cot'] = f['cloud/cloud_optical_thickness'][slice_alt,slice_act]
+            cloud['cot_error_alb'] = f['cloud/cloud_optical_thickness_error_albedo'][slice_alt,slice_act]
+            cloud['cot_error_R'] = f['cloud/cloud_optical_thickness_error_reflectance'][slice_alt,slice_act]
+            cloud['cloud_bottom_pressure'] = f['cloud/cloud_bottom_pressure'][slice_alt,slice_act]
+            cloud['cloud_bottom_pressure_error'] = f['cloud/cloud_bottom_pressure_error'][slice_alt,slice_act]
+            cloud['cloud_fraction'] = f['cloud/cloud_fraction'][slice_alt,slice_act]
         else:
             cloud['cloud_fraction'] = np.zeros_like(f['latitude'][slice_alt,slice_act])
             cloud['cot'] = np.zeros_like(f['latitude'][slice_alt,slice_act])

@@ -362,7 +362,9 @@ def write_cloud(cfg, cloud, slice_alt, slice_act):
         else:
             log.error('{var} has {var.ndim} dimensions, not recognised.')
 
-        _ = writevariablefromname(dst, vardict[var], dim, out)
+        if 'cloud' not in dst.groups.keys():
+            _ = dst.createGroup('cloud')
+        _ = writevariablefromname(dst['cloud'], vardict[var], dim, out)
         
         return
 

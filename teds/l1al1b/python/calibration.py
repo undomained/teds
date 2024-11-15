@@ -363,9 +363,9 @@ def change_wavelength_grid(l1_product: L1,
                                  l1_product['spectra_noise'][i_alt, i_act, :])
             new_spectra_noise[i_alt, i_act, :] = spline(
                 wavelengths_out[i_act, :])
-        l1_product['spectra'] = new_spectra
-        l1_product['spectra_noise'] = new_spectra_noise
-        l1_product['wavelengths'] = wavelengths_out
+    l1_product['spectra'] = new_spectra
+    l1_product['spectra_noise'] = new_spectra_noise
+    l1_product['wavelengths'] = wavelengths_out
 
 
 def radiometric(l1_product: L1,

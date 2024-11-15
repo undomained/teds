@@ -32,11 +32,16 @@ def read_doas(file_doas, slice_alt, slice_act):
     return doas
 
 def get_cloud_fraction(cfg, doas, atm):
-    # placeholder for cloud classification code
+    # placeholder for cloud mask algorithm
     # for now take cloud fraction from SGM
-
+    
     cloud_results = {}
-    cloud_results['cloud_fraction'] = atm['cloud_fraction'].copy()
+
+    if 'cloud_fraction' not in atm.keys():
+        cloud_results['cloud_fraction'] = np.zeros_like(atm['latitude'])
+    else:
+        cloud_results['cloud_fraction'] = atm['cloud_fraction'].copy()
+    
     return cloud_results
 
 def get_cloud_parameters(cfg, doas, atm, cld_results):

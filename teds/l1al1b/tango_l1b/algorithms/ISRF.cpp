@@ -106,48 +106,7 @@ void ISRF::algoExecute(L1& l1, const Dataset& input_data) {
                 signal_conv[i_wl] += norm_inv * this_isrf[k] * this_signal[k];
             }
         }
-
-        l1.observation_sig[i_act] = signal_conv;
-        if (i_act ==0){
-            for (int i_wl {}; i_wl < ckd.n_lbl; i_wl++) {
-            spdlog::info("{}", l1.observation_sig[i_act][i_wl]);
-            }
-        }
     }
-
-    /* OLD VERSION
-    int center_ix = (ckd.n_isrf_samples - 1) / 2;
-    for (int i_act {}; i_act < ckd.n_act; ++i_act) {
-        std::vector<double> signal_conv(ckd.n_lbl, 0.0);
-        for (int i_wl {}; i_wl < ckd.n_lbl; ++i_wl) {
-
-            // Left and right bounds of isrf samples, convolution kernel
-            int i_isrf_0 = std::max(center_ix - i_wl, 0);
-            int i_isrf_1 = std::min(ckd.n_lbl + center_ix - i_wl - 1,
-                                    ckd.n_isrf_samples - 1);
-            // Left and right bounds of wavelengths,
-            int i_input_0 = std::max(i_wl - center_ix, 0);
-            int i_input_1 = std::min(i_wl + center_ix, ckd.n_lbl - 1);
-
-            std::vector<double> this_isrf(
-                ckd.rad.isrf[i_act][i_wl].begin() + i_isrf_0,
-                ckd.rad.isrf[i_act][i_wl].begin() + i_isrf_1);
-            double norm_inv =
-                1
-                / (std::accumulate(this_isrf.begin(), this_isrf.end(), 0.0));
-
-            std::vector<double> this_signal(
-                l1.observation_sig[i_act].begin() + i_input_0,
-                l1.observation_sig[i_act].begin() + i_input_1);
-            for (int k {}; k < this_isrf.size(); ++k) {
-                signal_conv[i_wl] +=
-                    norm_inv * this_isrf[k] * this_signal[k];
-            }
-        }
-        
-        l1.observation_sig[i_act] = signal_conv;
-    }
-    */
 }
 
 } // namespace tango

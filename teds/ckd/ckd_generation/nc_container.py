@@ -42,6 +42,12 @@ class NC_container:
         ncgroup = self.nc[groupname]
         self.create_dims_from_dict(ncgroup, dims)
 
+    def create_dim(self, dimname, size):
+        groupname = self.get_group_name()
+        ncgroup = self.nc[groupname]
+        ncgroup.createDimension(dimname, size)
+
+
     def create_var(self, name, dims, values, attrs = {}, dtype = 'u1'):
         group_name = self.get_group_name()
         varpath = f"{group_name}/{name}"

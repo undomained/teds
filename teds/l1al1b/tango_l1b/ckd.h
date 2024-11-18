@@ -82,9 +82,11 @@ public:
     // Stray light
     struct
     {
-        bool enabled { false };
         // Number of stray light kernels
         int n_kernels {};
+        int coarse_rows {};
+        int coarse_cols {};
+        int n_van_cittert {};
         // Number of rows of each kernel
         std::vector<int> kernel_rows {};
         // Number of columns of each kernel

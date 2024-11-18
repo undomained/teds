@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <netcdf>
 #include <spdlog/spdlog.h>
+#include <complex>
 
 namespace tango {
 
@@ -96,8 +97,11 @@ CKD::CKD(const std::string& filename, const double spectrum_width)
     }
     if (const netCDF::NcGroup grp { nc.getGroup("stray") }; !grp.isNull()) {
         spdlog::info("Reading stray light CKD");
-        stray.enabled = true;
-        stray.n_kernels = static_cast<int>(grp.getDim("kernel").getSize());
+        stray.n_kernels = static_cast<int>(grp.getDim("kernel").getSize()); // number of kernels
+        stray.coarse_rows = static_cast<int>(grp.getDim("coarse_image_rows").getSize()); // number of rows in coarse grid
+        stray.coarse_cols = static_cast<int>(grp.getDim("coarse_image_cols").getSize()); // number of cols in coarse grid
+        stray.n_van_cittert = static_cast<int>(grp.getDim("n_van_cittert").getSize()); // number straylight iterations
+
         stray.kernel_rows.resize(stray.n_kernels);
         grp.getVar("kernel_rows").getVar(stray.kernel_rows.data());
         stray.kernel_cols.resize(stray.n_kernels);
@@ -108,28 +112,41 @@ CKD::CKD(const std::string& filename, const double spectrum_width)
         for (int i {}; i < stray.n_kernels; ++i) {
             stray.kernels_fft[i].resize(stray.kernel_fft_sizes[i]);
         }
+        
         std::vector<size_t> start { 0 };
         for (int i_kernel {}; i_kernel < stray.n_kernels; ++i_kernel) {
-            // Need to multiply by 2 because of complex numbers
             const std::vector<size_t> count {
-                2 * static_cast<size_t>(stray.kernel_fft_sizes.at(i_kernel))
+                static_cast<size_t>(stray.kernel_fft_sizes.at(i_kernel))
             };
-            grp.getVar("kernels_fft")
-              .getVar(start, count, stray.kernels_fft.at(i_kernel).data());
+
+            // create temporary vectors to hold real and imaginary parts
+            std::vector<double> re(count.front());
+            std::vector<double> im(count.front());
+            grp.getVar("kernel_fft_re").getVar(start, count, re.data());
+            grp.getVar("kernel_fft_im").getVar(start, count, im.data());
+
+            // Combine into complex numbers and store
+            for (size_t j = 0; j < count.front(); ++j) {
+                stray.kernels_fft[i_kernel][j] = std::complex<double>(re[j], im[j]);
+            }
             start.front() += count.front();
         }
-        stray.eta.resize(npix);
+        int npix_coarse = stray.coarse_cols * stray.coarse_rows;
+        stray.eta.resize(npix_coarse);
         grp.getVar("eta").getVar(stray.eta.data());
-        stray.weights.resize(stray.n_kernels, std::vector<double>(npix));
-        std::vector<double> buf(stray.n_kernels * npix);
+        stray.weights.resize(stray.n_kernels, std::vector<double>(npix_coarse));
+        std::vector<double> buf(stray.n_kernels * npix_coarse);
         grp.getVar("weights").getVar(buf.data());
         for (int i {}; i < stray.n_kernels; ++i) {
-            for (int j {}; j < npix; ++j) {
-                stray.weights[i][j] = buf[i * npix + j];
+            for (int j {}; j < npix_coarse; ++j) {
+                stray.weights[i][j] = buf[i * npix_coarse + j];
             }
         }
+
         stray.edges.resize(4 * stray.n_kernels);
         grp.getVar("edges").getVar(stray.edges.data());
+
+
     }
     if (const netCDF::NcGroup grp { nc.getGroup("swath") }; !grp.isNull()) {
         spdlog::info("Reading swath CKD");
@@ -153,23 +170,6 @@ CKD::CKD(const std::string& filename, const double spectrum_width)
         rad.enabled = true;
         rad.rad.resize(npix);
         grp.getVar("radiometric").getVar(rad.rad.data());
-
-        // Resize 3D ISRF
-        /*
-        n_isrf_samples = static_cast<int>(grp.getDim("isrf_samples").getSize());
-        rad.isrf.resize(n_act);
-        rad.isrf_wl.resize(n_act);
-        for (int i = 0; i < n_act; ++i) {
-            rad.isrf[i].resize(n_lbl);
-            rad.isrf_wl[i].resize(n_lbl);
-            for (int j = 0; j < n_lbl; ++j) {
-                rad.isrf[i][j].resize(n_isrf_samples);
-                rad.isrf_wl[i][j].resize(n_isrf_samples);
-            }
-        }
-        getAndReshape3D(grp.getVar("isrf"), rad.isrf);
-        getAndReshape3D(grp.getVar("isrf_wavelengths"), rad.isrf_wl);
-        */
     }
 
     if (const netCDF::NcGroup grp { nc.getGroup("isrf") };

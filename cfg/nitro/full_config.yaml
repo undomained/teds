@@ -56,17 +56,13 @@ ckd:
         'im_inputs_tno'         : './ckd/ckd_generation/data_external/TANGO_Nitro_V005_Nominal_Instrument_Model_Inputs_17102024.xlsx'
     # Dimensions
     dimensions: 
-        detector_row : 3611  # n_rows
-        detector_column : 2794  # n_cols
+        detector_row : 4112 # n_rows
+        detector_column : 3008 # n_cols
         across_track : 100
         lbl_samples : 2141 # number of wavelength samples in scene
         vector       : 3
         number_of_views         : 1
         single_double           : 1 
-        stray: 
-            kernel              : 21  # kernel size
-            kernel_fft_size     : 19705600  # n_cols
-            edges_of_box        : 4
     # Global attributes
     attributes: 
         institution     : 'KNMI Royal Netherlands Meteorological Institute'
@@ -96,6 +92,7 @@ ckd:
     det_max_wl: 490                 # nm, detector maximum wavelength
     rcc: 4222381848451.05           # radiometric calibration constant temporary,
     etendue: 0.0349                 # mm2 sr
+    n_van_cittert: 2                # number of straylight convolution iterations
 
 #########################################################
 #
@@ -204,8 +201,8 @@ im:
         algo_list: 'algos_im'
     instrument: 'nitro'
     processing_version: 0.000
-    # image_start: 0
-    # image_end: 0
+    #image_start: 0
+    #image_end: 0
     detector:
         binning_table_id: 1         # across track binning
         exposure_time:    0.021     # exposure time [sec]

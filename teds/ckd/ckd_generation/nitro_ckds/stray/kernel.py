@@ -5,49 +5,44 @@ Straylight kernel variables
 import numpy as np
 import h5py as h5
 from scipy.interpolate import CubicSpline
-import urllib.request
+#import urllib.request
 import os
+from getpass import getpass
+import requests
 
+    
 def generate(ncc):
     cfg = ncc.cfg
-    # Import data from carbon instrument
-    straydatapath = f"{cfg['paths']['dir_external']}ckd_stray.nc"
-    straydatalink = "https://surfdrive.surf.nl/files/index.php/s/waqRfTI3NvJxIfo/download?path=%2Fdata&files=ckd_stray.nc"
+    # Transfer data form ckd_stray to ckd with all data
+
+    # Import data
+    straydatapath = f"{cfg['paths']['dir_external']}ckd_stray_nitro.nc"
+    straydatalink = "https://surfdrive.surf.nl/files/index.php/s/xhMKNPX5SoBAfA3/download?path=%2Fdata&files=ckd_stray_nitro.nc"
     if not os.path.isfile(straydatapath):
-        urllib.request.urlretrieve(straydatalink, straydatapath)
+        print("{:=^60}".format(" Straylight CKD Data missing "))
+        print("Download CKD straylight nitro files from TANGO surfdrive")
+        print("url: {}".format(straydatalink))
+        print("target_folder: {}".format(straydatapath))
+        print("{:=^60}".format(""))
+        exit()
+    
     with h5.File(straydatapath) as f:
-        kernel_rows = f['stray/kernel_rows'][:]
-        kernel_cols = f['stray/kernel_cols'][:]
-        kernel_fft_sizes = f['stray/kernel_fft_sizes'][:]
-        kernels_fft = f['/stray/kernels_fft'][:]
-        eta = f['stray/eta'][:]
-        weights = f['stray/weights'][:]
-        edges = f['stray/edges'][:]
+        kernel_rows = f['kernel_rows'][:]
+        kernel_cols = f['kernel_cols'][:]
+        kernel_fft_sizes = f['kernel_fft_sizes'][:]
+        kernel_fft_re = f['kernel_fft_re'][:]
+        kernel_fft_im = f['kernel_fft_im'][:]
+        eta = f['eta'][:]
+        weights = f['weights'][:]
+        edges = f['edges'][:]
 
-    # reshape some variables for the time being
-    C = cfg['dimensions']['detector_column']
-    R = cfg['dimensions']['detector_row']
-    col_new = np.arange(C)/C
-    row_new = np.arange(R)/R
-    col_old = np.arange(eta.shape[1])/eta.shape[1]
-    row_old = np.arange(eta.shape[0])/eta.shape[0]
-    eta_col_new = np.zeros((len(row_old), C))
-    wei_col_new = np.zeros((len(weights), len(row_old), C))
-    for r in range(len(row_old)):
-        spl = CubicSpline(col_old, eta[r])
-        eta_col_new[r] = spl(col_new)
-        for i in range(len(weights)):
-            splw = CubicSpline(col_old, weights[i,r,:])
-            wei_col_new[i,r,:] = splw(col_new)
-
-    eta_new = np.zeros((R, C))
-    wei_new = np.zeros((len(weights), R, C))
-    for c in range(len(col_new)):
-        spl = CubicSpline(row_old, eta_col_new[:,c])
-        eta_new[:,c] = spl(row_new)
-        for i in range(len(weights)):
-            splw = CubicSpline(row_old, wei_col_new[i,:,c])
-            wei_new[i,:,c] = splw(row_new)
+    # create dimensions for kernel fft size and number of kernels
+    ncc.create_dim('coarse_image_rows', eta.shape[0])
+    ncc.create_dim('coarse_image_cols', eta.shape[1])
+    ncc.create_dim('kernel_fft_size', len(kernel_fft_re))
+    ncc.create_dim('kernel', len(kernel_rows))
+    ncc.create_dim('edges_of_box', 4)
+    ncc.create_dim('n_van_cittert', cfg["n_van_cittert"])
 
     # Create rows
     attr = {'long_name': "number of rows in each kernel"}
@@ -59,20 +54,55 @@ def generate(ncc):
     attr = {'long_name': "sizes of kernel FFTs"}
     ncc.create_var('kernel_fft_sizes', ['kernel'], kernel_fft_sizes, attr, 'i4')
     # Create ffts
-    attr = {'long_name': 'Fourier transforms of the kernels', 'units':'1'}
-    ncc.create_var('kernels_fft', ['kernel_fft_size'], kernels_fft, attr, 'f8')
+    attr = {'long_name': 'Real part of fourier transforms of the kernels', 'units':'1'}
+    ncc.create_var('kernel_fft_re', ['kernel_fft_size'], kernel_fft_re, attr, 'f8')
+    # Create ffts
+    attr = {'long_name': 'Imaginary part of fourier transforms of the kernels', 'units':'1'}
+    ncc.create_var('kernel_fft_im', ['kernel_fft_size'], kernel_fft_im, attr, 'f8')
     # create eta
-    dims_img = ['detector_row', 'detector_column']
+    dims_img = ['coarse_image_rows', 'coarse_image_cols']
     eta_attr = {'long_name': 'internal scattering factor'}
-    ncc.create_var('eta', dims_img, eta_new, eta_attr, 'f8')
+    ncc.create_var('eta', dims_img, eta, eta_attr, 'f8')
     # create weights
     dims_weights = np.append('kernel', dims_img)
     attr = {'long_name': 'kernel weights', 'units':'1'}
-    ncc.create_var('weights', dims_weights, wei_new, attr, 'f8')
+    ncc.create_var('weights', dims_weights, weights, attr, 'f8')
     # create edges
     dims_edges = ['kernel', 'edges_of_box']
     attr = {'long_name': 'distances of subimage edges from the detector edges'}
     ncc.create_var('edges', dims_edges, edges, attr, 'f8')
+
+    
+
+    #ncc.nc.createVariable(|"n_van_cittert", "i4")
+
+
+
+# def generate(ncc):
+#     cfg = ncc.cfg
+#     # Transfer data form ckd_stray to ckd with all data
+#     straydatapath = f"{cfg['paths']['dir_external']}ckd_stray_nitro.nc"
+    
+#     with h5.File(straydatapath) as f:
+#         kernel = f['kernel'][:]
+#         crow = f['crow'][:]
+#         ccol = f['ccol'][:]
+
+#     print(kernel.shape)
+#     # create dimensions for kernel fft size and number of kernels
+#     ncc.create_dim('coarse_image_rows', kernel.shape[1])
+#     ncc.create_dim('coarse_image_cols', kernel.shape[2])
+#     ncc.create_dim('kernel', len(kernel))
+
+#     # Create rows
+#     attr = {'long_name': "row index of kernel center"}
+#     ncc.create_var('crow', ['kernel'], crow, attr, 'i4')
+#     # Create cols
+#     attr = {'long_name': "column index of kernel center"}
+#     ncc.create_var('ccol', ['kernel'], ccol, attr, 'i4')
+#     # Create kernels
+#     attr = {'long_name': "kernels"}
+#     ncc.create_var('kernel', ['kernel', 'coarse_image_rows', 'coarse_image_cols'], kernel, attr, 'f8')
     
 
 

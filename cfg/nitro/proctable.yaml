@@ -1,6 +1,7 @@
 algos_im:
     - ISRF  # only for IM, first algorithm to execute
     - Draw_On_Detector # only for IM, second algorithm to execute
+    - Straylight
     - Radiometric
     - PRNU
     - Dark_Current
@@ -8,7 +9,7 @@ algos_im:
     - Dark_Offset
 #    - Coaddition
     - Binning
-#   - Straylight (waiting for data)
+    - Straylight # only in-band in-field for now
     - DAC
 algos_l1b:
 #   - Binning # Where do we put this?
@@ -19,7 +20,7 @@ algos_l1b:
     - Dark_Current
     - Non_Linearity
     - PRNU
-#   - Straylight (waiting for data)
+    - Straylight  # only in-band in-field for now
     - Radiometric
 # Note: below algo only needed when wanting to compare with input.
 # When running L1B for real binning should be sufficient.

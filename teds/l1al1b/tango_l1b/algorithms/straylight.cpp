@@ -92,7 +92,7 @@ void Straylight::algoExecute(L1& l1, const Dataset& input_data) {
     if (getModelType() == "L1B")
     { // L1 implementation (van Cittert Convolution Subtraction)
         
-        std::vector<double> image_result {image_binned}; // Start with binned image
+        std::vector<double> image_ideal {image_binned}; // Start with binned image
 
         // Van Cittert algorithm
         for (int i_vc = 0; i_vc < ckd.stray.n_van_cittert; i_vc++){            
@@ -101,14 +101,16 @@ void Straylight::algoExecute(L1& l1, const Dataset& input_data) {
             std::fill(conv_result.begin(), conv_result.end(), 0.0);
 
             // Perform kernel convolutions and update conv_result
-            convolveKernels(ckd, image_result, image_fft, conv_result);
+            convolveKernels(ckd, image_ideal, image_fft, conv_result);
 
             // Update the estimate of the "ideal" image
             for (int i = 0; i < cpix; ++i) 
             {
-                image_result[i] = (image_binned[i] - conv_result[i]) / (1 - ckd.stray.eta[i]);
+                image_ideal[i] = (image_binned[i] - conv_result[i]) / (1 - ckd.stray.eta[i]);
             }
         }
+        image_result = std::move(image_ideal);
+
     } else if (getModelType() == "IM")
     {   // IM implementation (single Convolution Addition)
         convolveKernels(ckd, image_binned, image_fft, conv_result);

@@ -1830,7 +1830,7 @@ def initOutput(l2_file, results, geo):
 
     return
 
-def writeOutput(l2_file,IFDOEconfig,parameterNames,results,geo):
+def writeOutput(l2_file,IFDOEconfig,parameterNames,results):
     # write results to output file
 
     dst = nc.Dataset(l2_file, 'a', format='NETCDF4')
@@ -1877,17 +1877,26 @@ def writeOutput(l2_file,IFDOEconfig,parameterNames,results,geo):
         # write spectra
 
         RModel_nc = dst[group].createVariable('R_modeled', float, ('scanline','ground_pixel','spectral_channel'), fill_value=9.96921E36, zlib=True)
-        RModel_nc.units = 'mol.m-2.nm-1.sr-1.s-1'
+        RModel_nc.units = '-'
         RModel_nc[:,:,:] = results['R_model']
 
         RMeas_nc = dst[group].createVariable('R_measured', float, ('scanline','ground_pixel','spectral_channel'), fill_value=9.96921E36, zlib=True)
-        RMeas_nc.units = 'mol.m-2.nm-1.sr-1.s-1'
+        RMeas_nc.units = '-'
         RMeas_nc[:,:,:] = results['R_meas']
 
         RRes_nc = dst[group].createVariable('R_residual', float, ('scanline','ground_pixel','spectral_channel'), fill_value=9.96921E36, zlib=True)
-        RRes_nc.units = 'mol.m-2.nm-1.sr-1.s-1'
+        RRes_nc.units = '-'
         RRes_nc[:,:,:] = results['R_res']
 
+        gain_nc = dst[group].createVariable('gain_no2', float, ('scanline','ground_pixel','spectral_channel'), fill_value=9.96921E36, zlib=True)
+        gain_nc.units = 'mol.m-2'
+        gain_nc.comment = 'Gain mol/m2 per error sun normalised radiance'
+        gain_nc[:,:,:] = results['gain_no2']
+
+        RMeasError_nc = dst[group].createVariable('R_measured_error', float, ('scanline','ground_pixel','spectral_channel'), fill_value=9.96921E36, zlib=True)
+        RMeasError_nc.units = '-'
+        RMeasError_nc.comment = 'Calibrated reflectance error'
+        RMeasError_nc[:,:,:] = results['R_meas_error']
 
     def write_field(dictname,fieldname,units=None,i=None):
 
@@ -2016,7 +2025,7 @@ def writeOutput(l2_file,IFDOEconfig,parameterNames,results,geo):
     
     return
 
-def readGeometryL1b(rad_file, slice_alt, slice_act):
+def readGeometryL1b(rad_file, slice_alt=slice(0,None), slice_act=slice(0,None)):
     # Read geometry from L1B
     geo = {}
     with nc.Dataset(rad_file) as f:
@@ -2029,7 +2038,7 @@ def readGeometryL1b(rad_file, slice_alt, slice_act):
     return geo
 
 
-def readGeometryGm(gm_file, slice_alt, slice_act):
+def readGeometryGm(gm_file, slice_alt=slice(0,None), slice_act=slice(0,None)):
     # Read geometry from GM file
     geo = {}
     with nc.Dataset(gm_file) as f:
@@ -2093,7 +2102,6 @@ def ifdoe_run(config, mode='no2'):
     if 'alt' in cfg:
         scanBeg = cfg['alt']['start']
         scanEnd = cfg['alt']['stop']
-        scanN = scanEnd - scanBeg + 1
     else:
         scanBeg = 0
         scanEnd = scanN - 1
@@ -2101,14 +2109,9 @@ def ifdoe_run(config, mode='no2'):
     if 'act' in cfg:
         pxlBeg = cfg['act']['start']
         pxlEnd = cfg['act']['stop']
-        pxlN = pxlEnd - pxlBeg + 1
     else:
         pxlBeg = 0
         pxlEnd = pxlN - 1
-
-    slice_alt = slice(scanBeg,scanEnd+1)
-    slice_act = slice(pxlBeg,pxlEnd+1)
-
 
     # A.5  Initialise output
 
@@ -2119,9 +2122,9 @@ def ifdoe_run(config, mode='no2'):
     # read geometry
 
     if 'act' in cfg: # L1B geometry not working correctly when using act subset
-        geo = readGeometryGm(cfg['io']['gm'],slice_alt,slice_act)
+        geo = readGeometryGm(cfg['io']['gm'])
     else:
-        geo = readGeometryL1b(cfg['io']['l1b'],slice_alt,slice_act)
+        geo = readGeometryL1b(cfg['io']['l1b'])
 
     # B)  Solar spectrum
     # ------------------
@@ -2212,6 +2215,8 @@ def ifdoe_run(config, mode='no2'):
         results['R_meas'] = np.full((scanN,pxlN,spectralN),np.nan)
         results['R_model'] = np.full((scanN,pxlN,spectralN),np.nan)
         results['R_res'] = np.full((scanN,pxlN,spectralN),np.nan)
+        results['gain_no2'] = np.full((scanN,pxlN,spectralN),np.nan)
+        results['R_meas_error'] = np.full((scanN,pxlN,spectralN),np.nan)
 
     # optionally use radiance from SGM
     if cfg['rad_from_sgm']:
@@ -2441,6 +2446,8 @@ def ifdoe_run(config, mode='no2'):
             chiSquare_reduced = chiSquare/(nValid - dof)
             precision = np.diag(np.sqrt(model.covariance * chiSquare_reduced))
 
+            gain_no2 = np.array(oe.answer['gain matrix'][np.where(np.array(model.parameterNames) == 'NO2')[0],:])[0,:]
+
         # F.6  Show/plot results
 
             # Print the results
@@ -2571,6 +2578,8 @@ def ifdoe_run(config, mode='no2'):
                 results['R_meas'][iscan,ipxl,:len(wvl)] = RMeas*szaFactor
                 results['R_model'][iscan,ipxl,:len(wvl)] = RModel*szaFactor
                 results['R_res'][iscan,ipxl,:len(wvl)] = RRes*szaFactor
+                results['gain_no2'][iscan,ipxl,:len(wvl)] = gain_no2
+                results['R_meas_error'][iscan,ipxl,:len(wvl)] = reflErrorFit
                     
 
             # print(time.time()-start)
@@ -2610,7 +2619,7 @@ def ifdoe_run(config, mode='no2'):
         initOutput(cfg['io']['l2'], results, geo)
 
     # write results to output file
-    writeOutput(cfg['io']['l2'], cfg, parameterNames, results, geo)
+    writeOutput(cfg['io']['l2'], cfg, parameterNames, results)
     log.info(f"Output witten to {cfg['io']['l2']}")
 
     log.info(f'IFDOE {mode.upper()} calculation finished in {np.round(time.time()-startTime,1)} s')

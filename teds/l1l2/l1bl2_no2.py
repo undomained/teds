@@ -87,6 +87,10 @@ def amf_run(cfg):
     log.info(f"Reading atm file: {cfg['io']['sgm_atm']}")
     atm = libAMF.read_atm(cfg['io']['sgm_atm'], slice_alt, slice_act)
 
+    if doas['lat'].shape != atm['latitude'].shape:
+        log.error(f'L1B radiance shape {doas['lat'].shape} does not match SGM ATM shape {atm['latitude'].shape}. Specify ALT and/or ACT in l2 config')
+        sys.exit()
+
     log.info(f"Reading cloud results from L2 file: {cfg['io']['l2']}")
     cloud = libAMF.read_cloud(cfg['io']['l2'], slice_alt, slice_act)
 

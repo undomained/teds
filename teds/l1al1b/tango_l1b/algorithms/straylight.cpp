@@ -114,16 +114,24 @@ void Straylight::algoExecute(L1& l1, const Dataset& input_data) {
     } else if (getModelType() == "IM")
     {   // IM implementation (single Convolution Addition)
         convolveKernels(ckd, image_binned, image_fft, conv_result);
-        for (int i = 0; i < cpix; ++i) 
+        for (int i = 0; i < cpix; i++) 
         {
             image_result[i] = (1 - ckd.stray.eta[i]) * image_binned[i] + conv_result[i];
         }
     }
-    
-    std::vector<double> image_ideal_unbinned(ckd.npix);
-    unbinImage(ckd, image_result, image_ideal_unbinned);
 
-    l1.image = std::move(image_ideal_unbinned);
+    // Calculate straylight result and unbin
+    std::vector<double> straylight_result_binned(cpix);
+    for (int i = 0; i < cpix; i++){
+        straylight_result_binned[i] = image_result[i] - image_binned[i];
+    }
+    std::vector<double> straylight_result(ckd.npix);
+    unbinImage(ckd, straylight_result_binned, straylight_result);
+
+    // Apply correction
+    for (int i = 0; i < ckd.npix; i++){
+        l1.image[i] -= straylight_result[i];
+    }
 }
 
 void Straylight::convolveKernels(

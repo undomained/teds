@@ -106,6 +106,8 @@ void ISRF::algoExecute(L1& l1, const Dataset& input_data) {
                 signal_conv[i_wl] += norm_inv * this_isrf[k] * this_signal[k];
             }
         }
+        
+        l1.observation_sig[i_act] = signal_conv;
     }
 }
 

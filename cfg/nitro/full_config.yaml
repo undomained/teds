@@ -405,14 +405,34 @@ l1l2:
 #
 #########################################################
 pam:
-    font_size: 22
+    scene: Jaenschwalde
+    gm:
+        run: yes
+    sgm:
+        run: yes
+        ialt_iact: [[50,50], [100,3], [105,79], [0,1]]
+        wvl: 440 #nm
+    im:
+        run: yes
+        ialt: 0
+    l1b:
+        run: yes
+        isrf_fwhm: 0.6 # nm. FWHM of Gaaussian to convolve SGM specra
+        ialt: 0 # which spectrum to plot
+        iact: 0
+    l2:
+        run: yes
+        plot_list: { # usage: '{title}' : {'f1':<file 1>, 'f2':<file 2>,'f1_var':<var name in file 1>, 'f2_var':<var name in file 2>}
+                'NO2 vertical column': {'f1':'sgm_atm', 'f2':'l2', 'f1_name':'SGM', 'f2_name':'L2', 'f1_var':'col_no2', 'f2_var':'no2_total_vcd' },
+                # 'NO2 vertical column': {'f1':'sgm_atm', 'f2':'l2', 'f1_name':'SGM', 'f2_name':'L2', 'f1_var':'col_no2', 'f2_var':'no2_total_vcd', 'req':5.0E15,'req_name':'precision' },
+                # 'NO2 vertical column': {'f1':'sgm_atm', 'f2':'l2', 'f1_name':'SGM', 'f2_name':'L2', 'f1_var':'col_no2', 'f2_var':'no2_total_vcd', 'req':0.25,'req_name':'bias' },
+                # 'NO2 vertical column raw': {'f1':'sgm_atm_raw', 'f1_name':'SGM raw', 'f1_var':'col_no2'},
+                # 'Surface albedo': {'f1':'sgm_atm', 'f1_name':'SGM', 'f1_var':'albedo_B01'},
+                # 'Surface albedo raw': {'f1':'sgm_atm_raw', 'f1_name':'SGM', 'f1_var':'albedo_B01'},
+                # 'Cloud optical thickness': {'f1':'sgm_atm', 'f2':'l2', 'f1_name':'SGM', 'f2_name':'L2', 'f1_var':'cloud_optical_thickness', 'f2_var':'cloud_optical_thickness'},
+                # 'Cloud top pressure': {'f1':'sgm_atm', 'f2':'l2', 'f1_name':'SGM', 'f2_name':'L2', 'f1_var':'cloud_top_pressure', 'f2_var':'cloud_top_pressure'},
+                # 'Cloud bottom pressure': {'f1':'sgm_atm',' f2':'l2', 'f1_name':'SGM', 'f2_name':'L2', 'f1_var':'cloud_bottom_pressure', 'f2_var':'cloud_bottom_pressure'}
+        }
+
     create_pdf: yes
-    plot_list: { # usage: '{title}' : {'f1':<file 1>, 'f2':<file 2>,'f1_var':<var name in file 1>, 'f2_var':<var name in file 2>}
-                'NO2 vertical column': {'f1':'sgm_atm', 'f2':'l2', 'f1_name':'SGM', 'f2_name':'L2', 'f1_var':'col_no2', 'f2_var':'no2_total_vcd', },
-                'NO2 vertical column raw': {'f1':'sgm_atm_raw', 'f1_name':'SGM raw', 'f1_var':'col_no2'},
-                'Surface albedo': {'f1':'sgm_atm', 'f1_name':'SGM', 'f1_var':'albedo_B01'},
-                'Surface albedo raw': {'f1':'sgm_atm_raw', 'f1_name':'SGM', 'f1_var':'albedo_B01'},
-                'Cloud optical thickness': {'f1':'sgm_atm', 'f2':'l2', 'f1_name':'SGM', 'f2_name':'L2', 'f1_var':'cloud_optical_thickness', 'f2_var':'cloud_optical_thickness'},
-                'Cloud top pressure': {'f1':'sgm_atm', 'f2':'l2', 'f1_name':'SGM', 'f2_name':'L2', 'f1_var':'cloud_top_pressure', 'f2_var':'cloud_top_pressure'},
-                'Cloud bottom pressure': {'f1':'sgm_atm',' f2':'l2', 'f1_name':'SGM', 'f2_name':'L2', 'f1_var':'cloud_bottom_pressure', 'f2_var':'cloud_bottom_pressure'}
-    }
+    font_size: 14

@@ -449,7 +449,7 @@ def get_specific_config(orig_config, kind):
         specific_config['io']['l1b'] = os.path.join(output_path, orig_config['io']['l1b'])
 
     elif kind == 'pam':
-        for key in ['gm','sgm_rad','sgm_atm_raw','sgm_atm','l2']:
+        for key in ['gm','sgm_rad','sgm_atm_raw','sgm_atm','l2','l1b','l1a']:
             output_path = get_file_name(orig_config, key)
             specific_config['io'][key] = os.path.join(output_path, orig_config['io'][key])
         specific_config['io']['base_dir'] =  orig_config['io']['base_dir']

@@ -10,7 +10,7 @@ from cartopy.feature import LAND, COASTLINE, RIVERS, LAKES
 from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
 from netCDF4 import Dataset
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-
+from copy import deepcopy
 
 from teds.lib.libNumTools import get_isrf
 
@@ -25,6 +25,61 @@ targetp['Jaenschwalde'] = (14.46277, 51.83472)
 targetp['Belchatow'] = (19.330556, 51.266389)
 targetp['Lipetsk'] = (39.6945, 52.57123)
 
+def vincenty(lat1: npt.NDArray[np.float64],
+             lat2: npt.NDArray[np.float64],
+             lon1: npt.NDArray[np.float64],
+             lon2: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
+    a = 6378137.0
+    b = 6356752.314245179499
+    f = 3.3528106647474804385e-3
+    U1 = np.arctan((1 - f) * np.tan(lat1))
+    U2 = np.arctan((1 - f) * np.tan(lat2))
+    sU1 = np.sin(U1)
+    sU2 = np.sin(U2)
+    cU1 = np.cos(U1)
+    cU2 = np.cos(U2)
+    L = lon2 - lon1
+    cos_alpha2 = 0
+    sigma = 0
+    sin_sigma = 0
+    cos_sigma = 0
+    cos_2sig = 0
+    _lambda = L
+    _lambda_prev = _lambda
+    max_iter = 10
+    for i_iter in range(max_iter):
+        slam = np.sin(_lambda)
+        clam = np.cos(_lambda)
+        cos_U2_t1 = cU2 * slam
+        cos_U2_t2 = cU1 * sU2 - sU1 * cU2 * clam
+        sin_sigma = np.sqrt(cos_U2_t1 * cos_U2_t1 + cos_U2_t2 * cos_U2_t2)
+        cos_sigma = sU1 * sU2 + cU1 * cU2 * clam
+        sigma = np.arctan2(sin_sigma, cos_sigma)
+        sin_alpha = np.where(np.abs(sin_sigma < 1e-30),
+                             cU1,
+                             cU1 * cU2 * slam / sin_sigma)
+ #       sin_alpha = cU1 * cU2 * slam / sin_sigma
+        cos_alpha2 = 1 - sin_alpha * sin_alpha
+        cos_2sig = cos_sigma - 2 * sU1 * sU2 / cos_alpha2
+        C = f / 16 * cos_alpha2 * (4.0 + f * (4 - 3 * cos_alpha2))
+        _lambda = (L + (1 - C) * f * sin_alpha
+                   * (sigma + C * sin_sigma
+                      * (cos_2sig + C * cos_sigma * (-1 + 2 * cos_2sig))))
+        if (abs(_lambda - _lambda_prev).max() < 1e-12):
+            break
+        _lambda_prev = _lambda
+    u2 = cos_alpha2 * (a * a - b * b) / (b * b)
+    A = 1 + u2 / 16384 * (4096 + u2 * (-768 + u2 * (320 - 175 * u2)))
+    B = u2 / 1024 * (256 + u2 * (-128 + u2 * (74 - 47 * u2)))
+    cos_2sig2 = cos_2sig * cos_2sig
+    D_sigma = (B * sin_sigma
+               * (cos_2sig
+                  + 1.0 / 4 * B
+                  * (cos_sigma * (-1 + 2 * cos_2sig2)
+                     - B / 6 * cos_2sig
+                     * (-3 + 4 * sin_sigma * sin_sigma)
+                     * (-3 + 4 * cos_2sig2))))
+    return b * A * (sigma - D_sigma)
 
 def geo_panel(ax: matplotlib.axes.Axes,
               lon: npt.NDArray[np.float64],
@@ -385,8 +440,6 @@ def pam_im(filen: str,
     ax.set_ylabel('Detector row')
     ax.set_title(title)
 
-    print(data_max)
-
     psm = ax.pcolormesh(
         x_values,
         y_values,
@@ -541,11 +594,93 @@ def pam_l1b(filen_l1b: str,
         plt.ylabel('frequency')
         plt.legend()
 
+def pam_l1b_geo(filen1: str,
+            filen2: str,
+            percentile) -> None:
+
+    data1 = Dataset(filen1)
+    data2 = Dataset(filen2)
+
+    lat1 = deepcopy(data1['geolocation_data']['latitude'][:])
+    lon1 = deepcopy(data1['geolocation_data']['longitude'][:])
+    lat2 = deepcopy(data2['geolocation_data']['latitude'][:])
+    lon2 = deepcopy(data2['geolocation_data']['longitude'][:])
+
+    data1.close()
+    data2.close()
+
+    diff_lat = (lat2-lat1).flatten()
+    diff_lon = (lon2-lon1).flatten()
+    
+    # the histogram of the data
+    fig, axs = plt.subplots(1,
+                            3,
+                            figsize=(16, 5),
+                            dpi=100,)
+#    fig.suptitle(station_name, fontsize=16)
+
+    ax = axs[0]
+    num_bins = 201
+    bindef = (np.arange(num_bins)/200. - 0.5)*6*np.std(diff_lat)
+    textstr = f"mean: {np.mean(diff_lat):.2E}\n"
+    textstr += f"std. dev.: {np.std(diff_lat):.2E}"
+    #stats_text += f"Median: {np.median(data):.2f}\n"
+    n, bins, patches = ax.hist(diff_lat,
+                                bins=bindef,
+                                alpha=0.5,
+                                label='latitude',
+                                color='blue')
+    ax.set_xlabel('$\Delta$ latitude [degree]')
+    ax.set_ylabel('frequency')
+    ax.text(0.95, 0.95, textstr, transform=ax.transAxes, va='top', ha='right',
+        bbox=dict(boxstyle='round,pad=0.5', fc='white', ec='gray', alpha=0.8))
+    
+    ax = axs[1]
+    num_bins = 201
+    bindef = (np.arange(num_bins)/200. - 0.5)*6*np.std(diff_lon)
+    textstr = f"mean: {np.mean(diff_lon):.2E}\n"
+    textstr += f"std. dev.: {np.std(diff_lon):.2E}"
+
+    n, bins, patches = ax.hist(diff_lon,
+                                bins=bindef,
+                                alpha=0.5,
+                                label='latitude',
+                                color='blue')
+    ax.set_xlabel('$\Delta$ longitude [degree]')
+    ax.set_ylabel('frequency')
+    ax.text(0.95, 0.95, textstr, transform=ax.transAxes, va='top', ha='right',
+        bbox=dict(boxstyle='round,pad=0.5', fc='white', ec='gray', alpha=0.8))
+
+    lat1_rad = np.deg2rad(np.array(lat1).flatten())
+    lat2_rad = np.deg2rad(np.array(lat2).flatten())
+    lon1_rad = np.deg2rad(np.array(lon1).flatten())
+    lon2_rad = np.deg2rad(np.array(lon2).flatten())
+
+    distance = vincenty(lat1_rad, lat2_rad, lon1_rad,  lon2_rad)
+
+    textstr = f"mean: {np.mean(distance):.2f}  m\n"
+    textstr += f" {percentile}%-percentile: {np.percentile(distance,percentile):.2f} m"
+
+    ax = axs[2]
+    num_bins = 201
+    bindef = (np.arange(num_bins)/200.)*6*np.std(distance)
+
+    n, bins, patches = ax.hist(distance,
+                                bins=bindef,
+                                alpha=0.5,
+                                label='latitude',
+                                color='blue')
+    ax.set_xlabel('$\Delta r$ [m]')
+    ax.set_ylabel('frequency')
+
+    ax.text(0.95, 0.95, textstr, transform=ax.transAxes, va='top', ha='right',
+        bbox=dict(boxstyle='round,pad=0.5', fc='white', ec='gray', alpha=0.8))
 
 def pam_l2(filen: str,
            filen_ref: str,
            station_name: str,
-           plt_options: str) -> None:
+           plt_options: str,
+           vscale = None) -> None:
 
     level2 = Dataset(filen)
     sgmgps_data = Dataset(filen_ref)
@@ -571,9 +706,13 @@ def pam_l2(filen: str,
                                     central_point[0], central_point[1])},)
         fig.suptitle(station_name, fontsize=16)
 
-        XCO2max = np.max(np.array([XCO2.max(), XCO2sgm.max()]))
-        XCO2min = np.min(np.array([XCO2.min(), XCO2sgm.min()]))
-        print(XCO2max, XCO2min)
+        if(vscale == None):
+            XCO2max = np.max(np.array([XCO2.max(), XCO2sgm.max()]))
+            XCO2min = np.min(np.array([XCO2.min(), XCO2sgm.min()]))
+            print(XCO2max, XCO2min)
+        else:
+            XCO2min = vscale[0]
+            XCO2max = vscale[1]
 
         ax = axs[0]
         ax, cbar = geo_panel(ax,
@@ -602,23 +741,50 @@ def pam_l2(filen: str,
     if plt_options == 'histo':
         # Calculate a linear array of all errors normalized by the
         # spectral standard deviation.
-        error = (XCO2.flatten() - XCO2sgm.flatten())/XCO2err.flatten()
+        # the histogram of the data
+        fig, axs = plt.subplots(1,
+                        2,
+                        figsize=(16, 6),
+                        dpi=100,
+                        )
+        ax = axs[0]
+        error_norm = (XCO2.flatten() - XCO2sgm.flatten())/XCO2err.flatten()
 
         num_bins = 201
         bindef = np.arange(num_bins)/20. - 5.
-        error_mean = np.mean(error)
-        error_std = np.std(error)
+        rmse= np.sqrt(np.mean(np.square(error_norm)))
+        textstr = f"mean: {np.mean(error_norm):.2f}\n"
+        textstr += f"std. dev.: {np.std(error_norm):.2f}"
 
-        label_txt = 'mean error: '+str("%.2f" % error_mean) + ' std dev: '+str(
-            "%.4f" % error_std)
-
-        # the histogram of the data
-        plt.figure(figsize=(10, 6))
-        n, bins, patches = plt.hist(error,
+        n, bins, patches = ax.hist(error_norm,
                                     bins=bindef,
                                     alpha=0.5,
-                                    label=label_txt,
                                     color='blue')
-        plt.xlabel('normalized XCO2 error [1]')
-        plt.ylabel('frequency')
-        plt.legend()
+        ax.set_xlabel('normalized XCO2 error [1]')
+        ax.set_ylabel('frequency')
+        ax.title.set_text('(L1B-SGM)/$\sigma$')
+
+        ax.text(0.95, 0.95, textstr, transform=ax.transAxes, va='top', ha='right',
+        bbox=dict(boxstyle='round,pad=0.5', fc='white', ec='gray', alpha=0.8))
+
+        ax = axs[1]
+        error = (XCO2.flatten() - XCO2sgm.flatten())
+
+        num_bins = 201
+        bindef = (np.arange(num_bins)/200. - 0.5)*6*np.std(error)
+
+        rmse= np.sqrt(np.mean(np.square(error)))
+        textstr  = f"mean: {np.mean(error):.2f} ppm\n"
+        textstr += f"std. dev.: {np.std(error):.2f} ppm\n"
+        textstr += f"RMSE.: {rmse:.2f} ppm"
+
+        n, bins, patches = ax.hist(error,
+                                    bins=bindef,
+                                    alpha=0.5,
+                                    color='blue')
+        ax.set_xlabel('XCO2 error [ppm]')
+        ax.set_ylabel('frequency')
+        ax.title.set_text('L1B-SGM')
+
+        ax.text(0.95, 0.95, textstr, transform=ax.transAxes, va='top', ha='right',
+        bbox=dict(boxstyle='round,pad=0.5', fc='white', ec='gray', alpha=0.8))

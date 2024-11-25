@@ -63,6 +63,16 @@ def plot_map(cfg, lat, lon, var, f_name, var_name, save_location):
     projection = crs.Orthographic(central_longitude=np.mean(lon), central_latitude=np.mean(lat) )
     ax = plt.axes(projection=projection)
 
+    ax.add_feature(LAND)
+    ax.add_feature(COASTLINE)
+    ax.add_feature(RIVERS)
+    ax.add_feature(LAKES)
+    gl = ax.gridlines(draw_labels=True)
+    gl.top_labels = False
+    gl.right_labels = False
+    gl.xformatter = LONGITUDE_FORMATTER
+    gl.yformatter = LATITUDE_FORMATTER
+
     cs = ax.pcolormesh(lon,lat,var,transform=crs.PlateCarree())
         # vmin=args.var_min, vmax=args.var_max,alpha=args.opacity, cmap=args.colormap, zorder=3)
     plt.title(f'{f_name} {var_name}')
@@ -250,7 +260,11 @@ def pam_l2(cfg, savedir):
         log.debug(f'Plotting {varname}')
 
         # read files
-        f1 = read_file(cfg['io'][plotvar['f1']], [plotvar['f1_var'], 'latitude', 'longitude'])
+        if plotvar['f1'] in cfg['io']:
+            file1 = cfg['io'][plotvar['f1']]
+        else:
+            file1 = plotvar['f1']
+        f1 = read_file(file1, [plotvar['f1_var'], 'latitude', 'longitude'])
 
         f1_var = f1[plotvar['f1_var']]
         f1_lat = f1['latitude']
@@ -262,7 +276,12 @@ def pam_l2(cfg, savedir):
 
         # if two files are present, plot f2 map, diff and scatter
         if 'f2' in plotvar:
-            f2 = read_file(cfg['io'][plotvar['f2']], [plotvar['f2_var'], 'latitude', 'longitude'])
+
+            if plotvar['f2'] in cfg['io']:
+                file2 = cfg['io'][plotvar['f2']]
+            else:
+                file2 = plotvar['f2']
+            f2 = read_file(file2, [plotvar['f2_var'], 'latitude', 'longitude'])
 
             f2_lat = f2['latitude']
             f2_lon = f2['longitude']

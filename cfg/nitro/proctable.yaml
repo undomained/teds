@@ -9,7 +9,7 @@ algos_im:
     - Dark_Offset
 #    - Coaddition
     - Binning
-    - Straylight # only in-band in-field for now
+    # - Straylight # only in-band in-field for now
     - DAC
 algos_l1b:
 #   - Binning # Where do we put this?

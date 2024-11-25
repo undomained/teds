@@ -212,6 +212,10 @@ def plot_scatter(var1, var2, f1_name, f2_name, var_name, save_location, req=None
     var1_flat = var1_flat[~var12_mask].data
     var2_flat = var2_flat[~var12_mask].data
 
+    # all values are equal in one or both arrays; scatterplot is useless.
+    if (var1_flat == var1_flat[0]).all() or (var2_flat == var2_flat[0]).all():
+        return
+    
     # fit regressions line and calc stats
     slope, intercept, r_pearson, p_value, std_err = linregress(var1_flat, var2_flat)
     r2 = r_pearson*r_pearson
@@ -824,7 +828,7 @@ def pam_l1b(filen_l1b: str,
         error_mean = np.mean(err)
         error_std = np.std(err)
 
-        label_txt = 'mean error: '+str("%.2f" % error_mean) + ' std dev: '+str(
+        label_txt = 'mean error: '+str("%.2E" % error_mean) + ' std dev: '+str(
             "%.4f" % error_std)
 
         # the histogram of the data

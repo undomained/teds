@@ -83,7 +83,7 @@ def plot_map(cfg, lat, lon, var, f_name, var_name, save_location):
         cbar.set_label(f'{var.long_name} [{var.units}]')
         cax.get_xaxis().get_offset_text().set_position((1.15,0))
         if cfg['font_size']:
-            cax.get_xaxis().get_offset_text().set_fontsize(cfg['font_size']-4)
+            cax.get_xaxis().get_offset_text().set_fontsize(cfg['font_size'])
         cbar.ax.xaxis.OFFSETTEXTPAD = -15
 
     except:
@@ -102,7 +102,7 @@ def plot_map_diff(cfg, lat, lon, var1, var2, f1_name, f2_name, var_name, save_lo
     assert lat.shape == lon.shape == var1.shape == var2.shape
     assert var1.units == var2.units
 
-
+    # plot abs diff
     diff = var2 - var1
     minmax = np.max(np.abs([np.min(diff),np.max(diff)]))
 
@@ -111,7 +111,7 @@ def plot_map_diff(cfg, lat, lon, var1, var2, f1_name, f2_name, var_name, save_lo
     projection = crs.Orthographic(central_longitude=np.mean(lon), central_latitude=np.mean(lat) )
     ax = plt.axes(projection=projection)
 
-    cs = ax.pcolormesh(lon,lat,var2-var1,transform=crs.PlateCarree(),
+    cs = ax.pcolormesh(lon,lat,diff,transform=crs.PlateCarree(),
         vmin=-minmax, vmax=minmax, cmap='bwr', zorder=3)
     plt.title(f'({f2_name} - {f1_name}) {var_name}')
     
@@ -121,7 +121,7 @@ def plot_map_diff(cfg, lat, lon, var1, var2, f1_name, f2_name, var_name, save_lo
         cbar.set_label(f'Difference {var_name} [{var1.units}]', labelpad = 25)
         cax.get_xaxis().get_offset_text().set_position((1.15,0))
         if cfg['font_size']:
-            cax.get_xaxis().get_offset_text().set_fontsize(cfg['font_size']-4)
+            cax.get_xaxis().get_offset_text().set_fontsize(cfg['font_size'])
         cbar.ax.xaxis.OFFSETTEXTPAD = -15
     except:
         pass
@@ -131,10 +131,38 @@ def plot_map_diff(cfg, lat, lon, var1, var2, f1_name, f2_name, var_name, save_lo
     savestring = 'diff_'+var_name.lower().replace(" ", "_").replace("-","_")
     plt.savefig(f'{save_location}/{savestring}.png',format='png', dpi=1000, bbox_inches='tight')
 
+    # plot rel diff
+    reldiff = (var2 - var1)/var1 * 100
+    minmax = np.max(np.abs([np.min(reldiff),np.max(reldiff)]))
+
+    fig = plt.figure(figsize=(12,12))
+    # projection = crs.PlateCarree()
+    projection = crs.Orthographic(central_longitude=np.mean(lon), central_latitude=np.mean(lat) )
+    ax = plt.axes(projection=projection)
+    cs = ax.pcolormesh(lon,lat,reldiff,transform=crs.PlateCarree(),
+        vmin=-minmax, vmax=minmax, cmap='bwr', zorder=3)
+    plt.title(f'({f2_name} - {f1_name})/{f1_name}*100 %')
+    
+    cax,kw = colorbar.make_axes(ax,location='bottom',pad=0.05,shrink=0.5)
+    cbar=fig.colorbar(cs,cax=cax,**kw)
+    try:
+        cbar.set_label(f'Difference {var_name} [%]', labelpad = 25)
+        cax.get_xaxis().get_offset_text().set_position((1.15,0))
+        if cfg['font_size']:
+            cax.get_xaxis().get_offset_text().set_fontsize(cfg['font_size'])
+        cbar.ax.xaxis.OFFSETTEXTPAD = -15
+    except:
+        pass
+
+    ax.set_aspect('equal')
+
+    savestring = 'reldiff_'+var_name.lower().replace(" ", "_").replace("-","_")
+    plt.savefig(f'{save_location}/{savestring}.png',format='png', dpi=1000, bbox_inches='tight')
+
 
     return
 
-def plot_hist(var1, var2, f1_name, f2_name, var_name, save_location, req=None, req_name=None):
+def plot_hist(cfg, var1, var2, f1_name, f2_name, var_name, save_location, req=None, req_name=None):
     # var1: x
     # var2: y
     # f1_name: var1 name for plot
@@ -170,14 +198,18 @@ def plot_hist(var1, var2, f1_name, f2_name, var_name, save_location, req=None, r
         plt.savefig(f'{save_location}/{savestring}.png',format='png', dpi=1000, bbox_inches='tight')
 
 
-    # make 1D error hist and 2D hist
+    # make 1D error hist
     else:
-        ##  1D hist of difference
         diff = var2_flat- var1_flat
+
+        stdev_diff = np.std(diff)
+        mean_diff = np.mean(np.abs(diff))
+
         plt.figure(figsize=(9,9))
         plt.hist(diff, bins=100)
         plt.ylabel('Count')
         plt.xlabel(f'difference {var_name} [{var1.units}]')
+        plt.title('stdev = {:.3E}, mean = {:.3E}'.format(stdev_diff, mean_diff))
         if req_name == 'precision': # add requirement lines
             plt.axvline(x=req, color='gray',alpha=0.5, zorder = 1, label=f'{req_name} requirement')
             plt.axvline(x=-req, color='gray',alpha=0.5, zorder = 1)
@@ -188,7 +220,7 @@ def plot_hist(var1, var2, f1_name, f2_name, var_name, save_location, req=None, r
     return
 
 
-def plot_scatter(var1, var2, f1_name, f2_name, var_name, save_location, req=None, req_name=None):
+def plot_scatter(cfg, var1, var2, f1_name, f2_name, var_name, save_location, req=None, req_name=None):
     # var1: x
     # var2: y
     # f1_name: var1 name for plot
@@ -232,7 +264,7 @@ def plot_scatter(var1, var2, f1_name, f2_name, var_name, save_location, req=None
     ax.set_aspect('equal')
     ax.set_xlim(lims)
     ax.set_ylim(lims)
-    plt.title('N = {}, R$^2$ = {:.3f}, mean $\\sigma$ = {:.3E}, mean bias = {:.3E}'.format(var1_flat.size,r2, sigma, bias))
+    plt.title('N = {}, R$^2$ = {:.3f}, stdev(error) = {:.3E}, mean(error) = {:.3E}'.format(var1_flat.size,r2, sigma, bias))
     plt.xlabel(f'{f1_name} {var_name} [{var1.units}]', labelpad=25)
     plt.ylabel(f'{f2_name} {var_name} [{var2.units}]')
     plt.plot(lims,lims*slope+intercept,'k--',alpha=0.5,zorder=2,label='y={:.2f}x+{:.2E}'.format(slope, intercept))
@@ -248,6 +280,9 @@ def plot_scatter(var1, var2, f1_name, f2_name, var_name, save_location, req=None
     cax,kw = colorbar.make_axes(ax,location='right',pad=0.02,shrink=0.5)
     cbar=fig.colorbar(h[-1],cax=cax, extend='neither')
     cbar.set_label('Number of pixels')
+    if cfg['font_size']:
+        cax.get_xaxis().get_offset_text().set_fontsize(cfg['font_size'])
+    
 
     savestring = 'scatter_'+var_name.lower().replace(" ", "_")
     plt.savefig(f'{save_location}/{savestring}.png',format='png', dpi=1000, bbox_inches='tight')
@@ -300,15 +335,15 @@ def pam_l2(cfg, savedir):
             
             # hist plot f1 vs f2 var
             if 'req' in plotvar: # plot requirement line 
-                plot_hist(f1_var, f2_var, f1_name, f2_name, varname, savedir,
+                plot_hist(cfg, f1_var, f2_var, f1_name, f2_name, varname, savedir,
                             req=float(plotvar['req']),
                             req_name=plotvar['req_name'])
-                plot_scatter(f1_var, f2_var, f1_name, f2_name, varname, savedir,
+                plot_scatter(cfg, f1_var, f2_var, f1_name, f2_name, varname, savedir,
                             req=float(plotvar['req']),
                             req_name=plotvar['req_name'])
             else:
-                plot_hist(f1_var, f2_var, f1_name, f2_name, varname, savedir)
-                plot_scatter(f1_var, f2_var, f1_name, f2_name, varname, savedir)
+                plot_hist(cfg, f1_var, f2_var, f1_name, f2_name, varname, savedir)
+                plot_scatter(cfg, f1_var, f2_var, f1_name, f2_name, varname, savedir)
     return
 
 

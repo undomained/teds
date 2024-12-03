@@ -1,0 +1,92 @@
+retrieval_init:                 #initialization parameter for inversion
+    max_iter: 35
+    chi2_lim: 0.05
+    sw_pixel_mask: False
+    sw_ALT_select: False
+    first_ALT_index: 50
+    last_ALT_index: 56
+    sw_prof_init: 'sgm'         #switch between 'afgl' and 'sgm' initialization
+    batch_size: 4               #max ACT pixels to retrieve simultaneously
+    prior_XCO2: 0.0003          #prior CO2 concentration
+    prior_XCH4: 0.0000017       #prior CH4 concentration
+    prior_XH2O: 0.001           #prior H2O concentration
+    no_clobber: False           #if True, don't overwrite existing output files
+    fit_spectral_shift: False   #fit a constant spectral shift per pixel
+    diag_output: True           #output diagnostic information
+
+# Note on special options:
+
+# Convergence criteria. A batch is considered converged if:
+# (
+#   prev_χ2-cur_χ2 < deltaplus for all pixels AND
+#   prev_χ2-cur_χ2 > deltaminus for all pixels AND
+#   1-epsilon < cur_χ2/prev_χ2 < 1+epsilon
+#       for all pixels AND
+#   1-mean_epsilon < ⟨cur_χ2/prev_χ2⟩ < 1+mean_epsilon
+# ) OR cur_χ2 < chi2 for all pixels
+# If this block is omitted, chi2_lim from the retrieval_init block is used.
+convergence_criteria:
+    deltaplus: 0.05
+    deltaminus: -0.05
+    epsilon: 100000000
+    mean_epsilon: 100000000
+    chi2: 0.01
+
+atmosphere:
+    nlay: 30                    #number of atmospheric layers
+    dzlay: 1000                 #geometrical thickness of the layers [m]
+    psurf: 101300               #surface pressure [Pa]
+
+std_atm: 'prof.AFGL.US.std'     #path to AFGL model atmosphere
+        
+spec_settings:              #spectra fit window
+    wavestart:   1590       #initial wavelength (indicator)
+    waveend:     1675       #final wavlength of measurement
+    wave_extend: 2.0        #shortwave and longwave extension of the measurement grid [nm]
+    dwave:       0.002      #nm
+
+# isrf_settings:
+#     type:       'generalized_normal'               #type of ISRF, currently only Gaussian or generalized_normal
+#     fwhm:       0.45                               #fwhm  [nm]
+#     bcoeff:     0.2                                #only for generalized_normal, bcoeff=1/2 means Gaussian
+    
+isrf_settings:
+    type:       'Gaussian'                         #type of ISRF, currently only Gaussian or generalized_normal
+    fwhm:       0.45                               #fwhm  [nm]
+
+surface:
+    wave_alb: [1600, 1650]  #wavelengths at which the surface albedo is specified in the output
+    
+xsec_forced: False          #flag to froce new cross section calculation
+
+io_files:
+    input_l1b: '/home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/level1b/Tango_Carbon_l1b_exp3.0.nc'
+    input_gm: '/home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/gm/Tango_Carbon_gm_exp3.0.nc'
+    input_pixel_mask: ''  #needs to be specified only if sw_pixel_mask =True
+    input_afgl: '/home/jochen/TANGO_E2ES/EndtoEndProject/data/AFGL/prof.AFGL.US.std'
+    input_sun_reference: '/home/jochen/TANGO_E2ES/EndtoEndProject/data/solar_spectra/hybrid_reference_spectrum_c2021-03-04_with_unc.nc'
+    input_hapi: '/home/jochen/TANGO_E2ES/EndtoEndProject/data/harpi/'
+    input_sgm: '/home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/sgm/Tango_Carbon_sgm_atmosphere_ref_exp3.0.nc'
+    output_l2: '/home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/level2/Tango_Carbon_l2_exp3.0.nc'
+    output_l2_diag: '/home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/level2/Tango_Carbon_l2_diag_exp3.0.nc'
+    dump_xsec: '/home/jochen/TANGO_E2ES/EndtoEndProject/data/tmp/Tango_Carbon_xsec_exp3.0_l2.pkl'
+
+# Expert settings for debugging and performance tuning.
+expert_settings:
+    # deallocate_chunk
+    # Aggressively deallocate memory after each ACT chunk.
+    # This has an extreme performance impact (a factor of 3 is typical)
+    # and should not be used unless absolutely necessary.
+    deallocate_chunk: False
+
+    # use_float64
+    # Use 64-bit floating point instead of the default 32.
+    # This is usually not necessary, and tends to impact performance
+    # by a factor of 2 or more. Only set to True for debugging.
+    use_float64: False
+
+    # force_cpu
+    # Force running on the CPU even if a GPU is available.
+    # End users should set this to False except when using a system with
+    # insufficient GPU memory.
+    force_cpu: False

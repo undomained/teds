@@ -1630,6 +1630,75 @@ def ReadRefSpecAscii(FileName,groundPixel):
 
     return wvl, RefSpec
 
+def ReadRefSpecNc(IFDOEconfig):
+    '''
+    Read in netcdf ref.spec. for all ground pixels 
+    '''
+    # clip IFDOERefSpec to fit window +/- 1.5 nm to reduce spline interp time but prevent extrapolation errors with wvl cal.
+    margin = 1.5
+
+  ### read in ref_solar
+
+    IFDOERefSpec = {}
+
+    f = nc.Dataset(IFDOEconfig['ref_spectra'],'r')
+
+    IFDOERefSpec['solarWvl'] = f['wavelength'][()]
+
+    clipIndexSolar = (IFDOERefSpec['solarWvl'] >= IFDOEconfig['fit_window'][0]-margin) & (IFDOERefSpec['solarWvl'] <= IFDOEconfig['fit_window'][1]+margin)
+
+    IFDOERefSpec['solarWvl'] = IFDOERefSpec['solarWvl'][clipIndexSolar]
+
+     # read in solar ref.spec.
+    IFDOERefSpec['solar'] = f['solar_irradiance'][()][:,clipIndexSolar]
+
+    #  # read in differential ring spectrum if linear ring fit is included
+    # if IFDOEconfig['ring_fit_term'] == 'sigma':
+    # 	IFDOERefSpec['Cring'] = f_ref_solar['band_4/differential_ring_flux'][()][:,clipIndexSolar]
+
+     # read in ring radiance spectrum if non-linear ring fit is included
+    if IFDOEconfig['ring_fit_term'] == 'Iring':
+        IFDOERefSpec['Cring'] = f['ring'][()][:,clipIndexSolar]
+
+  ### read in ref_xs_no2
+
+
+    IFDOERefSpec['xsWvl'] = f['wavelength'][()]
+
+    clipIndexXs = (IFDOERefSpec['xsWvl'] >= IFDOEconfig['fit_window'][0]-margin) & (IFDOERefSpec['xsWvl'] <= IFDOEconfig['fit_window'][1]+margin)
+
+    IFDOERefSpec['xsWvl'] = IFDOERefSpec['xsWvl'][clipIndexXs]
+
+
+    # read in gas ref.spec.
+    for gas in IFDOEconfig['trace_gas_list']:
+        if gas =='H2Oliq':
+            gasnetcdf = 'h2o_liquid'
+        elif gas =='H2Ovap':
+            gasnetcdf = 'h2o_vapor'
+        elif gas == 'NO2':
+            gasnetcdf = 'no2'
+        elif gas == 'O2O2':
+            gasnetcdf = 'o2o2'
+        elif gas == 'O3':
+            gasnetcdf = 'o3'
+
+
+        IFDOERefSpec[gas] = f[gasnetcdf][()][:,clipIndexXs]
+
+    # precalculate splines for solar and ring spectra
+    IFDOERefSpec['solarSpline'] = np.empty(IFDOERefSpec['solar'].shape[0], dtype=object)
+
+    if IFDOEconfig['ring_fit_term'] == 'Iring':
+        IFDOERefSpec['ringSpline'] = np.empty(IFDOERefSpec['Cring'].shape[0], dtype=object)
+
+    for ipxl in range(IFDOERefSpec['solar'].shape[0]):
+        IFDOERefSpec['solarSpline'][ipxl] = interpolate.InterpolatedUnivariateSpline(IFDOERefSpec['solarWvl'], IFDOERefSpec['solar'][ipxl,:], ext=1, k=4)
+
+        if IFDOEconfig['ring_fit_term']:
+            IFDOERefSpec['ringSpline'][ipxl] = interpolate.InterpolatedUnivariateSpline(IFDOERefSpec['solarWvl'], IFDOERefSpec['Cring'][ipxl,:], ext=1, k=4) 
+
+    return IFDOERefSpec
 
 def ScaleWvl(Wvl,FitWindow):
     '''
@@ -1693,12 +1762,13 @@ def ReadIrrSGM(file, pxlN):
 
         irrWvl = f['wavelength'][:] # [spectral_bins] - nm
 
+    if irr.ndim == 1:
+        irr  = np.repeat(irr[np.newaxis,:], pxlN, axis=0)
+        irrWvl  = np.repeat(irrWvl[np.newaxis,:], pxlN, axis=0)
+    elif irr.ndim == 2 :
+        irrWvl  = np.repeat(irrWvl[np.newaxis,:], pxlN, axis=0)
 
-    irr  = np.repeat(irr[np.newaxis,:], pxlN, axis=0)
-    irrWvl  = np.repeat(irrWvl[np.newaxis,:], pxlN, axis=0)
-
-
-    irrError = irr.copy() * 1e-6 # fixed noise value, otherwise OE does not work
+    irrError = irr.copy() * 1e-3 # fixed noise value, otherwise OE does not work
     irrFlag = np.zeros_like(irr)
 
     return irrWvl, irr, irrError, irrFlag
@@ -1720,7 +1790,7 @@ def ReadRadSGM(f, iscan):
 
     radWvl  = np.repeat(radWvl[np.newaxis,:], rad.shape[0], axis=0)
 
-    radError = rad.copy() * 1e-6 # fixed noise value, otherwise OE does not work
+    radError = rad.copy() * 1e-3 # fixed noise value, otherwise OE does not work
     radFlag = np.zeros_like(rad)
 
     return radWvl, rad, radError, radFlag
@@ -1739,7 +1809,12 @@ def ReadRad(f, iscan):
 
     # photons to mol
     rad /= constants.NA
-    radError /= constants.NA
+
+     # check if error is all zeros, replace with fixed value otherwise OE does not work
+    if (radError == 0.0 ).all():
+        radError = rad.copy() * 1e-3 
+    else:
+        radError /= constants.NA
 
     radFlag = np.zeros(rad.shape) # TODO: placeholder
 
@@ -2068,9 +2143,6 @@ def ifdoe_run(config, mode='no2'):
     else:
         verboseLevel = 0
 
-    # only one set of ref spec for one pixel TODO: change when ISRF is known
-    groundPixel = 0
-
     startTime = time.time()
     
     log.info(f'=== Start IFDOE processing {mode.upper()}')
@@ -2087,11 +2159,13 @@ def ifdoe_run(config, mode='no2'):
     log.info('=== Reading ref.spec.')
 
     # read in ascii ref.spec. for given ground pixel
+    # IFDOERefSpec = ReadRefSpecAsc(cfg,groundPixel)
 
-    IFDOERefSpec = ReadRefSpecAsc(cfg,groundPixel)
+    # read in netcdf ref.spec. for all ground pixel
+    IFDOERefSpec = ReadRefSpecNc(cfg)
 
     # rescale wvl to [-1:+1] for fit window
-    IFDOERefSpec['solarWvlScaled'] = ScaleWvl(IFDOERefSpec['wvl'],cfg['fit_window'])
+    IFDOERefSpec['solarWvlScaled'] = ScaleWvl(IFDOERefSpec['solarWvl'],cfg['fit_window'])
     IFDOERefSpec['xsWvlScaled'] = IFDOERefSpec['solarWvlScaled'] 
 
     
@@ -2159,7 +2233,7 @@ def ifdoe_run(config, mode='no2'):
 
         for ipxl in range(pxlBeg,pxlEnd+1,1):
             try:
-                irrWvlCal[ipxl,:], irrCalWs[ipxl], irrCalWsSigma[ipxl], irrCalWq[ipxl], irrCalWqSigma[ipxl], irrCalChiSquare[ipxl], irrCalConverged[ipxl] = irrCal(irr[ipxl,:],irrError[ipxl,:],irrWvl[ipxl,:],cfg,IFDOERefSpec,groundPixel,verboseLevel)
+                irrWvlCal[ipxl,:], irrCalWs[ipxl], irrCalWsSigma[ipxl], irrCalWq[ipxl], irrCalWqSigma[ipxl], irrCalChiSquare[ipxl], irrCalConverged[ipxl] = irrCal(irr[ipxl,:],irrError[ipxl,:],irrWvl[ipxl,:],cfg,IFDOERefSpec,ipxl,verboseLevel)
             except:
                 log.error(f'Pixel {ipxl} not converged')
                 irrCalConverged[ipxl] = 0
@@ -2264,7 +2338,7 @@ def ifdoe_run(config, mode='no2'):
                 log.debug('=== Calibrating Earth spectrum')
                 
                 try:
-                    radWvlCal, radCalWs, radCalWsSigma, radCalWq, radCalWqSigma, radCalChiSquare, radCalConverged = radCal(rad,radError,radWvl,cfg,IFDOERefSpec,0,verboseLevel)
+                    radWvlCal, radCalWs, radCalWsSigma, radCalWq, radCalWqSigma, radCalChiSquare, radCalConverged = radCal(rad,radError,radWvl,cfg,IFDOERefSpec,ipxl,verboseLevel)
                 except:
                     radCalConverged = 0
 
@@ -2309,7 +2383,7 @@ def ifdoe_run(config, mode='no2'):
 
 
             # E.3  Put ref.spec. at common grid using spline; cf. B.6
-            IFDOERefSpecRegrid = InterpRefSpecGrid(IFDOERefSpec,commonWvl,cfg,groundPixel)
+            IFDOERefSpecRegrid = InterpRefSpecGrid(IFDOERefSpec,commonWvl,cfg,ipxl)
 
             # F)  DOAS fit
             # ------------

@@ -2,41 +2,11 @@ import numpy as np
 import os
 import sys
 import yaml
-import netCDF4 as nc
 from threadpoolctl import threadpool_limits
 import time
-from scipy.ndimage import gaussian_filter1d
-import datetime
 
 from teds import log
-from teds.lib import libDOAS, libAMF, libCloud
-from teds.lib.libWrite import writevariablefromname
-
-def conv_irr(sgm_rad_file, fwhm):
-    # convolve irradiance with Gaussian ISRF
-    with nc.Dataset(sgm_rad_file) as f:
-
-        irr = f['solar_irradiance'][:] # [spectral_bins] - "photons / (nm m2 s)"
-        wvl = f['wavelength'][:] # [spectral_bins] - nm
-
-    stepsize = wvl[1]-wvl[0]
-    fwhm_step = fwhm/stepsize
-    sigma = fwhm_step /np.sqrt(8*np.log(2))
-    convolved_irr = gaussian_filter1d(irr, sigma)
-
-    file_out = sgm_rad_file.replace('.nc','_conv_irr.nc')
-    # open file
-    with nc.Dataset(file_out, mode='w') as output_conv_irr:
-        output_conv_irr.processing_date = datetime.datetime.now().strftime('%Y%m%dT%H%M%S')
-        output_conv_irr.comment = f'Convolved irradiance with Gaussian FWHM {fwhm} nm'
-        output_conv_irr.createDimension('wavelength', len(irr))     # spectral axis
-        # wavelength
-        _ = writevariablefromname(output_conv_irr, 'wavelength', ('wavelength',), wvl)
-        # solar irradiance
-        _ = writevariablefromname(output_conv_irr, 'solarirradiance', ('wavelength',), convolved_irr)
-
-    return file_out
-
+from teds.lib import libDOAS, libAMF, libCloud, libConv
 
 def get_slice(cfg):
     if 'alt' in cfg:
@@ -114,14 +84,25 @@ def l1bl2_no2(cfg):
             log.warning(f'File {cfg['io']['l2']} already exists, removing')
             os.remove(cfg['io']['l2'])
 
-        # use irradiance file from SGM. optional convolving
+        # use irradiance file from SGM. optional convolving with Gaussian or ISRF
         if cfg['irr_from_sgm']:
-            if cfg['convolve_irr']:
-                convolved_irr_file = conv_irr(cfg['io']['sgm_rad'],cfg['isrf']['fwhm_gauss'])
-                cfg['io']['sgm_irr'] = convolved_irr_file
+            if cfg['convolve_irr'] == 'Gaussian':
+                cfg['io']['sgm_irr'] = libConv.conv_irr(cfg['io']['sgm_rad'], mode='Gaussian', fwhm=cfg['gaussian_fwhm'])
+
+            elif cfg['convolve_irr'] == 'ISRF':
+                cfg['io']['sgm_irr'] = libConv.conv_irr(cfg['io']['sgm_rad'], mode='ISRF', isrf_file=cfg['isrf_file'])
+
             else:
                 cfg['io']['sgm_irr'] = cfg['io']['sgm_rad']
-        
+
+        # use radiance file from SGM. optional convolving with Gaussian or ISRF
+        if cfg['rad_from_sgm']:
+            if cfg['convolve_rad'] == 'Gaussian':
+                cfg['io']['sgm_rad'] = libConv.conv_rad(cfg['io']['sgm_rad'], mode='Gaussian', fwhm=cfg['gaussian_fwhm'])
+
+            elif cfg['convolve_rad'] == 'ISRF':
+                cfg['io']['sgm_rad'] = libConv.conv_rad(cfg['io']['sgm_rad'], mode='ISRF', isrf_file=cfg['isrf_file'])
+
         # Python parallises internally with numpy, for single thread optimum is 4 numpy threads
         # for multi-threading use only 1 numpy thread, otherwise slow-down
 

@@ -247,9 +247,10 @@ l1l2:
 
     rad_from_sgm: no
     irr_from_sgm: yes
-    convolve_irr: yes # Convolve SGM irradiance with Gaussian ISRF FWHM from IM
-    isrf:
-        fwhm_gauss: 0.6 # nm
+    convolve_rad: ISRF # Convolve SGM radiance: 'no', 'Gaussian' or 'ISRF'
+    convolve_irr: ISRF # Convolve SGM irradiance: 'no', 'Gaussian' or 'ISRF'
+    gaussian_fwhm: 0.6 # [nm], only used if convolve_rad/convolve_irr = 'Gaussian'
+    isrf_file: './ckd/ckd_generation/data_external/Nominal_ISRF_dataset_17102024.xlsx'
         
     export_spectra: no
     debug:
@@ -303,11 +304,8 @@ l1l2:
         convergence_threshold: 1.0
 
         # ---- Reference Spectra ----
-        # ref spec convolved with FWHM 0.6 nm
-        ref_solar: ../data/no2/refspec_06/solar_irradiance.xs
-        ref_xs_no2: ../data/no2/refspec_06/no2.xs
-        ref_xs_o2o2: ../data/no2/refspec_06/o2o2.xs
-        ref_xs_o3: ../data/no2/refspec_06/o3.xs
+        # ref spec convolved with ISRF
+        ref_spectra: ../data/no2/refspec_isrf.nc
 
         # ---- Wavelength calibration ----
 
@@ -364,10 +362,7 @@ l1l2:
         spike_removal: off
         max_outliers: 10
         convergence_threshold: 1.0
-        ref_solar: ../data/no2/refspec_06/solar_irradiance.xs
-        ref_xs_no2: ../data/no2/refspec_06/no2.xs
-        ref_xs_o2o2: ../data/no2/refspec_06/o2o2.xs
-        ref_xs_o3: ../data/no2/refspec_06/o3.xs
+        ref_spectra: ../data/no2/refspec_isrf.nc
         wlcal_solar: off
         wlcal_earth: off
         wlcal_solar_stretch: off

@@ -819,3 +819,11 @@ albedo_B12:
   valid_min: 0.0
   valid_max: 1.0
   FillValue: -32767
+
+albedo:
+  name: albedo
+  long_name: 'albedo'
+  units: '-'
+  valid_min: 0.0
+  valid_max: 1.0
+  FillValue: -32767

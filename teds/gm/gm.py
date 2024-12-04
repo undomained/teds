@@ -15,7 +15,7 @@ import teds.lib.data_netcdf.data_netcdf as dn
 import teds.lib.lib_utils as Utils
 import datetime
 
-def check_input(logger, nact, check_list, place):
+def check_input(logger, nact, check_list, config, place):
     """
         Check the input for simple profiles (single swath and individual spectra).
         Length should be equal to nact.
@@ -45,7 +45,7 @@ def get_individual_spectra(logger, config):
 
     nn = len(config['scene_spec']['sza'])
 
-    check_input(logger, nn, ['sza','saa','vza','vaa','albedo'], "code 1")
+    check_input(logger, nn, ['sza','saa','vza','vaa'], config, "code 1")
 
     # here we use the 2-dimensional data structure in an artificial way
     nact = nn
@@ -68,6 +68,10 @@ def get_individual_spectra(logger, config):
     saa[0, :] = config['scene_spec']['saa'][:]
     vza[0, :] = config['scene_spec']['vza'][:]
     vaa[0, :] = config['scene_spec']['vaa'][:]
+
+    #give lon_grid and lat_grid some values such that subsequent modules do not crash
+    lon_grid[0,:]  = 10.
+    lat_grid[0,:]  = 50 + 0.0025*np.arange(nact)
 
     return vza, vaa, sza, saa, lat_grid, lon_grid
 
@@ -409,6 +413,7 @@ def geometry_module(config, logger=None):
     if not logger:
         logger = Utils.get_logger()
     if config['profile'] == "individual_spectra":
+
         vza, vaa, sza, saa, lat_grid, lon_grid = get_individual_spectra(logger, config)
 
     elif (config['profile'] == "single_swath"):

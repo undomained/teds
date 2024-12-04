@@ -1267,9 +1267,7 @@ def level1b_to_level2_processor_RTorCH4(config):
                 N_act,
                 N_obs_wls,
             )
-
-
-
+        print('=> L2 processor finished sucessfully')
 
 def level1b_to_level2_processor(config, sw_diag_output = False):
     # get the l1b files

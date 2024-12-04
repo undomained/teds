@@ -14,6 +14,7 @@ from copy import deepcopy
 from .libMeteo import readmeteodata
 from . import constants
 from .libNumTools import convolution_2d, TransformCoords, getconvolutionparams
+from .libGM import vincenty
 # import matplotlib.pyplot as plt
 ###########################################################
 
@@ -930,7 +931,7 @@ def combine_meteo_standard_atm(meteodata, atm_std, gases, suffix=""):
 
     return atm
 
-def create_atmosphere_ind_spectra(nalt, nact, atm_std, albedo):
+def create_atmosphere_ind_spectra(nalt, nact, atm_std, albedo, gm_data):
     """Create default atmosphere.
 
     Parameters
@@ -947,7 +948,7 @@ def create_atmosphere_ind_spectra(nalt, nact, atm_std, albedo):
     atm = Emptyclass()
         
     names_3d = ['dcol_ch4', 'dcol_co2', 'dcol_h2o', 'zlay']
-    names_2d = ['col_air','albedo', 'lat' , 'lon', 'psurf', 'Xch4','Xco2', 'Xh2o']
+    names_2d = ['col_air', 'lat' , 'lon', 'psurf', 'Xch4','Xco2', 'Xh2o']
     for name in names_3d:
         atm.__setattr__(name, np.zeros([nalt,nact,nlay]))
     for name in names_2d:
@@ -965,14 +966,34 @@ def create_atmosphere_ind_spectra(nalt, nact, atm_std, albedo):
 
     atm.col_air[:,:]= np.sum(atm_std.air[:])
     atm.psurf[:,:]  = np.sum(atm_std.psurf)
-    atm.albedo[:]   = albedo
-    atm.lat[:]      = np.empty((nalt,nact,)).fill(np.nan)
-    atm.lon[:]      = np.empty((nalt,nact,)).fill(np.nan)
-    atm.__setattr__('xpos',np.empty((nact,)).fill(np.nan))
-    atm.__setattr__('ypos',np.empty((nalt,)).fill(np.nan))
+ 
+    atm.albedo      = albedo
+
+    atm.lat[:]      = gm_data.lat
+    atm.lon[:]      = gm_data.lon
     
+    atm.__setattr__('xpos',np.zeros([nact]))
+    atm.__setattr__('ypos',np.zeros([nalt]))
+
+    atm.xpos[:] = np.empty((nact,)).fill(np.nan)
+    atm.ypos[:] = np.empty((nalt,)).fill(np.nan)
+
+    lat1_rad = np.deg2rad(np.array(gm_data.lat[0,0]+np.zeros(nact)))
+    lat2_rad = np.deg2rad(np.array(gm_data.lat[0,:]))
+    lon1_rad = np.deg2rad(np.array(gm_data.lon[0,0]+np.zeros(nact)))
+    lon2_rad = np.deg2rad(np.array(gm_data.lon[0,:]))
+    
+    distance = vincenty(lat1_rad, lat2_rad, lon1_rad,  lon2_rad)
+
+    atm.xpos[:] = distance
+    atm.ypos[:] = np.zeros(nalt)
+
     atm.xco2 = np.sum(atm.dcol_co2,axis=2)/atm.col_air*1.E6 #ppm
     atm.xch4 = np.sum(atm.dcol_ch4,axis=2)/atm.col_air*1.E9 #ppb
     atm.xh2o = np.sum(atm.dcol_h2o,axis=2)/atm.col_air*1.E6 #ppm
 
+    atm.__setattr__('co2_source',np.zeros([3]))
+    atm.co2_source = np.array([0.,0.,0.])
+    # atm.__setattr__('co2_emission_in_kgps',np.zeros([3]))
+    # atm.co2_emissions_in_kgps = np.array([0.])
     return atm

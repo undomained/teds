@@ -23,9 +23,9 @@ def get_sentinel2_albedo(filename: str) -> List[DataArray]:
     """Read a list of Sentinel 2 albedos from a NetCDF file."""
     nc = Dataset(filename)
     albedos = []
-   
+
     for group in [x for x in nc.groups if x != 'SCL']:
-        
+
         albedo = DataArray(nc[group]['albedo'][:],
                            dims=('y', 'x'),
                            coords={
@@ -104,9 +104,11 @@ def geosgm_output(filename, atm):
         _ = writevariablefromname(output_atm, 'subcol_density_'+gas,
                                   _dims3dlay, atm.__getattribute__('dcol_'+gas))
         # column mixing ratio
-        _ = writevariablefromname(output_atm, 'X'+gas, _dims2d, 
-                                  constants.__getattribute__('scale_X'+gas)* 
+        _ = writevariablefromname(output_atm, 'X'+gas, _dims2d,
+                                  constants.__getattribute__('scale_X'+gas)*
                                   atm.__getattribute__('X'+gas))
+
+#    if(config['profile']=='orbit'):
 
     # albedo
     for s2_albedo in atm.albedo:
@@ -119,7 +121,7 @@ def geosgm_output(filename, atm):
         var_alb.setncattr("band width", s2_albedo.bandwidth)
 
 #    _ = writevariablefromname(output_atm, 'albedo', _dims2d, atm.albedo)
-    # xpos and ypos       
+    # xpos and ypos
     _ = writevariablefromname(output_atm, 'xpos', 'bins_across_track', atm.xpos)
     _ = writevariablefromname(output_atm, 'ypos', 'bins_along_track', atm.ypos)
 
@@ -129,7 +131,7 @@ def geosgm_output(filename, atm):
     _ = writevariablefromname(output_atm, 'latitude', _dims2d, atm.lat)
     _ = writevariablefromname(output_atm, 'longitude', _dims2d, atm.lon)
 
-    #information on emission source    
+    #information on emission source
     substr = 'source'
     attr = atm.__dict__.keys()
     attr_src = [string for string in attr if substr in string]
@@ -143,7 +145,56 @@ def geosgm_output(filename, atm):
         _ = writevariablefromname(output_atm, emi.removesuffix('_in_kgps'), 'emission' , atm.__getattribute__(emi))
 
     output_atm.close()
-            
+
+    return
+
+def geosgm_output_ind_spec(filename, atm):
+    # write geophysical scene data to output
+
+    nalt, nact, nlay = atm.zlay.shape
+    nlev = nlay+1
+
+    output_atm = nc.Dataset(filename, mode='w')
+    output_atm.title = 'Tango Carbon E2ES SGM atmospheric scene'
+    output_atm.createDimension('bins_along_track', nalt)      # along track axis
+    output_atm.createDimension('bins_across_track', nact)     # across track axis
+    output_atm.createDimension('number_layers', nlay)         # layer axis
+    output_atm.createDimension('number_levels', nlev)         # level axis
+
+    _dims3dlay = ('bins_along_track', 'bins_across_track', 'number_layers')
+    _dims3dlev = ('bins_along_track', 'bins_across_track', 'number_levels')
+    _dims2d    = ('bins_along_track', 'bins_across_track')
+
+    gases = [x.removeprefix('dcol_') for x in atm.__dict__.keys() if 'dcol_' in x]
+
+    # level height
+    _ = writevariablefromname(output_atm, 'levelheight', _dims3dlev, atm.zlev)
+    # central layer height
+    _ = writevariablefromname(output_atm, 'central_layer_height', _dims3dlay, atm.zlay)
+
+    for gas in gases:
+        # subcolumn density
+        _ = writevariablefromname(output_atm, 'subcol_density_'+gas,
+                                  _dims3dlay, atm.__getattribute__('dcol_'+gas))
+        # column mixing ratio
+        _ = writevariablefromname(output_atm, 'X'+gas, _dims2d,
+                                  constants.__getattribute__('scale_X'+gas)*
+                                  atm.__getattribute__('X'+gas))
+
+    # albedo
+    _ = writevariablefromname(output_atm, 'albedo_B11',_dims2d,atm.albedo)
+
+    # column_air
+    _ = writevariablefromname(output_atm, 'column_air', _dims2d, atm.col_air)
+    # longitude/latitude coordiantes
+    _ = writevariablefromname(output_atm, 'latitude', _dims2d, atm.lat)
+    _ = writevariablefromname(output_atm, 'longitude', _dims2d, atm.lon)
+    # xpos and ypos
+    _ = writevariablefromname(output_atm, 'xpos', 'bins_across_track', atm.xpos)
+    _ = writevariablefromname(output_atm, 'ypos', 'bins_along_track', atm.ypos)
+
+    output_atm.close()
+
     return
 
 
@@ -176,17 +227,25 @@ def geoscene_generation(config: dict) -> None:
         #function of one parameter
         if(nalt!= 1):
             sys.exit("input error in sgm, for profile = indiudual spectra, nalt!=1")
-        albedo = np.zeros([nalt, nact])
         if (len(config['scene_spec']['albedo']) != nact):
             sys.exit("input error in sgm, albedo dimension not consistent with gm")
-        albedo[0, :] = config['scene_spec']['albedo'][:]
-        atm = libATM.create_atmosphere_ind_spectra(nalt, nact, atm_std, albedo)
 
+        alb = np.zeros([nalt, nact])
+        alb[0, :] = config['scene_spec']['albedo'][:]
+        albedo = DataArray(alb,
+                           dims=('y', 'x'),)
+        albedo.attrs['gsd'] = 300  #m 
+        albedo.attrs['band_label'] = 'B11'
+        albedo.attrs['central_wavelength'] = 1620
+        albedo.attrs['bandwidth'] = '60'
+
+        atm = libATM.create_atmosphere_ind_spectra(nalt, nact, atm_std, albedo, gm_data)
+        geosgm_output(config['io_files']['output_geo'], atm)
     # Orbit
     if (config['profile'] == 'orbit'):
 
         # meteorological data
-     
+
         meteodata = libATM.get_atmosphericdata_new(gm_data.lat, gm_data.lon, config['io_files']['meteo'])
 
         # Get albedo on the microHH grid
@@ -210,7 +269,7 @@ def geoscene_generation(config: dict) -> None:
         atm = libATM.combine_meteo_standard_atm_new(meteodata, atm_std, config)
 
         geosgm_output(config['io_files']['output_geo'], atm)
-        
+
     print('=>sgm geoscene calculation finished successfully')
 
 if __name__ == '__main__':

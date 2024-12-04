@@ -1236,29 +1236,17 @@ def level1b_to_level2_processor_RTorCH4(config):
             l2d['proxygainCO2'] = (
                 np.expand_dims(l2['proxyXCO2'], -1)
                 * (
-                    (
-                        l2d['l2gainvectorCO2']
-                        / np.expand_dims(l2['XCO2']*scaling['CO2'], -1)
-                    )
-                    - (
-                        l2d['l2gainvectorCH4']
-                        / np.expand_dims(l2['XCH4']*scaling['CH4'], -1)
-                    )
+                    (l2d['l2gainCO2'] / np.expand_dims(l2['XCO2'], -1))
+                    - (l2d['l2gainCH4'] / np.expand_dims(l2['XCH4'], -1))
                 )
-            )*scaling['CO2']
+            )
             l2d['proxygainCH4'] = (
                 np.expand_dims(l2['proxyXCH4'], -1)
                 * (
-                    (
-                        l2d['l2gainvectorCH4']
-                        / np.expand_dims(l2['XCH4']*scaling['CH4'], -1)
-                    )
-                    - (
-                        l2d['l2gainvectorCO2']
-                        / np.expand_dims(l2['XCO2']*scaling['CO2'], -1)
-                    )
+                    (l2d['l2gainCH4'] / np.expand_dims(l2['XCH4'], -1))
+                    - (l2d['l2gainCO2'] / np.expand_dims(l2['XCO2'], -1))
                 )
-            )*scaling['CH4']
+            )
             level2_diags_RTorCH4(
                 config,
                 l2d,

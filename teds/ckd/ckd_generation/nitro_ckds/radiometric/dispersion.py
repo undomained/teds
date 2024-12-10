@@ -10,28 +10,31 @@ def generate(ncc):
     dims = ['detector_row', 'detector_column']
     attr = {
         'long_name': 'Dispersion',
-        'comment' : '',
-        'units' : 'um'
+        'comment' : 'Nominal Dispersion',
+        'units' : 'um/nm'
     }
 
     # create dispersion variable
     dispersion = import_dispersion_from_excel(ncc, cfg)
     ncc.create_var_auto(dims, dispersion, attr, 'f8')
 
+
 def import_dispersion_from_excel(ncc, cfg):
-    filename = cfg['paths']['dir_external'] + 'TANGO_Nitro_011_InstrumentModelInputs_20240307.xlsx'
+    filename = cfg['paths']['im_inputs_tno'] 
     # Get dispersion
-    df = pd.read_excel(filename, 'Dispersion', skiprows = 7, nrows=7,  usecols= 'B:G', index_col = 0)
-    wl_in = np.array(df.columns)
-    ap_in = np.array(df.index)
+    df = pd.read_excel(filename, 'SpectralGeometricalData', skiprows = 7, nrows=28,  usecols= 'B:S', index_col = 0)
+
+    wl_in = np.array(df.columns) * 1000
+    ap_in = np.array(df.index) 
     ap_out = np.linspace(ap_in[0], ap_in[-1], cfg["dimensions"]["across_track"])
 
     # First interpolate ACT input dimension 
-    disp_to_ap = np.zeros((cfg["dimensions"]["across_track"], len(wl_in)), dtype = float) # (ACT, 5)
+    disp_to_ap = np.zeros((cfg["dimensions"]["across_track"], len(wl_in)), dtype = float) 
     for j, wl in enumerate(wl_in):
         disp = df.iloc[:, j] # dispersion per wavelength over input ACT
         spl = CubicSpline(ap_in, disp)
         disp_to_ap[:, j] = spl(ap_out)
+    
 
     # Get wavelengths per ACT, and interpolate dispersion to those wavelength
     wavelength_per_actpos = ncc.get_var('spectral/wavelength')
@@ -53,4 +56,3 @@ def import_dispersion_from_excel(ncc, cfg):
         disp_to_det[:, j] = spl(row_out)
 
     return disp_to_det
-

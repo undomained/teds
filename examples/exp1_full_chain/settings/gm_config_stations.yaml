@@ -1,0 +1,101 @@
+io_files:
+  output_gm: '/home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/gm/Tango_Carbon_gm_exp1.0.nc'
+
+profile: 'orbit'
+
+# orbit parameter
+Matimba:
+    orbit:
+      epoch: 2022-08-12T12:00:00
+      sat_height: 500.0     # km
+      eccentricity: 0.0
+      arg_perigee: 0.0
+      mean_anomaly: 0.0
+      ltan: 15.0986           # decimal hours
+      mean_motion_dot: 0.0
+      drag_coeff: 0.0
+      propagation_duration: 1.67 #hours
+
+    sensors:
+      sensor_00__00:
+        n_ground_pixels: 100
+        swath_width: 30.0   # km
+        integration_time: 0.04 # seconds
+        alt_sampling: 0.300 # km
+        start_time: 88.43 # minutes wrt orbit epoch
+        end_time: 88.50   # minutes wrt orbit epoch
+        pitch: 0.0
+        roll: 0.0
+        yaw: 0.0
+
+Jaenschwalde:
+    orbit:
+      epoch: 2022-08-12T12:00:00
+      sat_height: 500.0     # km
+      eccentricity: 0.0
+      arg_perigee: 0.0
+      mean_anomaly: 0.0
+      ltan: 13.8245            # decimal hours
+      mean_motion_dot: 0.0
+      drag_coeff: 0.0
+      propagation_duration: 1.67 #hours
+
+    sensors:
+      sensor_00__00:
+        n_ground_pixels: 100
+        swath_width: 30.0   # km
+        integration_time: 0.04 # seconds
+        alt_sampling: 0.300 # km
+        start_time: 13.73 # minutes wrt orbit epoch
+        end_time: 13.80   # minutes wrt orbit epoch
+        pitch: 0.0
+        roll: 0.0
+        yaw: 0.0
+
+Belchatow:
+    orbit:
+      epoch: 2022-08-12T12:00:00
+      sat_height: 500.0     # km
+      eccentricity: 0.0
+      arg_perigee: 0.0
+      mean_anomaly: 0.0
+      ltan: 14.1336            # decimal hours
+      mean_motion_dot: 0.0
+      drag_coeff: 0.0
+      propagation_duration: 1.67 #hours
+    
+    sensors:
+      sensor_00__00:
+        n_ground_pixels: 100
+        swath_width: 30.0   # km
+        integration_time: 0.04 # seconds
+        alt_sampling: 0.300 # km
+        start_time: 13.573 # minutes wrt orbit epoch
+        end_time: 13.643   # minutes wrt orbit epoch
+        pitch: 0.0
+        roll: 0.0
+        yaw: 0.0
+
+Lipetsk:
+    orbit:
+      epoch: 2022-08-12T12:00:00
+      sat_height: 500.0     # km
+      eccentricity: 0.0
+      arg_perigee: 0.0
+      mean_anomaly: 0.0
+      ltan: 15.527            # decimal hours
+      mean_motion_dot: 0.0
+      drag_coeff: 0.0
+      propagation_duration: 1.67 #hours
+
+    sensors:
+      sensor_00__00:
+        n_ground_pixels: 100
+        swath_width: 30.0   # km
+        integration_time: 0.04 # seconds
+        alt_sampling: 0.300 # km
+        start_time: 13.925 # minutes wrt orbit epoch
+        end_time: 13.995   # minutes wrt orbit epoch
+        pitch: 0.0
+        roll: 0.0
+        yaw: 0.0

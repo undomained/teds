@@ -6,12 +6,12 @@ retrieval_init:                 #initialization parameter for inversion
     first_ALT_index: 50
     last_ALT_index: 56
     sw_prof_init: 'sgm'         #switch between 'afgl' and 'sgm' initialization
-    batch_size: 1               #max ACT pixels to retrieve simultaneously
+    batch_size: 4               #max ACT pixels to retrieve simultaneously
     prior_XCO2: 0.0003          #prior CO2 concentration
     prior_XCH4: 0.0000017       #prior CH4 concentration
     prior_XH2O: 0.001           #prior H2O concentration
     no_clobber: False           #if True, don't overwrite existing output files
-    fit_spectral_shift: True    #fit a constant spectral shift per pixel
+    fit_spectral_shift: False   #fit a constant spectral shift per pixel
     diag_output: True           #output diagnostic information
 
 # Note on special options:

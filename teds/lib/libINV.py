@@ -9,6 +9,7 @@ import sys
 
 from .libRT import nonscat_fwd_model
 from .libSURF import surface_prop
+import matplotlib.pyplot as plt
 
 def lsq_fit(ymeas, Kmat, Sy):
     """
@@ -68,6 +69,7 @@ def Gauss_Newton_iteration(retrieval_init, atm, optics, measurement, max_iter, c
         scaling = retrieval_init['trace gases'][key]['scaling']
         Xcol = sum(atm.__getattribute__(key))/sum(atm.air)/scaling
         x_dic[key] = retrieval_init['trace gases'][key]['init']/Xcol   # prior scaling parameter
+   
     m = 0
     while 'alb%d' % (m) in retrieval_init['surface'].keys():
         k_dic['alb%d' % (m)] = "alb%d" % (m)
@@ -110,6 +112,7 @@ def Gauss_Newton_iteration(retrieval_init, atm, optics, measurement, max_iter, c
         surface.get_albedo_poly(alb_lst)
 
         # Calculate nonscattered forward model
+
         fwd, runtime = nonscat_fwd_model(isrf_convolution, retrieval_init['solar irradiance'],
                                       atm,  optics, surface, measurement['mu0'],
                                       measurement['muv'], dev)
@@ -151,13 +154,14 @@ def Gauss_Newton_iteration(retrieval_init, atm, optics, measurement, max_iter, c
         # print('==========================================')
         # print(iteration, xstat)
         
-        # fig = plt.figure(figsize=(10, 8), dpi=100)
-        # plt.plot(measurement['ymeas'], color='blue', label='l1b')
-        # plt.plot(fwd['rad'], color='green', label='fwd')
-        # plt.xlabel('spec index')
-        # plt.ylabel('radiance')
-        # plt.legend()        
-        # sys.exit()
+#        fig = plt.figure(figsize=(10, 8), dpi=100)
+#        plt.plot(measurement['ymeas'], color='blue', label='l1b')
+#        plt.plot(fwd['rad'], color='green', label='fwd')
+#        plt.plot((measurement['ymeas']-fwd['rad'])/measurement['ymeas']*100.)
+#        plt.xlabel('spec index')
+#        plt.ylabel('radiance')
+#       plt.legend()        
+#        sys.exit()
 
         x_lst_precision = []
         for m in range(0, len(xstat)):

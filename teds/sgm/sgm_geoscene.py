@@ -100,6 +100,7 @@ def geosgm_output(filename, atm):
     _ = writevariablefromname(output_atm, 'central_layer_height', _dims3dlay, atm.zlay)
 
     for gas in gases:
+
         # subcolumn density
         _ = writevariablefromname(output_atm, 'subcol_density_'+gas,
                                   _dims3dlay, atm.__getattribute__('dcol_'+gas))
@@ -107,7 +108,7 @@ def geosgm_output(filename, atm):
         _ = writevariablefromname(output_atm, 'X'+gas, _dims2d,
                                   constants.__getattribute__('scale_X'+gas)*
                                   atm.__getattribute__('X'+gas))
-
+        
 #    if(config['profile']=='orbit'):
 
     # albedo
@@ -172,6 +173,7 @@ def geosgm_output_ind_spec(filename, atm):
     # central layer height
     _ = writevariablefromname(output_atm, 'central_layer_height', _dims3dlay, atm.zlay)
 
+
     for gas in gases:
         # subcolumn density
         _ = writevariablefromname(output_atm, 'subcol_density_'+gas,
@@ -180,7 +182,6 @@ def geosgm_output_ind_spec(filename, atm):
         _ = writevariablefromname(output_atm, 'X'+gas, _dims2d,
                                   constants.__getattribute__('scale_X'+gas)*
                                   atm.__getattribute__('X'+gas))
-
     # albedo
     _ = writevariablefromname(output_atm, 'albedo_B11',_dims2d,atm.albedo)
 
@@ -240,6 +241,7 @@ def geoscene_generation(config: dict) -> None:
         albedo.attrs['bandwidth'] = '60'
 
         atm = libATM.create_atmosphere_ind_spectra(nalt, nact, atm_std, albedo, gm_data)
+
         geosgm_output(config['io_files']['output_geo'], atm)
     # Orbit
     if (config['profile'] == 'orbit'):

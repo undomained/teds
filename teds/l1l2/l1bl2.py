@@ -1325,9 +1325,9 @@ def level1b_to_level2_processor(config, sw_diag_output = False):
     retrieval_init['chi2 limit'] = config['retrieval_init']['chi2_lim']
     retrieval_init['maximum iteration'] = config['retrieval_init']['max_iter']
     retrieval_init['zlay'] = zlay
-    retrieval_init['trace gases'] = {'CO2': {'init': 300,      'scaling': 1E-6},
+    retrieval_init['trace gases'] = {'CO2': {'init': 400,      'scaling': 1E-6},
                                      'CH4': {'init': 1700,     'scaling': 1E-9},
-                                     'H2O': {'init': 1000,     'scaling': 1E-6}}
+                                     'H2O': {'init': 9000,     'scaling': 1E-6}}
 
 #    retrieval_init['surface'] = {'alb0': 0.17}
     retrieval_init['wavelength lbl'] = wave_lbl
@@ -1338,7 +1338,7 @@ def level1b_to_level2_processor(config, sw_diag_output = False):
 
     l2product = {}
     xch4_model = 1.8E-6
-    xco2_model = 405.E-6
+    xco2_model = 410.E-6
 
     XCO2 = np.zeros(nact)
     XCO2_true_smoothed = np.zeros(nact)
@@ -1363,15 +1363,14 @@ def level1b_to_level2_processor(config, sw_diag_output = False):
             numb_spec_points = np.sum(mask[ialt,iact,:])/float(mask[ialt,iact,:].size)
             if(numb_spec_points >=0.9):
                 # initialization of pixel retrieval
-                xco2_ref = 405.  # ppm
+                xco2_ref = 410.  # ppm
                 xco2 = np.sum(atm.CO2) / np.sum(atm.air) * 1.E6
-    
                 if (config['retrieval_init']['sw_prof_init'] == 'afgl'):
-                    retrieval_init['trace gases']['CO2']['ref_profile'] = atm.CO2*xco2_ref/xco2
+                    retrieval_init['trace gases']['CO2']['ref_profile'] = atm.CO2#*xco2_ref/xco2
                     retrieval_init['trace gases']['CH4']['ref_profile'] = atm.CH4
                     retrieval_init['trace gases']['H2O']['ref_profile'] = atm.H2O
                 elif (config['retrieval_init']['sw_prof_init'] == 'sgm'):
-                    retrieval_init['trace gases']['CO2']['ref_profile'] = atm_sgm['dcol_co2'][ialt, iact, :]*xco2_ref/xco2
+                    retrieval_init['trace gases']['CO2']['ref_profile'] = atm_sgm['dcol_co2'][ialt, iact, :]#*xco2_ref/xco2
                     retrieval_init['trace gases']['CH4']['ref_profile'] = atm_sgm['dcol_ch4'][ialt, iact, :]
                     retrieval_init['trace gases']['H2O']['ref_profile'] = atm_sgm['dcol_h2o'][ialt, iact, :]
                 else:
@@ -1410,9 +1409,20 @@ def level1b_to_level2_processor(config, sw_diag_output = False):
                 idx = np.where(measurement[ialt, iact]['ymeas'] == ymeas_max)[0][0]
                 alb_first_guess = measurement[ialt, iact]['ymeas'][idx] / \
                     sun[idx]*np.pi/np.cos(np.deg2rad(l1b['sza'][ialt, iact]))
+
                 retrieval_init['surface'] = {'alb0': alb_first_guess, 'alb1': 0.0}
     
-                # Non-scattering least squares fit
+                # Non-scattering least squares fit  suggestion Raul, still need to be implemented 
+                # l2product = {
+                #     'XCO2 proxy': np.zeros(),
+                # }
+                # _result, runtime = libINV.Gauss_Newton_iteration(
+                #     retrieval_init, atm_ret, optics, measurement[ialt, iact],
+                #     config['retrieval_init']['max_iter'], config['retrieval_init']['chi2_lim'],
+                #     isrf_convolution)
+                # l2product['XCO2 proxy'][ialt, iact] =  _result['XCO2 proxy']
+
+
                 l2product[ialt, iact], runtime = libINV.Gauss_Newton_iteration(
                     retrieval_init, atm_ret, optics, measurement[ialt, iact],
                     config['retrieval_init']['max_iter'], config['retrieval_init']['chi2_lim'],
@@ -1433,7 +1443,6 @@ def level1b_to_level2_processor(config, sw_diag_output = False):
                                     (l2product[ialt, iact]['XCH4 precision']/l2product[ialt, iact]['XCH4'])**2)
                 l2product[ialt, iact]['XCO2 proxy precision'] = rel_error * l2product[ialt, iact]['XCO2']
                 l2product[ialt, iact]['XCH4 proxy precision'] = rel_error * l2product[ialt, iact]['XCH4']
-
             else:
                 l2product[ialt, iact] = level2_nan(retrieval_init, nlay)
                 l2product[ialt, iact]['XCO2 proxy'] = float("nan")
@@ -1449,16 +1458,16 @@ def level1b_to_level2_processor(config, sw_diag_output = False):
             # XCO2_true_smoothed[iact] = np.dot(l2product[ialt, iact]['XCO2 col avg kernel'],
             #                                   atm_sgm['dcol_co2'][ialt, iact, :])/np.sum(atm.air)*1.E6
             # XCO2_true[iact] = np.sum(atm_sgm['dcol_co2'][ialt, iact, :])/np.sum(atm.air)*1.E6
-
+            
     # output to netcdf file
     level2_output(config['io_files']['output_l2'], l2product, retrieval_init, l1b, config['retrieval_init'])
 
-#    if(sw_diag_output):
-#        level2_diags_output(config['l2_diag'], l2product, measurement)
+    if(config['retrieval_init']['diag_output']):
+        level2_diags_output(config['io_files']['output_l2_diag'], l2product, measurement)
 
     print('=> l1bl2 finished successfully')
 
-#    print('cumulative run time: ',runtime_cum)
+    #print('cumulative run time: ',runtime_cum)
 
     return l2product
 

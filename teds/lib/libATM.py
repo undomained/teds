@@ -988,9 +988,12 @@ def create_atmosphere_ind_spectra(nalt, nact, atm_std, albedo, gm_data):
     atm.xpos[:] = distance
     atm.ypos[:] = np.zeros(nalt)
 
-    atm.xco2 = np.sum(atm.dcol_co2,axis=2)/atm.col_air*1.E6 #ppm
-    atm.xch4 = np.sum(atm.dcol_ch4,axis=2)/atm.col_air*1.E9 #ppb
-    atm.xh2o = np.sum(atm.dcol_h2o,axis=2)/atm.col_air*1.E6 #ppm
+#    atm.Xco2 = np.sum(atm.dcol_co2,axis=2)/atm.col_air*1.E6 #ppm
+#    atm.Xch4 = np.sum(atm.dcol_ch4,axis=2)/atm.col_air*1.E9 #ppb
+#    atm.Xh2o = np.sum(atm.dcol_h2o,axis=2)/atm.col_air*1.E6 #ppm
+    atm.Xco2 = np.sum(atm.dcol_co2,axis=2)/atm.col_air
+    atm.Xch4 = np.sum(atm.dcol_ch4,axis=2)/atm.col_air
+    atm.Xh2o = np.sum(atm.dcol_h2o,axis=2)/atm.col_air
 
     atm.__setattr__('co2_source',np.zeros([3]))
     atm.co2_source = np.array([0.,0.,0.])

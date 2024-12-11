@@ -153,7 +153,6 @@ def simplified_instrument_model_and_l1b_processor(config):
     wave = l1b_output['wavelength']
 
     # define isrf function
-
     isrf_convolution = libNumTools.get_isrf(wave, wave_lbl, config['isrf_settings'])
 
     for ialt in tqdm(range(nalt)):
@@ -182,6 +181,7 @@ def simplified_instrument_model_and_l1b_processor(config):
             noise_dis = np.random.normal(0., 1., nwav)
             # noise contribution
             ynoise[ialt, iact, :] = 1./snr[ialt, iact, :]*noise_dis*ymeas[ialt, iact, :]
+
     if(config['sim_with_noise']):
         l1b_output['radiance'] = ymeas + ynoise
     else:

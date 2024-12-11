@@ -163,6 +163,7 @@ def nonscat_fwd_model(isrf_convolution, sun_lbl,
 
     runtime = {}
     time1 = time.time()
+
     optics.set_opt_depth_species(atm, species)
     runtime['opt'] = time.time()-time1
     deriv = True

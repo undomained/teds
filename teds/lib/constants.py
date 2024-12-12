@@ -16,6 +16,8 @@ MDRYAIR      = 28.9647E-3         # Molar mass dry air [kg/mol]
 MH2O         = 18.01528E-3        # Molar mass water [kg/mol]
 MCO2         = 44.01E-3           # Molar mass CO2 [kg/mol]
 MCH4         = 16.04E-3           # Molar mass CH4 [kg/mol]
+MNO2         = 46.005E-3          # Molar mass NO2 [kg/mol]
+MO3          = 47.997E-3          # Molar mass O3 [kg/mol]
 LH2O         = 2.5E6              # Latent heat of condensation for water [J/kg]
 PSTD         = 1013.25            # Standard pressure [hPa]
 
@@ -24,3 +26,4 @@ scale_Xch4   = 1.E9               #ppb
 scale_Xh2o   = 1.E6               #ppm
 scale_Xno    = 1.E9               #ppb
 scale_Xno2   = 1.E9               #ppb
+scale_Xo3    = 1.E9               #ppb

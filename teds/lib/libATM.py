@@ -816,7 +816,7 @@ def combine_meteo_standard_atm_new(meteo, atm_std, config):
 
     atm = Emptyclass()
     
-    names_3d = ["dcol_"+x for x in gases_all] + ['zlay', 'zlev']
+    names_3d = ["dcol_"+x for x in gases_all] + ['zlay', 'zlev', 'dcol_air']
     names_2d = ['col_air','lat' , 'lon', 'psurf']+["X"+x for x in gases_all]
 
     for name in names_3d:
@@ -836,6 +836,7 @@ def combine_meteo_standard_atm_new(meteo, atm_std, config):
     atm.zlev[:,:,nlay] = atm_std.zlev[nlay]
 
     atm.col_air[:,:]= np.sum(atm_std.air[:])
+    atm.dcol_air[:,:,:] = atm_std.air[:]
     atm.psurf[:,:]  = np.sum(atm_std.psurf)
     atm.lat[:]      = meteo.lat[:]
     atm.lon[:]      = meteo.lon[:] 

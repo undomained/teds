@@ -170,6 +170,14 @@ subcol_density_no:
   valid_max: 1.E+28
   FillValue: -32767
 
+subcol_density_air:
+  name: dcol_air
+  long_name: dry air layer column density
+  units: molec./cm2
+  valid_min: 0.
+  valid_max: 1.E+35
+  FillValue: -32767
+
 xco2:
   name: xco2
   long_name: CO2 dry air mol column mixing ratio
@@ -190,6 +198,14 @@ xh2o:
   name: xh2o
   long_name: H2O dry air mol column mixing ratio
   units: ppmv
+  valid_min: 0.
+  valid_max: 1.E+05
+  FillValue: -32767
+
+xo3:
+  name: xh2o
+  long_name: O3 dry air mol column mixing ratio
+  units: ppbv
   valid_min: 0.
   valid_max: 1.E+05
   FillValue: -32767
@@ -227,6 +243,11 @@ pressure_layers:
   name: pressure_layers
   long_name: Pressure at layer midpoints
   units: hPa
+
+surface_elevation:
+    name: surface_elevation
+    long_name: Geopotential elevation of surface
+    units: m
 
 temperature:
   name: temperature
@@ -712,6 +733,14 @@ Xh2o:
   name: 'XH2O'
   long_name: 'H2O dry air column mixing ratio XH2O'
   units: ppmv
+  valid_min: 0.
+  valid_max: 1.E+04
+  FillValue: -32767
+
+Xo3:
+  name: 'XO3'
+  long_name: 'O3 dry air column mixing ratio XO3'
+  units: ppbv
   valid_min: 0.
   valid_max: 1.E+04
   FillValue: -32767

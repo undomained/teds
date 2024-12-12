@@ -73,7 +73,7 @@ def get_gm_data(filename):
     return gm_data
 
 
-def geosgm_output(filename, atm):
+def geosgm_output(filename, atm, atm_std):
     # write geophysical scene data to output
 
     nalt, nact, nlay = atm.zlay.shape
@@ -92,12 +92,38 @@ def geosgm_output(filename, atm):
     _dims3dlev = ('bins_along_track', 'bins_across_track', 'number_levels')
     _dims2d    = ('bins_along_track', 'bins_across_track')
 
-    gases = [x.removeprefix('dcol_') for x in atm.__dict__.keys() if 'dcol_' in x]
+    out_shape_2d = (nalt, nact)
+
+    gases = [
+        x.removeprefix('dcol_') for x in atm.__dict__.keys()
+        if 'dcol_' in x and x != 'dcol_air'
+    ]
 
     # level height
     _ = writevariablefromname(output_atm, 'levelheight', _dims3dlev, atm.zlev)
     # central layer height
     _ = writevariablefromname(output_atm, 'central_layer_height', _dims3dlay, atm.zlay)
+    # level pressure
+    _ = writevariablefromname(
+        output_atm,
+        'pressure_layers',
+        _dims3dlay,
+        np.einsum("xy,z->xyz", np.ones(out_shape_2d), atm_std.play)
+    )
+
+    _ = writevariablefromname(
+        output_atm,
+        'pressure_levels',
+        _dims3dlev,
+        np.einsum("xy,z", np.ones(out_shape_2d), atm_std.plev)
+    )
+
+    _ = writevariablefromname(
+        output_atm,
+        'temperature',
+        _dims3dlay,
+        np.einsum("xy,z", np.ones(out_shape_2d), atm_std.tlay)
+    )
 
     for gas in gases:
 
@@ -110,6 +136,12 @@ def geosgm_output(filename, atm):
                                   atm.__getattribute__('X'+gas))
         
 #    if(config['profile']=='orbit'):
+    _ = writevariablefromname(
+        output_atm,
+        'subcol_density_air',
+        _dims3dlay,
+        atm.dcol_air
+    )
 
     # albedo
     for s2_albedo in atm.albedo:
@@ -270,7 +302,7 @@ def geoscene_generation(config: dict) -> None:
 
         atm = libATM.combine_meteo_standard_atm_new(meteodata, atm_std, config)
 
-        geosgm_output(config['io_files']['output_geo'], atm)
+        geosgm_output(config['io_files']['output_geo'], atm, atm_std)
 
     print('=>sgm geoscene calculation finished successfully')
 

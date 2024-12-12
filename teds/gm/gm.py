@@ -230,6 +230,17 @@ def get_S2_microHH(logger, config):
 
     return vza, vaa, sza, saa, lat_grid, lon_grid
 
+def get_julday(config, timedelta):
+    """Compute Julian day from config and time delta w.r.t. orbit reference"""
+    basedelta = config['orbit']['epoch'] - datetime.datetime(
+        config['orbit']['epoch'].year, 1, 1, 0, 0, 0
+    )
+    td_flat = timedelta.reshape(-1)
+    out = np.zeros_like(td_flat)
+    for i, d in enumerate(td_flat):
+        out[i] = (basedelta+datetime.timedelta(seconds=d)).total_seconds()
+    return out.reshape(timedelta.shape)/86400
+
 def gm_output(logger, config, vza, vaa, sza, saa, lat_grid, lon_grid):
     """
        Write gm oputput to filename (set in config file) as nc file.
@@ -260,6 +271,23 @@ def gm_output(logger, config, vza, vaa, sza, saa, lat_grid, lon_grid):
     _ = writevariablefromname(output, "viewingazimuthangle", dims, vaa)
     _ = writevariablefromname(output, "latitude", dims, lat_grid)
     _ = writevariablefromname(output, "longitude", dims, lon_grid)
+
+    delta = config['orbit']['propagation_duration']*3600/nalt
+    julday = np.outer(
+        get_julday(
+            config,
+            np.arange(nalt)*delta
+        ),
+        np.ones(nact)
+    )
+    _ = writevariablefromname(output, "julday", dims, julday)
+    _ = writevariablefromname(
+        output,
+        "sat_altitude",
+        dims,
+        config['orbit']['sat_height']*1000*np.ones((nalt, nact))
+    )
+
     output.close()
 
     

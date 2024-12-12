@@ -47,6 +47,21 @@ viewingazimuthangle:
   valid_max: 360.0
   FillValue: -32767
 
+sat_altitude:
+  name: satellite altitude
+  longname: satellite altitude
+  units: metre
+  valid_min: 0
+  valid_max: 2147483647
+  FillValue: -32767
+
+julday:
+    name: julian day
+    longname: Julian day in dataset year
+    valid_min: 0
+    valid_max: 367
+    FillValue: -32767
+
 # SGM: Radiances
 
 wavelength:

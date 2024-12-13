@@ -1,0 +1,12 @@
+This directory is copied from the CO2M SGM preprocessing tool by
+Maud van den Broek:
+https://bitbucket.org/sron_earth/co2m_sgm/src/master/sources/co2mpreproc/
+
+Commit at time of writing: 12adae45f5a0b61c81f4d46770a332098a8f1b33
+Commit date: Thu Oct 24 12:52:22 2024 +0200
+
+Module paths have been changed to relative using
+
+    sed -i 's/co2mpreproc.processing_modules//g' *.py
+
+Source code is otherwise unmodified.

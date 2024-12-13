@@ -1,0 +1,10 @@
+io_files:
+    input_gm: '/Users/petersk/Tango_E2ES/data/interface_data2/gm/Tango_Carbon_gm_exp10.nc'
+    input_sgm_geo: '/Users/petersk/Tango_E2ES/data/interface_data2/sgm/Tango_Carbon_sgm_atmosphere_exp10.nc'
+    output_geometry: '/Users/petersk/Tango_E2ES/data/interface_data2/sgm/remotap_geometry_exp10.nc'
+    output_input: '/Users/petersk/Tango_E2ES/data/interface_data2/sgm/remotap_input_exp10.nc'
+    output_aux: '/Users/petersk/Tango_E2ES/data/interface_data2/sgm/remotap_aux_exp10.nc'
+    output_ini: '/Users/petersk/Tango_E2ES/data/interface_data2/sgm/syn_tango_remotap.ini'
+    dir_remotap_data: '/Volumes/hammerspace/DATA_CLEAN/'
+    dir_remotap_result: '/Users/petersk/Tango_E2ES/data/interface_data2/sgm/SYNTH/'
+    srcdir_remotap: '/Users/petersk/remotap-tango/'

@@ -231,7 +231,8 @@ def get_S2_microHH(logger, config):
     return vza, vaa, sza, saa, lat_grid, lon_grid
 
 def get_julday(config, timedelta):
-    """Compute Julian day from config and time delta w.r.t. orbit reference"""
+    """Compute Julian day from config and time delta w.r.t. start of orbit
+    year"""
     basedelta = config['orbit']['epoch'] - datetime.datetime(
         config['orbit']['epoch'].year, 1, 1, 0, 0, 0
     )

@@ -48,7 +48,7 @@ viewingazimuthangle:
   FillValue: -32767
 
 sat_altitude:
-  name: satellite altitude
+  name: satellite_altitude
   longname: satellite altitude
   units: metre
   valid_min: 0
@@ -56,7 +56,7 @@ sat_altitude:
   FillValue: -32767
 
 julday:
-    name: julian day
+    name: julian_day
     longname: Julian day in dataset year
     valid_min: 0
     valid_max: 367
@@ -871,3 +871,1570 @@ albedo:
   valid_min: 0.0
   valid_max: 1.0
   FillValue: -32767
+# SGM: aerosol/surface/other additions for RemoTAP link
+aer_iri_sp1:
+    name: IRI species 1
+    longname: Imaginary part of refractive index, species 1
+    valid_min: 0
+    FillValue: -32767
+
+aer_iri_sp2:
+    name: IRI species 2
+    longname: Imaginary part of refractive index, species 2
+    valid_min: 0
+    FillValue: -32767
+
+aer_iri_sp3:
+    name: IRI species 3
+    longname: Imaginary part of refractive index, species 3
+    valid_min: 0
+    FillValue: -32767
+
+aer_iri_sp4:
+    name: IRI species 4
+    longname: Imaginary part of refractive index, species 4
+    valid_min: 0
+    FillValue: -32767
+
+aer_iri_sp5:
+    name: IRI species 5
+    longname: Imaginary part of refractive index, species 5
+    valid_min: 0
+    FillValue: -32767
+
+aer_iri_sp6:
+    name: IRI species 6
+    longname: Imaginary part of refractive index, species 6
+    valid_min: 0
+    FillValue: -32767
+
+aer_rri_sp1:
+    name: RRI species 1
+    longname: Real part of refractive index, species 1
+    valid_min: 0
+    FillValue: -32767
+
+aer_rri_sp2:
+    name: RRI species 2
+    longname: Real part of refractive index, species 2
+    valid_min: 0
+    FillValue: -32767
+
+aer_rri_sp3:
+    name: RRI species 3
+    longname: Real part of refractive index, species 3
+    valid_min: 0
+    FillValue: -32767
+
+aer_rri_sp4:
+    name: RRI species 4
+    longname: Real part of refractive index, species 4
+    valid_min: 0
+    FillValue: -32767
+
+aer_rri_sp5:
+    name: RRI species 5
+    longname: Real part of refractive index, species 5
+    valid_min: 0
+    FillValue: -32767
+
+aer_rri_sp6:
+    name: RRI species 6
+    longname: Real part of refractive index, species 6
+    valid_min: 0
+    FillValue: -32767
+
+aer_wl_sp1:
+    name: wavelength species 1
+    longname: Wavelengths for species 1
+    valid_min: 0
+    FillValue: -32767
+    units: nanometre
+
+aer_wl_sp2:
+    name: wavelength species 2
+    longname: Wavelengths for species 2
+    valid_min: 0
+    FillValue: -32767
+    units: nanometre
+
+aer_wl_sp3:
+    name: wavelength species 3
+    longname: Wavelengths for species 3
+    valid_min: 0
+    FillValue: -32767
+    units: nanometre
+
+aer_wl_sp4:
+    name: wavelength species 4
+    longname: Wavelengths for species 4
+    valid_min: 0
+    FillValue: -32767
+    units: nanometre
+
+aer_wl_sp5:
+    name: wavelength species 5
+    longname: Wavelengths for species 5
+    valid_min: 0
+    FillValue: -32767
+    units: nanometre
+
+aer_wl_sp6:
+    name: wavelength species 6
+    longname: Wavelengths for species 6
+    valid_min: 0
+    FillValue: -32767
+    units: nanometre
+
+aer_sphere_mode1:
+    name: sphere mode 1
+    longname: Spherical fraction for aerosol mode 1
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+aer_num_mode1:
+    name: num mode 1
+    longname: Number density for aerosol mode 1
+    valid_min: 0
+    fill_value: -999
+
+aer_reff_mode1:
+    name: radius mode 1
+    longname: Effective radius for aerosol mode 1
+    valid_min: 0
+    units: micrometre
+    fill_value: -999
+
+aer_veff_mode1:
+    name: variance mode 1
+    longname: Effective variance for aerosol mode 1
+    valid_min: 0
+    fill_value: -999
+
+aer_alh_mode1:
+    name: layer height mode 1
+    longname: Aerosol layer height for aerosol mode 1
+    valid_min: 0
+    units: metre
+    fill_value: -999
+
+aer_vfrac_species1_mode1:
+    name: vfrac species 1 mode 1
+    longname: Volume fraction for aerosol species 1, mode 1
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+aer_vfrac_species2_mode1:
+    name: vfrac species 2 mode 1
+    longname: Volume fraction for aerosol species 2, mode 1
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+aer_vfrac_species3_mode1:
+    name: vfrac species 3 mode 1
+    longname: Volume fraction for aerosol species 3, mode 1
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+aer_vfrac_species4_mode1:
+    name: vfrac species 4 mode 1
+    longname: Volume fraction for aerosol species 4, mode 1
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+aer_vfrac_species5_mode1:
+    name: vfrac species 5 mode 1
+    longname: Volume fraction for aerosol species 5, mode 1
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+aer_vfrac_species6_mode1:
+    name: vfrac species 6 mode 1
+    longname: Volume fraction for aerosol species 6, mode 1
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+aer_sphere_mode2:
+    name: sphere mode 2
+    longname: Spherical fraction for aerosol mode 2
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+aer_num_mode2:
+    name: num mode 2
+    longname: Number density for aerosol mode 2
+    valid_min: 0
+    fill_value: -999
+
+aer_reff_mode2:
+    name: radius mode 2
+    longname: Effective radius for aerosol mode 2
+    valid_min: 0
+    units: micrometre
+    fill_value: -999
+
+aer_veff_mode2:
+    name: variance mode 2
+    longname: Effective variance for aerosol mode 2
+    valid_min: 0
+    fill_value: -999
+
+aer_alh_mode2:
+    name: layer height mode 2
+    longname: Aerosol layer height for aerosol mode 2
+    valid_min: 0
+    units: metre
+    fill_value: -999
+
+aer_vfrac_species1_mode2:
+    name: vfrac species 1 mode 2
+    longname: Volume fraction for aerosol species 1, mode 2
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+aer_vfrac_species2_mode2:
+    name: vfrac species 2 mode 2
+    longname: Volume fraction for aerosol species 2, mode 2
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+aer_vfrac_species3_mode2:
+    name: vfrac species 3 mode 2
+    longname: Volume fraction for aerosol species 3, mode 2
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+aer_vfrac_species4_mode2:
+    name: vfrac species 4 mode 2
+    longname: Volume fraction for aerosol species 4, mode 2
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+aer_vfrac_species5_mode2:
+    name: vfrac species 5 mode 2
+    longname: Volume fraction for aerosol species 5, mode 2
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+aer_vfrac_species6_mode2:
+    name: vfrac species 6 mode 2
+    longname: Volume fraction for aerosol species 6, mode 2
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+aer_sphere_mode3:
+    name: sphere mode 3
+    longname: Spherical fraction for aerosol mode 3
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+aer_num_mode3:
+    name: num mode 3
+    longname: Number density for aerosol mode 3
+    valid_min: 0
+    fill_value: -999
+
+aer_reff_mode3:
+    name: radius mode 3
+    longname: Effective radius for aerosol mode 3
+    valid_min: 0
+    units: micrometre
+    fill_value: -999
+
+aer_veff_mode3:
+    name: variance mode 3
+    longname: Effective variance for aerosol mode 3
+    valid_min: 0
+    fill_value: -999
+
+aer_alh_mode3:
+    name: layer height mode 3
+    longname: Aerosol layer height for aerosol mode 3
+    valid_min: 0
+    units: metre
+    fill_value: -999
+
+aer_vfrac_species1_mode3:
+    name: vfrac species 1 mode 3
+    longname: Volume fraction for aerosol species 1, mode 3
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+aer_vfrac_species2_mode3:
+    name: vfrac species 2 mode 3
+    longname: Volume fraction for aerosol species 2, mode 3
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+aer_vfrac_species3_mode3:
+    name: vfrac species 3 mode 3
+    longname: Volume fraction for aerosol species 3, mode 3
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+aer_vfrac_species4_mode3:
+    name: vfrac species 4 mode 3
+    longname: Volume fraction for aerosol species 4, mode 3
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+aer_vfrac_species5_mode3:
+    name: vfrac species 5 mode 3
+    longname: Volume fraction for aerosol species 5, mode 3
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+aer_vfrac_species6_mode3:
+    name: vfrac species 6 mode 3
+    longname: Volume fraction for aerosol species 6, mode 3
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+aer_sphere_mode4:
+    name: sphere mode 4
+    longname: Spherical fraction for aerosol mode 4
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+aer_num_mode4:
+    name: num mode 4
+    longname: Number density for aerosol mode 4
+    valid_min: 0
+    fill_value: -999
+
+aer_reff_mode4:
+    name: radius mode 4
+    longname: Effective radius for aerosol mode 4
+    valid_min: 0
+    units: micrometre
+    fill_value: -999
+
+aer_veff_mode4:
+    name: variance mode 4
+    longname: Effective variance for aerosol mode 4
+    valid_min: 0
+    fill_value: -999
+
+aer_alh_mode4:
+    name: layer height mode 4
+    longname: Aerosol layer height for aerosol mode 4
+    valid_min: 0
+    units: metre
+    fill_value: -999
+
+aer_vfrac_species1_mode4:
+    name: vfrac species 1 mode 4
+    longname: Volume fraction for aerosol species 1, mode 4
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+aer_vfrac_species2_mode4:
+    name: vfrac species 2 mode 4
+    longname: Volume fraction for aerosol species 2, mode 4
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+aer_vfrac_species3_mode4:
+    name: vfrac species 3 mode 4
+    longname: Volume fraction for aerosol species 3, mode 4
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+aer_vfrac_species4_mode4:
+    name: vfrac species 4 mode 4
+    longname: Volume fraction for aerosol species 4, mode 4
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+aer_vfrac_species5_mode4:
+    name: vfrac species 5 mode 4
+    longname: Volume fraction for aerosol species 5, mode 4
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+aer_vfrac_species6_mode4:
+    name: vfrac species 6 mode 4
+    longname: Volume fraction for aerosol species 6, mode 4
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+aer_sphere_mode5:
+    name: sphere mode 5
+    longname: Spherical fraction for aerosol mode 5
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+aer_num_mode5:
+    name: num mode 5
+    longname: Number density for aerosol mode 5
+    valid_min: 0
+    fill_value: -999
+
+aer_reff_mode5:
+    name: radius mode 5
+    longname: Effective radius for aerosol mode 5
+    valid_min: 0
+    units: micrometre
+    fill_value: -999
+
+aer_veff_mode5:
+    name: variance mode 5
+    longname: Effective variance for aerosol mode 5
+    valid_min: 0
+    fill_value: -999
+
+aer_alh_mode5:
+    name: layer height mode 5
+    longname: Aerosol layer height for aerosol mode 5
+    valid_min: 0
+    units: metre
+    fill_value: -999
+
+aer_vfrac_species1_mode5:
+    name: vfrac species 1 mode 5
+    longname: Volume fraction for aerosol species 1, mode 5
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+aer_vfrac_species2_mode5:
+    name: vfrac species 2 mode 5
+    longname: Volume fraction for aerosol species 2, mode 5
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+aer_vfrac_species3_mode5:
+    name: vfrac species 3 mode 5
+    longname: Volume fraction for aerosol species 3, mode 5
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+aer_vfrac_species4_mode5:
+    name: vfrac species 4 mode 5
+    longname: Volume fraction for aerosol species 4, mode 5
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+aer_vfrac_species5_mode5:
+    name: vfrac species 5 mode 5
+    longname: Volume fraction for aerosol species 5, mode 5
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+aer_vfrac_species6_mode5:
+    name: vfrac species 6 mode 5
+    longname: Volume fraction for aerosol species 6, mode 5
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+aer_sphere_mode6:
+    name: sphere mode 6
+    longname: Spherical fraction for aerosol mode 6
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+aer_num_mode6:
+    name: num mode 6
+    longname: Number density for aerosol mode 6
+    valid_min: 0
+    fill_value: -999
+
+aer_reff_mode6:
+    name: radius mode 6
+    longname: Effective radius for aerosol mode 6
+    valid_min: 0
+    units: micrometre
+    fill_value: -999
+
+aer_veff_mode6:
+    name: variance mode 6
+    longname: Effective variance for aerosol mode 6
+    valid_min: 0
+    fill_value: -999
+
+aer_alh_mode6:
+    name: layer height mode 6
+    longname: Aerosol layer height for aerosol mode 6
+    valid_min: 0
+    units: metre
+    fill_value: -999
+
+aer_vfrac_species1_mode6:
+    name: vfrac species 1 mode 6
+    longname: Volume fraction for aerosol species 1, mode 6
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+aer_vfrac_species2_mode6:
+    name: vfrac species 2 mode 6
+    longname: Volume fraction for aerosol species 2, mode 6
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+aer_vfrac_species3_mode6:
+    name: vfrac species 3 mode 6
+    longname: Volume fraction for aerosol species 3, mode 6
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+aer_vfrac_species4_mode6:
+    name: vfrac species 4 mode 6
+    longname: Volume fraction for aerosol species 4, mode 6
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+aer_vfrac_species5_mode6:
+    name: vfrac species 5 mode 6
+    longname: Volume fraction for aerosol species 5, mode 6
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+aer_vfrac_species6_mode6:
+    name: vfrac species 6 mode 6
+    longname: Volume fraction for aerosol species 6, mode 6
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+aer_sphere_mode7:
+    name: sphere mode 7
+    longname: Spherical fraction for aerosol mode 7
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+aer_num_mode7:
+    name: num mode 7
+    longname: Number density for aerosol mode 7
+    valid_min: 0
+    fill_value: -999
+
+aer_reff_mode7:
+    name: radius mode 7
+    longname: Effective radius for aerosol mode 7
+    valid_min: 0
+    units: micrometre
+    fill_value: -999
+
+aer_veff_mode7:
+    name: variance mode 7
+    longname: Effective variance for aerosol mode 7
+    valid_min: 0
+    fill_value: -999
+
+aer_alh_mode7:
+    name: layer height mode 7
+    longname: Aerosol layer height for aerosol mode 7
+    valid_min: 0
+    units: metre
+    fill_value: -999
+
+aer_vfrac_species1_mode7:
+    name: vfrac species 1 mode 7
+    longname: Volume fraction for aerosol species 1, mode 7
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+aer_vfrac_species2_mode7:
+    name: vfrac species 2 mode 7
+    longname: Volume fraction for aerosol species 2, mode 7
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+aer_vfrac_species3_mode7:
+    name: vfrac species 3 mode 7
+    longname: Volume fraction for aerosol species 3, mode 7
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+aer_vfrac_species4_mode7:
+    name: vfrac species 4 mode 7
+    longname: Volume fraction for aerosol species 4, mode 7
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+aer_vfrac_species5_mode7:
+    name: vfrac species 5 mode 7
+    longname: Volume fraction for aerosol species 5, mode 7
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+aer_vfrac_species6_mode7:
+    name: vfrac species 6 mode 7
+    longname: Volume fraction for aerosol species 6, mode 7
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+aer_pressure_surface_aerosol:
+    name: surface pressure
+    longname: Surface pressure for aerosol model
+    valid_min: 0
+    fill_value: -999
+    units: mBar
+
+aer_elevation_surface_aerosol:
+    name: surface elevation
+    longname: Surface elevation for aerosol model
+    fill_value: -32767
+    units: metre
+
+surf_lisparse:
+    name: Li sparse
+    longname: Li sparse (geometric) BRDF kernel coefficient
+    fill_value: -999
+
+surf_rossthick:
+    name: Ross thick
+    longname: Ross thick (volumetric) BRDF kernel coefficient
+    fill_value: -999
+
+surf_snow:
+    name: snow kernel coefficient
+    longname: Ding et al. snow BRDF kernel coefficient
+    fill_value: -999
+
+surf_water_frac:
+    name: inland water fraction
+    longname: subpixel fraction of surface area that is water
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+surf_water_wind:
+    name: water wind
+    fill_value: -999
+
+surf_bpdf:
+    name: BPDF
+    longname: bidirectional polarisation distribution function
+    fill_value: -999
+
+# RemoTAP input format
+# geometry
+remotap_altitude:
+  name: flight_altitude
+  longname: flight altitude
+  units: metre
+  valid_min: 0
+  valid_max: 2147483647
+  FillValue: -32767
+
+remotap_julday:
+    name: julday
+    longname: Julian day in dataset year
+    valid_min: 0
+    valid_max: 400
+    FillValue: -32767
+
+remotap_latitude:
+    name: latitude
+    long_name: latitude
+    units: degree north
+    valid_min: -90
+    valid_max: 90
+    FillValue: -32767
+
+remotap_longitude:
+    name: longitude
+    long_name: longitude
+    units: degree east
+    valid_min: -180
+    valid_max: 180
+    FillValue: -32767
+
+remotap_pixelid:
+    name: pixel_id
+    long_name: pixel ID
+    valid_min: 1
+    valid_max: 2147483647
+    FillValue: -32767
+
+remotap_solarzenithangle:
+  name: solar_zenith_angle
+  long_name: solar zenith angle
+  units: degree
+  valid_min: 0.0
+  valid_max: 90.0
+  FillValue: -32767
+
+remotap_solarazimuthangle:
+  name: solar_azimuth_angle
+  long_name: solar azimuth angle
+  units: degree
+  valid_min: -180.0
+  valid_max: +180.0
+  FillValue: -32767
+
+remotap_viewingzenithangle:
+  name: viewing_zenith_angle
+  long_name: viewing zenith angle
+  units: degree
+  valid_min: 0.0
+  valid_max: 90.0
+  FillValue: -32767
+
+remotap_viewingazimuthangle:
+  name: viewing_azimuth_angle
+  long_name: viewing azimuth angle
+  units: degree
+  valid_min: -180.0
+  valid_max: 180.0
+  FillValue: -32767
+
+#input
+remotap_aer_iri_sp1:
+    name: IRI_species1
+    longname: Imaginary part of refractive index, species 1
+    valid_min: 0
+    FillValue: -32767
+
+remotap_aer_iri_sp2:
+    name: IRI_species2
+    longname: Imaginary part of refractive index, species 2
+    valid_min: 0
+    FillValue: -32767
+
+remotap_aer_iri_sp3:
+    name: IRI_species3
+    longname: Imaginary part of refractive index, species 3
+    valid_min: 0
+    FillValue: -32767
+
+remotap_aer_iri_sp4:
+    name: IRI_species4
+    longname: Imaginary part of refractive index, species 4
+    valid_min: 0
+    FillValue: -32767
+
+remotap_aer_iri_sp5:
+    name: IRI_species5
+    longname: Imaginary part of refractive index, species 5
+    valid_min: 0
+    FillValue: -32767
+
+remotap_aer_iri_sp6:
+    name: IRI_species6
+    longname: Imaginary part of refractive index, species 6
+    valid_min: 0
+    FillValue: -32767
+
+remotap_aer_rri_sp1:
+    name: RRI_species1
+    longname: Real part of refractive index, species 1
+    valid_min: 0
+    FillValue: -32767
+
+remotap_aer_rri_sp2:
+    name: RRI_species2
+    longname: Real part of refractive index, species 2
+    valid_min: 0
+    FillValue: -32767
+
+remotap_aer_rri_sp3:
+    name: RRI_species3
+    longname: Real part of refractive index, species 3
+    valid_min: 0
+    FillValue: -32767
+
+remotap_aer_rri_sp4:
+    name: RRI_species4
+    longname: Real part of refractive index, species 4
+    valid_min: 0
+    FillValue: -32767
+
+remotap_aer_rri_sp5:
+    name: RRI_species5
+    longname: Real part of refractive index, species 5
+    valid_min: 0
+    FillValue: -32767
+
+remotap_aer_rri_sp6:
+    name: RRI_species6
+    longname: Real part of refractive index, species 6
+    valid_min: 0
+    FillValue: -32767
+
+remotap_aer_wl_sp1:
+    name: wavelength_species1
+    longname: Wavelengths for species 1
+    valid_min: 0
+    FillValue: -32767
+    units: nanometre
+
+remotap_aer_wl_sp2:
+    name: wavelength_species2
+    longname: Wavelengths for species 2
+    valid_min: 0
+    FillValue: -32767
+    units: nanometre
+
+remotap_aer_wl_sp3:
+    name: wavelength_species3
+    longname: Wavelengths for species 3
+    valid_min: 0
+    FillValue: -32767
+    units: nanometre
+
+remotap_aer_wl_sp4:
+    name: wavelength_species4
+    longname: Wavelengths for species 4
+    valid_min: 0
+    FillValue: -32767
+    units: nanometre
+
+remotap_aer_wl_sp5:
+    name: wavelength_species5
+    longname: Wavelengths for species 5
+    valid_min: 0
+    FillValue: -32767
+    units: nanometre
+
+remotap_aer_wl_sp6:
+    name: wavelength_species6
+    longname: Wavelengths for species 6
+    valid_min: 0
+    FillValue: -32767
+    units: nanometre
+
+remotap_aer_sphere_mode1:
+    name: sphere_mode1
+    longname: Spherical fraction for aerosol mode 1
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+remotap_aer_num_mode1:
+    name: num_mode1
+    longname: Number density for aerosol mode 1
+    valid_min: 0
+    fill_value: -999
+
+remotap_aer_reff_mode1:
+    name: reff_mode1
+    longname: Effective radius for aerosol mode 1
+    valid_min: 0
+    units: micrometre
+    fill_value: -999
+
+remotap_aer_veff_mode1:
+    name: veff_mode1
+    longname: Effective variance for aerosol mode 1
+    valid_min: 0
+    fill_value: -999
+
+remotap_aer_alh_mode1:
+    name: ALH_mode1
+    longname: Aerosol layer height for aerosol mode 1
+    valid_min: 0
+    units: metre
+    fill_value: -999
+
+remotap_aer_vfrac_species1_mode1:
+    name: vfrac_species1_mode1
+    longname: Volume fraction for aerosol species 1, mode 1
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+remotap_aer_vfrac_species2_mode1:
+    name: vfrac_species2_mode1
+    longname: Volume fraction for aerosol species 2, mode 1
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+remotap_aer_vfrac_species3_mode1:
+    name: vfrac_species3_mode1
+    longname: Volume fraction for aerosol species 3, mode 1
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+remotap_aer_vfrac_species4_mode1:
+    name: vfrac_species4_mode1
+    longname: Volume fraction for aerosol species 4, mode 1
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+remotap_aer_vfrac_species5_mode1:
+    name: vfrac_species5_mode1
+    longname: Volume fraction for aerosol species 5, mode 1
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+remotap_aer_vfrac_species6_mode1:
+    name: vfrac_species6_mode1
+    longname: Volume fraction for aerosol species 6, mode 1
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+remotap_aer_sphere_mode2:
+    name: sphere_mode2
+    longname: Spherical fraction for aerosol mode 2
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+remotap_aer_num_mode2:
+    name: num_mode2
+    longname: Number density for aerosol mode 2
+    valid_min: 0
+    fill_value: -999
+
+remotap_aer_reff_mode2:
+    name: reff_mode2
+    longname: Effective radius for aerosol mode 2
+    valid_min: 0
+    units: micrometre
+    fill_value: -999
+
+remotap_aer_veff_mode2:
+    name: veff_mode2
+    longname: Effective variance for aerosol mode 2
+    valid_min: 0
+    fill_value: -999
+
+remotap_aer_alh_mode2:
+    name: ALH_mode2
+    longname: Aerosol layer height for aerosol mode 2
+    valid_min: 0
+    units: metre
+    fill_value: -999
+
+remotap_aer_vfrac_species1_mode2:
+    name: vfrac_species1_mode2
+    longname: Volume fraction for aerosol species 1, mode 2
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+remotap_aer_vfrac_species2_mode2:
+    name: vfrac_species2_mode2
+    longname: Volume fraction for aerosol species 2, mode 2
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+remotap_aer_vfrac_species3_mode2:
+    name: vfrac_species3_mode2
+    longname: Volume fraction for aerosol species 3, mode 2
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+remotap_aer_vfrac_species4_mode2:
+    name: vfrac_species4_mode2
+    longname: Volume fraction for aerosol species 4, mode 2
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+remotap_aer_vfrac_species5_mode2:
+    name: vfrac_species5_mode2
+    longname: Volume fraction for aerosol species 5, mode 2
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+remotap_aer_vfrac_species6_mode2:
+    name: vfrac_species6_mode2
+    longname: Volume fraction for aerosol species 6, mode 2
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+remotap_aer_sphere_mode3:
+    name: sphere_mode3
+    longname: Spherical fraction for aerosol mode 3
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+remotap_aer_num_mode3:
+    name: num_mode3
+    longname: Number density for aerosol mode 3
+    valid_min: 0
+    fill_value: -999
+
+remotap_aer_reff_mode3:
+    name: reff_mode3
+    longname: Effective radius for aerosol mode 3
+    valid_min: 0
+    units: micrometre
+    fill_value: -999
+
+remotap_aer_veff_mode3:
+    name: veff_mode3
+    longname: Effective variance for aerosol mode 3
+    valid_min: 0
+    fill_value: -999
+
+remotap_aer_alh_mode3:
+    name: ALH_mode3
+    longname: Aerosol layer height for aerosol mode 3
+    valid_min: 0
+    units: metre
+    fill_value: -999
+
+remotap_aer_vfrac_species1_mode3:
+    name: vfrac_species1_mode3
+    longname: Volume fraction for aerosol species 1, mode 3
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+remotap_aer_vfrac_species2_mode3:
+    name: vfrac_species2_mode3
+    longname: Volume fraction for aerosol species 2, mode 3
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+remotap_aer_vfrac_species3_mode3:
+    name: vfrac_species3_mode3
+    longname: Volume fraction for aerosol species 3, mode 3
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+remotap_aer_vfrac_species4_mode3:
+    name: vfrac_species4_mode3
+    longname: Volume fraction for aerosol species 4, mode 3
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+remotap_aer_vfrac_species5_mode3:
+    name: vfrac_species5_mode3
+    longname: Volume fraction for aerosol species 5, mode 3
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+remotap_aer_vfrac_species6_mode3:
+    name: vfrac_species6_mode3
+    longname: Volume fraction for aerosol species 6, mode 3
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+remotap_aer_sphere_mode4:
+    name: sphere_mode4
+    longname: Spherical fraction for aerosol mode 4
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+remotap_aer_num_mode4:
+    name: num_mode4
+    longname: Number density for aerosol mode 4
+    valid_min: 0
+    fill_value: -999
+
+remotap_aer_reff_mode4:
+    name: reff_mode4
+    longname: Effective radius for aerosol mode 4
+    valid_min: 0
+    units: micrometre
+    fill_value: -999
+
+remotap_aer_veff_mode4:
+    name: veff_mode4
+    longname: Effective variance for aerosol mode 4
+    valid_min: 0
+    fill_value: -999
+
+remotap_aer_alh_mode4:
+    name: ALH_mode4
+    longname: Aerosol layer height for aerosol mode 4
+    valid_min: 0
+    units: metre
+    fill_value: -999
+
+remotap_aer_vfrac_species1_mode4:
+    name: vfrac_species1_mode4
+    longname: Volume fraction for aerosol species 1, mode 4
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+remotap_aer_vfrac_species2_mode4:
+    name: vfrac_species2_mode4
+    longname: Volume fraction for aerosol species 2, mode 4
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+remotap_aer_vfrac_species3_mode4:
+    name: vfrac_species3_mode4
+    longname: Volume fraction for aerosol species 3, mode 4
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+remotap_aer_vfrac_species4_mode4:
+    name: vfrac_species4_mode4
+    longname: Volume fraction for aerosol species 4, mode 4
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+remotap_aer_vfrac_species5_mode4:
+    name: vfrac_species5_mode4
+    longname: Volume fraction for aerosol species 5, mode 4
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+remotap_aer_vfrac_species6_mode4:
+    name: vfrac_species6_mode4
+    longname: Volume fraction for aerosol species 6, mode 4
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+remotap_aer_sphere_mode5:
+    name: sphere_mode5
+    longname: Spherical fraction for aerosol mode 5
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+remotap_aer_num_mode5:
+    name: num_mode5
+    longname: Number density for aerosol mode 5
+    valid_min: 0
+    fill_value: -999
+
+remotap_aer_reff_mode5:
+    name: reff_mode5
+    longname: Effective radius for aerosol mode 5
+    valid_min: 0
+    units: micrometre
+    fill_value: -999
+
+remotap_aer_veff_mode5:
+    name: veff_mode5
+    longname: Effective variance for aerosol mode 5
+    valid_min: 0
+    fill_value: -999
+
+remotap_aer_alh_mode5:
+    name: ALH_mode5
+    longname: Aerosol layer height for aerosol mode 5
+    valid_min: 0
+    units: metre
+    fill_value: -999
+
+remotap_aer_vfrac_species1_mode5:
+    name: vfrac_species1_mode5
+    longname: Volume fraction for aerosol species 1, mode 5
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+remotap_aer_vfrac_species2_mode5:
+    name: vfrac_species2_mode5
+    longname: Volume fraction for aerosol species 2, mode 5
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+remotap_aer_vfrac_species3_mode5:
+    name: vfrac_species3_mode5
+    longname: Volume fraction for aerosol species 3, mode 5
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+remotap_aer_vfrac_species4_mode5:
+    name: vfrac_species4_mode5
+    longname: Volume fraction for aerosol species 4, mode 5
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+remotap_aer_vfrac_species5_mode5:
+    name: vfrac_species5_mode5
+    longname: Volume fraction for aerosol species 5, mode 5
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+remotap_aer_vfrac_species6_mode5:
+    name: vfrac_species6_mode5
+    longname: Volume fraction for aerosol species 6, mode 5
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+remotap_aer_sphere_mode6:
+    name: sphere_mode6
+    longname: Spherical fraction for aerosol mode 6
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+remotap_aer_num_mode6:
+    name: num_mode6
+    longname: Number density for aerosol mode 6
+    valid_min: 0
+    fill_value: -999
+
+remotap_aer_reff_mode6:
+    name: reff_mode6
+    longname: Effective radius for aerosol mode 6
+    valid_min: 0
+    units: micrometre
+    fill_value: -999
+
+remotap_aer_veff_mode6:
+    name: veff_mode6
+    longname: Effective variance for aerosol mode 6
+    valid_min: 0
+    fill_value: -999
+
+remotap_aer_alh_mode6:
+    name: ALH_mode6
+    longname: Aerosol layer height for aerosol mode 6
+    valid_min: 0
+    units: metre
+    fill_value: -999
+
+remotap_aer_vfrac_species1_mode6:
+    name: vfrac_species1_mode6
+    longname: Volume fraction for aerosol species 1, mode 6
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+remotap_aer_vfrac_species2_mode6:
+    name: vfrac_species2_mode6
+    longname: Volume fraction for aerosol species 2, mode 6
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+remotap_aer_vfrac_species3_mode6:
+    name: vfrac_species3_mode6
+    longname: Volume fraction for aerosol species 3, mode 6
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+remotap_aer_vfrac_species4_mode6:
+    name: vfrac_species4_mode6
+    longname: Volume fraction for aerosol species 4, mode 6
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+remotap_aer_vfrac_species5_mode6:
+    name: vfrac_species5_mode6
+    longname: Volume fraction for aerosol species 5, mode 6
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+remotap_aer_vfrac_species6_mode6:
+    name: vfrac_species6_mode6
+    longname: Volume fraction for aerosol species 6, mode 6
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+remotap_aer_sphere_mode7:
+    name: sphere_mode7
+    longname: Spherical fraction for aerosol mode 7
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+remotap_aer_num_mode7:
+    name: num_mode7
+    longname: Number density for aerosol mode 7
+    valid_min: 0
+    fill_value: -999
+
+remotap_aer_reff_mode7:
+    name: reff_mode7
+    longname: Effective radius for aerosol mode 7
+    valid_min: 0
+    units: micrometre
+    fill_value: -999
+
+remotap_aer_veff_mode7:
+    name: veff_mode7
+    longname: Effective variance for aerosol mode 7
+    valid_min: 0
+    fill_value: -999
+
+remotap_aer_alh_mode7:
+    name: ALH_mode7
+    longname: Aerosol layer height for aerosol mode 7
+    valid_min: 0
+    units: metre
+    fill_value: -999
+
+remotap_aer_vfrac_species1_mode7:
+    name: vfrac_species1_mode7
+    longname: Volume fraction for aerosol species 1, mode 7
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+remotap_aer_vfrac_species2_mode7:
+    name: vfrac_species2_mode7
+    longname: Volume fraction for aerosol species 2, mode 7
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+remotap_aer_vfrac_species3_mode7:
+    name: vfrac_species3_mode7
+    longname: Volume fraction for aerosol species 3, mode 7
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+remotap_aer_vfrac_species4_mode7:
+    name: vfrac_species4_mode7
+    longname: Volume fraction for aerosol species 4, mode 7
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+remotap_aer_vfrac_species5_mode7:
+    name: vfrac_species5_mode7
+    longname: Volume fraction for aerosol species 5, mode 7
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+remotap_aer_vfrac_species6_mode7:
+    name: vfrac_species6_mode7
+    longname: Volume fraction for aerosol species 6, mode 7
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+remotap_aer_pressure_surface_aerosol:
+    name: pressure_surface_aerosol
+    longname: Surface pressure for aerosol model
+    valid_min: 0
+    fill_value: -999
+    units: mBar
+
+remotap_aer_elevation_surface_aerosol:
+    name: elevation_surface_aerosol
+    longname: Surface elevation for aerosol model
+    fill_value: -32767
+    units: metre
+
+remotap_surf_lisparse:
+    name: Lisparse
+    longname: Li sparse (geometric) BRDF kernel coefficient
+    fill_value: -999
+
+remotap_surf_rossthick:
+    name: Rossthick
+    longname: Ross thick (volumetric) BRDF kernel coefficient
+    fill_value: -999
+
+remotap_surf_snow:
+    name: snow_kernel_coef
+    longname: Ding et al. snow BRDF kernel coefficient
+    fill_value: -999
+
+remotap_surf_water_frac:
+    name: water_frac_inland
+    longname: subpixel fraction of surface area that is water
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+remotap_surf_water_wind:
+    name: water_wind
+    fill_value: -999
+
+remotap_surf_bpdf:
+    name: Xbpdf
+    longname: bidirectional polarisation distribution function
+    fill_value: -999
+
+remotap_surf_bands_combine:
+    name: Bands_combine
+    longname: Wavelengths at which albedo is given
+    valid_min: 0
+    fill_value: -999
+
+remotap_surf_xbrdf_wave_combine:
+    name: Xbrdf_wave_combine
+    longname: spectral albedo per pixel
+    valid_min: 0
+    valid_max: 1
+    fill_value: -999
+
+remotap_ocn_Xchl:
+    name: Xchl
+
+remotap_ocn_uwnd:
+    name: uwnd
+
+remotap_ocn_vwnd:
+    name: vwnd
+
+remotap_cir_aspect_ratio:
+    name: aspect_ratio
+
+remotap_cir_cgd_mean:
+    name: cgd_mean
+
+remotap_cir_cirrus_fraction:
+    name: cirrus_fraction
+
+remotap_cir_cod_median:
+    name: cod_median
+
+remotap_cir_cth_mean:
+    name: cth_mean
+
+remotap_cir_effective_radius:
+    name: effective_radius
+
+remotap_cir_roughness:
+    name: roughness
+
+remotap_cld_cloud_reff:
+    name: cloud_reff
+
+remotap_cld_cloud_optical_thickness:
+    name: cloud_optical_thickness
+
+remotap_cld_cloud_top_height_asl:
+    name: cloud_top_height_asl
+
+remotap_cld_cloud_phase:
+    name: cloud_phase
+
+remotap_cld_cloud_fraction:
+    name: cloud_fraction
+
+remotap_cld_wavelength_water_refr:
+    name: wavelength_water_refr
+
+remotap_cld_RRI_water_refr:
+    name: RRI_water_refr
+
+remotap_cld_IRI_water_refr:
+    name: IRI_water_refr
+
+# aux
+remotap_aux_pixel_id:
+    name: pixel_id
+
+remotap_aux_surface_pressure_meteo:
+    name: surface_pressure_meteo
+
+remotap_aux_surface_elevation_dem:
+    name: surface_elevation_dem
+
+remotap_aux_hybrid_a:
+    name: hybrid_a
+
+remotap_aux_hybrid_b:
+    name: hybrid_b
+
+remotap_aux_surface_elevation_meteo:
+    name: surface_elevation_meteo
+
+remotap_aux_surface_elevation_std:
+    name: surface_elevation_std
+
+remotap_aux_tropopause_height:
+    name: tropopause_height
+
+remotap_aux_temperature:
+    name: temperature
+
+remotap_aux_MMR_o3:
+    name: MMR_o3
+
+remotap_aux_MMR_co2:
+    name: MMR_co2
+
+remotap_aux_MMR_ch4:
+    name: MMR_ch4
+
+remotap_aux_MMR_no2:
+    name: MMR_no2
+
+remotap_aux_specific_humidity:
+    name: specific_humidity
+
+remotap_aux_cirrus_fraction:
+    name: cirrus_fraction
+
+remotap_aux_cloud_top_height_asl:
+    name: cloud_top_height_asl
+
+remotap_aux_land_fraction:
+    name: land_fraction
+
+remotap_aux_cloud_fraction:
+    name: cloud_fraction
+
+remotap_aux_zlev:
+    name: zlev
+
+remotap_aux_plev:
+    name: plev

@@ -19,3 +19,7 @@ doc/_build
 
 # Setuptools
 teds.egg-info
+
+# vim temporaries
+*.swp
+*.swo

@@ -731,7 +731,9 @@ def expand_geometry(atm, gm):
     yval = np.concatenate((yval, ybb))
     XY   = np.column_stack((yval, xval))
     
-    for gm_para in ['sza','vza','saa','vaa']:
+    for gm_para in [
+        'sza','vza','saa','vaa', 'julian_day', 'satellite_altitude'
+    ]:
         
         #assign the data which is closest to a given point of the bounding box to this point  
         data = gm.__getattribute__(gm_para)

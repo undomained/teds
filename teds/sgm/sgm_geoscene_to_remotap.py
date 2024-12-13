@@ -6,20 +6,31 @@
 #     the LICENSE file in the root directory of this project.
 # =============================================================================
 
+import netCDF4 as nc
+import numpy as np
+import numpy.typing as npt
+import os
+
 from ..lib import constants
 from ..lib import libNumTools
 from ..lib.libNumTools import TransformCoords
-from ..lib.libWrite import writevariablefromname, variable_dict
-import netCDF4 as nc
-import numpy as np
-import os
-
-from .sgm_Carbon_radscene import get_geosgm_data, get_gm_data
+from ..lib.libWrite import variable_dict
+from ..lib.libWrite import writevariablefromname
+from .sgm_Carbon_radscene import get_geosgm_data
+from .sgm_Carbon_radscene import get_gm_data
 
 
-def create_remotap_geometry(config, gm_data, sgm_data):
+def create_remotap_geometry(config: dict,
+                            satellite_altitude: npt.NDArray[np.float64],
+                            julian_day: npt.NDArray[np.float64],
+                            saa: npt.NDArray[np.float64],
+                            vaa: npt.NDArray[np.float64],
+                            sza: npt.NDArray[np.float64],
+                            vza: npt.NDArray[np.float64],
+                            lat: npt.NDArray[np.float64],
+                            lon: npt.NDArray[np.float64]) -> None:
     with nc.Dataset(config['io_files']['output_geometry'], 'w') as geom:
-        nalt, nact = sgm_data.lat.shape
+        nalt, nact = lat.shape
         npix = nalt*nact
 
         geom.createDimension('Nacross_track', nact)
@@ -27,63 +38,45 @@ def create_remotap_geometry(config, gm_data, sgm_data):
         geom.createDimension('Npix', npix)
         geom.createDimension('maxvza', 1)
 
-        writevariablefromname(
-            geom,
-            'remotap_altitude',
-            'Npix',
-            gm_data.satellite_altitude.reshape(-1)
-        )
-        writevariablefromname(
-            geom,
-            'remotap_julday',
-            'Npix',
-            gm_data.julian_day.reshape(-1)
-        )
-        writevariablefromname(
-            geom,
-            'remotap_latitude',
-            'Npix',
-            sgm_data.lat.reshape(-1)
-        )
-        writevariablefromname(
-            geom,
-            'remotap_longitude',
-            'Npix',
-            sgm_data.lon.reshape(-1)
-        )
-        writevariablefromname(
-            geom,
-            'remotap_solarazimuthangle',
-            ('Npix', 'maxvza'),
-            gm_data.saa.reshape(-1, 1)
-        )
-        writevariablefromname(
-            geom,
-            'remotap_solarzenithangle',
-            ('Npix', 'maxvza'),
-            gm_data.sza.reshape(-1, 1)
-        )
-        writevariablefromname(
-            geom,
-            'remotap_viewingazimuthangle',
-            ('Npix', 'maxvza'),
-            gm_data.vaa.reshape(-1, 1)
-        )
-        writevariablefromname(
-            geom,
-            'remotap_viewingzenithangle',
-            ('Npix', 'maxvza'),
-            gm_data.vza.reshape(-1, 1)
-        )
-        writevariablefromname(
-            geom,
-            'remotap_pixelid',
-            'Npix',
-            np.arange(npix)+1
-        )
+        writevariablefromname(geom,
+                              'remotap_altitude',
+                              'Npix',
+                              satellite_altitude.reshape(-1))
+        writevariablefromname(geom,
+                              'remotap_julday',
+                              'Npix',
+                              julian_day.reshape(-1))
+        writevariablefromname(geom,
+                              'remotap_latitude',
+                              'Npix',
+                              lat.reshape(-1))
+        writevariablefromname(geom,
+                              'remotap_longitude',
+                              'Npix',
+                              lon.reshape(-1))
+        writevariablefromname(geom,
+                              'remotap_solarazimuthangle',
+                              ('Npix', 'maxvza'),
+                              saa.reshape(-1, 1))
+        writevariablefromname(geom,
+                              'remotap_solarzenithangle',
+                              ('Npix', 'maxvza'),
+                              sza.reshape(-1, 1))
+        writevariablefromname(geom,
+                              'remotap_viewingazimuthangle',
+                              ('Npix', 'maxvza'),
+                              vaa.reshape(-1, 1))
+        writevariablefromname(geom,
+                              'remotap_viewingzenithangle',
+                              ('Npix', 'maxvza'),
+                              vza.reshape(-1, 1))
+        writevariablefromname(geom,
+                              'remotap_pixelid',
+                              'Npix',
+                              np.arange(npix)+1)
 
 
-def create_remotap_input(config):
+def create_remotap_input(config: dict) -> None:
     with nc.Dataset(config['io_files']['input_sgm_geo']) as in_nc, \
          nc.Dataset(config['io_files']['output_input'], 'w') as out_nc:
         npix = (
@@ -147,14 +140,14 @@ def create_remotap_input(config):
                 out_data
             )
 
-        alb_wls = []
+        _alb_wls = []
         alb_data = []
         for k, v in in_nc.variables.items():
             if k.startswith('albedo'):
-                alb_wls.append(v.getncattr('central wavelength'))
+                _alb_wls.append(v.getncattr('central wavelength'))
                 alb_data.append(v[()].reshape(-1))
 
-        alb_wls = np.array(alb_wls)
+        alb_wls = np.array(_alb_wls)
         alb_data = np.stack(alb_data)
         alb_order = np.argsort(alb_wls)
         alb_wls = alb_wls[alb_order]
@@ -261,7 +254,7 @@ def create_remotap_input(config):
         )
 
 
-def create_remotap_aux(config):
+def create_remotap_aux(config: dict) -> None:
     with nc.Dataset(config['io_files']['input_sgm_geo']) as in_nc, \
          nc.Dataset(config['io_files']['output_aux'], 'w') as out_nc:
         npix = (
@@ -394,13 +387,11 @@ def create_remotap_aux(config):
         )
 
 
-def fill_ini_template(
-    datadir,
-    geomfile,
-    inputfile,
-    auxfile,
-    resultdir
-):
+def fill_ini_template(datadir: str,
+                      geomfile: str,
+                      inputfile: str,
+                      auxfile: str,
+                      resultdir: str) -> str:
     ini_template = """
 * RemoTAP configuration (Berlin regional scenario, CO2I)
 ********************************************************************************
@@ -466,7 +457,7 @@ KER    # KER = Kernel-based, RPV = Rahman-Pinty-Verstraete model
     )
 
 
-def create_remotap_ini(config):
+def create_remotap_ini(config: dict) -> None:
     if not config['io_files']['dir_remotap_data'].endswith('/'):
         config['io_files']['dir_remotap_data'] += '/'
     if not config['io_files']['dir_remotap_result'].endswith('/'):
@@ -491,7 +482,7 @@ def create_remotap_ini(config):
         print(ini_string, file=f)
 
 
-def convert_geoscene_to_remotap(config):
+def convert_geoscene_to_remotap(config: dict) -> None:
     """Convert Tango SGM geoscene to RemoTAP input file format."""
     # get data
     atm_org = get_geosgm_data(config['io_files']['input_sgm_geo'])
@@ -506,7 +497,15 @@ def convert_geoscene_to_remotap(config):
     gm_data = libNumTools.expand_geometry(atm_org, gm_org)
 
     print('Generating RemoTAP geometry... ', end='', flush=True)
-    create_remotap_geometry(config, gm_data, atm_org)
+    create_remotap_geometry(config,
+                            gm_data.satellite_altitude,
+                            gm_data.julian_day,
+                            gm_data.saa,
+                            gm_data.vaa,
+                            gm_data.sza,
+                            gm_data.vza,
+                            atm_org.lat,
+                            atm_org.lon)
     print('done.')
     print('Generating RemoTAP input... ', end='', flush=True)
     create_remotap_input(config)

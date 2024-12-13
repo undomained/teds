@@ -543,7 +543,7 @@ def pam_l1b(filen_l1b: str,
 
 def pam_l1b_geo(filen1: str,
                 filen2: str,
-                percentile) -> None:
+                percentile: float) -> None:
 
     data1 = Dataset(filen1)
     data2 = Dataset(filen2)
@@ -652,7 +652,7 @@ def pam_l2(filen: str,
            filen_ref: str,
            station_name: str,
            plt_options: str,
-           vscale=None) -> None:
+           vscale: tuple[float, float] | None = None) -> None:
 
     level2 = Dataset(filen)
     sgmgps_data = Dataset(filen_ref)

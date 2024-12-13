@@ -71,6 +71,7 @@ module = [
     'teds.lib.libSGM',
     'teds.lib.libWrite',
     'teds.lib.lib_utils',
+    'teds.lib.remotap_preproc.*',
     'teds.gm.create_gm_yaml_file',
     'teds.gm.gm',
     'teds.sgm.create_sgm_yaml_file',

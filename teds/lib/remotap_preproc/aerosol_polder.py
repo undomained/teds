@@ -1,9 +1,17 @@
-import logging
-import random
-import numpy as np
+# This source code is licensed under the 3-clause BSD license found in
+# the LICENSE file in the root directory of this project.
+# =============================================================================
+#     geophysical scene generation module for different E2E simulator profiles
+#     This source code is licensed under the 3-clause BSD license found in
+#     the LICENSE file in the root directory of this project.
+# =============================================================================
 from netCDF4 import Dataset
-from .tool_algorithm import determine_season_ids
+import logging
+import numpy as np
+import random
+
 from .collocation_algorithm import interpolate_to_orbit
+from .tool_algorithm import determine_season_ids
 from .write_module import write_parameters_to_nc
 
 _logger = logging.getLogger(__name__)
@@ -20,16 +28,23 @@ class AerosolPolder(object):
         self.month = month
         self.refr_mode_coeff = refr_mode_coeff
 
-        #year_polder = '2006'
+        # year_polder = '2006'
         self.varname = [
-            'AOT_440nm', 'AOT_490nm', 'AOT_563nm', 'AOT_670nm', 'AOT_865nm', 'AOT_1020nm',
-            'SSA_440nm', 'SSA_490nm', 'SSA_563nm', 'SSA_670nm', 'SSA_865nm', 'SSA_1020nm',
-            'N_fine', 'N_coarse', 'reff_fine', 'veff_fine', 'reff_coarse', 'veff_coarse',
-            'm_r_fine', 'm_r_coarse', 'm_i_fine', 'm_i_coarse', 'sphere_frac_fine', 'sphere_frac_coarse',
+            'AOT_440nm', 'AOT_490nm', 'AOT_563nm', 'AOT_670nm', 'AOT_865nm',
+            'AOT_1020nm',
+            'SSA_440nm', 'SSA_490nm', 'SSA_563nm', 'SSA_670nm', 'SSA_865nm',
+            'SSA_1020nm',
+            'N_fine', 'N_coarse', 'reff_fine', 'veff_fine', 'reff_coarse',
+            'veff_coarse',
+            'm_r_fine', 'm_r_coarse', 'm_i_fine', 'm_i_coarse',
+            'sphere_frac_fine', 'sphere_frac_coarse',
             'number_of_points_land', 'number_of_points_ocean', 'psurf',
 
         ]
-        self.var_coeff = ['Coef_fine_Inorg', 'Coef_fine_BC', 'Coef_coarse_Inorg', 'Coef_coarse_Dust']
+        self.var_coeff = ['Coef_fine_Inorg',
+                          'Coef_fine_BC',
+                          'Coef_coarse_Inorg',
+                          'Coef_coarse_Dust']
         self.fname_aero_prefix = 'aerosol_pars'
         self.fname_coeff_prefix = 'aerosol_coeff'
 
@@ -49,7 +64,8 @@ class AerosolPolder(object):
         self.lats = root_grp.variables['lat_center'][:]  # lats 1d (180,)
         self.lons = root_grp.variables['lon_center'][:]  # lons 1d (360,)
 
-        AOT_440 = root_grp.variables['AOT_440nm'][:][:][:]  # AOT_440:   30(days)*360(lon)*180(lat)
+        # AOT_440:   30(days)*360(lon)*180(lat)
+        AOT_440 = root_grp.variables['AOT_440nm'][:][:][:]
         ndays, nlon, nlat = AOT_440.shape
 
         root_grp.close()
@@ -60,38 +76,49 @@ class AerosolPolder(object):
 
         case_fnames = determine_season_ids(self.month)
 
-        fname_orbit_prefix = self.path + 'L1C3/GLOBAL/GRIDDED14/'+self.year+'/SRON_parasol_gridded'+self.year
+        fname_orbit_prefix = (self.path
+                              + 'L1C3/GLOBAL/GRIDDED14/'
+                              + self.year
+                              + '/SRON_parasol_gridded'+self.year)
         fname_orbit_suffix = '.nc'
 
-        _logger.info("Reading aeosol polder file {}".format(self.fname_orbit_prefix))
+        _logger.info("Reading aeosol polder file {}".format(
+            self.fname_orbit_prefix))
 
-        fname_orbit_tmp = fname_orbit_prefix + case_fnames[0] + fname_orbit_suffix
+        fname_orbit_tmp = (
+            fname_orbit_prefix + case_fnames[0] + fname_orbit_suffix)
         Nlon, Nlat = self.read_orbit_data(fname_orbit_tmp)
         icount = 0
 
         nvariables = len(self.varname)
-        self.dataset_full = np.zeros((nvariables, Nlon, Nlat, len(case_fnames)))
+        self.dataset_full = np.zeros(
+            (nvariables, Nlon, Nlat, len(case_fnames)))
 
         #########################
         for case_fname in case_fnames:
 
-            fname_orbit_tmp = fname_orbit_prefix + case_fname + fname_orbit_suffix
+            fname_orbit_tmp = (
+                fname_orbit_prefix + case_fname + fname_orbit_suffix)
 
             #########################
             # Polder data: 1*1 degree resolution data
             root_grp = Dataset(fname_orbit_tmp)
 
             for ivar in range(0, nvariables):
+                # e.g., AOT_440:   30(days)*360(lon)*180(lat)
                 self.dataset_full[ivar, :, :, icount] = np.nanmean(
-                    root_grp.variables[self.varname[ivar]][:][:][:], axis=0)  # e.g., AOT_440:   30(days)*360(lon)*180(lat)
+                    root_grp.variables[self.varname[ivar]][:][:][:], axis=0)
 
             root_grp.close()
 
-            self.polderdata_seasonal_mean_in = np.nanmean(self.dataset_full, axis=3)  # Polderdata_seasonal_mean:   28(variables)*360(lon)*180(lat)
+            # Polderdata_seasonal_mean:   28(variables)*360(lon)*180(lat)
+            self.polderdata_seasonal_mean_in = np.nanmean(
+                self.dataset_full, axis=3)
 
     def collocate(self, julday_orbit, lat, lon, n_pixels):
 
-        _logger.info("Collocation of aerosol polder {}".format(self.fname_orbit_prefix))
+        _logger.info("Collocation of aerosol polder {}".format(
+            self.fname_orbit_prefix))
 
         if self.polderdata_seasonal_mean_in is None:
             self.read_file()
@@ -106,8 +133,15 @@ class AerosolPolder(object):
         self.lon_orbit = lon
         self.n_pixels = n_pixels
 
-        self.orbit_polderdata = interpolate_to_orbit(self.lat_orbit, self.lon_orbit, n_pixels, self.lats, self.lons,
-                                                     self.polderdata_seasonal_mean_in, len(self.varname), transpose=True)
+        self.orbit_polderdata = interpolate_to_orbit(
+            self.lat_orbit,
+            self.lon_orbit,
+            n_pixels,
+            self.lats,
+            self.lons,
+            self.polderdata_seasonal_mean_in,
+            len(self.varname),
+            transpose=True)
 
     def add_mode_coeffs(self):
 
@@ -130,7 +164,9 @@ class AerosolPolder(object):
 
             ###############################################
 
-            a = np.array([[self.refr_mode_coeff.mr_IO, self.refr_mode_coeff.mr_BC], [self.refr_mode_coeff.mi_IO, self.refr_mode_coeff.mi_BC]])
+            a = np.array([
+                [self.refr_mode_coeff.mr_IO, self.refr_mode_coeff.mr_BC],
+                [self.refr_mode_coeff.mi_IO, self.refr_mode_coeff.mi_BC]])
             b = np.array([orbit_mr_f, orbit_mi_f])
 
             coef_fine = np.linalg.solve(a, b)
@@ -140,12 +176,16 @@ class AerosolPolder(object):
 
             #############
 
-            c = np.array([[self.refr_mode_coeff.mr_IO, self.refr_mode_coeff.mr_DUST], [self.refr_mode_coeff.mi_IO, self.refr_mode_coeff.mi_DUST]])
+            c = np.array([
+                [self.refr_mode_coeff.mr_IO, self.refr_mode_coeff.mr_DUST],
+                [self.refr_mode_coeff.mi_IO, self.refr_mode_coeff.mi_DUST]])
             d = np.array([orbit_mr_c, orbit_mi_c])
 
             for itry in range(0, maxtry):
                 Coef_coarse = np.linalg.solve(c, d)
-                if (1. >= Coef_coarse[0] >= 0.) and (1. >= Coef_coarse[1] >= 0.):
+                if (
+                        (1. >= Coef_coarse[0] >= 0.)
+                        and (1. >= Coef_coarse[1] >= 0.)):
                     break
                 d[1] = d[1] * step_fac
 
@@ -155,15 +195,14 @@ class AerosolPolder(object):
             ###############################################
             ###############################################
             ###############################################
-            self.orbit_coeff[0, ipixel] = coef_fine[0]  # fraction of Inorg for fine mode
-            self.orbit_coeff[1, ipixel] = coef_fine[1]  # fraction of black carbon for fine mode
-            self.orbit_coeff[2, ipixel] = Coef_coarse[0]  # fraction of Inorg for coarse mode
-            self.orbit_coeff[3, ipixel] = Coef_coarse[1]  # fraction of dust for coarse mode
-
-            # parameter_orbit[Nvariables, ipixel] = coef_fine[0]  # fraction of Inorg for fine mode
-            # parameter_orbit[Nvariables + 1, ipixel] = coef_fine[1]  # fraction of black carbon for fine mode
-            # parameter_orbit[Nvariables + 2, ipixel] = Coef_coarse[0]  # fraction of Inorg for coarse mode
-            # parameter_orbit[Nvariables + 3, ipixel] = Coef_coarse[1]  # fraction of dust for coarse mode
+            # fraction of Inorg for fine mode
+            self.orbit_coeff[0, ipixel] = coef_fine[0]
+            # fraction of black carbon for fine mode
+            self.orbit_coeff[1, ipixel] = coef_fine[1]
+            # fraction of Inorg for coarse mode
+            self.orbit_coeff[2, ipixel] = Coef_coarse[0]
+            # fraction of dust for coarse mode
+            self.orbit_coeff[3, ipixel] = Coef_coarse[1]
 
     def get_input_parameter(self, parameter):
         if self.polderdata_seasonal_mean_in is None:
@@ -185,15 +224,27 @@ class AerosolPolder(object):
 
         _logger.info("Writing polder output to: {}".format(main_file))
 
-        write_parameters_to_nc(self.orbit_polderdata, self.varname, self.lat_orbit, self.lon_orbit, alt_orbit,
-                               julday, self.n_pixels, main_file)
+        write_parameters_to_nc(self.orbit_polderdata,
+                               self.varname,
+                               self.lat_orbit,
+                               self.lon_orbit,
+                               alt_orbit,
+                               julday,
+                               self.n_pixels,
+                               main_file)
 
         coeff_file = output + self.fname_coeff_prefix+'.nc'
 
         _logger.info("Writing coefficients to: {}".format(coeff_file))
 
-        write_parameters_to_nc(self.orbit_coeff, self.var_coeff, self.lat_orbit, self.lon_orbit, alt_orbit,
-                               julday, self.n_pixels, coeff_file)
+        write_parameters_to_nc(self.orbit_coeff,
+                               self.var_coeff,
+                               self.lat_orbit,
+                               self.lon_orbit,
+                               alt_orbit,
+                               julday,
+                               self.n_pixels,
+                               coeff_file)
 
     def write_to_group(self, group):
         pass

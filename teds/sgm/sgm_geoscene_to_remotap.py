@@ -1,18 +1,21 @@
-import os
-import sys
+# This source code is licensed under the 3-clause BSD license found in
+# the LICENSE file in the root directory of this project.
+# =============================================================================
+#     geophysical scene generation module for different E2E simulator profiles
+#     This source code is licensed under the 3-clause BSD license found in
+#     the LICENSE file in the root directory of this project.
+# =============================================================================
+
+from ..lib import constants
+from ..lib import libNumTools
+from ..lib.libNumTools import TransformCoords
+from ..lib.libWrite import writevariablefromname, variable_dict
 import netCDF4 as nc
 import numpy as np
-import yaml
-from ..lib import constants
-from ..lib import libATM, libSGM, libNumTools
-from ..lib.libWrite import writevariablefromname, variable_dict
-from ..lib.libNumTools import TransformCoords, convert
+import os
 
 from .sgm_Carbon_radscene import get_geosgm_data, get_gm_data
 
-from netCDF4 import Dataset
-from xarray import DataArray
-from typing import List
 
 def create_remotap_geometry(config, gm_data, sgm_data):
     with nc.Dataset(config['io_files']['output_geometry'], 'w') as geom:
@@ -79,10 +82,10 @@ def create_remotap_geometry(config, gm_data, sgm_data):
             np.arange(npix)+1
         )
 
+
 def create_remotap_input(config):
     with nc.Dataset(config['io_files']['input_sgm_geo']) as in_nc, \
-        nc.Dataset(config['io_files']['output_input'], 'w') as out_nc \
-    :
+         nc.Dataset(config['io_files']['output_input'], 'w') as out_nc:
         npix = (
             in_nc.dimensions['bins_along_track'].size
             * in_nc.dimensions['bins_across_track'].size
@@ -257,10 +260,10 @@ def create_remotap_input(config):
             np.zeros(npix)
         )
 
+
 def create_remotap_aux(config):
     with nc.Dataset(config['io_files']['input_sgm_geo']) as in_nc, \
-        nc.Dataset(config['io_files']['output_aux'], 'w') as out_nc \
-    :
+         nc.Dataset(config['io_files']['output_aux'], 'w') as out_nc:
         npix = (
             in_nc.dimensions['bins_along_track'].size
             * in_nc.dimensions['bins_across_track'].size
@@ -276,19 +279,19 @@ def create_remotap_aux(config):
         temperature = in_nc.variables['temperature'][:].reshape(npix, nlay)
         zlay = in_nc.variables['zlay'][:].reshape(npix, nlay)
         temp_grad = (
-            (temperature[:,1:]-temperature[:,0:-1])
-            / (zlay[:,1:]-zlay[:,0:-1])
+            (temperature[:, 1:]-temperature[:, 0:-1])
+            / (zlay[:, 1:]-zlay[:, 0:-1])
         )
         ind5k = np.argmin(np.abs(zlay-5000), axis=1)
         ind20k = np.argmin(np.abs(zlay-20000), axis=1)
         for ipix in range(npix):
-            temp_grad[ipix,ind5k[ipix]:] = 1e36
-            temp_grad[ipix,:ind20k[ipix]] = 1e36
+            temp_grad[ipix, ind5k[ipix]:] = 1e36
+            temp_grad[ipix, :ind20k[ipix]] = 1e36
 
         trop_ind = np.argmin(np.abs(temp_grad), axis=1)
         trop_h = np.minimum(
             20000,
-            np.maximum(5000, zlay[np.arange(npix),trop_ind])
+            np.maximum(5000, zlay[np.arange(npix), trop_ind])
         )
 
         _ = writevariablefromname(
@@ -368,11 +371,11 @@ def create_remotap_aux(config):
                 np.zeros(nlev)
             )
 
-        dcol_air = in_nc["dcol_air"][:] # molec m^-2
+        dcol_air = in_nc["dcol_air"][:]  # molec m^-2
         for sp in ('ch4', 'co2', 'no2', 'o3'):
-            dcol = in_nc[f'dcol_{sp}'][:] # molec m^-2
+            dcol = in_nc[f'dcol_{sp}'][:]  # molec m^-2
             vmr = dcol/dcol_air
-            mass = getattr(constants, 'M'+sp.upper()) # kg mol^-1
+            mass = getattr(constants, 'M'+sp.upper())  # kg mol^-1
             mmr = vmr * mass / constants.MDRYAIR
 
             _ = writevariablefromname(
@@ -382,13 +385,14 @@ def create_remotap_aux(config):
                 mmr.reshape(npix, nlay)
             )
 
-        dcol = in_nc[f'dcol_h2o'][:]
+        dcol = in_nc['dcol_h2o'][:]
         _ = writevariablefromname(
             out_nc,
             'remotap_aux_specific_humidity',
             ('Npix', 'nlay'),
             (dcol/dcol_air).reshape(npix, nlay)
         )
+
 
 def fill_ini_template(
     datadir,
@@ -403,17 +407,23 @@ def fill_ini_template(
 1 1
 * Definition of the spectral bands to simulate.
 1
-1 2 1590.00 1675.0 0 3 3 1.32e-7 3 2.025e5    #1:[photon/m2/s/microns/sr]; 2:[mol/m2/s/nm/sr; 3:photons/cm2/s/nm/sr
-  1 1 1.0 0.0 2.0 1.0   !mol hitran id(e: water vapor id=1), (e: from here to end just copy the values)fit flag, apri_err, par_min, par_max, prior
+1 2 1590.00 1675.0 0 3 3 1.32e-7 3 2.025e5    #1:[photon/m2/s/microns/sr]; \
+    2:[mol/m2/s/nm/sr; 3:photons/cm2/s/nm/sr
+  1 1 1.0 0.0 2.0 1.0   !mol hitran id(e: water vapor id=1), (e: from here to \
+    end just copy the values)fit flag, apri_err, par_min, par_max, prior
   {datadir}/XSDB/joostadb/LUT/hit08_01_Voigt_5900.00-6350.00_spec_res_0.005.nc
-  2 1 1.0 0.0 2.0 1.0   !mol hitran id(e: co2 id=2), fit flag, apri_err, par_min, par_max, prior
+  2 1 1.0 0.0 2.0 1.0   !mol hitran id(e: co2 id=2), fit flag, apri_err, \
+    par_min, par_max, prior
   {datadir}/XSDB/joostadb/LUT/hit08_02_LM__full_5900.00-6350.00_spec_res_0.005.nc
-  6 1 1.0 0.0 2.0 1.0   !mol hitran id (e: methan id=6), fit flag, apri_err, par_min, par_max, prior
+  6 1 1.0 0.0 2.0 1.0   !mol hitran id (e: methan id=6), fit flag, apri_err, \
+    par_min, par_max, prior
   {datadir}/XSDB/joostadb/LUT/hit08_06_Voigt_5900.00-6350.00_spec_res_0.005.nc
-  0.00265 10 10 0.3 0.085945399    !reso, wvbd,ntau,fwhm,reso_meas      ! reso (0.00265, 0.01)
+  0.00265 10 10 0.3 0.085945399    !reso, wvbd,ntau,fwhm,reso_meas      ! \
+    reso (0.00265, 0.01)
   3 3 1 3
 ********************************************************************************
-* File containing observation geometry (geo-location, solar and viewing angles).
+* File containing observation geometry (geo-location, solar and viewing \
+    angles).
 {geomfile}
 ********************************************************************************
 * Surface BPDF configuration.
@@ -455,6 +465,7 @@ KER    # KER = Kernel-based, RPV = Rahman-Pinty-Verstraete model
         resultdir=resultdir
     )
 
+
 def create_remotap_ini(config):
     if not config['io_files']['dir_remotap_data'].endswith('/'):
         config['io_files']['dir_remotap_data'] += '/'
@@ -482,15 +493,16 @@ def create_remotap_ini(config):
 
 def convert_geoscene_to_remotap(config):
     """Convert Tango SGM geoscene to RemoTAP input file format."""
-    #get data 
+    # get data
     atm_org = get_geosgm_data(config['io_files']['input_sgm_geo'])
-    #get gm data
-    gm_org  = get_gm_data(config['io_files']['input_gm'])
-    # create a transform method 
+    # get gm data
+    gm_org = get_gm_data(config['io_files']['input_gm'])
+    # create a transform method
     trans = TransformCoords(atm_org.co2_src_zlatlon[1:])
     # convert lat-lon of gm to x-y and get bounds
     gm_org.xpos, gm_org.ypos = trans.latlon2xymts(gm_org.lat, gm_org.lon)
-    #The orginal gm data for SZA, SAA. VZA, VAA are extrapolated to the atmospheric mesh 
+    # The orginal gm data for SZA, SAA. VZA, VAA are extrapolated to
+    # the atmospheric mesh.
     gm_data = libNumTools.expand_geometry(atm_org, gm_org)
 
     print('Generating RemoTAP geometry... ', end='', flush=True)

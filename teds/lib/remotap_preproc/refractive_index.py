@@ -1,15 +1,24 @@
+# This source code is licensed under the 3-clause BSD license found in
+# the LICENSE file in the root directory of this project.
+# =============================================================================
+#     geophysical scene generation module for different E2E simulator profiles
+#     This source code is licensed under the 3-clause BSD license found in
+#     the LICENSE file in the root directory of this project.
+# =============================================================================
 from collections import namedtuple
-import numpy as np
 import logging
+import numpy as np
 
 from .exceptions import ProcessError
 
 _logger = logging.getLogger(__name__)
 
 
-RefractiveModCoefficients = namedtuple("RefractiveModCoefficients", ['wave_nm', 'mr_BC', 'mi_BC', 'mr_IO', 'mi_IO',
-                                                                     'mr_DUST', 'mi_DUST', 'mr_OC', 'mi_OC', 'mr_H2O',
-                                                                     'mi_H2O'])
+RefractiveModCoefficients = namedtuple(
+    "RefractiveModCoefficients",
+    ['wave_nm', 'mr_BC', 'mi_BC', 'mr_IO', 'mi_IO',
+     'mr_DUST', 'mi_DUST', 'mr_OC', 'mi_OC', 'mr_H2O',
+     'mi_H2O'])
 
 
 def replaceD(s):
@@ -27,7 +36,8 @@ class RefractiveIndex(object):
         self.pathOC = self.refractive_path + 'refractive_index_ORG.dat'
         self.pathH2O = self.refractive_path + 'refractive_index_water.dat'
 
-        self.refractive_index_parameters = ["BC", "INORG", "DUST", "ORG", 'H2O']
+        self.refractive_index_parameters = [
+            "BC", "INORG", "DUST", "ORG", 'H2O']
         self.dataBC = None
         self.dataIO = None
         self.dataDUST = None
@@ -38,16 +48,31 @@ class RefractiveIndex(object):
 
         _logger.info("Reading refractive index tables.")
 
-        self.dataBC = np.loadtxt(self.pathBC, skiprows=1, delimiter=None,
-                                 converters={0: replaceD, 1: replaceD, 2: replaceD})
-        self.dataIO = np.loadtxt(self.pathIO, skiprows=1, delimiter=None,
-                                 converters={0: replaceD, 1: replaceD, 2: replaceD})
-        self.dataDUST = np.loadtxt(self.pathDUST, skiprows=1, delimiter=None,
-                                   converters={0: replaceD, 1: replaceD, 2: replaceD})
-        self.dataOC = np.loadtxt(self.pathOC, skiprows=1, delimiter=None,
-                                 converters={0: replaceD, 1: replaceD, 2: replaceD})
-        self.dataH2O = np.loadtxt(self.pathH2O, skiprows=1, delimiter=None,
-                                  converters={0: replaceD, 1: replaceD, 2: replaceD})
+        self.dataBC = np.loadtxt(
+            self.pathBC,
+            skiprows=1,
+            delimiter=None,
+            converters={0: replaceD, 1: replaceD, 2: replaceD})
+        self.dataIO = np.loadtxt(
+            self.pathIO,
+            skiprows=1,
+            delimiter=None,
+            converters={0: replaceD, 1: replaceD, 2: replaceD})
+        self.dataDUST = np.loadtxt(
+            self.pathDUST,
+            skiprows=1,
+            delimiter=None,
+            converters={0: replaceD, 1: replaceD, 2: replaceD})
+        self.dataOC = np.loadtxt(
+            self.pathOC,
+            skiprows=1,
+            delimiter=None,
+            converters={0: replaceD, 1: replaceD, 2: replaceD})
+        self.dataH2O = np.loadtxt(
+            self.pathH2O,
+            skiprows=1,
+            delimiter=None,
+            converters={0: replaceD, 1: replaceD, 2: replaceD})
 
     def get_coefficients_for_wavelength(self, wavelength_nm):
 
@@ -88,11 +113,21 @@ class RefractiveIndex(object):
             mi_H2O = self.dataH2O[indexH2O, 2].item()
 
         except Exception as e:
-            raise ProcessError("Error in determining the refractive index coefficients on a certain wavelength: {}".format(e))
+            raise ProcessError(
+                "Error in determining the refractive index coefficients on a "
+                "certain wavelength: {}".format(e))
 
-        return RefractiveModCoefficients(wave_nm=wavelength_nm, mr_BC=mr_BC, mi_BC=mi_BC, mr_IO=mr_IO,
-                                         mi_IO=mi_IO, mr_DUST=mr_DUST, mi_DUST=mi_DUST, mr_OC=mr_OC,
-                                         mi_OC=mi_OC, mr_H2O=mr_H2O, mi_H2O=mi_H2O)
+        return RefractiveModCoefficients(wave_nm=wavelength_nm,
+                                         mr_BC=mr_BC,
+                                         mi_BC=mi_BC,
+                                         mr_IO=mr_IO,
+                                         mi_IO=mi_IO,
+                                         mr_DUST=mr_DUST,
+                                         mi_DUST=mi_DUST,
+                                         mr_OC=mr_OC,
+                                         mi_OC=mi_OC,
+                                         mr_H2O=mr_H2O,
+                                         mi_H2O=mi_H2O)
 
     def collocate(self, julday_orbit, lat, lon, npixels):
         pass
@@ -106,10 +141,10 @@ class RefractiveIndex(object):
 
         if group.name == 'aerosol':
 
-            nmode = 7
             nspecies = 6
+            # Two times same data (also in echam 'parts')
             data_species = [self.dataBC,  self.dataDUST, self.dataH2O,
-                            self.dataOC, self.dataIO, self.dataIO]  # Two times same data (also in echam 'parts')
+                            self.dataOC, self.dataIO, self.dataIO]
 
             # for refractive index
 
@@ -120,7 +155,6 @@ class RefractiveIndex(object):
                 rri = np.array(cols[:, 1])
                 iri = np.array(cols[:, 2])
 
-                dim_var = 'nwave_species' + str(i + 1)
                 var = 'wavelength_species' + str(i + 1)
                 group.variables[var][:] = wavelength
                 var = 'RRI_species' + str(i + 1)

@@ -1,8 +1,15 @@
+# This source code is licensed under the 3-clause BSD license found in
+# the LICENSE file in the root directory of this project.
+# =============================================================================
+#     geophysical scene generation module for different E2E simulator profiles
+#     This source code is licensed under the 3-clause BSD license found in
+#     the LICENSE file in the root directory of this project.
+# =============================================================================
 from netCDF4 import Dataset
-import numpy as np
-from .collocation_algorithm import interpolate_to_orbit
 import logging
+import numpy as np
 
+from .collocation_algorithm import interpolate_to_orbit
 _logger = logging.getLogger(__name__)
 
 
@@ -11,10 +18,23 @@ class AlbedoS2(object):
     def __init__(self, path):
         self.path = path
         self.filename_template = "gauss_conv_300m_berlin_albedo_band{}.nc"
-        self.name_bands = ["B01", "B02", "B03", "B04", "B05", "B06", "B07", "B8A", "B09", "B11", "B12"]
-        self.wavelength_bands = [443, 490, 560, 665, 705, 740, 783, 865, 945, 1610, 2190]
-        self.source = 'CO2M prep from Sentinel level2 stitched tiles over Berlin area.'
-        self.description = 'Average surface albedo from Sentinel2 level2 data over Berlin'
+        self.name_bands = ["B01",
+                           "B02",
+                           "B03",
+                           "B04",
+                           "B05",
+                           "B06",
+                           "B07",
+                           "B8A",
+                           "B09",
+                           "B11",
+                           "B12"]
+        self.wavelength_bands = [
+            443, 490, 560, 665, 705, 740, 783, 865, 945, 1610, 2190]
+        self.source = (
+            'CO2M prep from Sentinel level2 stitched tiles over Berlin area.')
+        self.description = (
+            'Average surface albedo from Sentinel2 level2 data over Berlin')
 
         self.n_pixels = None
         self.lat_orbit = None
@@ -25,20 +45,20 @@ class AlbedoS2(object):
         self.lons = None
         self.albedo = None
 
-        # Band 1 - Coastal aerosol	0.443	60
-        # Band 2 - Blue	0.490	10
-        # Band 3 - Green	0.560	10
-        # Band 4 - Red	0.665	10
-        # Band 5 - Vegetation Red Edge	0.705	20
-        # Band 6 - Vegetation Red Edge	0.740	20
-        # Band 7 - Vegetation Red Edge	0.783	20
-        # Band 8 - NIR	0.842	10
-        # Band 8A - Vegetation Red Edge	0.865	20
-        # Band 9 - Water vapour	0.945	60
-        # Band 10 - SWIR - Cirrus	1.375	60
-        # Band 11 - SWIR	1.610	20
-        # Band 12 - SWIR	2.190
-        
+        # Band 1 - Coastal aerosol 0.443 60
+        # Band 2 - Blue 0.490 10
+        # Band 3 - Green 0.560 10
+        # Band 4 - Red 0.665 10
+        # Band 5 - Vegetation Red Edge 0.705 20
+        # Band 6 - Vegetation Red Edge 0.740 20
+        # Band 7 - Vegetation Red Edge 0.783 20
+        # Band 8 - NIR 0.842 10
+        # Band 8A - Vegetation Red Edge 0.865 20
+        # Band 9 - Water vapour 0.945 60
+        # Band 10 - SWIR - Cirrus 1.375 60
+        # Band 11 - SWIR 1.610 20
+        # Band 12 - SWIR 2.190
+
     def get_nbands(self):
         return len(self.wavelength_bands)
 
@@ -47,7 +67,9 @@ class AlbedoS2(object):
         _logger.info("Reading albedo file")
 
         # Read one in for shape and dimensions.
-        root_grp = Dataset(self.path + "/" + self.filename_template.format(self.name_bands[0]))
+        root_grp = Dataset(self.path
+                           + "/"
+                           + self.filename_template.format(self.name_bands[0]))
         nlat = root_grp.dimensions['nlat'].size
         nlon = root_grp.dimensions['nlon'].size
 
@@ -63,12 +85,14 @@ class AlbedoS2(object):
         self.albedo_in = np.zeros((len(self.wavelength_bands), nlat, nlon))
         for i, band in enumerate(self.name_bands):
             _logger.debug("Reading in band {}".format(band))
-            root_grp = Dataset(self.path + "/" + self.filename_template.format(band))
+            root_grp = Dataset(self.path + "/" + self.filename_template.format(
+                band))
             self.albedo_in[i, :, :] = root_grp.variables['albedo'][:]
             root_grp.close()
 
     def collocate(self, julday_orbit, lat, lon, n_pixels):
-        """Given time and lat-lon box of the groundpixel, return the collocated albedo"""
+        """Given time and lat-lon box of the groundpixel, return the
+        collocated albedo."""
 
         if self.albedo_in is None:
             self.read_file()
@@ -78,18 +102,28 @@ class AlbedoS2(object):
         self.lon_orbit = lon
         self.n_pixels = n_pixels
 
-        self.albedo = interpolate_to_orbit(self.lat_orbit, self.lon_orbit, n_pixels, self.lats,
-                                           self.lons, self.albedo_in, len(self.wavelength_bands), method='nearest')
+        self.albedo = interpolate_to_orbit(self.lat_orbit,
+                                           self.lon_orbit,
+                                           n_pixels,
+                                           self.lats,
+                                           self.lons,
+                                           self.albedo_in,
+                                           len(self.wavelength_bands),
+                                           method='nearest')
 
     def post_process(self, fill_data, bands):
 
         # The albedo file contains data on a equally spaced lon/lat grid.
-        _logger.info("Filling missing albedo data after collocation with xbrdf from gome2 and modis used in the orbit ensemble.")
-        indices = np.where((self.lat_orbit < np.min(self.lats)) | (self.lat_orbit > np.max(self.lats)) |
-                           (self.lon_orbit < np.min(self.lons)) | (self.lon_orbit > np.max(self.lons)))
+        _logger.info("Filling missing albedo data after collocation with "
+                     "xbrdf from gome2 and modis used in the orbit ensemble.")
+        indices = np.where((self.lat_orbit < np.min(self.lats))
+                           | (self.lat_orbit > np.max(self.lats))
+                           | (self.lon_orbit < np.min(self.lons))
+                           | (self.lon_orbit > np.max(self.lons)))
         for i, band in enumerate(self.wavelength_bands):
 
-            # for each band, find the closest related band frequency and replace nan with the fill_data.
+            # For each band, find the closest related band frequency
+            # and replace nan with the fill_data.
             diff_array = np.abs(bands - self.wavelength_bands[i])
             related_band = diff_array.argmin()
             self.albedo[i, indices] = fill_data[related_band, indices]

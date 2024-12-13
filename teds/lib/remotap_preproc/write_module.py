@@ -1,10 +1,24 @@
+# This source code is licensed under the 3-clause BSD license found in
+# the LICENSE file in the root directory of this project.
+# =============================================================================
+#     geophysical scene generation module for different E2E simulator profiles
+#     This source code is licensed under the 3-clause BSD license found in
+#     the LICENSE file in the root directory of this project.
+# =============================================================================
 from netCDF4 import Dataset
 
 import logging
 _logger = logging.getLogger(__name__)
 
 
-def write_parameters_to_nc(parameter_orbit, varname, lat_orbit, lon_orbit, alt_orbit, julday_orbit, npixels, file_name):
+def write_parameters_to_nc(parameter_orbit,
+                           varname,
+                           lat_orbit,
+                           lon_orbit,
+                           alt_orbit,
+                           julday_orbit,
+                           npixels,
+                           file_name):
     nvar = len(varname)
 
     _logger.info("Writing parameters {} to file {}".format(varname, file_name))
@@ -31,7 +45,12 @@ def write_parameters_to_nc(parameter_orbit, varname, lat_orbit, lon_orbit, alt_o
     da.close()
 
 
-def write_regridded_parameters_to_nc(parameter_orbit, varname, lat_orbit, lon_orbit, npixels, file_name):
+def write_regridded_parameters_to_nc(parameter_orbit,
+                                     varname,
+                                     lat_orbit,
+                                     lon_orbit,
+                                     npixels,
+                                     file_name):
     nvar = len(varname)
 
     da = Dataset(file_name, 'w', format='NETCDF4')
@@ -52,8 +71,14 @@ def write_regridded_parameters_to_nc(parameter_orbit, varname, lat_orbit, lon_or
     da.close()
 
 
-def write_pixel_parameter_to_nc(parameter, parameter_name, lat_orbit, lon_orbit, npixels, file_name):
-    _logger.info("Writing paramter {} to file {}".format(parameter_name, file_name))
+def write_pixel_parameter_to_nc(parameter,
+                                parameter_name,
+                                lat_orbit,
+                                lon_orbit,
+                                npixels,
+                                file_name):
+    _logger.info("Writing paramter {} to file {}".format(parameter_name,
+                                                         file_name))
 
     da = Dataset(file_name, 'w', format='NETCDF4')
 

@@ -1,8 +1,16 @@
+# This source code is licensed under the 3-clause BSD license found in
+# the LICENSE file in the root directory of this project.
+# =============================================================================
+#     geophysical scene generation module for different E2E simulator profiles
+#     This source code is licensed under the 3-clause BSD license found in
+#     the LICENSE file in the root directory of this project.
+# =============================================================================
+
 from netCDF4 import Dataset
 import numpy as np
 
-from .exceptions import ProcessError
 from .collocation_algorithm import interpolate_single_parameter_to_orbit
+from .exceptions import ProcessError
 from .write_module import write_pixel_parameter_to_nc
 
 import logging
@@ -36,11 +44,12 @@ class XbpdfPolder(object):
         elif 12 >= i_month >= 10:
             month_polder_xbpdf = ['10', '11', '12']
         else:
-            raise ProcessError('Something wrong with date_id_short for polder xbpdf')
+            raise ProcessError(
+                'Something wrong with date_id_short for polder xbpdf')
 
         # year_polder_xbpdf = '2006'
-        fname_Xbpdf = self.path + self.year + '/SRON_parasol_gridded' + self.year + \
-            month_polder_xbpdf[0] + '.nc'
+        fname_Xbpdf = (self.path + self.year + '/SRON_parasol_gridded'
+                       + self.year + month_polder_xbpdf[0] + '.nc')
 
         # xbpdf: 2*2 degree resolution data
         # Take seasonal mean.
@@ -48,28 +57,33 @@ class XbpdfPolder(object):
         _logger.info('Reading Xbpdf polder file.')
 
         root_grp = Dataset(fname_Xbpdf)
-        xbpdf_tmp = root_grp.variables['xbpdf'][:][:][:]  # (xbpdf_tmp) 30(days)*180(lon)*90(lat)
+        # (xbpdf_tmp) 30(days)*180(lon)*90(lat)
+        xbpdf_tmp = root_grp.variables['xbpdf'][:][:][:]
         Ndays, Nlon_xbpdf, Nlat_xbpdf = xbpdf_tmp.shape
 
         xbpdf = np.zeros((3, Nlon_xbpdf, Nlat_xbpdf))
         self.lats_xbpdf = root_grp.variables['lat_center'][:]
         self.lons_xbpdf = root_grp.variables['lon_center'][:]
-        xbpdf[0, :, :] = np.nanmean(xbpdf_tmp, axis=0)  # (xbpdf[0,:,:]) 180(lon)*90(lat)
+        # (xbpdf[0,:,:]) 180(lon)*90(lat)
+        xbpdf[0, :, :] = np.nanmean(xbpdf_tmp, axis=0)
         root_grp.close()
 
         for i in range(1, len(month_polder_xbpdf)):
-            fname_Xbpdf = self.path + self.year + '/SRON_parasol_gridded' + self.year + \
-                month_polder_xbpdf[i] + '.nc'
+            fname_Xbpdf = (self.path + self.year + '/SRON_parasol_gridded'
+                           + self.year + month_polder_xbpdf[i] + '.nc')
             root_grp = Dataset(fname_Xbpdf)
-            xbpdf_tmp = root_grp.variables['xbpdf'][:][:][:]  # (xbpdf_tmp) 31(days)*180(lon)*90(lat)
-            xbpdf[i, :, :] = np.nanmean(xbpdf_tmp, axis=0)  # (xbpdf[1,:,:]) 180(lon)*90(lat)
+            # (xbpdf_tmp) 31(days)*180(lon)*90(lat)
+            xbpdf_tmp = root_grp.variables['xbpdf'][:][:][:]
+            # (xbpdf[1,:,:]) 180(lon)*90(lat)
+            xbpdf[i, :, :] = np.nanmean(xbpdf_tmp, axis=0)
             root_grp.close()
 
-        self.xbpdf_seasonal_mean_in = np.nanmean(xbpdf[:, :, :], axis=0)  # (Xbpdf_seasonal_mean) 180(lon)*90(lat)
-        self.xbpdf_seasonal_mean_in = np.transpose(self.xbpdf_seasonal_mean_in)  # (Xbpdf_seasonal_mean) 90(lat)*180(lon)
+        # (Xbpdf_seasonal_mean) 180(lon)*90(lat)
+        self.xbpdf_seasonal_mean_in = np.nanmean(xbpdf[:, :, :], axis=0)
+        # (Xbpdf_seasonal_mean) 90(lat)*180(lon)
+        self.xbpdf_seasonal_mean_in = np.transpose(self.xbpdf_seasonal_mean_in)
 
     def collocate(self, julday_orbit, lat, lon, n_pixels):
-
         if self.xbpdf_seasonal_mean_in is None:
             self.read_file()
 
@@ -77,15 +91,25 @@ class XbpdfPolder(object):
         self.lat_orbit = lat
         self.lon_orbit = lon
         self.n_pixels = n_pixels
-        self.xbpdf_orbit = interpolate_single_parameter_to_orbit(lat, lon, n_pixels, self.lats_xbpdf, self.lons_xbpdf, self.xbpdf_seasonal_mean_in)
+        self.xbpdf_orbit = interpolate_single_parameter_to_orbit(
+            lat,
+            lon,
+            n_pixels,
+            self.lats_xbpdf,
+            self.lons_xbpdf,
+            self.xbpdf_seasonal_mean_in)
 
     def write_output(self, output_dir, alt_orbit, julday):
         _logger.info("write Xbpdf orbit data to netcdf file")
         fname_xbpdf_prefix = 'xbpdf'
         xbpdf_file = output_dir + fname_xbpdf_prefix+'.nc'
 
-        write_pixel_parameter_to_nc(self.xbpdf_orbit, "Xbpdf", self.lat_orbit, self.lon_orbit, self.n_pixels, xbpdf_file)
+        write_pixel_parameter_to_nc(self.xbpdf_orbit,
+                                    "Xbpdf",
+                                    self.lat_orbit,
+                                    self.lon_orbit,
+                                    self.n_pixels,
+                                    xbpdf_file)
 
     def write_to_group(self, group, start=0, end=None):
-
         group.variables['Xbpdf'][start:end] = self.xbpdf_orbit

@@ -26,6 +26,7 @@ targetp['Jaenschwalde'] = (14.46277, 51.83472)
 targetp['Belchatow'] = (19.330556, 51.266389)
 targetp['Lipetsk'] = (39.6945, 52.57123)
 
+
 def geo_panel(ax: matplotlib.axes.Axes,
               lon: npt.NDArray[np.float64],
               lat: npt.NDArray[np.float64],
@@ -539,9 +540,10 @@ def pam_l1b(filen_l1b: str,
         plt.ylabel('frequency')
         plt.legend()
 
+
 def pam_l1b_geo(filen1: str,
-            filen2: str,
-            percentile) -> None:
+                filen2: str,
+                percentile) -> None:
 
     data1 = Dataset(filen1)
     data2 = Dataset(filen2)
@@ -556,7 +558,7 @@ def pam_l1b_geo(filen1: str,
 
     diff_lat = (lat2-lat1).flatten()
     diff_lon = (lon2-lon1).flatten()
-    
+
     # the histogram of the data
     fig, axs = plt.subplots(1,
                             3,
@@ -569,17 +571,24 @@ def pam_l1b_geo(filen1: str,
     bindef = (np.arange(num_bins)/200. - 0.5)*6*np.std(diff_lat)
     textstr = f"mean: {np.mean(diff_lat):.2E}\n"
     textstr += f"std. dev.: {np.std(diff_lat):.2E}"
-    #stats_text += f"Median: {np.median(data):.2f}\n"
     n, bins, patches = ax.hist(diff_lat,
-                                bins=bindef,
-                                alpha=0.5,
-                                label='latitude',
-                                color='blue')
-    ax.set_xlabel('$\Delta$ latitude [degree]')
+                               bins=bindef,
+                               alpha=0.5,
+                               label='latitude',
+                               color='blue')
+    ax.set_xlabel('$\\Delta$ latitude [degree]')
     ax.set_ylabel('frequency')
-    ax.text(0.95, 0.95, textstr, transform=ax.transAxes, va='top', ha='right',
-        bbox=dict(boxstyle='round,pad=0.5', fc='white', ec='gray', alpha=0.8))
-    
+    ax.text(0.95,
+            0.95,
+            textstr,
+            transform=ax.transAxes,
+            va='top',
+            ha='right',
+            bbox=dict(boxstyle='round,pad=0.5',
+                      fc='white',
+                      ec='gray',
+                      alpha=0.8))
+
     ax = axs[1]
     num_bins = 201
     bindef = (np.arange(num_bins)/200. - 0.5)*6*np.std(diff_lon)
@@ -587,14 +596,22 @@ def pam_l1b_geo(filen1: str,
     textstr += f"std. dev.: {np.std(diff_lon):.2E}"
 
     n, bins, patches = ax.hist(diff_lon,
-                                bins=bindef,
-                                alpha=0.5,
-                                label='latitude',
-                                color='blue')
-    ax.set_xlabel('$\Delta$ longitude [degree]')
+                               bins=bindef,
+                               alpha=0.5,
+                               label='latitude',
+                               color='blue')
+    ax.set_xlabel('$\\Delta$ longitude [degree]')
     ax.set_ylabel('frequency')
-    ax.text(0.95, 0.95, textstr, transform=ax.transAxes, va='top', ha='right',
-        bbox=dict(boxstyle='round,pad=0.5', fc='white', ec='gray', alpha=0.8))
+    ax.text(0.95,
+            0.95,
+            textstr,
+            transform=ax.transAxes,
+            va='top',
+            ha='right',
+            bbox=dict(boxstyle='round,pad=0.5',
+                      fc='white',
+                      ec='gray',
+                      alpha=0.8))
 
     lat1_rad = np.deg2rad(np.array(lat1).flatten())
     lat2_rad = np.deg2rad(np.array(lat2).flatten())
@@ -604,28 +621,38 @@ def pam_l1b_geo(filen1: str,
     distance = vincenty(lat1_rad, lat2_rad, lon1_rad,  lon2_rad)
 
     textstr = f"mean: {np.mean(distance):.2f}  m\n"
-    textstr += f" {percentile}%-percentile: {np.percentile(distance,percentile):.2f} m"
+    textstr += (f" {percentile}%-percentile: "
+                f"{np.percentile(distance, percentile):.2f} m")
 
     ax = axs[2]
     num_bins = 201
     bindef = (np.arange(num_bins)/200.)*6*np.std(distance)
 
     n, bins, patches = ax.hist(distance,
-                                bins=bindef,
-                                alpha=0.5,
-                                label='latitude',
-                                color='blue')
-    ax.set_xlabel('$\Delta r$ [m]')
+                               bins=bindef,
+                               alpha=0.5,
+                               label='latitude',
+                               color='blue')
+    ax.set_xlabel('$\\Delta r$ [m]')
     ax.set_ylabel('frequency')
 
-    ax.text(0.95, 0.95, textstr, transform=ax.transAxes, va='top', ha='right',
-        bbox=dict(boxstyle='round,pad=0.5', fc='white', ec='gray', alpha=0.8))
+    ax.text(0.95,
+            0.95,
+            textstr,
+            transform=ax.transAxes,
+            va='top',
+            ha='right',
+            bbox=dict(boxstyle='round,pad=0.5',
+                      fc='white',
+                      ec='gray',
+                      alpha=0.8))
+
 
 def pam_l2(filen: str,
            filen_ref: str,
            station_name: str,
            plt_options: str,
-           vscale = None) -> None:
+           vscale=None) -> None:
 
     level2 = Dataset(filen)
     sgmgps_data = Dataset(filen_ref)
@@ -651,7 +678,7 @@ def pam_l2(filen: str,
                                     central_point[0], central_point[1])},)
         fig.suptitle(station_name, fontsize=16)
 
-        if(vscale == None):
+        if vscale is None:
             XCO2max = np.max(np.array([XCO2.max(), XCO2sgm.max()]))
             XCO2min = np.min(np.array([XCO2.min(), XCO2sgm.min()]))
             print(XCO2max, XCO2min)
@@ -688,29 +715,37 @@ def pam_l2(filen: str,
         # spectral standard deviation.
         # the histogram of the data
         fig, axs = plt.subplots(1,
-                        2,
-                        figsize=(16, 6),
-                        dpi=100,
-                        )
+                                2,
+                                figsize=(16, 6),
+                                dpi=100,
+                                )
         ax = axs[0]
         error_norm = (XCO2.flatten() - XCO2sgm.flatten())/XCO2err.flatten()
 
         num_bins = 201
         bindef = np.arange(num_bins)/20. - 5.
-        rmse= np.sqrt(np.mean(np.square(error_norm)))
+        rmse = np.sqrt(np.mean(np.square(error_norm)))
         textstr = f"mean: {np.mean(error_norm):.2f}\n"
         textstr += f"std. dev.: {np.std(error_norm):.2f}"
 
         n, bins, patches = ax.hist(error_norm,
-                                    bins=bindef,
-                                    alpha=0.5,
-                                    color='blue')
+                                   bins=bindef,
+                                   alpha=0.5,
+                                   color='blue')
         ax.set_xlabel('normalized XCO2 error [1]')
         ax.set_ylabel('frequency')
-        ax.title.set_text('(L1B-SGM)/$\sigma$')
+        ax.title.set_text('(L1B-SGM)/$\\sigma$')
 
-        ax.text(0.95, 0.95, textstr, transform=ax.transAxes, va='top', ha='right',
-        bbox=dict(boxstyle='round,pad=0.5', fc='white', ec='gray', alpha=0.8))
+        ax.text(0.95,
+                0.95,
+                textstr,
+                transform=ax.transAxes,
+                va='top',
+                ha='right',
+                bbox=dict(boxstyle='round,pad=0.5',
+                          fc='white',
+                          ec='gray',
+                          alpha=0.8))
 
         ax = axs[1]
         error = (XCO2.flatten() - XCO2sgm.flatten())
@@ -718,18 +753,26 @@ def pam_l2(filen: str,
         num_bins = 201
         bindef = (np.arange(num_bins)/200. - 0.5)*6*np.std(error)
 
-        rmse= np.sqrt(np.mean(np.square(error)))
-        textstr  = f"mean: {np.mean(error):.2f} ppm\n"
+        rmse = np.sqrt(np.mean(np.square(error)))
+        textstr = f"mean: {np.mean(error):.2f} ppm\n"
         textstr += f"std. dev.: {np.std(error):.2f} ppm\n"
         textstr += f"RMSE.: {rmse:.2f} ppm"
 
         n, bins, patches = ax.hist(error,
-                                    bins=bindef,
-                                    alpha=0.5,
-                                    color='blue')
+                                   bins=bindef,
+                                   alpha=0.5,
+                                   color='blue')
         ax.set_xlabel('XCO2 error [ppm]')
         ax.set_ylabel('frequency')
         ax.title.set_text('L1B-SGM')
 
-        ax.text(0.95, 0.95, textstr, transform=ax.transAxes, va='top', ha='right',
-        bbox=dict(boxstyle='round,pad=0.5', fc='white', ec='gray', alpha=0.8))
+        ax.text(0.95,
+                0.95,
+                textstr,
+                transform=ax.transAxes,
+                va='top',
+                ha='right',
+                bbox=dict(boxstyle='round,pad=0.5',
+                          fc='white',
+                          ec='gray',
+                          alpha=0.8))

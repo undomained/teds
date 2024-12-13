@@ -6,28 +6,23 @@
 #     the LICENSE file in the root directory of this project.
 # =============================================================================
 
-import sys
+from netCDF4 import Dataset
+from typing import List
+from xarray import DataArray
+import logging
 import netCDF4 as nc
 import numpy as np
+import sys
 import yaml
-import logging
+
 from ..lib import constants
 from ..lib import libATM, libSGM
 from ..lib.libWrite import writevariablefromname
-
-from netCDF4 import Dataset
-from xarray import DataArray
-from typing import List
-
-from ..lib.remotap_preproc.exceptions import ProcessError, chain_exception_message
 from ..lib.remotap_preproc.aerosol_echam import AerosolEcham
-from ..lib.remotap_preproc.ocean import Ocean
 from ..lib.remotap_preproc.refractive_index import RefractiveIndex
+from ..lib.remotap_preproc.tool_algorithm import convert2julian7
 from ..lib.remotap_preproc.xbpdf_polder import XbpdfPolder
 from ..lib.remotap_preproc.xbrdf_gome2_modis import XbrdfGomeModis
-from ..lib.remotap_preproc.cloudmask_s2 import CloudmaskS2
-from ..lib.remotap_preproc.albedo_s2 import AlbedoS2
-from ..lib.remotap_preproc.tool_algorithm import convert2julian7
 
 # Copied verbatim from CO2M preprocessing script by Maud van den Broek,
 # https://bitbucket.org/sron_earth/co2m_sgm/src/master/sources/co2mpreproc/processing_modules/aerosol_echam.py

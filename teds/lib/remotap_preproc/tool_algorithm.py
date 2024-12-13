@@ -1,5 +1,14 @@
+# This source code is licensed under the 3-clause BSD license found in
+# the LICENSE file in the root directory of this project.
+# =============================================================================
+#     geophysical scene generation module for different E2E simulator profiles
+#     This source code is licensed under the 3-clause BSD license found in
+#     the LICENSE file in the root directory of this project.
+# =============================================================================
+
 import numpy as np
 from math import sin, cos, radians, sqrt, asin
+
 
 def determine_season_ids(month):
     i_month = int(month)
@@ -17,7 +26,7 @@ def determine_season_ids(month):
 
 
 def convert2julian7(year, month, day, hour, minute, second, millisecond):
-    ###############################################################################################################
+    ###########################################################################
 
     days_of_month = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
     days_of_month_leap = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
@@ -38,21 +47,26 @@ def convert2julian7(year, month, day, hour, minute, second, millisecond):
         leap = 'true'
 
     if (leap == 'false'):
-        julday = np.sum(days_of_month[0:month-1])+(day-1)+(hour*60.+minute+second/60.+millisecond/(1000.*60.)) / (24.*60.)
+        julday = (np.sum(days_of_month[0:month-1]) + (day - 1)
+                  + (hour*60. + minute + second/60. + millisecond
+                     / (1000.*60.)) / (24.*60.))
     elif (leap == 'true'):
-        julday = np.sum(days_of_month_leap[0:month-1])+(day-1)+(hour*60.+minute+second/60.+millisecond/(1000.*60.)) / (24.*60.)
+        julday = (np.sum(days_of_month_leap[0:month-1])+(day-1)
+                  + (hour*60. + minute + second/60. + millisecond
+                     / (1000.*60.)) / (24.*60.))
 
     return julday
 
 
-###############################################################################################################
+###############################################################################
 def haversine(lon1, lat1, lon2, lat2):
     """
-    Calculate the great circle distance between two points 
+    Calculate the great circle distance between two points
     on the earth (specified in decimal degrees)
     """
     # convert decimal degrees to radians
-    lon1_new, lat1_new, lon2_new, lat2_new = map(radians, [lon1, lat1, lon2, lat2])
+    lon1_new, lat1_new, lon2_new, lat2_new = map(
+        radians, [lon1, lat1, lon2, lat2])
     # haversine formula
     dlon = lon2_new - lon1_new
     dlat = lat2_new - lat1_new
@@ -63,10 +77,10 @@ def haversine(lon1, lat1, lon2, lat2):
     return km
 
 
-###############################################################################################################
+###############################################################################
 def haversine_arr(lon_arr, lat_arr, lon2, lat2):
     """
-    Calculate the great circle distance between two points 
+    Calculate the great circle distance between two points
     on the earth (specified in decimal degrees)
     """
     npix = len(lon_arr)
@@ -75,13 +89,15 @@ def haversine_arr(lon_arr, lat_arr, lon2, lat2):
 
     # convert decimal degrees to radians
     for ipix in range(0, npix):
-        lon_arr_new[ipix], lat_arr_new[ipix], lon2_new, lat2_new = map(radians, [lon_arr[ipix], lat_arr[ipix], lon2, lat2])
+        lon_arr_new[ipix], lat_arr_new[ipix], lon2_new, lat2_new = map(
+            radians, [lon_arr[ipix], lat_arr[ipix], lon2, lat2])
 
     # haversine formula
     dlon = lon2_new - lon_arr_new[:]
     dlat = lat2_new - lat_arr_new[:]
 
-    a = np.sin(dlat[:]/2.)**2 + np.cos(lat_arr_new[:]) * np.cos(lat2_new) * np.sin(dlon[:]/2.)**2
+    a = (np.sin(dlat[:]/2.)**2 + np.cos(lat_arr_new[:]) * np.cos(lat2_new)
+         * np.sin(dlon[:]/2.)**2)
     c = 2 * np.arcsin(np.sqrt(a[:]))
     # Radius of earth in kilometers is 6371
     km = 6371 * c[:]
@@ -89,7 +105,7 @@ def haversine_arr(lon_arr, lat_arr, lon2, lat2):
     return km
 
 
-###############################################################################################################
+###############################################################################
 
 
 def pres2alt(pressure):
@@ -132,9 +148,9 @@ def pres2alt(pressure):
     return alt
 
 
-###############################################################################################################
-###############################################################################################################
-###############################################################################################################
+###############################################################################
+###############################################################################
+###############################################################################
 
 def alt2pres(altitude):
     '''

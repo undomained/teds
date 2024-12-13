@@ -1,9 +1,16 @@
+# This source code is licensed under the 3-clause BSD license found in
+# the LICENSE file in the root directory of this project.
+# =============================================================================
+#     geophysical scene generation module for different E2E simulator profiles
+#     This source code is licensed under the 3-clause BSD license found in
+#     the LICENSE file in the root directory of this project.
+# =============================================================================
 from netCDF4 import Dataset
 import numpy as np
 import time as tm
 
-from .exceptions import ProcessError
 from .collocation_algorithm import interpolate_to_orbit
+from .exceptions import ProcessError
 import logging
 
 _logger = logging.getLogger(__name__)
@@ -39,12 +46,15 @@ class Ocean(object):
         xchl = root_grp.variables["xchl"][:][:]  # (xchl) 180(lat)*360(lon)
         nlat_ocean, nlon_ocean = xchl.shape
         self.ocean_para_in = np.zeros((self.npar, nlat_ocean, nlon_ocean))
-        self.ocean_para_in[0, :, :] = xchl[:, :]  # (self.ocean_para_in[0,:,:]) 180(lat)*360(lon)
+        # (self.ocean_para_in[0,:,:]) 180(lat)*360(lon)
+        self.ocean_para_in[0, :, :] = xchl[:, :]
         root_grp.close()
 
         root_grp = Dataset(self.ws_filename)
-        self.ocean_para_in[1, :, :] = root_grp.variables['uwnd'][:][:]  # (self.ocean_para_in[1,:,:]) 180(lat)*360(lon)
-        self.ocean_para_in[2, :, :] = root_grp.variables['vwnd'][:][:]  # (self.ocean_para_in[2,:,:]) 180(lat)*360(lon)
+        # (self.ocean_para_in[1,:,:]) 180(lat)*360(lon)
+        self.ocean_para_in[1, :, :] = root_grp.variables['uwnd'][:][:]
+        # (self.ocean_para_in[2,:,:]) 180(lat)*360(lon)
+        self.ocean_para_in[2, :, :] = root_grp.variables['vwnd'][:][:]
         root_grp.close()
 
     def collocate(self, julday_orbit, lat, lon, n_pixels):
@@ -57,8 +67,13 @@ class Ocean(object):
 
         _logger.info("Collocation of ocean data.")
 
-        self.ocean_orbit = interpolate_to_orbit(self.lat_orbit, self.lon_orbit, self.n_pixels, self.lats_ocean, self.lons_ocean,
-                                                self.ocean_para_in, self.npar)
+        self.ocean_orbit = interpolate_to_orbit(self.lat_orbit,
+                                                self.lon_orbit,
+                                                self.n_pixels,
+                                                self.lats_ocean,
+                                                self.lons_ocean,
+                                                self.ocean_para_in,
+                                                self.npar)
 
     def write_output(self, output_dir, alt_orbit, julday_orbit, add_grid=True):
 

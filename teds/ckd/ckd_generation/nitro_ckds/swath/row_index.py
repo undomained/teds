@@ -26,12 +26,11 @@ def generate(ncc):
         spl = CubicSpline(act, row_ix_intermediate[:, i])
         row_indices[:, i] = spl(act_new)
 
-    # make a 2d spline 
-    # los_spline = bisplrep(act_2d, col_ix, row_ix, kx = 3, ky = 3)
-    # act_new = np.linspace(np.min(act), np.max(act), cfg['dimensions']['across_track'])
-    # cols = np.arange(0, cfg['dimensions']['detector_column'])
-    # row_indices = bisplev(act_new, cols, los_spline)
-
+    # Test case for no keystone, keep row indices constant
+    if cfg["test_cases"]["no_keystone"]:
+        for r, row in enumerate(row_indices):
+            row_indices[r, :] = row_indices[r, 0] 
+            print(row_indices[r, :])
     
     attr = {
         'long_name': 'Row index at which to extract the spectra',

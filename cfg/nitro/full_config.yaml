@@ -47,7 +47,6 @@ io:
 #
 #########################################################
 ckd:  
-    generate: True
     # General paths
     paths : 
         'dir_nitro'             : './ckd/ckd_generation/nitro_ckds'
@@ -95,6 +94,9 @@ ckd:
     etendue: 0.0349                 # mm2 sr
     n_van_cittert: 2                # number of straylight convolution iterations
 
+    #  Test Cases:
+    test_cases: 
+        no_keystone: True
 #########################################################
 #
 # GM

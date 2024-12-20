@@ -273,21 +273,22 @@ def gm_output(logger, config, vza, vaa, sza, saa, lat_grid, lon_grid):
     _ = writevariablefromname(output, "latitude", dims, lat_grid)
     _ = writevariablefromname(output, "longitude", dims, lon_grid)
 
-    delta = config['orbit']['propagation_duration']*3600/nalt
-    julday = np.outer(
-        get_julday(
-            config,
-            np.arange(nalt)*delta
-        ),
-        np.ones(nact)
-    )
-    _ = writevariablefromname(output, "julday", dims, julday)
-    _ = writevariablefromname(
-        output,
-        "sat_altitude",
-        dims,
-        config['orbit']['sat_height']*1000*np.ones((nalt, nact))
-    )
+    if(config['profile']=='orbit'):
+        delta = config['orbit']['propagation_duration']*3600/nalt
+        julday = np.outer(
+            get_julday(
+                config,
+                np.arange(nalt)*delta
+            ),
+            np.ones(nact)
+        )
+        _ = writevariablefromname(output, "julday", dims, julday)
+        _ = writevariablefromname(
+            output,
+            "sat_altitude",
+            dims,
+            config['orbit']['sat_height']*1000*np.ones((nalt, nact))
+        )
 
     output.close()
 

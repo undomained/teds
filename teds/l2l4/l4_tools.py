@@ -329,7 +329,7 @@ def microhh_fit(sgm_filename: str,
     apr_emission = microhh[apr_name[1:] + " emission"].values[0]
 
     apr_data = np.array(apr[apr_name]) / apr_emission
-    l2_data = np.array(l2[ret_name]) / 1e6
+    l2_data = np.array(l2[ret_name])
 
     # Background correction
     apr_data -= np.nanmedian(apr_data)

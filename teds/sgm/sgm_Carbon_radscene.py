@@ -30,8 +30,7 @@ class Dict2Class:
 def get_gm_data(filename):
 
     names = [
-        'sza', 'saa', 'vza', 'vaa', 'lat', 'lon', 'julian_day',
-        'satellite_altitude'
+        'sza', 'saa', 'vza', 'vaa', 'lat', 'lon',
     ]
 
     input = Dataset(filename, mode='r')

@@ -6,47 +6,17 @@
 #     the LICENSE file in the root directory of this project.
 # =============================================================================
 
-from netCDF4 import Dataset
-from typing import List
-from xarray import DataArray
-import logging
+import sys
 import netCDF4 as nc
 import numpy as np
-import sys
 import yaml
-
 from ..lib import constants
 from ..lib import libATM, libSGM
 from ..lib.libWrite import writevariablefromname
-from ..lib.remotap_preproc.aerosol_echam import AerosolEcham
-from ..lib.remotap_preproc.refractive_index import RefractiveIndex
-from ..lib.remotap_preproc.tool_algorithm import convert2julian7
-from ..lib.remotap_preproc.xbpdf_polder import XbpdfPolder
-from ..lib.remotap_preproc.xbrdf_gome2_modis import XbrdfGomeModis
 
-# Copied verbatim from CO2M preprocessing script by Maud van den Broek,
-# https://bitbucket.org/sron_earth/co2m_sgm/src/master/sources/co2mpreproc/processing_modules/aerosol_echam.py
-# DO NOT REARRANGE THIS LIST; THE ORDER MATTERS!
-varname_aerosol_out = [
-    'sphere_mode4', 'sphere_mode5', 'sphere_mode6', 'sphere_mode7', 'sphere_mode1', 'sphere_mode2',
-    'sphere_mode3',
-    'num_mode4', 'num_mode5', 'num_mode6', 'num_mode7', 'num_mode1', 'num_mode2', 'num_mode3',
-    'reff_mode4', 'reff_mode5', 'reff_mode6', 'reff_mode7', 'reff_mode1', 'reff_mode2', 'reff_mode3',
-    'vfrac_species1_mode4', 'vfrac_species1_mode5', 'vfrac_species1_mode6', 'vfrac_species1_mode7',
-    'vfrac_species1_mode1', 'vfrac_species1_mode2', 'vfrac_species1_mode3',
-    'vfrac_species2_mode4', 'vfrac_species2_mode5', 'vfrac_species2_mode6', 'vfrac_species2_mode7',
-    'vfrac_species2_mode1', 'vfrac_species2_mode2', 'vfrac_species2_mode3',
-    'vfrac_species3_mode4', 'vfrac_species3_mode5', 'vfrac_species3_mode6', 'vfrac_species3_mode7',
-    'vfrac_species3_mode1', 'vfrac_species3_mode2', 'vfrac_species3_mode3',
-    'vfrac_species4_mode4', 'vfrac_species4_mode5', 'vfrac_species4_mode6', 'vfrac_species4_mode7',
-    'vfrac_species4_mode1', 'vfrac_species4_mode2', 'vfrac_species4_mode3',
-    'vfrac_species5_mode4', 'vfrac_species5_mode5', 'vfrac_species5_mode6', 'vfrac_species5_mode7',
-    'vfrac_species5_mode1', 'vfrac_species5_mode2', 'vfrac_species5_mode3',
-    'vfrac_species6_mode4', 'vfrac_species6_mode5', 'vfrac_species6_mode6', 'vfrac_species6_mode7',
-    'vfrac_species6_mode1', 'vfrac_species6_mode2', 'vfrac_species6_mode3',
-    'ALH_mode4', 'ALH_mode5', 'ALH_mode6', 'ALH_mode7', 'ALH_mode1', 'ALH_mode2', 'ALH_mode3',
-    'veff_mode4', 'veff_mode5', 'veff_mode6', 'veff_mode7', 'veff_mode1', 'veff_mode2', 'veff_mode3',
-    'pressure_surface_aerosol', 'elevation_surface_aerosol']
+from netCDF4 import Dataset
+from xarray import DataArray
+from typing import List
 
 
 def get_sentinel2_albedo(filename: str) -> List[DataArray]:
@@ -103,15 +73,7 @@ def get_gm_data(filename):
     return gm_data
 
 
-def geosgm_output(
-    filename,
-    atm,
-    atm_std,
-    refractive_index = None,
-    aerosol_echam = None,
-    xbrdf = None,
-    xbpdf = None
-):
+def geosgm_output(filename, atm):
     # write geophysical scene data to output
 
     nalt, nact, nlay = atm.zlay.shape
@@ -130,40 +92,15 @@ def geosgm_output(
     _dims3dlev = ('bins_along_track', 'bins_across_track', 'number_levels')
     _dims2d    = ('bins_along_track', 'bins_across_track')
 
-    out_shape_2d = (nalt, nact)
-
-    gases = [
-        x.removeprefix('dcol_') for x in atm.__dict__.keys()
-        if 'dcol_' in x and x != 'dcol_air'
-    ]
+    gases = [x.removeprefix('dcol_') for x in atm.__dict__.keys() if 'dcol_' in x]
 
     # level height
     _ = writevariablefromname(output_atm, 'levelheight', _dims3dlev, atm.zlev)
     # central layer height
     _ = writevariablefromname(output_atm, 'central_layer_height', _dims3dlay, atm.zlay)
-    # level pressure
-    _ = writevariablefromname(
-        output_atm,
-        'pressure_layers',
-        _dims3dlay,
-        np.einsum("xy,z->xyz", np.ones(out_shape_2d), atm_std.play)
-    )
-
-    _ = writevariablefromname(
-        output_atm,
-        'pressure_levels',
-        _dims3dlev,
-        np.einsum("xy,z", np.ones(out_shape_2d), atm_std.plev)
-    )
-
-    _ = writevariablefromname(
-        output_atm,
-        'temperature',
-        _dims3dlay,
-        np.einsum("xy,z", np.ones(out_shape_2d), atm_std.tlay)
-    )
 
     for gas in gases:
+
         # subcolumn density
         _ = writevariablefromname(output_atm, 'subcol_density_'+gas,
                                   _dims3dlay, atm.__getattribute__('dcol_'+gas))
@@ -173,12 +110,6 @@ def geosgm_output(
                                   atm.__getattribute__('X'+gas))
         
 #    if(config['profile']=='orbit'):
-    _ = writevariablefromname(
-        output_atm,
-        'subcol_density_air',
-        _dims3dlay,
-        atm.dcol_air
-    )
 
     # albedo
     for s2_albedo in atm.albedo:
@@ -214,166 +145,6 @@ def geosgm_output(
     for emi in attr_emi:
         _ = writevariablefromname(output_atm, emi.removesuffix('_in_kgps'), 'emission' , atm.__getattribute__(emi))
 
-    grp_aerosol = None
-    # Aerosol
-    if refractive_index is not None:
-        grp_aerosol = output_atm.createGroup('aerosol')
-
-        data_species = [
-            refractive_index.dataBC,
-            refractive_index.dataDUST,
-            refractive_index.dataH2O,
-            refractive_index.dataOC,
-            refractive_index.dataIO,
-            refractive_index.dataIO,
-        ]
-
-        for spi, spd in enumerate(data_species):
-            spi1 = spi + 1
-            grp_aerosol.createDimension(
-                f'nwave_species{spi1}',
-                len(spd[:,0])
-            )
-            _ = writevariablefromname(
-                grp_aerosol,
-                f'aer_wl_sp{spi1}',
-                f'nwave_species{spi1}',
-                np.array(spd[:,0])
-            )
-            _ = writevariablefromname(
-                grp_aerosol,
-                f'aer_rri_sp{spi1}',
-                f'nwave_species{spi1}',
-                np.array(spd[:,1])
-            )
-            _ = writevariablefromname(
-                grp_aerosol,
-                f'aer_iri_sp{spi1}',
-                f'nwave_species{spi1}',
-                np.array(spd[:,2])
-            )
-
-    if aerosol_echam is not None:
-        if grp_aerosol is None:
-            grp_aerosol = output_atm.createGroup('aerosol')
-
-        grp_aerosol.createDimension('nmode_aer', 7)
-        grp_aerosol.createDimension('nspecies_aer', 6)
-
-
-        aerosol_echam.parameter_echam_orbit[0:7, :] = (
-            1.0 - aerosol_echam.parameter_echam_orbit[28:35, :]
-        )
-
-        for i, var in enumerate(varname_aerosol_out):
-            if i >= len(aerosol_echam.varname_echam) - 2:
-                if (
-                    i < (
-                        len(aerosol_echam.varname_echam)
-                        + len(aerosol_echam.varname_echam_part3) - 2
-                    )
-                ):
-                    _ = writevariablefromname(
-                        grp_aerosol,
-                        "aer_" + var.lower(),
-                        _dims2d,
-                        aerosol_echam.parameter_echam_part3_orbit[
-                            i-(len(aerosol_echam.varname_echam) - 2)
-                        ][:].reshape(out_shape_2d)
-                    )
-                else:
-                    par = (
-                        aerosol_echam.parameter_echam_orbit[
-                            i-len(aerosol_echam.varname_echam_part3)
-                        ][:].reshape(out_shape_2d)
-                    )
-                    _ = writevariablefromname(
-                        grp_aerosol,
-                        "aer_" + var.lower(),
-                        _dims2d,
-                        par
-                    )
-                    if var == 'pressure_surface_aerosol':
-                        surface_pressure_dem = np.array(par, copy=True)
-                    elif var == 'elevation_surface_aerosol':
-                        surface_elevation_dem = np.array(par, copy=True)
-            else:
-                _ = writevariablefromname(
-                    grp_aerosol,
-                    "aer_" + var.lower(),
-                    _dims2d,
-                    aerosol_echam.parameter_echam_orbit[i][:].reshape(
-                        out_shape_2d
-                    )
-                )
-
-    try:
-        surface_pressure_dem
-    except:
-        surface_pressure_dem = 1008. * np.ones((nalt, nact))
-
-    # Surface pressure and elevation from DEM are currently copied from ECHAM
-    # aerosol data in the for-loop above. However, if a proper DEM is added,
-    # the values written below should be taken from the DEM, whereas the ones
-    # in the aerosol group should remain the same!
-    _ = writevariablefromname(
-        output_atm,
-        'surface_pressure',
-        _dims2d,
-        surface_pressure_dem
-    )
-    _ = writevariablefromname(
-        output_atm,
-        'surface_elevation',
-        _dims2d,
-        #surface_elevation_dem
-        np.zeros((nalt, nact))
-    )
-
-    grp_surface = None
-    if xbrdf is not None:
-        grp_surface = output_atm.createGroup("surface")
-        _ = writevariablefromname(
-            grp_surface,
-            "surf_lisparse",
-            _dims2d,
-            xbrdf.xbrdf_rli_orbit[0,:].reshape(out_shape_2d)
-        )
-        _ = writevariablefromname(
-            grp_surface,
-            "surf_rossthick",
-            _dims2d,
-            xbrdf.xbrdf_rli_orbit[1,:].reshape(out_shape_2d)
-        )
-        _ = writevariablefromname(
-            grp_surface,
-            "surf_snow",
-            _dims2d,
-            np.zeros(out_shape_2d)
-        )
-        _ = writevariablefromname(
-            grp_surface,
-            "surf_water_frac",
-            _dims2d,
-            np.zeros(out_shape_2d)
-        )
-        _ = writevariablefromname(
-            grp_surface,
-            "surf_water_wind",
-            _dims2d,
-            7.0*np.ones(out_shape_2d)
-        )
-
-    if xbpdf is not None:
-        if grp_surface is None:
-            grp_surface = output_atm.createGroup("surface")
-
-        _ = writevariablefromname(
-            grp_surface,
-            "surf_bpdf",
-            _dims2d,
-            xbpdf.xbpdf_orbit.reshape(out_shape_2d)
-        )
     output_atm.close()
 
     return
@@ -499,125 +270,7 @@ def geoscene_generation(config: dict) -> None:
 
         atm = libATM.combine_meteo_standard_atm_new(meteodata, atm_std, config)
 
-        atm_lat_flat = atm.lat.reshape(-1)
-        atm_lon_flat = atm.lon.reshape(-1)
-
-        refractive_index = None
-        aerosol_echam = None
-        xbrdf = None
-        xbpdf = None
-
-        shape2d = atm.lat.shape
-        surface_elevation_dem = atm_std.zlev[-1]*np.ones(shape2d)
-        surface_pressure_dem = atm_std.plev[-1]*np.ones(shape2d)
-
-        for module in [
-            'refractive_index',
-            'aerosol_echam',
-            'collocation_algorithm',
-            'xbrdf_gome2_modis',
-            'xbpdf_polder'
-        ]:
-            logger = logging.getLogger(
-                f'teds.lib.remotap_preproc.{module}'
-            )
-            logger.setLevel(logging.INFO)
-
-        if (
-            'aerosol' in config
-            and 'add_aerosol' in config['aerosol']
-            and config['aerosol']['add_aerosol']
-        ):
-            refractive_index = RefractiveIndex(
-                config['io_files']['aerosol']['path_refr_index']
-            )
-            mode_coeff = refractive_index.get_coefficients_for_wavelength(550)
-            aerosol_echam = AerosolEcham(
-                config['io_files']['aerosol']['path_echam'],
-                config['aerosol']['echam_year'],
-                config['aerosol']['echam_month'],
-                config['aerosol']['echam_day'],
-                mode_coeff
-            )
-            jd = convert2julian7(
-                config['aerosol']['echam_year'],
-                config['aerosol']['echam_month'],
-                config['aerosol']['echam_day'],
-                0,
-                0,
-                0,
-                0
-            )
-            jd_arr = jd*np.ones_like(atm_lat_flat)
-
-            aerosol_echam.collocate(
-                jd_arr,
-                atm_lat_flat,
-                atm_lon_flat,
-                len(atm_lat_flat)
-            )
-            surface_elevation_dem = aerosol_echam.parameter_echam_orbit[
-                varname_aerosol_out.index('elevation_surface_aerosol')
-                -len(aerosol_echam.varname_echam_part3)
-            ][:]
-            surface_pressure_dem = aerosol_echam.parameter_echam_orbit[
-                varname_aerosol_out.index('pressure_surface_aerosol')
-                -len(aerosol_echam.varname_echam_part3)
-            ][:]
-
-        if (
-            'surface' in config
-            and 'add_brdf' in config['surface']
-            and config['surface']['add_brdf']
-        ):
-            jd = convert2julian7(
-                config['surface']['brdf_year'],
-                config['surface']['brdf_month'],
-                config['surface']['brdf_day'],
-                0,
-                0,
-                0,
-                0
-            )
-            jd_arr = jd*np.ones_like(atm_lat_flat)
-            if not config['surface']['use_surface_classification']:
-                xbrdf = XbrdfGomeModis(
-                    config['io_files']['surface']['path_xbrdf'],
-                    config['surface']['brdf_month'],
-                    combined_with_sentinel=False
-                )
-                xbrdf.collocate(
-                    jd_arr,
-                    atm_lat_flat,
-                    atm_lon_flat,
-                    len(atm_lat_flat)
-                )
-            else:
-                raise NotImplementedError(
-                    "Surface classification coming soon!"
-                )
-
-            xbpdf = XbpdfPolder(
-                config['io_files']['surface']['path_xbpdf'],
-                '2006',
-                config['surface']['brdf_month']
-            )
-            xbpdf.collocate(
-                jd_arr,
-                atm_lat_flat,
-                atm_lon_flat,
-                len(atm_lat_flat)
-            )
-
-        geosgm_output(
-            config['io_files']['output_geo'],
-            atm,
-            atm_std,
-            refractive_index,
-            aerosol_echam,
-            xbrdf,
-            xbpdf
-        )
+        geosgm_output(config['io_files']['output_geo'], atm)
 
     print('=>sgm geoscene calculation finished successfully')
 

@@ -26,6 +26,6 @@ swath:
 io:
   ckd: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/ckd/ckd_Raul_20241111.nc
   binning_table: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/ckd/binning_table.nc
-  l1b: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/level1b/Tango_Carbon_l1b_exp1.0.nc
-  l1a: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/level1a/Tango_Carbon_l1a_exp1.0.nc
-  geometry: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/gm/Tango_Carbon_gm_exp1.0.nc
+  l1b: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/level1b/Tango_Carbon_l1b_exp5.0.nc
+  l1a: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/level1a/Tango_Carbon_l1a_exp5.0.nc
+  geometry: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/gm/Tango_Carbon_gm_exp5.0.nc

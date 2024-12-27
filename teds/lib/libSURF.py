@@ -50,6 +50,23 @@ class surface_prop:
             albedo=albedo + alb_coeff[i]*(self.spec)**(i) 
             
         self.alb=albedo
+    ###########################################################
+    def fit_albedo(self, alb_input, wave_input):
+        """
+         Parameters
+        ----------
+        spec : spectral array (can be any spectral quantity)
+        alb_input  : list of albedo points
+        wave_input  : list of wavelength points
+        
+        Returns
+        -------
+        albedo array
+
+        """
+        albedo = np.interp(self.spec, wave_input, alb_input)
+            
+        self.alb=albedo
         
     ###########################################################
     def get_albedo_CUSTOM(self,filename,sfname):

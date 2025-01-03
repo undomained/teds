@@ -113,11 +113,9 @@ if __name__ == '__main__' and __package__ is None:
 
     binning_table_file_name = "../data/no2/ckd/binning_table_no2.nc"
     # For now:
-    nrows = 2870 
-    ncols = 1681
-#    nrows = 512
-#    ncols = 640
-    row_binnings = [1,2,3,4,5,6]
+    nrows = 4112
+    ncols = 3008
+    row_binnings = [1,2,3,4,5,6, 40]
     col_factor = 1
     # TODO test case when col_factor != 1
     build_simple(binning_table_file_name, nrows, ncols, row_binnings, col_factor)

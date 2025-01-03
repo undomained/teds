@@ -76,6 +76,7 @@ ckd:
         publisher_url   : 'knmi.nl'
         arrcamera       : '3DCM800 Space Camera Head (3D Plus)'
     # Single value parameters
+    seed: 2025
     noise_conversion_gain: 0.023    # noise_g, src: carbon ckd
     gain: 43.91735                  # gain, from carbon radiometry.xls 
     read_out_noise: 2.5             # e-, src:  nitro model inputs

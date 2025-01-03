@@ -3,9 +3,10 @@
 #image_start: 0
 #image_end: 70
 
+# for fmc = 5 we have enhanced the exposure time by a factor 5
 detector:
-  binning_table_id: 1
-  exposure_time: 0.0460833
+  exposure_time: 0.2304165  
+  binning_table_id: 5
   nr_coadditions: 3
 
 isrf:

@@ -11,6 +11,7 @@ def generate(ncc):
     cfg = ncc.cfg
     dims = ['detector_row', 'detector_column']
     prnu_budget = cfg['prnu'] # in %, from TANGO Nitro SNR budget (TNO)
+    seed = cfg['seed']
     prnu_max = 1 + prnu_budget/100
     prnu_min = 1 - prnu_budget/100    
 
@@ -20,6 +21,8 @@ def generate(ncc):
         'long_name': 'pixel response non-uniformity',
         'comment' :  'PRNU with Quantum Efficiency'
     }
+    if seed is not None:
+        np.random.seed(seed)
     prnu = np.random.uniform(prnu_min, prnu_max, size = ncc.get_shape(dims))
 
     prnu_QE = prnu * QE

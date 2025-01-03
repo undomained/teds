@@ -57,7 +57,7 @@ def compare_data(data_file_1, data_file_2):
     if var_1 is None and var_2 is None:
         # try observation data
         group_name = 'observation_data'
-        dataset_name = "i"
+        dataset_name = "radiance"
         log.info(f"Trying to find {dataset_name} in group {group_name}")
         var_1, var_2 = find_dataset(input_data, group_name, dataset_name, data_file_1, data_file_2)
 

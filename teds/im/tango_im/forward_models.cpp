@@ -6,6 +6,7 @@
 #include <Eigen/Sparse>
 #include <algorithm>
 #include <random>
+#include <spdlog/spdlog.h>
 #include <tango_l1b/b_spline_2d.h>
 #include <tango_l1b/binning_table.h>
 #include <tango_l1b/ckd.h>
@@ -344,6 +345,35 @@ auto digitalToAnalog(const int nr_coadditions, L1& l1_prod) -> void
     for (double& val : l1_prod.signal) {
         val *= l1_prod.nr_coadditions;
         val = std::round(val);
+    }
+}
+
+auto estimateOptimalCoadd(const CKD& ckd,
+                          const int FMC,
+                          const double exposure_time,
+                          const double f_sat,
+                          const double full_well,
+                          const double t_dead,
+                          const L1& l1_prod) -> void
+{
+    constexpr double dwell { 24.0 };
+    const double t_dwell { FMC / 24.0 };
+    for (int i_alt = 0; i_alt < l1_prod.n_alt; ++i_alt) {
+        double max_val {};
+        for (int i {}; i < ckd.npix; ++i) {
+            if (!ckd.pixel_mask[i]) {
+                max_val =
+                  std::max(max_val, l1_prod.signal[i_alt * ckd.npix + i]);
+            }
+        }
+        const double I_sig { max_val / exposure_time };
+        const double coadd_raw { I_sig * t_dwell
+                                 / (f_sat * full_well + I_sig * t_dead) };
+        const int n_coadd { static_cast<int>(std::ceil(coadd_raw)) };
+        spdlog::info("  {:5.2f} ({}) {:6.4} ms",
+                     coadd_raw,
+                     n_coadd,
+                     1e3 * (t_dwell / n_coadd) - t_dead);
     }
 }
 

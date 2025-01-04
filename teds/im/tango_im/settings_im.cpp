@@ -19,6 +19,12 @@ auto SettingsIM::scanKeys() -> void
     scan(detector.exposure_time);
     scan(detector.nr_coadditions);
 
+    scan(optimal_coadd.enabled);
+    scan(optimal_coadd.FMC);
+    scan(optimal_coadd.full_well);
+    scan(optimal_coadd.t_dead);
+    scan(optimal_coadd.f_sat);
+
     scan(isrf.enabled);
     scan(isrf.fwhm_gauss);
     scan(isrf.shape);

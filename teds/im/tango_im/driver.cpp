@@ -105,6 +105,17 @@ auto driver(const SettingsIM& settings,
         spdlog::info("Dark offset");
         darkOffset(ckd, settings.dark.enabled, l1_prod);
     }
+    // Optimal coadding factor and exposure time
+    if (settings.optimal_coadd.enabled) {
+        spdlog::info("Optimal coadding factors and exposure times:");
+        estimateOptimalCoadd(ckd,
+                             settings.optimal_coadd.FMC,
+                             settings.detector.exposure_time,
+                             settings.optimal_coadd.f_sat,
+                             settings.optimal_coadd.full_well,
+                             settings.optimal_coadd.t_dead,
+                             l1_prod);
+    }
     // Bin detector images if they exist
     if (!l1_prod.signal.empty()) {
         spdlog::info("Detector image binning ({}x1)",

@@ -93,4 +93,15 @@ auto binDetectorImages(const int n_rows,
 // is the final process (set cal_level to raw or higher to skip this).
 auto digitalToAnalog(const int nr_coadditions, L1& l1_prod) -> void;
 
+// Compute and print the optimal coadding factor and exposure
+// time. This is only informational and does not affect any
+// observables.
+auto estimateOptimalCoadd(const CKD& ckd,
+                          const int FMC,
+                          const double exposure_time,
+                          const double f_sat,
+                          const double full_well,
+                          const double t_dead,
+                          const L1& l1_prod) -> void;
+
 } // namespace tango

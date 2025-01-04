@@ -1,10 +1,5 @@
 # This source code is licensed under the 3-clause BSD license found in
 # the LICENSE file in the root directory of this project.
-# =============================================================================
-#     geophysical scene generation module for different E2E simulator profiles
-#     This source code is licensed under the 3-clause BSD license found in
-#     the LICENSE file in the root directory of this project.
-# =============================================================================
 
 import numpy as np
 from netCDF4 import Dataset

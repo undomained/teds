@@ -55,12 +55,6 @@ auto printSystemInfo(const std::string& project_version,
                      const std::string& libraries,
                      const std::string& binning_table) -> void;
 
-// Print the percentage of work done (iteration / work_size). Call
-// this in OpenMP parallel for loops with dynamic scheduling.
-auto printPercentage(const int iteration,
-                     const size_t work_size,
-                     const std::string_view text) -> void;
-
 // Check if filename exists. If required == true and filename is an
 // empty string raise an error, otherwise return without checking.
 auto checkPresenceOfFile(const Setting<std::string>& setting,
@@ -77,20 +71,20 @@ auto splitString(const std::string& list,
 [[nodiscard]] auto procLevelToString(const ProcLevel proc_level) -> std::string;
 
 // Read a list of L1 products from a single NetCDF file. The input
-// data level may be L1A, L1B, or anything in between. image_start/end
-// specify a subrange to process. To process all images, use values 0
-// and fill::i.
+// data level may be L1A, L1B, or anything in between. alt_beg/end
+// specify a subrange of along-track positions to process. To process
+// all use values 0 and fill::i.
 auto readL1(const std::string& filename,
-            const int image_start,
-            const int image_end,
-            std::vector<L1>& l1_products) -> void;
+            const size_t alt_beg,
+            const std::optional<size_t> alt_end,
+            L1& l1_prod) -> void;
 
 // Write a L1 product to file. The NetCDF structure of the product
 // depends on the data product level (L1A-L1B). argc and argv are used
 // to record how the program was invoked.
 auto writeL1(const std::string& filename,
              const std::string& config,
-             const std::vector<L1>& l1_products,
+             const L1& l1_prod,
              const int argc = 0,
              const char* const argv[] = nullptr) -> void;
 
@@ -99,7 +93,10 @@ auto writeL1(const std::string& filename,
 // properly implemented.
 auto copyGeometry(const std::string& l1a_filename,
                   const std::string& geo_filename,
-                  int i_alt_start,
-                  std::vector<L1>& l1_products) -> void;
+                  const size_t alt_beg,
+                  L1& l1_prod) -> void;
+
+auto copyNavigationData(const std::string& navigation_filename,
+                        const std::string& l1a_filename) -> void;
 
 } // namespace tango

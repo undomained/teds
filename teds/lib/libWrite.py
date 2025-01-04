@@ -1,10 +1,5 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Fri Jun 12 2023.
-
-@author: Manu Goudar
-"""
+# This source code is licensed under the 3-clause BSD license found in
+# the LICENSE file in the root directory of this project.
 
 from importlib.resources import files
 from yaml import safe_load
@@ -21,7 +16,7 @@ def writevariablefromname(grp, _name, dims, data):
     Parameters
     ----------
     grp : Netcdf group
-        Points to netcdf group 
+        Points to netcdf group
     _name : String
         Name of the variable.
     dims : String

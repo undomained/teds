@@ -126,11 +126,11 @@ def map_to_detector(l1_product: L1, ckd: CKDSwath) -> None:
     l1_product['proc_level'] = ProcLevel.stray
     n_alt = l1_product['spectra'].shape[0]
     n_rows, n_cols = ckd['act_map'].shape
-    l1_product['image'] = np.empty((n_alt, n_rows * n_cols))
+    l1_product['signal'] = np.empty((n_alt, n_rows * n_cols))
     act_wavelength_map = np.column_stack((ckd['act_map'].ravel(),
                                           ckd['wavelength_map'].ravel()))
     for i_alt in tqdm(range(n_alt)):
-        l1_product['image'][i_alt, :] = interpn(
+        l1_product['signal'][i_alt, :] = interpn(
             (ckd['act_angles'], ckd['wavelengths']),
             l1_product['spectra'][i_alt, :, :],
             act_wavelength_map,
@@ -140,7 +140,7 @@ def map_to_detector(l1_product: L1, ckd: CKDSwath) -> None:
 
 
 def stray_light(l1_product: L1, ckd: CKDStray) -> None:
-    """Add stray light to the image.
+    """Add stray light to the signal.
 
     Parameters
     ----------
@@ -148,19 +148,19 @@ def stray_light(l1_product: L1, ckd: CKDStray) -> None:
         L1 product (signal and detector settings).
     ckd
         Stray light CKD containing a list of the Fourier transforms of
-        kernels, weights of subimages, and an 'edges' array which
-        specifies the location of each subimage within the original
-        image.
+        kernels, weights of subsignals, and an 'edges' array which
+        specifies the location of each subsignal within the original
+        signal.
 
     """
     l1_product['proc_level'] = ProcLevel.prnu
-    n_alt = l1_product['image'].shape[0]
+    n_alt = l1_product['signal'].shape[0]
     eta = ckd['eta'].ravel()
     for i_alt in tqdm(range(n_alt)):
-        image = l1_product['image'][i_alt]
-        stray_convolved = convolve_with_all_kernels(image, ckd)
-        image_convolved = (1 - eta) * image + stray_convolved
-        l1_product['image'][i_alt, :] = image_convolved
+        signal = l1_product['signal'][i_alt]
+        stray_convolved = convolve_with_all_kernels(signal, ckd)
+        signal_convolved = (1 - eta) * signal + stray_convolved
+        l1_product['signal'][i_alt, :] = signal_convolved
 
 
 def prnu(l1_product: L1, prnu_qe: npt.NDArray[np.float64]) -> None:
@@ -176,7 +176,7 @@ def prnu(l1_product: L1, prnu_qe: npt.NDArray[np.float64]) -> None:
 
     """
     l1_product['proc_level'] = ProcLevel.nonlin
-    l1_product['image'] *= prnu_qe
+    l1_product['signal'] *= prnu_qe
 
 
 def nonlinearity(l1_product: L1, ckd: CKDNonlin) -> None:
@@ -201,8 +201,8 @@ def nonlinearity(l1_product: L1, ckd: CKDNonlin) -> None:
 
     """
     l1_product['proc_level'] = ProcLevel.dark_current
-    l1_product['image'] = np.interp(
-        l1_product['image'], ckd['expected'], ckd['observed'])
+    l1_product['signal'] = np.interp(
+        l1_product['signal'], ckd['expected'], ckd['observed'])
 
 
 def dark_current(l1_product: L1,
@@ -221,7 +221,7 @@ def dark_current(l1_product: L1,
 
     """
     l1_product['proc_level'] = ProcLevel.noise
-    l1_product['image'] += dark_current * l1_product['exptimes'][..., None]
+    l1_product['signal'] += dark_current * l1_product['exptimes'][..., None]
 
 
 def noise(l1_product: L1,
@@ -249,10 +249,10 @@ def noise(l1_product: L1,
     # The absolute value of dark_signal should be taken because a
     # negative signal still increases the noise.
     variance = (ckd['read_noise']**2
-                + l1_product['image'] / ckd['conversion_gain'])
+                + l1_product['signal'] / ckd['conversion_gain'])
     std = np.sqrt(np.clip(variance, 0, None))
     rng = np.random.default_rng(seed)
-    l1_product['image'] += rng.normal(0.0, std, l1_product['image'].shape)
+    l1_product['signal'] += rng.normal(0.0, std, l1_product['signal'].shape)
 
 
 def dark_offset(l1_product: L1, offset: npt.NDArray[np.float64]) -> None:
@@ -267,7 +267,7 @@ def dark_offset(l1_product: L1, offset: npt.NDArray[np.float64]) -> None:
 
     """
     l1_product['proc_level'] = ProcLevel.raw
-    l1_product['image'] += offset
+    l1_product['signal'] += offset
 
 
 def coadding_and_binning(l1_product: L1,
@@ -290,15 +290,16 @@ def coadding_and_binning(l1_product: L1,
 
     """
     l1_product['proc_level'] = ProcLevel.l1a
-    n_alt = l1_product['image'].shape[0]
-    binned_images = np.zeros((n_alt, len(binning_table['count_table'])))
-    for i_alt in range(l1_product['image'].shape[0]):
+    n_alt = l1_product['signal'].shape[0]
+    binned_signals = np.zeros((n_alt, len(binning_table['count_table'])))
+    for i_alt in range(l1_product['signal'].shape[0]):
         for idx, idx_binned in enumerate(binning_table['bin_indices'].ravel()):
-            binned_images[i_alt, idx_binned] += l1_product['image'][i_alt, idx]
-    l1_product['image'] = binned_images
-    l1_product['image'] = l1_product['image'] * l1_product['coad_factors'][0]
+            binned_signals[i_alt, idx_binned] += (
+                l1_product['signal'][i_alt, idx])
+    l1_product['signal'] = binned_signals
+    l1_product['signal'] = l1_product['signal'] * l1_product['coad_factors'][0]
     # In reality, the noise realization is different in every read-out
     # and the signal is rounded before summing. Here the noise is not
     # calculated for each read-out separately. Then the best
     # approximation is to round after summing.
-    l1_product['image'] = np.round(l1_product['image'])
+    l1_product['signal'] = np.round(l1_product['signal'])

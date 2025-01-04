@@ -79,7 +79,7 @@ static auto banded_ATA_X_AT(const int n_diagonals,
 BSpline2D::BSpline2D(const int order,
                      const std::vector<double>& x_values_r,
                      const std::vector<double>& x_values_c,
-                     const std::vector<double>& data_in)
+                     const double* data_in)
 {
     // Initialize 1D B-splines across rows and columns of the input grid
     b_spline_r = { order, x_values_r };
@@ -111,6 +111,14 @@ BSpline2D::BSpline2D(const int order,
           control_points);
 }
 
+BSpline2D::BSpline2D(const int order,
+                     const std::vector<double>& x_values_r,
+                     const std::vector<double>& x_values_c,
+                     const std::vector<double>& data_in)
+{
+    BSpline2D(order, x_values_r, x_values_c, data_in.data());
+}
+
 // Given a target point x, find the knot interval i_x ... i_x+1 and
 // only evaluate x for basis functions i_x-N ... i_x where N is the
 // B-spline order. The rest of the basis functions do not contribute
@@ -130,9 +138,8 @@ static auto nonzeroBSplineValues(const BSpline& b_spline,
 
 auto BSpline2D::eval(const std::vector<double>& x,
                      const std::vector<double>& y,
-                     std::vector<double>& z) const -> void
+                     double* z) const -> void
 {
-    z.assign(x.size(), 0.0);
     std::vector<double> b_spline_c_values(b_spline_r.getOrder() + 1);
     std::vector<double> b_spline_r_values(b_spline_r.getOrder() + 1);
     // Work array for evaluating B-spline at x for individual basis

@@ -1,13 +1,16 @@
-# collection of numerical tools
-import numpy as np
-import scipy
-import math
+# This source code is licensed under the 3-clause BSD license found in
+# the LICENSE file in the root directory of this project.
+"""Collection of numerical tools."""
 from numba import njit
 from scipy.interpolate import RegularGridInterpolator, griddata
 from tqdm import tqdm
+import numpy as np
+import scipy
+
 
 class Emptyclass:
     pass
+
 
 @njit(cache=True)
 def convolution(spectrum, isrf, istart, iend):

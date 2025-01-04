@@ -86,6 +86,8 @@ public:
             type = "boolean" + prefix;
         } else if constexpr (std::is_same_v<T, int>) {
             type = "integer" + prefix;
+        } else if constexpr (std::is_same_v<T, size_t>) {
+            type = "unsigned integer" + prefix;
         } else if constexpr (std::is_same_v<T, double>) {
             type = "double (float64)" + prefix;
         } else if constexpr (std::is_same_v<T, std::string>) {

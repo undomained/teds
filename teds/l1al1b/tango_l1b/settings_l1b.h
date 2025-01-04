@@ -40,14 +40,20 @@ public:
         "If given, the last calibration step to be executed. Allowed values:\n"
         "offset, noise, current, nonlin, prnu, stray, swath, l1b.",
     };
-    Setting<int> image_start {
-        { "image_start" },
+    Setting<size_t> alt_beg {
+        { "alt_beg" },
         {},
-        "first image to be processed (counting starts at 0)",
+        "first along-track position to be processed (counting starts at 0)",
     };
-    Setting<std::optional<int>> image_end {
-        { "image_end" },
-        "last image to be processed (inclusive, counting starts at 0)",
+    Setting<std::optional<size_t>> alt_end {
+        { "alt_end" },
+        "last along-track position to be processed (inclusive, counting\n"
+        "starts at 0)",
+    };
+    Setting<int> bin_spectra {
+        { "bin_spectra" },
+        1,
+        "reduce the number of L1B spectra by averaging over this many spectra"
     };
 
     struct
@@ -98,15 +104,16 @@ public:
 
     struct
     {
-        Setting<bool> enabled {
-            { "swath", "enabled" },
-            true,
-            "whether to include geolocation",
-        };
         Setting<int> b_spline_order {
             { "swath", "b_spline_order" },
             5,
             "order of 2D b-spline used for mapping spectra from the detector"
+        };
+        Setting<bool> geolocation {
+            { "swath", "geolocation" },
+            true,
+            "Whether to include geolocation. If not then geometry is copied\n"
+            "from the geometry file produced by the GM.",
         };
     } swath;
 
@@ -126,7 +133,7 @@ public:
             { "io", "binning_table" },
             {},
             "Path to a NetCDF file containing binning tables and count arrays\n"
-            "Which ones to use is determined by the L1A fiel\n"
+            "Which ones to use is determined by the L1A file\n"
             "/image_attributes/binning_table"
         };
         Setting<std::string> l1a {
@@ -142,6 +149,9 @@ public:
             "L1B product (output). If cal_level is set to anything other than\n"
             "l1b then this is not an L1B but a lower level product."
         };
+        Setting<std::string> dem { { "io", "dem" },
+                                   {},
+                                   "digital elevation model" };
         Setting<std::string> geometry { { "io", "geometry" },
                                         {},
                                         "geometry file (input)" };

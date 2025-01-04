@@ -14,9 +14,7 @@ from copy import deepcopy
 from .libMeteo import readmeteodata
 from . import constants
 from .libNumTools import convolution_2d, TransformCoords, getconvolutionparams
-from .libGM import vincenty
-# import matplotlib.pyplot as plt
-###########################################################
+from teds.gm import vincenty
 
 
 class Emptyclass:

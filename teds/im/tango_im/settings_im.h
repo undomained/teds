@@ -35,14 +35,15 @@ public:
         "the output data remains calibrated up to and including the PRNU\n"
         "correction, i.e. everything down to stray light has been unapplied."
     };
-    Setting<int> image_start {
-        { "image_start" },
+    Setting<size_t> alt_beg {
+        { "alt_beg" },
         {},
-        "first image to be processed (counting starts at 0)",
+        "first along-track position to be processed (counting starts at 0)",
     };
-    Setting<std::optional<int>> image_end {
-        { "image_end" },
-        "last image to be processed (inclusive, counting starts at 0)",
+    Setting<std::optional<size_t>> alt_end {
+        { "alt_end" },
+        "last along-track position to be processed (inclusive, counting\n"
+        "starts at 0)",
     };
 
     struct
@@ -181,6 +182,12 @@ public:
             "than l1a then this is actually not an L1A but a higher level\n"
             "product."
         };
+        Setting<std::string> geometry { { "io", "geometry" },
+                                        {},
+                                        "geometry file (input)" };
+        Setting<std::string> navigation { { "io", "navigation" },
+                                          {},
+                                          "navigation data (input)" };
     } io;
 
     SettingsIM() = default;

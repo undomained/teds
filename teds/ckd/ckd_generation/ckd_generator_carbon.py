@@ -1,27 +1,28 @@
-#!/bin/env python
 # This source code is licensed under the 3-clause BSD license found
 # in the LICENSE file in the root directory of this project.
-'''CKD generator for Tango Carbon
+"""CKD generator for Tango Carbon
 
-This script compiles a calibration key data (CKD) file using
+This module compiles a calibration key data (CKD) file using
 experimental or simulated calibration data as input. Depending on the
 CKD step, the data could be copied directly from an input file (raw
 CKD) or undergo some modification first such as interpolation to a
 different temperature or unit conversion.
 
-Usage: python ckd_generator.py ckd.yaml
+Usage:
 
-'''
+>>> from teds.gm import geometry_module
+>>> geometry_module(yaml.safe_load(open('gm.yaml')))
 
+"""
 from netCDF4 import Dataset
 from scipy.interpolate import CubicSpline
-from scipy.interpolate import interpn
 from scipy.interpolate import PchipInterpolator
 from scipy.interpolate import RBFInterpolator
+from scipy.interpolate import interpn
 from teds import log
 import numpy as np
-import yaml
 import sys
+import yaml
 
 
 def gen_header(conf: dict, nc_ckd: Dataset) -> None:

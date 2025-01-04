@@ -18,11 +18,8 @@ Input files are:
 - (optionally) netCDF geometry data io.geometry
 
 """
-from importlib.resources import files
 from pathlib import Path
-
 import numpy as np
-import yaml
 
 from . import calibration as cal
 from .binning import bin_data
@@ -34,10 +31,10 @@ from .io import read_ckd
 from .io import read_l1
 from .io import read_proc_level
 from .io import write_l1
-from .types import ProcLevel
 from .types import L1
+from .types import ProcLevel
 from teds import log
-from teds.lib.io import merge_configs
+from teds.lib.io import merge_config_with_default
 
 
 def check_config(config: dict) -> None:
@@ -47,8 +44,6 @@ def check_config(config: dict) -> None:
     ----------
     config
         Configuration dictionary
-    towards_l1b
-        Whether the processing direction is to L1B or L1A
 
     """
     for key in ('l1a', 'ckd'):
@@ -98,26 +93,18 @@ def run_l1al1b(config_user: dict | None = None) -> None:
         user.
 
     """
-    defaults_filename = str(files('teds.l1al1b.python')
-                            / 'default_config.yaml')
-    if config_user is None:
-        print(open(defaults_filename).read())
-        return
-    assert isinstance(config_user, dict)
-
     print_heading('Tango L1B processor', empty_line=False)
     print_system_info()
 
     print_heading('Reading CKD and input data')
     # Start with the full default config and then merge in those
     # settings given by the user.
-    config: dict = yaml.safe_load(open(defaults_filename))
-    merge_configs(config, config_user)
+    config = merge_config_with_default(config_user, 'teds.l1al1b.python')
     check_config(config)
     ckd = read_ckd(config['io']['ckd'])
     log.info('Reading input data')
     l1_product: L1 = read_l1(
-        config['io']['l1a'], config['image_start'], config['image_end'])
+        config['io']['l1a'], config['alt_beg'], config['alt_end'])
 
     # Read binning table corresponding to input data
     data_binning_table_id = int(l1_product['binning_table_ids'][0])
@@ -154,7 +141,7 @@ def run_l1al1b(config_user: dict | None = None) -> None:
                       ckd['noise'],
                       ckd['dark']['current'])
         else:
-            l1_product['noise'] = np.full_like(l1_product['image'], np.nan)
+            l1_product['noise'] = np.full_like(l1_product['signal'], np.nan)
     if config['dark']['enabled'] and step_needed(
             ProcLevel.dark_current, l1_product['proc_level'], cal_level):
         log.info('Dark current')
@@ -167,10 +154,10 @@ def run_l1al1b(config_user: dict | None = None) -> None:
             ProcLevel.prnu, l1_product['proc_level'], cal_level):
         log.info('PRNU')
         cal.prnu(l1_product, ckd['pixel_mask'], ckd['prnu']['prnu_qe'])
-    if 'image' in l1_product:
+    if 'signal' in l1_product:
         log.info('Smoothing over bad values')
         cal.remove_bad_values(
-            ckd['n_detector_cols'], ckd['pixel_mask'], l1_product['image'])
+            ckd['n_detector_cols'], ckd['pixel_mask'], l1_product['signal'])
         cal.remove_bad_values(
             ckd['n_detector_cols'], ckd['pixel_mask'], l1_product['noise'])
     if (
@@ -200,7 +187,7 @@ def run_l1al1b(config_user: dict | None = None) -> None:
     log.info('Writing output data')
     copy_geometry(config['io']['l1a'],
                   config['io']['geometry'],
-                  config['image_start'],
+                  config['alt_beg'],
                   l1_product)
     write_l1(config['io']['l1b'], config, l1_product)
 

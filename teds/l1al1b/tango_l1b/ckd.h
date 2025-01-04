@@ -11,6 +11,8 @@
 
 namespace tango {
 
+class BinningTable;
+
 class CKD
 {
 public:
@@ -18,6 +20,8 @@ public:
     // Construct the CKD from a NetCDF file. The second argument
     // defines the number of pixels comprising one spectral element.
     CKD(const std::string& filename);
+    // Bin all CKDs and update the binned detector dimensions
+    auto bin(const BinningTable& binning_table) -> void;
 
     // Number of detector pixels in the spatial direction
     int n_detector_rows {};
@@ -26,6 +30,10 @@ public:
     // Number of pixels in one unbinned image. Shorthand for
     // (n_detector_rows x n_detector_cols)
     int npix {};
+    // Binned detector dimensions
+    int n_detector_rows_binned {};
+    int n_detector_cols_binned {};
+    int npix_binned {};
     // Number of L1B spectra (spatial samples across track)
     int n_act {};
 

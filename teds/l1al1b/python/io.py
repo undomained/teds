@@ -276,8 +276,8 @@ def read_geometry(l1_product: L1, config: dict) -> Geometry:
 
     """
     filename = config['io']['geometry']
-    image_start = config['image_start']
-    image_end = None if config['image_end'] is None else config['image_end']+1
+    alt_beg = config['alt_beg']
+    alt_end = None if config['alt_end'] is None else config['alt_end']+1
     with Dataset(filename) as root:
         groups = list(root.groups)
     if 'geolocation_data' in groups:  # L1 file
@@ -286,27 +286,27 @@ def read_geometry(l1_product: L1, config: dict) -> Geometry:
         nc = Dataset(filename)
         grp = nc['geolocation_data']
         geo: Geometry = {
-            'latitude': grp['latitude'][image_start:image_end, :],
-            'longitude': grp['longitude'][image_start:image_end, :],
-            'height': grp['height'][image_start:image_end, :],
-            'saa': grp['solar_azimuth'][image_start:image_end, :],
-            'sza': grp['solar_zenith'][image_start:image_end, :],
-            'vaa': grp['sensor_azimuth'][image_start:image_end, :],
-            'vza': grp['sensor_zenith'][image_start:image_end, :],
+            'latitude': grp['latitude'][alt_beg:alt_end, :],
+            'longitude': grp['longitude'][alt_beg:alt_end, :],
+            'height': grp['height'][alt_beg:alt_end, :],
+            'saa': grp['solar_azimuth'][alt_beg:alt_end, :],
+            'sza': grp['solar_zenith'][alt_beg:alt_end, :],
+            'vaa': grp['sensor_azimuth'][alt_beg:alt_end, :],
+            'vza': grp['sensor_zenith'][alt_beg:alt_end, :],
         }
     else:
         nc = Dataset(filename)
         if 'height' in groups:
             _height = nc['height'][:]
         else:
-            _height = np.zeros_like(nc['lat'][image_start:image_end, :])
+            _height = np.zeros_like(nc['lat'][alt_beg:alt_end, :])
         geo = {
-            'latitude': nc['lat'][image_start:image_end, :],
-            'longitude': nc['lon'][image_start:image_end, :],
-            'saa': nc['saa'][image_start:image_end, :],
-            'sza': nc['sza'][image_start:image_end, :],
-            'vaa': nc['vaa'][image_start:image_end, :],
-            'vza': nc['vza'][image_start:image_end, :],
+            'latitude': nc['lat'][alt_beg:alt_end, :],
+            'longitude': nc['lon'][alt_beg:alt_end, :],
+            'saa': nc['saa'][alt_beg:alt_end, :],
+            'sza': nc['sza'][alt_beg:alt_end, :],
+            'vaa': nc['vaa'][alt_beg:alt_end, :],
+            'vza': nc['vza'][alt_beg:alt_end, :],
             'height': _height
         }
     return geo
@@ -314,7 +314,7 @@ def read_geometry(l1_product: L1, config: dict) -> Geometry:
 
 def copy_geometry(l1a_filename: str,
                   geo_filename: str,
-                  i_alt_start: int,
+                  i_alt_beg: int,
                   l1_product: L1) -> None:
     """Copy geolocation data from the geometry file directly to the
     L1B product.
@@ -327,13 +327,13 @@ def copy_geometry(l1a_filename: str,
     l1a_filename
         Path to the input L1A file. Only used for reading the
         configuration used in the IM which contains the original
-        image_start.
+        alt_beg.
     geo_filename
         Path to a file containing the geometry to be copied.
-    i_alt_start
+    i_alt_beg
         First along track position of geometry to be copied. This is
         in reference to the current list of L1 products. In reference
-        to the geometry file, this value is added to image_start read
+        to the geometry file, this value is added to alt_beg read
         from the L1A file.
     l1_product
         L1 product (signal and detector settings). Used for
@@ -343,10 +343,10 @@ def copy_geometry(l1a_filename: str,
     """
     nc_l1a = Dataset(l1a_filename)
     configuration = yaml.safe_load(nc_l1a['configuration'][:])
-    image_start = configuration['image_start']
-    _beg = i_alt_start + image_start
+    alt_beg = configuration['alt_beg']
+    _beg = i_alt_beg + alt_beg
     if 'signal' in l1_product:
-        _end = _beg + l1_product['image'].shape[0]
+        _end = _beg + l1_product['signal'].shape[0]
     else:
         _end = _beg + l1_product['spectra'].shape[0]
     nc_geo = Dataset(geo_filename)
@@ -355,32 +355,30 @@ def copy_geometry(l1a_filename: str,
     else:
         _height = np.zeros_like(nc_geo['lat'][:])
     l1_product['geometry'] = {
-        'latitude': nc_geo['lat'][_beg:_end, :],
-        'longitude': nc_geo['lon'][_beg:_end, :],
-        'vza': nc_geo['vza'][_beg:_end, :],
-        'vaa': nc_geo['vaa'][_beg:_end, :],
-        'sza': nc_geo['sza'][_beg:_end, :],
-        'saa': nc_geo['saa'][_beg:_end, :],
+        'latitude': nc_geo['latitude'][_beg:_end, :],
+        'longitude': nc_geo['longitude'][_beg:_end, :],
+        'vza': nc_geo['sensor_zenith'][_beg:_end, :],
+        'vaa': nc_geo['sensor_azimuth'][_beg:_end, :],
+        'sza': nc_geo['solar_zenith'][_beg:_end, :],
+        'saa': nc_geo['solar_azimuth'][_beg:_end, :],
         'height': _height[_beg:_end, :],
     }
 
 
-def read_l1(filename: str,
-            image_start: int,
-            image_end: int | None = None) -> L1:
+def read_l1(filename: str, alt_beg: int, alt_end: int | None = None) -> L1:
     """Read a level 1 file.
 
     Read a list of L1 products from a NetCDF file. The input data
-    level may be L1A, L1B, or anything in between. image_start/end
+    level may be L1A, L1B, or anything in between. alt_beg/end
     specify a subrange to process.
 
     Parameters
     ----------
     filename
         Path of L1A file, L1B file, or anything in between.
-    image_start
+    alt_beg
         First (zero-based) frame to read, default 0.
-    image_end
+    alt_end
         Last frame to read, default last frame in data.
 
     Returns
@@ -388,41 +386,37 @@ def read_l1(filename: str,
         L1 product (signal and detector settings).
 
     """
-    image_end = None if image_end is None else image_end + 1
+    alt_end = None if alt_end is None else alt_end + 1
     l1_product: L1 = {'proc_level': read_proc_level(filename)}
     nc = Dataset(filename)
     # Attempt to read variables that are present in the NetCDF file
     if 'science_data' in nc.groups:
         grp = nc['science_data']
-        l1_product['image'] = (
-            grp['detector_image'][image_start:image_end, :].astype('f8').data)
+        l1_product['signal'] = (
+            grp['detector_signal'][alt_beg:alt_end, :].astype('f8').data)
         if 'detector_stdev' in grp.variables:
             l1_product['noise'] = (
-                grp['detector_stdev'][image_start:image_end, :].data)
-        n_alt = l1_product['image'].shape[0]
+                grp['detector_stdev'][alt_beg:alt_end, :].data)
+        n_alt = l1_product['signal'].shape[0]
     elif 'observation_data' in nc.groups:
         grp = nc['observation_data']
         l1_product['wavelengths'] = grp['wavelength'][:].data
-        l1_product['spectra'] = (
-            grp['radiance'][image_start:image_end, :, :].data)
+        l1_product['spectra'] = grp['radiance'][alt_beg:alt_end, :, :].data
         l1_product['spectra_noise'] = grp['radiance_stdev'][
-            image_start:image_end, :, :].data
+            alt_beg:alt_end, :, :].data
         n_alt = l1_product['spectra'].shape[0]
     elif 'radiance' in nc.variables:
         l1_product['wavelengths'] = nc['wavelength'][:].data
-        l1_product['spectra'] = (
-            nc['radiance'][image_start:image_end, :, :].data)
+        l1_product['spectra'] = nc['radiance'][alt_beg:alt_end, :, :].data
         n_alt = l1_product['spectra'].shape[0]
     if 'solar_irradiance' in nc.variables:
         l1_product['solar_irradiance'] = nc['solar_irradiance'][:].data
-    if 'image_attributes' in nc.groups:
+    if 'signal_attributes' in nc.groups:
         grp = nc['image_attributes']
-        l1_product['timestamps'] = grp['image_time'][image_start:image_end]
-        l1_product['binning_table_ids'] = (
-            grp['binning_table'][image_start:image_end])
-        l1_product['coad_factors'] = (
-            grp['nr_coadditions'][image_start:image_end])
-        l1_product['exptimes'] = grp['exposure_time'][image_start:image_end]
+        l1_product['timestamps'] = grp['time'][alt_beg:alt_end]
+        l1_product['binning_table_ids'] = grp['binning_table'][alt_beg:alt_end]
+        l1_product['coad_factors'] = grp['nr_coadditions'][alt_beg:alt_end]
+        l1_product['exptimes'] = grp['exposure_time'][alt_beg:alt_end]
     else:
         l1_product['timestamps'] = np.zeros(n_alt)
         l1_product['binning_table_ids'] = np.zeros(n_alt, dtype=np.int32)
@@ -430,8 +424,7 @@ def read_l1(filename: str,
         l1_product['exptimes'] = np.zeros(n_alt)
     # Reading of main variables done. Now perform a few sanity checks.
     if n_alt == 0:
-        raise SystemExit(f"ERROR: data slice [{image_start}:{image_end}] is "
-                         "empty")
+        raise SystemExit(f"ERROR: data slice [{alt_beg}:{alt_end}] is empty")
     if 'binning_table_ids' in l1_product and len(np.unique(
             l1_product['binning_table_ids'])) > 1:
         raise SystemExit("ERROR: different binning tables in data set, use "
@@ -441,7 +434,7 @@ def read_l1(filename: str,
 
 def write_l1(filename: str,
              config: dict,
-             l1_product: L1) -> str:
+             l1_product: L1) -> None:
     """Write a L1 file.
 
     Parameters
@@ -454,10 +447,6 @@ def write_l1(filename: str,
         L1 product (signal and detector settings).
     geometry
         Include geometry data if available and data consists of spectra.
-
-    Returns
-    -------
-        Name of the NetCDF created
 
     """
     default_fill_value = -32767
@@ -496,8 +485,8 @@ def write_l1(filename: str,
     var_config.comment = 'configuration parameters used to produce this file'
     if l1_product['proc_level'] <= ProcLevel.stray:
         grp_data = out.createGroup('science_data')
-        dim_alt = out.createDimension('image', l1_product['image'].shape[0])
-        dim_bins = out.createDimension('bin', l1_product['image'].shape[1])
+        dim_alt = out.createDimension('signal', l1_product['signal'].shape[0])
+        dim_bins = out.createDimension('bin', l1_product['signal'].shape[1])
     else:
         dim_alt = out.createDimension('along_track_sample',
                                       l1_product['spectra'].shape[0])
@@ -510,7 +499,7 @@ def write_l1(filename: str,
     if l1_product['proc_level'] < ProcLevel.l1b:
         grp_attr = out.createGroup('image_attributes')
         var_timestamps = grp_attr.createVariable(
-            'image_time', 'f8', (dim_alt,), fill_value=default_fill_value)
+            'time', 'f8', (dim_alt,), fill_value=default_fill_value)
         var_timestamps.long_name = 'image time'
         var_timestamps.units = 'seconds since 2022-03-21'
         var_timestamps.valid_min = 0.0
@@ -543,7 +532,7 @@ def write_l1(filename: str,
         var_signal.units = 'counts'
         var_signal.valid_min = 0
         var_signal.valid_max = 60000
-        var_signal[:] = l1_product['image'].astype(int)
+        var_signal[:] = l1_product['signal'].astype(int)
     elif l1_product['proc_level'] <= ProcLevel.stray:
         var_signal = grp_data.createVariable('detector_image',
                                              'f8',
@@ -554,7 +543,7 @@ def write_l1(filename: str,
         var_signal.units = 'counts'
         var_signal.valid_min = -1e100
         var_signal.valid_max = 1e100
-        var_signal[:] = l1_product['image']
+        var_signal[:] = l1_product['signal']
         var_noise = grp_data.createVariable('detector_stdev',
                                             'f8',
                                             (dim_alt, dim_bins),
@@ -565,7 +554,7 @@ def write_l1(filename: str,
         var_noise.valid_min = 0.0
         var_noise.valid_max = 1e100
         if 'noise' not in l1_product:
-            l1_product['noise'] = np.ones(l1_product['image'].shape)
+            l1_product['noise'] = np.ones(l1_product['signal'].shape)
         var_noise[:] = l1_product['noise']
     else:
         var_waves = grp_data.createVariable('wavelength', 'f8',
@@ -680,4 +669,3 @@ def write_l1(filename: str,
         var_vza.valid_min = -90.0
         var_vza.valid_max = 90.0
     out.close()
-    return filename

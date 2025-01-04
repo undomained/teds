@@ -8,34 +8,48 @@
 #include "ckd.h"
 #include "cubic_spline.h"
 #include "fourier.h"
+#include "geometry.h"
 #include "l1.h"
+#include "solar_model.h"
 
 #include <algorithm>
 #include <numeric>
+#include <span>
 
 namespace tango {
 
-auto binningTable(const CKD& ckd,
-                  const BinningTable& binning_table,
-                  L1& l1) -> void
+auto binScaling(const CKD& ckd,
+                const BinningTable& binning_table,
+                L1& l1_prod) -> void
 {
-    l1.level = ProcLevel::raw;
-    for (int i {}; i < static_cast<int>(l1.image.size()); ++i) {
-        if (!ckd.pixel_mask[i]) {
-            l1.image[i] /= binning_table.binSize(i);
+    l1_prod.level = ProcLevel::raw;
+#pragma omp parallel for
+    for (int i_alt = 0; i_alt < l1_prod.n_alt; ++i_alt) {
+        for (int i {}; i < ckd.npix_binned; ++i) {
+            if (!ckd.pixel_mask[i]) {
+                l1_prod.signal[i_alt * ckd.npix_binned + i] /=
+                  l1_prod.nr_coadditions * binning_table.binSize(i);
+            }
         }
     }
+    l1_prod.noise.assign(l1_prod.signal.size(),
+                         static_cast<double>(l1_prod.nr_coadditions));
+    l1_prod.nr_coadditions = 1;
 }
 
-auto darkOffset(const CKD& ckd, const bool enabled, L1& l1) -> void
+auto darkOffset(const CKD& ckd, const bool enabled, L1& l1_prod) -> void
 {
-    l1.level = ProcLevel::dark_offset;
+    l1_prod.level = ProcLevel::dark_offset;
     if (!enabled) {
         return;
     }
-    for (int i {}; i < static_cast<int>(l1.image.size()); ++i) {
-        if (!ckd.pixel_mask[i]) {
-            l1.image[i] -= ckd.dark.offset[i];
+#pragma omp parallel for
+    for (int i_alt = 0; i_alt < l1_prod.n_alt; ++i_alt) {
+        for (int i {}; i < ckd.npix_binned; ++i) {
+            if (!ckd.pixel_mask[i]) {
+                l1_prod.signal[i_alt * ckd.npix_binned + i] -=
+                  ckd.dark.offset[i];
+            }
         }
     }
 }
@@ -43,186 +57,257 @@ auto darkOffset(const CKD& ckd, const bool enabled, L1& l1) -> void
 auto noise(const CKD& ckd,
            const bool enabled,
            const BinningTable& binning_table,
-           L1& l1) -> void
+           L1& l1_prod) -> void
 {
-    l1.level = ProcLevel::noise;
+    l1_prod.level = ProcLevel::noise;
     if (!enabled) {
-        l1.stdev.assign(l1.image.size(), 1.0);
+        std::ranges::fill(l1_prod.noise, 1.0);
         return;
     }
-    for (int i {}; i < static_cast<int>(l1.image.size()); ++i) {
-        if (!ckd.pixel_mask[i]) {
-            const double var { ckd.noise.g[i] * std::abs(l1.image[i])
-                               + ckd.noise.n2[i] };
-            l1.stdev[i] =
-              std::sqrt(var / (l1.nr_coadditions * binning_table.binSize(i)));
-        }
-    }
-}
-
-auto darkCurrent(const CKD& ckd, const bool enabled, L1& l1) -> void
-{
-    l1.level = ProcLevel::dark_current;
-    if (!enabled) {
-        return;
-    }
-    for (int i {}; i < static_cast<int>(l1.image.size()); ++i) {
-        if (!ckd.pixel_mask[i]) {
-            l1.image[i] -= ckd.dark.current[i] * l1.exposure_time;
-        }
-    }
-}
-
-auto nonlinearity(const CKD& ckd, const bool enabled, L1& l1) -> void
-{
-    l1.level = ProcLevel::nonlin;
-    if (!enabled) {
-        return;
-    }
-    for (int i {}; i < static_cast<int>(l1.image.size()); ++i) {
-        if (!ckd.pixel_mask[i]) {
-            l1.stdev[i] *= ckd.nonlin.spline.deriv(l1.image[i]);
-            l1.image[i] = ckd.nonlin.spline.eval(l1.image[i]);
-        }
-    }
-}
-
-auto prnu(const CKD& ckd, const bool enabled, L1& l1) -> void
-{
-    l1.level = ProcLevel::prnu;
-    if (!enabled) {
-        return;
-    }
-    for (int i {}; i < static_cast<int>(l1.image.size()); ++i) {
-        if (!ckd.pixel_mask[i]) {
-            l1.image[i] /= ckd.prnu.prnu[i];
-            l1.stdev[i] /= ckd.prnu.prnu[i];
-        }
-    }
-}
-
-auto removeBadValues(const CKD& ckd, L1& l1) -> void
-{
-    const int n_rows { static_cast<int>(l1.image.size())
-                       / ckd.n_detector_cols };
-    std::vector<double> x_values {};
-    std::vector<double> y_values_image {};
-    std::vector<double> y_values_stdev {};
-    for (int i_row {}; i_row < n_rows; ++i_row) {
-        x_values.clear();
-        y_values_image.clear();
-        y_values_stdev.clear();
-        for (int i_col {}; i_col < ckd.n_detector_cols; ++i_col) {
-            const int idx { i_row * ckd.n_detector_cols + i_col };
-            if (!ckd.pixel_mask[idx]) {
-                x_values.push_back(static_cast<double>(i_col));
-                y_values_image.push_back(l1.image[idx]);
-                y_values_stdev.push_back(l1.stdev[idx]);
+#pragma omp parallel for
+    for (int i_alt = 0; i_alt < l1_prod.n_alt; ++i_alt) {
+        for (int i {}; i < ckd.npix_binned; ++i) {
+            if (!ckd.pixel_mask[i]) {
+                const int idx { i_alt * ckd.npix_binned + i };
+                const double var { ckd.noise.g[i]
+                                     * std::abs(l1_prod.signal[idx])
+                                   + ckd.noise.n2[i] };
+                const double coad { l1_prod.noise[idx] };
+                l1_prod.noise[idx] =
+                  std::sqrt(var / (coad * binning_table.binSize(i)));
             }
         }
-        const CubicSpline spline_image { x_values, y_values_image };
-        for (int i_col {}; i_col < ckd.n_detector_cols; ++i_col) {
-            l1.image[i_row * ckd.n_detector_cols + i_col] =
-              spline_image.eval(static_cast<double>(i_col));
-        }
-        const CubicSpline spline_stdev { x_values, y_values_stdev };
-        for (int i_col {}; i_col < ckd.n_detector_cols; ++i_col) {
-            l1.stdev[i_row * ckd.n_detector_cols + i_col] =
-              spline_stdev.eval(static_cast<double>(i_col));
+    }
+}
+
+auto darkCurrent(const CKD& ckd, const bool enabled, L1& l1_prod) -> void
+{
+    l1_prod.level = ProcLevel::dark_current;
+    if (!enabled) {
+        return;
+    }
+#pragma omp parallel for
+    for (int i_alt = 0; i_alt < l1_prod.n_alt; ++i_alt) {
+        for (int i {}; i < ckd.npix_binned; ++i) {
+            if (!ckd.pixel_mask[i]) {
+                l1_prod.signal[i_alt * ckd.npix_binned + i] -=
+                  ckd.dark.current[i] * l1_prod.exposure_time;
+            }
         }
     }
+}
+
+auto nonlinearity(const CKD& ckd, const bool enabled, L1& l1_prod) -> void
+{
+    l1_prod.level = ProcLevel::nonlin;
+    if (!enabled) {
+        return;
+    }
+#pragma omp parallel for
+    for (int i_alt = 0; i_alt < l1_prod.n_alt; ++i_alt) {
+        for (int i {}; i < ckd.npix_binned; ++i) {
+            if (!ckd.pixel_mask[i]) {
+                const int idx { i_alt * ckd.npix_binned + i };
+                l1_prod.noise[idx] *=
+                  ckd.nonlin.spline.deriv(l1_prod.signal[idx]);
+                l1_prod.signal[idx] =
+                  ckd.nonlin.spline.eval(l1_prod.signal[idx]);
+            }
+        }
+    }
+}
+
+auto prnu(const CKD& ckd, const bool enabled, L1& l1_prod) -> void
+{
+    l1_prod.level = ProcLevel::prnu;
+    if (!enabled) {
+        return;
+    }
+#pragma omp parallel for
+    for (int i_alt = 0; i_alt < l1_prod.n_alt; ++i_alt) {
+        for (int i {}; i < ckd.npix_binned; ++i) {
+            if (!ckd.pixel_mask[i]) {
+                const int idx { i_alt * ckd.npix_binned + i };
+                l1_prod.signal[idx] /= ckd.prnu.prnu[i];
+                l1_prod.noise[idx] /= ckd.prnu.prnu[i];
+            }
+        }
+    }
+}
+
+auto removeBadValues(const CKD& ckd, L1& l1_prod) -> void
+{
+#pragma omp parallel for
+    for (int i_alt = 0; i_alt < l1_prod.n_alt; ++i_alt) {
+        std::vector<double> x_values {};
+        std::vector<double> y_values_signal {};
+        std::vector<double> y_values_noise {};
+        for (int i_row {}; i_row < ckd.n_detector_rows_binned; ++i_row) {
+            x_values.clear();
+            y_values_signal.clear();
+            y_values_noise.clear();
+            for (int i_col {}; i_col < ckd.n_detector_cols; ++i_col) {
+                const int idx { i_row * ckd.n_detector_cols + i_col };
+                if (!ckd.pixel_mask[idx]) {
+                    const int idx_full { i_alt * ckd.npix_binned + idx };
+                    x_values.push_back(static_cast<double>(i_col));
+                    y_values_signal.push_back(l1_prod.signal[idx_full]);
+                    y_values_noise.push_back(l1_prod.noise[idx_full]);
+                }
+            }
+            const CubicSpline spline_signal { x_values, y_values_signal };
+            for (int i_col {}; i_col < ckd.n_detector_cols; ++i_col) {
+                l1_prod.signal[i_alt * ckd.npix_binned
+                               + i_row * ckd.n_detector_cols + i_col] =
+                  spline_signal.eval(static_cast<double>(i_col));
+            }
+            const CubicSpline spline_noise { x_values, y_values_noise };
+            for (int i_col {}; i_col < ckd.n_detector_cols; ++i_col) {
+                l1_prod.noise[i_alt * ckd.npix_binned
+                              + i_row * ckd.n_detector_cols + i_col] =
+                  spline_noise.eval(static_cast<double>(i_col));
+            }
+        }
+    }
+}
+
+static auto vanCittertMulti(const CKD& ckd,
+                            std::vector<std::complex<double>>& signal_fft,
+                            std::vector<double>& signal_ideal,
+                            std::vector<double>& sub_signal,
+                            std::vector<double>& conv_result_sub,
+                            std::vector<double>& conv_result) -> void
+{
+    conv_result.assign(ckd.npix, 0.0);
+    for (int i_kernel {}; i_kernel < ckd.stray.n_kernels; ++i_kernel) {
+        // Number of rows and column in this subsignal
+        const int signal_n_rows {
+            ckd.stray.edges[i_kernel * box::n + box::t]
+            - ckd.stray.edges[i_kernel * box::n + box::b]
+        };
+        const int signal_n_cols {
+            ckd.stray.edges[i_kernel * box::n + box::r]
+            - ckd.stray.edges[i_kernel * box::n + box::l]
+        };
+        // Each iteration starts with signal_ideal as the best
+        // current estimate.
+        sub_signal.resize(signal_n_rows * signal_n_cols);
+        for (int i {}; i < signal_n_rows; ++i) {
+            for (int j {}; j < signal_n_cols; ++j) {
+                const int idx {
+                    (i + ckd.stray.edges[i_kernel * box::n + box::b])
+                      * ckd.n_detector_cols
+                    + j + ckd.stray.edges[i_kernel * box::n + box::l]
+                };
+                sub_signal[i * signal_n_cols + j] =
+                  signal_ideal[idx] * ckd.stray.weights[i_kernel][idx];
+            }
+        }
+        // Result of taking a convolution using one of the
+        // subsignals and kernels
+        convolve(signal_n_rows,
+                 signal_n_cols,
+                 sub_signal,
+                 ckd.stray.kernel_rows[i_kernel],
+                 ckd.stray.kernel_cols[i_kernel],
+                 ckd.stray.kernels_fft[i_kernel],
+                 signal_fft,
+                 conv_result_sub);
+        // The full convolution is a sum over all convolutions
+        for (int i {}; i < signal_n_rows; ++i) {
+            for (int j {}; j < signal_n_cols; ++j) {
+                conv_result[(i + ckd.stray.edges[i_kernel * box::n + box::b])
+                              * ckd.n_detector_cols
+                            + j
+                            + ckd.stray.edges[i_kernel * box::n + box::l]] +=
+                  conv_result_sub[i * signal_n_cols + j];
+            }
+        }
+    }
+}
+
+static auto vanCittertSingle(const CKD& ckd,
+                             std::vector<std::complex<double>>& signal_fft,
+                             std::vector<double>& signal_ideal,
+                             std::vector<double>& conv_result) -> void
+{
+    convolve(ckd.n_detector_rows,
+             ckd.n_detector_cols,
+             signal_ideal,
+             ckd.stray.kernel_rows.front(),
+             ckd.stray.kernel_cols.front(),
+             ckd.stray.kernels_fft.front(),
+             signal_fft,
+             conv_result);
 }
 
 auto strayLight(const CKD& ckd,
                 const BinningTable& binning_table,
                 const int n_van_cittert,
-                L1& l1) -> void
+                L1& l1_prod) -> void
 {
-    l1.level = ProcLevel::stray;
+    l1_prod.level = ProcLevel::stray;
     if (n_van_cittert == 0) {
         return;
     }
-    // Unbin the image using the stray light binning table
-    std::vector<double> image_unbin(ckd.npix);
-    binning_table.unbin(l1.image, image_unbin);
-    // "Ideal" image, i.e. the one without stray light
-    std::vector<double> image_ideal { image_unbin };
-    // Part of the unbinned detector image
-    std::vector<double> sub_image {};
-    // Result of convoling one kernel with a subimage
-    std::vector<double> conv_result_sub {};
-    // Allocate the image FFT once to save time
-    std::vector<std::complex<double>> image_fft(
+    // Pre-allocate the signal FFT for efficiency
+    std::vector<std::complex<double>> signal_fft(
       *std::ranges::max_element(ckd.stray.kernel_fft_sizes));
-    // Result of taking the whole convolution
-    std::vector<double> conv_result(ckd.npix);
-    // Van Cittert algorithm
-    for (int i_vc {}; i_vc < n_van_cittert; ++i_vc) {
-        std::ranges::fill(conv_result, 0.0);
-        for (int i_kernel {}; i_kernel < ckd.stray.n_kernels; ++i_kernel) {
-            // Number of rows and column in this subimage
-            const int image_n_rows {
-                ckd.stray.edges[i_kernel * box::n + box::t]
-                - ckd.stray.edges[i_kernel * box::n + box::b]
-            };
-            const int image_n_cols {
-                ckd.stray.edges[i_kernel * box::n + box::r]
-                - ckd.stray.edges[i_kernel * box::n + box::l]
-            };
-            // Each iteration starts with image_ideal as the best
-            // current estimate.
-            sub_image.resize(image_n_rows * image_n_cols);
-            for (int i {}; i < image_n_rows; ++i) {
-                for (int j {}; j < image_n_cols; ++j) {
-                    const int idx {
-                        (i + ckd.stray.edges[i_kernel * box::n + box::b])
-                          * ckd.n_detector_cols
-                        + j + ckd.stray.edges[i_kernel * box::n + box::l]
-                    };
-                    sub_image[i * image_n_cols + j] =
-                      image_ideal[idx] * ckd.stray.weights[i_kernel][idx];
-                }
+    // Result of convolution
+    std::vector<double> conv_result {};
+    // With multiple kernels, part of the unbinned detector signal
+    std::vector<double> sub_signal {};
+    // With multiple kernels, result of convolving one kernel with
+    // a subsignal
+    std::vector<double> conv_result_sub {};
+#pragma omp parallel for firstprivate(signal_fft) private(                     \
+    conv_result, sub_signal, conv_result_sub)
+    for (int i_alt = 0; i_alt < l1_prod.n_alt; ++i_alt) {
+        // Unbin the detector image
+        const std::span signal(&l1_prod.signal[i_alt * ckd.npix_binned],
+                               ckd.npix_binned);
+        std::vector<double> signal_unbin(ckd.npix);
+        binning_table.unbin(signal, signal_unbin);
+        // "Ideal" signal, i.e. the one without stray light
+        std::vector<double> signal_ideal { signal_unbin };
+        // Van Cittert algorithm
+        for (int i_vc {}; i_vc < n_van_cittert; ++i_vc) {
+            if (ckd.stray.n_kernels > 1) {
+                vanCittertMulti(ckd,
+                                signal_fft,
+                                signal_ideal,
+                                sub_signal,
+                                conv_result_sub,
+                                conv_result);
+            } else {
+                vanCittertSingle(ckd, signal_fft, signal_ideal, conv_result);
             }
-            // Result of taking a convolution using one of the
-            // subimages and kernels
-            convolve(image_n_rows,
-                     image_n_cols,
-                     sub_image,
-                     ckd.stray.kernel_rows[i_kernel],
-                     ckd.stray.kernel_cols[i_kernel],
-                     ckd.stray.kernels_fft[i_kernel],
-                     image_fft,
-                     conv_result_sub);
-            // The full convolution is a sum over all convolutions
-            for (int i {}; i < image_n_rows; ++i) {
-                for (int j {}; j < image_n_cols; ++j) {
-                    conv_result
-                      [(i + ckd.stray.edges[i_kernel * box::n + box::b])
-                         * ckd.n_detector_cols
-                       + j + ckd.stray.edges[i_kernel * box::n + box::l]] +=
-                      conv_result_sub[i * image_n_cols + j];
-                }
+            for (int i {}; i < ckd.npix; ++i) {
+                signal_ideal[i] =
+                  (signal_unbin[i] - conv_result[i]) / (1 - ckd.stray.eta[i]);
             }
+            // write(signal_unbin, 512);
         }
-        for (int i {}; i < ckd.npix; ++i) {
-            image_ideal[i] =
-              (image_unbin[i] - conv_result[i]) / (1 - ckd.stray.eta[i]);
-        }
+        std::vector<double> signal_binned(ckd.npix_binned);
+        binning_table.bin(signal_ideal, signal_binned);
+        std::copy(signal_binned.cbegin(), signal_binned.cend(), signal.begin());
     }
-    binning_table.bin(image_ideal, l1.image);
 }
 
 auto mapFromDetector(const CKD& ckd,
                      const BinningTable& binning_table,
                      const int b_spline_order,
-                     L1& l1) -> void
+                     L1& l1_prod) -> void
 {
-    l1.level = ProcLevel::swath;
+    l1_prod.level = ProcLevel::swath;
+    // Size of spectra per ALT position
+    const size_t spec_size { ckd.n_act * ckd.swath.wavelengths.size() };
+    l1_prod.spectra.resize(l1_prod.n_alt * spec_size);
+    l1_prod.spectra_noise.resize(l1_prod.n_alt * spec_size);
     // Assume there is binning only across rows. From that determine
     // the number of rows of the binned detector image.
-    const int n_rows { binning_table.nBins() / ckd.n_detector_cols };
-    std::vector<double> rows(n_rows, 0.0);
-    for (int i {}; i < n_rows; ++i) {
+    std::vector<double> rows(ckd.n_detector_rows_binned, 0.0);
+    for (int i {}; i < ckd.n_detector_rows_binned; ++i) {
         const double cur_bin_size { static_cast<double>(
           binning_table.binSize(i * ckd.n_detector_cols)) };
         if (i == 0) {
@@ -236,60 +321,83 @@ auto mapFromDetector(const CKD& ckd,
     }
     std::vector<double> cols(ckd.n_detector_cols);
     std::iota(cols.begin(), cols.end(), 0.0);
-    const BSpline2D bspline_2d_image { b_spline_order, rows, cols, l1.image };
-    bspline_2d_image.eval(ckd.swath.row_map, ckd.swath.col_map, l1.spectra);
-    const BSpline2D bspline_2d_noise { b_spline_order, rows, cols, l1.stdev };
-    bspline_2d_noise.eval(
-      ckd.swath.row_map, ckd.swath.col_map, l1.spectra_stdev);
-    l1.image = std::vector<double> {};
-    l1.stdev = std::vector<double> {};
+#pragma omp parallel for
+    for (int i_alt = 0; i_alt < l1_prod.n_alt; ++i_alt) {
+        const BSpline2D bspline_2d_signal {
+            b_spline_order, rows, cols, &l1_prod.signal[i_alt * ckd.npix_binned]
+        };
+        bspline_2d_signal.eval(ckd.swath.row_map,
+                               ckd.swath.col_map,
+                               &l1_prod.spectra[i_alt * spec_size]);
+        const BSpline2D bspline_2d_noise {
+            b_spline_order, rows, cols, &l1_prod.noise[i_alt * ckd.npix_binned]
+        };
+        bspline_2d_noise.eval(ckd.swath.row_map,
+                              ckd.swath.col_map,
+                              &l1_prod.spectra_noise[i_alt * spec_size]);
+    }
+    l1_prod.signal = std::vector<double> {};
+    l1_prod.noise = std::vector<double> {};
+    l1_prod.wavelengths =
+      std::vector<std::vector<double>>(ckd.n_act, ckd.swath.wavelengths);
 }
 
-auto changeWavelengthGrid(const CKD& ckd, L1& l1) -> void
+auto changeWavelengthGrid(const CKD& ckd, L1& l1_prod) -> void
 {
     const int n_waves_in { static_cast<int>(ckd.swath.wavelengths.size()) };
-    std::vector<double> spectra_out(ckd.n_act * ckd.n_detector_cols);
-    std::vector<double> spectra_stdev_out(ckd.n_act * ckd.n_detector_cols);
-    for (int i_act {}; i_act < ckd.n_act; ++i_act) {
-        const std::vector<double> spectrum {
-            l1.spectra.begin() + i_act * n_waves_in,
-            l1.spectra.begin() + (i_act + 1) * n_waves_in
-        };
-        const CubicSpline spline { ckd.swath.wavelengths, spectrum };
-        for (int i {}; i < ckd.n_detector_cols; ++i) {
-            spectra_out[i_act * ckd.n_detector_cols + i] =
-              spline.eval(ckd.wave.wavelengths[i_act][i]);
+    std::vector<double> spectra_out(l1_prod.n_alt * ckd.n_act
+                                    * ckd.n_detector_cols);
+    std::vector<double> spectra_noise_out(spectra_out.size());
+#pragma omp parallel for
+    for (int i_alt = 0; i_alt < l1_prod.n_alt; ++i_alt) {
+        for (int i_act {}; i_act < ckd.n_act; ++i_act) {
+            const int idx_beg_in { (i_alt * ckd.n_act + i_act) * n_waves_in };
+            const int idx_beg_out { (i_alt * ckd.n_act + i_act)
+                                    * ckd.n_detector_cols };
+            const CubicSpline spline { ckd.swath.wavelengths,
+                                       { l1_prod.spectra.begin() + idx_beg_in,
+                                         l1_prod.spectra.begin() + idx_beg_in
+                                           + n_waves_in } };
+            for (int i {}; i < ckd.n_detector_cols; ++i) {
+                spectra_out[idx_beg_out + i] =
+                  spline.eval(ckd.wave.wavelengths[i_act][i]);
+            }
+            const CubicSpline spline_noise {
+                ckd.swath.wavelengths,
+                { l1_prod.spectra_noise.begin() + idx_beg_in,
+                  l1_prod.spectra_noise.begin() + idx_beg_in + n_waves_in }
+            };
+            for (int i {}; i < ckd.n_detector_cols; ++i) {
+                spectra_noise_out[idx_beg_out + i] =
+                  spline_noise.eval(ckd.wave.wavelengths[i_act][i]);
+            }
         }
     }
-    for (int i_act {}; i_act < ckd.n_act; ++i_act) {
-        const std::vector<double> spectrum {
-            l1.spectra_stdev.begin() + i_act * n_waves_in,
-            l1.spectra_stdev.begin() + (i_act + 1) * n_waves_in
-        };
-        const CubicSpline spline { ckd.swath.wavelengths, spectrum };
-        for (int i {}; i < ckd.n_detector_cols; ++i) {
-            spectra_stdev_out[i_act * ckd.n_detector_cols + i] =
-              spline.eval(ckd.wave.wavelengths[i_act][i]);
-        }
-    }
-    l1.spectra = std::move(spectra_out);
-    l1.spectra_stdev = std::move(spectra_stdev_out);
+    l1_prod.spectra = std::move(spectra_out);
+    l1_prod.spectra_noise = std::move(spectra_noise_out);
+    l1_prod.wavelengths = ckd.wave.wavelengths;
 }
 
-auto radiometric(const CKD& ckd, const bool enabled, L1& l1) -> void
+auto radiometric(const CKD& ckd, const bool enabled, L1& l1_prod) -> void
 {
     // Radiometric calibration is the last step to get to L1B
-    l1.level = ProcLevel::l1b;
+    l1_prod.level = ProcLevel::l1b;
     if (!enabled) {
         return;
     }
-    const double exposure_time_inv { 1.0 / l1.exposure_time };
-    for (int i_act {}; i_act < ckd.n_act; ++i_act) {
-        for (int i {}; i < ckd.n_detector_cols; ++i) {
-            l1.spectra[i_act * ckd.n_detector_cols + i] *=
-              ckd.rad.rad[i_act][i] * exposure_time_inv;
-            l1.spectra_stdev[i_act * ckd.n_detector_cols + i] *=
-              ckd.rad.rad[i_act][i] * exposure_time_inv;
+    const double exposure_time_inv { 1.0 / l1_prod.exposure_time };
+#pragma omp parallel for
+    for (int i_alt = 0; i_alt < l1_prod.n_alt; ++i_alt) {
+        for (int i_act {}; i_act < ckd.n_act; ++i_act) {
+            for (int i {}; i < ckd.n_detector_cols; ++i) {
+                const int idx {
+                    (i_alt * ckd.n_act + i_act) * ckd.n_detector_cols + i
+                };
+                l1_prod.spectra[idx] *=
+                  ckd.rad.rad[i_act][i] * exposure_time_inv;
+                l1_prod.spectra_noise[idx] *=
+                  ckd.rad.rad[i_act][i] * exposure_time_inv;
+            }
         }
     }
 }

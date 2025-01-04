@@ -13,7 +13,7 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 from copy import deepcopy
 
 from teds.lib.libNumTools import get_isrf
-from teds.lib.libGM import vincenty
+from teds.gm import vincenty
 
 lat_lon_bb = {}  # (lon_low, lon_high, lat_low, lat_high)
 lat_lon_bb['Matimba'] = (27.4, 27.8, -23.85, -23.5)

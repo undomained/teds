@@ -1,67 +1,3 @@
-latitude:
-  name: lat
-  long_name: latitude
-  units: degree
-  valid_min: -90.0
-  valid_max: 90.0
-  FillValue: -32767
-
-longitude:
-  name: lon
-  long_name: longitude 
-  units: degree
-  valid_min: -180.0
-  valid_max: 180.0
-  FillValue: -32767
-
-# GM module
-solarzenithangle:
-  name: sza
-  long_name: solar zenith angle
-  units: degree
-  valid_min: 0.0
-  valid_max: 90.0
-  FillValue: -32767
-
-solarazimuthangle:
-  name: saa
-  long_name: solar azimuth angle
-  units: degree
-  valid_min: -180.0
-  valid_max: +360.0
-  FillValue: -32767
-
-viewingzenithangle:
-  name: vza
-  long_name: viewing zenith angle
-  units: degree
-  valid_min: 0.0
-  valid_max: 90.0
-  FillValue: -32767
-
-viewingazimuthangle:
-  name: vaa
-  long_name: viewing azimuth angle
-  units: degree
-  valid_min: -180.0
-  valid_max: 360.0
-  FillValue: -32767
-
-sat_altitude:
-  name: satellite_altitude
-  longname: satellite altitude
-  units: metre
-  valid_min: 0
-  valid_max: 2147483647
-  FillValue: -32767
-
-julday:
-    name: julian_day
-    longname: Julian day in dataset year
-    valid_min: 0
-    valid_max: 367
-    FillValue: -32767
-
 # SGM: Radiances
 
 wavelength:
@@ -112,11 +48,11 @@ levelheight:
   valid_min: 0.
   valid_max: 1.E+5
   FillValue: -32767
-  
+
 xpos:
   name: xpos
   long_name: 'horizontal x position'
-  units: 'm'  
+  units: 'm'
   valid_min: -30000.
   valid_max: +30000.
   FillValue: -32767
@@ -124,7 +60,7 @@ xpos:
 ypos:
   name: ypos
   long_name: 'horizontal y position'
-  units: 'm'  
+  units: 'm'
   valid_min: -30000.
   valid_max: +30000.
   FillValue: -32767
@@ -297,7 +233,7 @@ aqui_time:
   FillValue: -32767
 
 process_flag:
-  name: processing flag 
+  name: processing flag
   long_name: processing flag to indicate processor anormalies
   units: '1'
   valid_min: 0
@@ -308,7 +244,7 @@ maxiterations:
   name: max iter
   long_name: number of iterations
   units: '1'
-  valid_min: 0 
+  valid_min: 0
   valid_max: 100
   FillValue: -32767
 
@@ -316,7 +252,7 @@ spectralchi2 :
   name: chi2
   long_name: 'spectral chi square of the fit'
   units: '1'
-  valid_min: 0 
+  valid_min: 0
   valid_max: 100.
   FillValue: -32767
 
@@ -324,7 +260,7 @@ spectralshift :
   name: spectral shift
   long_name: 'constant shift of the spectral calibration'
   units: 'nm'
-  valid_min: 0 
+  valid_min: 0
   valid_max: 10.
   FillValue: -32767
 
@@ -332,7 +268,7 @@ spectralsqueeze :
   name: spectral squeeze
   long_name: 'squeeze of the spectral calibration'
   units: '1'
-  valid_min: 0 
+  valid_min: 0
   valid_max: 10.
   FillValue: -32767
 
@@ -370,7 +306,7 @@ apriori_profileCO2:
 
 precisionXCO2:
   name: precision XCO2
-  long_name: 'CO2 precision of dry air column mixing ratio XCO2'  
+  long_name: 'CO2 precision of dry air column mixing ratio XCO2'
   units: ppmv
   valid_min: 0.
   valid_max: 300.
@@ -378,7 +314,7 @@ precisionXCO2:
 
 qa_valueXCO2:
   name: qa value XCO2
-  long_name: 'CO2 quality value of dry air column mixing ratio XCO2'  
+  long_name: 'CO2 quality value of dry air column mixing ratio XCO2'
   units: ppmv
   valid_min: 0.
   valid_max: 101.
@@ -410,7 +346,7 @@ apriori_profileCH4:
 
 precisionXCH4:
   name: precision XCH4
-  long_name: 'CH4 precision of dry air column mixing ratio XCH4'  
+  long_name: 'CH4 precision of dry air column mixing ratio XCH4'
   units: ppbv
   valid_min: 0.
   valid_max: 180.
@@ -418,7 +354,7 @@ precisionXCH4:
 
 qa_valueXCH4:
   name: qa value XCH4
-  long_name: 'CH4 quality value of dry air column mixing ratio XCH4'  
+  long_name: 'CH4 quality value of dry air column mixing ratio XCH4'
   units: ppbv
   valid_min: 0.
   valid_max: 101.
@@ -450,7 +386,7 @@ apriori_profileH2O:
 
 precisionXH2O:
   name: precision XH2O
-  long_name: 'H2O precision of dry air column mixing ratio XH2O'  
+  long_name: 'H2O precision of dry air column mixing ratio XH2O'
   units: ppmv
   valid_min: 0.
   valid_max: 1.E+03
@@ -458,7 +394,7 @@ precisionXH2O:
 
 accuracyXH2O:
   name: accuracy XH2O
-  long_name: 'H2O accuracy of dry air column mixing ratio XH2O'  
+  long_name: 'H2O accuracy of dry air column mixing ratio XH2O'
   units: ppmv
   valid_min: 0.
   valid_max: 1.E+03
@@ -466,7 +402,7 @@ accuracyXH2O:
 
 qa_valueXH2O:
   name: qa value XH2O
-  long_name: 'H2O quality value of dry air column mixing ratio XH2O'  
+  long_name: 'H2O quality value of dry air column mixing ratio XH2O'
   units: ppmv
   valid_min: 0.
   valid_max: 101.
@@ -498,7 +434,7 @@ precisionproxyXCO2:
 
 accuracyproxyXCO2:
   name: 'accuracy XCO2 proxy'
-  long_name: 'CO2 accuracy of dry air column mixing ratio XCO2'  
+  long_name: 'CO2 accuracy of dry air column mixing ratio XCO2'
   units: ppmv
   valid_min: 0.
   valid_max: 300.
@@ -506,7 +442,7 @@ accuracyproxyXCO2:
 
 qa_valueproxyXCO2:
   name: qa value XCO2
-  long_name: 'proxy XCO2 quality value of dry air column mixing ratio XCO2'  
+  long_name: 'proxy XCO2 quality value of dry air column mixing ratio XCO2'
   units: ppmv
   valid_min: 0.
   valid_max: 101.
@@ -530,7 +466,7 @@ precisionproxyXCH4:
 
 accuracyproxyXCH4:
   name: 'accuracy XCH4 proxy'
-  long_name: 'CH4 accuracy of dry air column mixing ratio XCH4'  
+  long_name: 'CH4 accuracy of dry air column mixing ratio XCH4'
   units: ppbv
   valid_min: 0.
   valid_max: 180.
@@ -538,7 +474,7 @@ accuracyproxyXCH4:
 
 qa_valueproxyXCH4:
   name: qa value XCH4
-  long_name: 'proxy XCH4 quality value of dry air column mixing ratio'  
+  long_name: 'proxy XCH4 quality value of dry air column mixing ratio'
   units: ppmv
   valid_min: 0.
   valid_max: 101.
@@ -551,7 +487,7 @@ l2wavelength:
   valid_min: 0.
   valid_max: 4000.
   FillValue: -32767
-  
+
 l2measurement:
   name: measurement
   long_name: 'spectral radiance measurements'

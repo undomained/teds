@@ -70,6 +70,13 @@ auto dgemm(const char trans_a,
            const char trans_b,
            const int n_rows_a,
            const int n_cols_a,
+           const double* a,
+           const std::vector<double>& b,
+           std::vector<double>& c) -> void;
+auto dgemm(const char trans_a,
+           const char trans_b,
+           const int n_rows_a,
+           const int n_cols_a,
            const std::vector<double>& a,
            const std::vector<double>& b,
            std::vector<double>& c) -> void;

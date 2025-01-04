@@ -1,14 +1,11 @@
 # This source code is licensed under the 3-clause BSD license found in
 # the LICENSE file in the root directory of this project.
-"""Types and other constants used in the L1B processor.
-
-Much of this is also used by the instrument model (IM).
-
-"""
+"""Types used by various TEDS modules."""
 from enum import auto
 from enum import IntEnum
 from typing import TypedDict
 
+from pyquaternion import Quaternion
 import numpy as np
 import numpy.typing as npt
 
@@ -147,6 +144,19 @@ class CKD(TypedDict, total=False):
     radiometric: CKDRadiometric
 
 
+class Navigation(TypedDict):
+    """Viewing and solar geometry describing a slice or full orbit."""
+    # Timestamps of orbit positions and attitude quaternions, in
+    # seconds from beginning of day
+    time: npt.NDArray[np.float64]
+    # Orbit positions
+    orb_pos: npt.NDArray[np.float64]
+    # Attitude quaternions
+    att_quat: npt.NDArray[Quaternion]
+    # Satellite altitude, m
+    altitude: npt.NDArray[np.float64]
+
+
 class Geometry(TypedDict):
     """Viewing and solar geometry describing a slice or full orbit."""
     latitude: npt.NDArray[np.float64]
@@ -170,8 +180,7 @@ class L1(TypedDict, total=False):
     proc_level: ProcLevel
 
     # Signal and noise of each detector pixel
-    image_i32: npt.NDArray[np.int32]
-    image: npt.NDArray[np.float64]
+    signal: npt.NDArray[np.float64]
     noise: npt.NDArray[np.float64]
     # Once spectra have been extracted from the detector, the signal
     # and noise arrays are discarded and we work with wavelengths and
@@ -183,8 +192,12 @@ class L1(TypedDict, total=False):
 
     # Detector and other settings
     timestamps: npt.NDArray[np.float64]
+    tai_seconds: npt.NDArray[np.uint]
+    tai_subsec: npt.NDArray[np.float64]
     binning_table_ids: npt.NDArray[np.int32]
     coad_factors: npt.NDArray[np.int32]
     exptimes: npt.NDArray[np.float64]
 
+    orb_pos: npt.NDArray[np.float64]
+    att_quat: npt.NDArray[np.float64]
     geometry: Geometry

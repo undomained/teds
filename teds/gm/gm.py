@@ -1,483 +1,637 @@
-# =============================================================================
-# geometry module for different E2E simulator profiles
-#
-#     This source code is licensed under the 3-clause BSD license found in
-#     the LICENSE file in the root directory of this project.
-# =============================================================================
-import numpy as np
-import sys
-import os
-import netCDF4 as nc
-import yaml
-from teds.lib.libWrite import writevariablefromname
-from teds.lib.libOrbSim import Sensor, Satellite
-import teds.lib.data_netcdf.data_netcdf as dn
-import teds.lib.lib_utils as Utils
+# This source code is licensed under the 3-clause BSD license found in
+# the LICENSE file in the root directory of this project.
+"""Geometry module.
+
+Produces navigation data and geometry (viewing and solar geometries)
+from orbit specification by the user and line-of-sight vectors from
+the CKD.
+
+"""
+from astropy import units
+from astropy.time import Time
+from netCDF4 import Dataset
+from pathlib import Path
+from pyquaternion import Quaternion
+from scipy.interpolate import CubicSpline
 import datetime
+import numpy as np
+import numpy.typing as npt
 
-def check_input(logger, nact, check_list, config, place):
+from .satellite import Satellite
+from .sensor import Sensor
+from teds import log
+from teds.l1al1b import geolocate
+from teds.l1al1b import solar_model
+from teds.l1al1b.python.io import print_heading
+from teds.l1al1b.python.io import print_system_info
+from teds.l1al1b.python.io import read_ckd
+from teds.l1al1b.python.types import Geometry
+from teds.l1al1b.python.types import L1
+from teds.l1al1b.python.types import Navigation
+from teds.lib.io import merge_config_with_default
+
+
+def check_config(config: dict) -> None:
+    """Check consistency of some of the configuration settings.
+
+    Parameters
+    ----------
+    config_file
+        Path of YAML configuration file.
+
     """
-        Check the input for simple profiles (single swath and individual spectra).
-        Length should be equal to nact.
+    if config['profile'] not in ('individual_spectra', 'orbit'):
+        log.error(f'unknown geometry profile: {config["profile"]}')
+        exit(1)
+    ckd_path = Path(config['io_files']['ckd'])
+    if not ckd_path.is_file():
+        log.error(f'{ckd_path} not found')
+        exit(1)
+
+
+def get_individual_spectra(config: dict) -> Geometry:
+    """Generate GM output for individual spectra.
+
+    First check consistencies of 'individual_spectra' input. Here we
+    use a 2-dimensional (nalt, nact) data structure in an artificial
+    way.
+
+    Parameters
+    ----------
+    config
+        Configuration dictionary
+
+    Returns
+    -------
+        Viewing and solar geometries.
+
     """
-
-    for view in check_list:
-
+    nalt = 1
+    nact = len(config['scene_spec']['sza'])
+    log.info(f'Generating geometry for {nact} across track locations')
+    # Check_input
+    for view in ('sza', 'saa', 'vza', 'vaa'):
         if nact != len(config['scene_spec'][view]):
-#            sys.exit(f"input error in gm for {view} nact ({nact}) not equal to {view} length ({len(config['scene_spec'][view])}), {place}")
-            error_string = f"input error in gm for {view} nact ({nact}) not equal to {view} length ({len(config['scene_spec'][view])}), {place}.\nCan not continue."
-            logger.error(error_string)
-            sys.exit(255)
-
-def get_individual_spectra(logger, config):
-    """
-        Generate the gm output for individual spectra
-        first check consistencies of 'indivual_spectra' input.
-        Here we use the 2-dimensional (nalt, nact) data structure in an artificial way
-    
-        return vza : viewing zentih angle; numpy array
-               vaa : viewing azimuth angle; numpy array
-               sza : solar zenith angle; numpy array
-               saa : solar azimuth angle; numpy array
-               lat_grid : pixel latitude grid; numpy array
-               lon_grid: pixel_longitude grid, numpy array
-    """
-
-    nn = len(config['scene_spec']['sza'])
-
-    check_input(logger, nn, ['sza','saa','vza','vaa'], config, "code 1")
-
-    # here we use the 2-dimensional data structure in an artificial way
-    nact = nn
-    nalt = 1
-
-    lon_grid = np.empty([nalt, nact])
-    lat_grid = np.empty([nalt, nact])
-    sza = np.empty([nalt, nact])
-    saa = np.empty([nalt, nact])
-    vza = np.empty([nalt, nact])
-    vaa = np.empty([nalt, nact])
-
-    lat_grid[0, :] = np.nan
-    lon_grid[0, :] = np.nan
-
-    nact = len(lat_grid[0])
-    nalt = len(lat_grid)
-
-    sza[0, :] = config['scene_spec']['sza'][:]
-    saa[0, :] = config['scene_spec']['saa'][:]
-    vza[0, :] = config['scene_spec']['vza'][:]
-    vaa[0, :] = config['scene_spec']['vaa'][:]
-
-    #give lon_grid and lat_grid some values such that subsequent modules do not crash
-    lon_grid[0,:]  = 10.
-    lat_grid[0,:]  = 50 + 0.0025*np.arange(nact)
-
-    return vza, vaa, sza, saa, lat_grid, lon_grid
-
-# TODO get_single_swath and get_indivudual_spectra very much the same, Can code be merged?
-def get_single_swath(logger, config):
-    """
-        Generate the gm output for single swath
-
-        return vza : viewing zentih angle; numpy array
-               vaa : viewing azimuth angle; numpy array
-               sza : solar zenith angle; numpy array
-               saa : solar azimuth angle; numpy array
-               lat_grid : pixel latitude grid; numpy array
-               lon_grid: pixel_longitude grid, numpy array
-    """
-
-    nact = config['field_of_regard']['nact']       
-    nalt = 1
-
-    check_input(logger, nact, ['sza','saa','vza','vaa','albedo'], "code 2")
-
-    lon_grid = np.empty([nalt, nact])
-    lat_grid = np.empty([nalt, nact])
-    sza = np.empty([nalt, nact])
-    saa = np.empty([nalt, nact])
-    vza = np.empty([nalt, nact])
-    vaa = np.empty([nalt, nact])
-
-    lat_grid[0][:] = np.nan
-    lon_grid[0][:] = np.nan
-
-    sza[0, :] = config['scene_spec']['sza'][:]
-    saa[0, :] = config['scene_spec']['saa'][:]
-    vza[0, :] = config['scene_spec']['vza'][:]
-    vaa[0, :] = config['scene_spec']['vaa'][:]
-
-    return vza, vaa, sza, saa, lat_grid, lon_grid
-
-def get_orbit(logger, config):
-    """
-        Generate the gm output for an orbit
-        configure satellite and propagate orbit
-
-        return vza : viewing zentih angle; numpy array
-               vaa : viewing azimuth angle; numpy array
-               sza : solar zenith angle; numpy array
-               saa : solar azimuth angle; numpy array
-               lat_grid : pixel latitude grid; numpy array
-               lon_grid: pixel_longitude grid, numpy array
-    """
-
-    sat = orbit_simulation(logger, config)
-
-    # configure sensors and compute ground pixel information
-    sensors = sensor_simulation(logger, config, sat)
-
-    vza = sensors['gpxs'][0]['vza']
-    vaa = sensors['gpxs'][0]['vaa']
-    sza = sensors['gpxs'][0]['sza']
-    saa = sensors['gpxs'][0]['saa']
-    lat_grid = sensors['gpxs'][0]['lat']
-    lon_grid = sensors['gpxs'][0]['lon']
-
-    return vza, vaa, sza, saa, lat_grid, lon_grid
-
-def get_S2_microHH(logger, config):
-    """
-        Generate the gm output for S2 microHH
-
-        return vza : viewing zentih angle; numpy array
-               vaa : viewing azimuth angle; numpy array
-               sza : solar zenith angle; numpy array
-               saa : solar azimuth angle; numpy array
-               lat_grid : pixel latitude grid; numpy array
-               lon_grid: pixel_longitude grid, numpy array
-    """
-    from teds.lib import libGM
-    from teds.lib import constants
-    nact = config["field_of_regard"]["nact"]
-    nalt = config["field_of_regard"]["nalt"]
-
-    vza = np.empty([nalt, nact])
-    vaa = np.empty([nalt, nact])
-
-    # across track angles, assume equi-distant sampling
-    alpha_act_min = config["field_of_regard"]["alpha_act_min"]
-    alpha_act_max = config["field_of_regard"]["alpha_act_max"]
-    delta_alpha = (alpha_act_max - alpha_act_min) / (nact - 1)
-
-    alpha_act = (delta_alpha * np.arange(nact) + alpha_act_min) / 180.0 * np.pi
-
-    # extract time and location data from YAML settings
-    when = [
-        config["time"]["year"],
-        config["time"]["month"],
-        config["time"]["day"],
-        config["time"]["hour"],
-        config["time"]["minute"],
-        config["time"]["timezone"],
-    ]
-    lat_ref = config["geometry"]["lat_initial"]
-    lon_ref = config["geometry"]["lon_initial"]
-
-    # geocentric radius as a function of latitude for WGS84, see https://en.wikipedia.org/wiki/Earth_radius
-    coslat = np.cos(lat_ref / 180.0 * np.pi)
-    sinlat = np.sin(lat_ref / 180.0 * np.pi)
-
-    Rearth = np.sqrt(
-        ((constants.a_axis_earth**2 * coslat) ** 2 + (constants.b_axis_earth**2 * sinlat) ** 2)
-        / ((constants.a_axis_earth * coslat) ** 2 + (constants.b_axis_earth * sinlat) ** 2)
-    )
-
-    # spatial sampling in ACT direction, see atbd for defintion of phi
-    bcoeff = (
-        -2
-        * (Rearth + config["satellite"]["sat_height"])
-        * np.cos(alpha_act + config["satellite"]["alpha_roll"] / 180.0 * np.pi)
-    )
-    ccoeff = (Rearth + config["satellite"]["sat_height"]) ** 2 - Rearth**2
-    Lalpha = -0.5 * (bcoeff + np.sqrt(bcoeff**2 - 4 * ccoeff))
-    cosphi = (Rearth**2 + (Rearth + config["satellite"]["sat_height"]) ** 2 - Lalpha**2) / (
-        2.0 * Rearth * (Rearth + config["satellite"]["sat_height"])
-    )
-    phi = np.arccos(cosphi)
-    sact = phi * Rearth
-    # convention: negative distances to the west of the subsatellite point, positive distances to the east
-    idx = (alpha_act + config["satellite"]["alpha_roll"] / 180.0 * np.pi) < 0.0
-    sact[idx] = -sact[idx]
-
-    # calculate viewing zenith and viewing azimuth angle. Here we assume, that these angles are the same for each scanline
-    vza_tmp = (alpha_act) / np.pi * 180.0 + config["satellite"]["alpha_roll"]
-    idx = vza_tmp < 0.0
-    vza_tmp[idx] = -vza_tmp[idx]
-    for ialt in range(nalt):
-        vza[ialt, :] = vza_tmp
-    # the longitude coordinate line and a swath perpendicular to this. So all points to the west of
-    # the subsatellite have an azimuth angle of -90 degree, for points all to Earst it is 90 degree.
-    vaa_tmp = np.zeros(alpha_act.size) + 90.0  # true for all LOS with sact > 0
-    vaa_tmp[idx] = 270.0
-    for ialt in range(nalt):
-        vaa[ialt, :] = vaa_tmp
-
-    # Spatial sampling in ALT direction
-    # angular velocity
-    radicand = constants.grav * constants.mearth / (Rearth + config["satellite"]["sat_height"]) ** 3
-    omega_sat = np.sqrt(radicand)
-    # satellite ground speed, term cos(phi) need as ground speed varies with swath position
-    v_ground = omega_sat * Rearth * cosphi
-
-    # relative spatial sampling distance
-    salt = v_ground * config["time"]["time_incremental"]
-    # spatial grid
-    spat_grid = [salt, sact]
-    # transformation to a (lat,lon) grid
-    sza, saa, lat_grid, lon_grid = libGM.trans_lat_lon(lat_ref, lon_ref, when, spat_grid, nalt, nact)
-
-    return vza, vaa, sza, saa, lat_grid, lon_grid
-
-def get_julday(config, timedelta):
-    """Compute Julian day from config and time delta w.r.t. start of orbit
-    year"""
-    basedelta = config['orbit']['epoch'] - datetime.datetime(
-        config['orbit']['epoch'].year, 1, 1, 0, 0, 0
-    )
-    td_flat = timedelta.reshape(-1)
-    out = np.zeros_like(td_flat)
-    for i, d in enumerate(td_flat):
-        out[i] = (basedelta+datetime.timedelta(seconds=d)).total_seconds()
-    return out.reshape(timedelta.shape)/86400
-
-def gm_output(logger, config, vza, vaa, sza, saa, lat_grid, lon_grid):
-    """
-       Write gm oputput to filename (set in config file) as nc file.
-    """
-    
-    filename = config['io_files']['output_gm']
-    
-    print(filename)
-    # Check if directory exists, otherwise create:
-    out_dir = os.path.split(filename)[0]
-    if not os.path.exists(out_dir):
-        os.makedirs(out_dir)
-
-    title = 'geometry module output'
-
-    nact = len(lat_grid[0,:])
-    nalt = len(lat_grid[:,0])
-    output = nc.Dataset(filename, mode='w')
-    output.title = 'Tango Carbon E2ES GM output'
-#    output.title = title
-    output.createDimension('across_track_sample', nact)    # across track axis
-    output.createDimension('along_track_sample', nalt)     # along track axis
-    # dimensions
-    dims = ('along_track_sample', 'across_track_sample')
-    _ = writevariablefromname(output, "solarzenithangle", dims, sza)
-    _ = writevariablefromname(output, "solarazimuthangle", dims, saa)
-    _ = writevariablefromname(output, "viewingzenithangle", dims, vza)
-    _ = writevariablefromname(output, "viewingazimuthangle", dims, vaa)
-    _ = writevariablefromname(output, "latitude", dims, lat_grid)
-    _ = writevariablefromname(output, "longitude", dims, lon_grid)
-
-    delta = config['orbit']['propagation_duration']*3600/nalt
-    julday = np.outer(
-        get_julday(
-            config,
-            np.arange(nalt)*delta
-        ),
-        np.ones(nact)
-    )
-    _ = writevariablefromname(output, "julday", dims, julday)
-    _ = writevariablefromname(
-        output,
-        "sat_altitude",
-        dims,
-        config['orbit']['sat_height']*1000*np.ones((nalt, nact))
-    )
-
-    output.close()
-
-    
-def gm_output_via_object(logger, config, vza, vaa, sza, saa, lat_grid, lon_grid):
-    """
-       Write gm oputput to filename (set in config file) as nc file.
-       Using the data_netCDF class
-    """
-
-    filename = config['gm_file']
-    # Check if directory exists, otherwise create:
-    out_dir = os.path.split(filename)[0]
-    if not os.path.exists(out_dir):
-        os.makedirs(out_dir)
-
-    title = config['gm_title']
-
-    nact = len(lat_grid[0,:])
-    nalt = len(lat_grid[:,0])
-
-    gm_data = dn.DataNetCDF(filename, title=title)
-    gm_data.add('E2E_configuration', value=str(config), kind='attribute')
-
-    dims = ('bins_along_track', 'bins_across_track')
-    gm_data.add(name=dims[0], value=nalt, kind='dimension')    # along track axis
-    gm_data.add(name=dims[1], value=nact, kind='dimension')     # across track axis
-    gm_data.add(name="solarzenithangle", dimensions=dims, value=sza)
-    gm_data.add(name="solarazimuthangle", dimensions=dims, value=saa)
-    gm_data.add(name="viewingzenithangle", dimensions=dims, value=vza)
-    gm_data.add(name="viewingazimuthangle", dimensions=dims, value=vaa)
-    gm_data.add(name="latitude", dimensions=dims, value=lat_grid)
-    gm_data.add(name="longitude", dimensions=dims, value=lon_grid)
-    gm_data.write()
-
-
-def orbit_simulation(logger, config):
-    """
-        define the orbit
-    """
-    sat = Satellite(logger, config['orbit'])
-
-    # propagate the orbit
-    logger.info('propagate orbit...')
-    dt_start = config['orbit']['epoch']
-    dt_end = dt_start + datetime.timedelta(hours=config['orbit']['propagation_duration'])
-    # compute the satellite position for every 10 seconds
-    satpos = sat.compute_position(dt_start, dt_end, dt_interval=10.0)
-
-    return {'sat': sat, 'sat_pos': satpos, 'dt_start': dt_start, 'dt_end': dt_end}
-
-
-def sensor_simulation(logger, config, sat):
-    """
-        propogate sensors
-    """
-    gpxs = []
-    sensor_config = []
-    pitch = []
-    roll = []
-    yaw = []
-
-    for key in config['sensors'].keys():
-
-        logger.info('defining sensor ' + key)
-
-        # sensor config wrt satellite reference frame
-        sensor_half_swath_deg = np.rad2deg(
-            np.arctan(0.5 * config['sensors'][key]['swath_width'] / config['orbit']['sat_height']))
-        sensor_interval_deg = 2 * sensor_half_swath_deg / config['sensors'][key]['n_ground_pixels']
-
-        # across track angle range and interval (homogenous sampling assumed)
-        act_angle_range = [-sensor_half_swath_deg, sensor_half_swath_deg, sensor_interval_deg]
-        thetas = np.arange(act_angle_range[0]+0.5*sensor_interval_deg, act_angle_range[1], act_angle_range[2])
-
-        # along track angle range - commented out because unused
-        # alt_angle_range = [-np.rad2deg(np.arctan(0.5 * config['sensors'][key]['alt_sampling']/config['orbit']['sat_height'])),
-        #                   np.rad2deg(np.arctan(0.5 * config['sensors'][key]['alt_sampling']/config['orbit']['sat_height']))]
-
-        # time range of observations and interval
-        dt_range = [sat['dt_start'] + datetime.timedelta(minutes=config['sensors'][key]['start_time']),
-                    sat['dt_start'] + datetime.timedelta(minutes=config['sensors'][key]['end_time']),
-                    config['sensors'][key]['integration_time']]
-
-        # make and propage the sensor
-        sensor = Sensor(logger, act_angle_range[0], act_angle_range[1], act_angle_range[2])
-        sensor.compute_groundpoints(sat['sat_pos'], pitch=config['sensors'][key]['pitch'],
-                                    yaw=config['sensors'][key]['yaw'], roll=config['sensors'][key]['roll'])
-
-        logger.info('compute the ground pixels (gpx)')
-        gpx = sensor.get_groundpoints(dt_range[0], dt_range[1], dt_range[2], thetas)
-
-        # collect the output data
-        sensor_config.append(config['sensors'][key])
-        sensor_config[-1]['name'] = key
-
-        gpxs.append(gpx)
-
-        pitch.append(config['sensors'][key]['pitch'])
-        yaw.append(config['sensors'][key]['yaw'])
-        roll.append(config['sensors'][key]['roll'])
-
-    return {'gpxs': gpxs, 'pitch': np.array(pitch), 'roll': np.array(roll), 'yaw': np.array(yaw)}
-
-
-def interpolate_pitch(logger, sensors, pitch, i_time):
-    """
-        What does this do exactly?
-    """
-    # assumes that ordering of sensors['pitch'] is either monotonically increasing or monotonically decreasing
-    sign = np.sign(sensors['pitch'][1] - sensors['pitch'][0])
-    # note that it will extrapolate by using the edge values
-    s_f = np.interp(sign * pitch, sign * sensors['pitch'][:], np.arange(sensors['pitch'].shape[0], dtype=float))
-
-    idx = [np.floor(s_f).astype(int), np.ceil(s_f).astype(int)]
-    w = [1 - s_f + idx[0], s_f - idx[0]]
-
-    gpx = {}
-
-    # interpolate 3D array
-    keys = ['p']
-    for key in keys:
-        gpx[key] = w[0] * sensors['gpxs'][idx[0]][key][i_time, :, :] + w[1] * sensors['gpxs'][idx[1]][key][i_time, :, :]
-
-    # interpolate 2D array
-    keys = ['lat', 'lon', 'height',  'vza', 'vaa', 'sza', 'saa']
-    for key in keys:
-        gpx[key] = w[0] * sensors['gpxs'][idx[0]][key][i_time, :] + w[1] * sensors['gpxs'][idx[1]][key][i_time, :]
-
-    # time sample
-    keys = ['sat_p', 'sat_lat', 'sat_lon', 'sat_height', 'seconds_from_epoch']
-    for key in keys:
-        gpx[key] = sensors['gpxs'][idx[0]][key][i_time]
-
-    # copy
-    keys = ['thetas', 'start_time', 'end_time', 'epoch']
-    for key in keys:
-        gpx[key] = sensors['gpxs'][idx[0]][key]
-
-    return gpx
-
-
-def geometry_module(config, logger=None):
-    """
-    Geometry module to specify geometry.
+            log.error(f"input error in gm for {view} nact ({nact}) not equal "
+                      f"to {view} length ({len(config['scene_spec'][view])}).")
+            exit(1)
+    # Here we use the 2-dimensional data structure in an artificial way
+    geometry: Geometry = {
+        'latitude': np.empty([nalt, nact]),
+        'longitude': np.empty([nalt, nact]),
+        'height': np.zeros([nalt, nact]),
+        'sza': np.empty([nalt, nact]),
+        'saa': np.empty([nalt, nact]),
+        'vza': np.empty([nalt, nact]),
+        'vaa': np.empty([nalt, nact]),
+    }
+    # Give lon_grid and lat_grid some values such that subsequent
+    # modules do not crash.
+    geometry['longitude'][0, :] = 10.
+    geometry['latitude'][0, :] = 50 + 0.0025 * np.arange(nact)
+    geometry['sza'][0, :] = config['scene_spec']['sza']
+    geometry['saa'][0, :] = config['scene_spec']['saa']
+    geometry['vza'][0, :] = config['scene_spec']['vza']
+    geometry['vaa'][0, :] = config['scene_spec']['vaa']
+    return geometry
+
+
+def gen_orbit_timestamps(dt_begin: datetime.datetime,
+                         duration: float) -> npt.NDArray[np.datetime64]:
+    """Generate orbit timestamps.
+
+    Parameters
+    ----------
+    datetime_begin
+        Datetime of the first orbit position
+    duration
+        orbit duration in hours
+
+    Returns
+    -------
+        List of orbit timestamps.
 
     """
+    dt_end = dt_begin + datetime.timedelta(hours=duration)
+    dt_interval = 10.0
+    return np.arange(dt_begin, dt_end, datetime.timedelta(seconds=dt_interval))
 
-    # TODO: dict? they are numpy arays. Toch?
-    # the gm output is orginazed in dictionaries of the format dic[nalt, nact]
 
-    if not logger:
-        logger = Utils.get_logger()
-    if config['profile'] == "individual_spectra":
+def gen_image_timestamps(orbit_start: datetime.datetime,
+                         exposure_time_beg: float,
+                         exposure_time_end: float,
+                         interval: float) -> L1:
+    """Generate image timestamps.
 
-        vza, vaa, sza, saa, lat_grid, lon_grid = get_individual_spectra(logger, config)
+    Parameters
+    ----------
+    orbit start
+        Datetime of the beginning of orbit.
+    exposure_time_beg
+        Time of first detector exposure since the beginning of orbit,
+        in minutes.
+    exposure_time_end
+        Time of last detector exposure since the beginning of orbit,
+        in minutes.
+    interval
+        Exposure time in seconds.
 
-    elif (config['profile'] == "single_swath"):
+    Returns
+    -------
+        L1 product which is mostly empty but contains number of TAI
+        seconds since the beginning of TAI epoch (split into whole and
+        fractional parts) and image time in units of seconds since the
+        beginning of day.
 
-        vza, vaa, sza, saa, lat_grid, lon_grid = get_single_swath(logger, config)
-    
-    elif (config['profile'] == "orbit"):
-        # configure satellite and propagate orbit
-        vza, vaa, sza, saa, lat_grid, lon_grid = get_orbit(logger, config)
+    """
+    n_time = int(60 * (exposure_time_end - exposure_time_beg) / interval)
+    # L1 products, only used for storing the detector image times
+    l1: L1 = {}
+    l1['tai_seconds'] = np.empty(n_time, dtype=np.uint32)
+    l1['tai_subsec'] = np.empty(n_time)
+    l1['timestamps'] = np.empty(n_time, dtype=np.float64)
+    exposure_tai_start = (Time(orbit_start, scale='tai')
+                          + datetime.timedelta(minutes=exposure_time_beg)
+                          - Time('1958-01-01', scale='tai'))
+    day_tai_start = (Time(datetime.datetime(orbit_start.year,
+                                            orbit_start.month,
+                                            orbit_start.day), scale='tai')
+                     - Time('1958-01-01', scale='tai'))
+    for i in range(n_time):
+        tai_seconds = (exposure_tai_start
+                       + datetime.timedelta(seconds=i*interval)).to(units.s)
+        l1['tai_seconds'][i] = np.uint(tai_seconds)
+        l1['tai_subsec'][i] = np.float128(tai_seconds) % 1
+        l1['timestamps'][i] = (
+            np.float64((tai_seconds - day_tai_start).to(units.s)))
+    return l1
 
+
+def generate_attitude_quaternions(
+        config: dict,
+        lat_deg: npt.NDArray[np.float64],
+        lon_deg: npt.NDArray[np.float64],
+        vel: npt.NDArray[np.float64]) -> npt.NDArray[Quaternion]:
+    """Generate nominal attitude quaternions.
+
+    The quaternions correspond to a rotation of the nadir
+    line-of-sight (LOS) vector from the spacecraft (SC) reference
+    frame to the Earth-centered Earth-fixed (ECEF) frame. The strategy
+    is to first find the ECEF-to-SC quaternion, which is the other way
+    around because it is easier, and then conjugate that.
+
+    Find first the rotation that aligns the z-axes and then the
+    rotation that aligns the x-axes. Rotation to align one vector with
+    another does not have a unique solution but the shortest rotation
+    is given by
+      qz = (|v1||v2| + v1 v2) + v1 x v2,
+    where the first term is the scalar part of the quaternion. With v1
+    the nadir vector in ECEF and v2 the nadir vector in SC frame, the
+    rotation to align z-axes is
+      qz = 1 + Nzz + Nz x (0, 0, 1).
+    Apply this rotation to the x-axis in ECEF,
+      Nx^(z) = qz Nx qz^-1,
+    and find the rotation to align the x-axes:
+      qx = 1 + Nxx^(z) + Nx^(z) x (1, 0, 0).
+    The required SC-to-ECEF rotation is the inverse of the two
+    rotations:
+      q^SC-to-ECEF = (qx qz)^-1.
+
+    Parameters
+    ----------
+    config
+        Configuration dictionary
+    lat_deg
+        Orbit ground track latitudes in degrees
+    lon_deg
+        Orbit ground track longitudes in degrees
+    vel
+        Spacecraft velocities
+
+    Returns
+    -------
+        Attitude quaternions in the form of a Numpy array
+
+    """
+    lat = np.deg2rad(lat_deg)
+    lon = np.deg2rad(lon_deg)
+    # The original satellite velocity vectors. Might not be exactly
+    # orthogonal to the nadir direction.
+    sat_x_orig = vel / np.linalg.norm(vel, axis=1)[:, None]
+    # The nadir vector. Minus sign because we are looking from the
+    # spacecraft down to Earth.
+    sat_z = np.empty((len(lat), 3))
+    sat_z[:, 0] = -np.cos(lat) * np.cos(lon)
+    sat_z[:, 1] = -np.cos(lat) * np.sin(lon)
+    sat_z[:, 2] = -np.sin(lat)
+    # Ensure the velocity and nadir directions are orthogonal
+    cross = np.cross(sat_x_orig, sat_z)
+    sat_x = np.cross(sat_z, cross)
+    att_quat = np.empty(len(lat), dtype=Quaternion)
+    for i_att in range(len(att_quat)):
+        u_z = [0, 0, 1]
+        vec = np.cross(sat_z[i_att, :], u_z)
+        # Scalar part is sqrt(u_z^2 * sat_z^2) + u_z * sat_z
+        scalar = 1 + sat_z[i_att, 2]
+        q_z = Quaternion(scalar, *vec).normalised
+        sat_x_rotated_z = q_z.rotate(sat_x[i_att, :])
+        u_x = [1, 0, 0]
+        vec = np.cross(sat_x_rotated_z, u_x)
+        scalar = 1 + np.dot(u_x, sat_x_rotated_z)
+        q_x = Quaternion(scalar, *vec).normalised
+        q = q_x * q_z
+        # Take the inverse because we need to rotate in the other
+        # direction.
+        att_quat[i_att] = q.inverse.elements
+    return att_quat
+
+
+def convert_to_j2000(orbit_timestamps: npt.NDArray[np.datetime64],
+                     navigation: Navigation) -> None:
+    """Convert orbit positions and quaternions from ECEF to J2000.
+
+    Parameters
+    ----------
+    l1b_lib
+        L1B processor C++ Library
+    orbit_timestamps
+        Orbit timestamps
+    Navigation
+        Orbit positions and nominal attitude quaternions in ECEF
+
+    """
+    for i_pos in range(len(navigation['orb_pos'])):
+        tai_seconds = (Time(orbit_timestamps[i_pos], scale='tai')
+                       - Time('1958-01-01', scale='tai')).to(units.s)
+        tai_subsec = np.float64(np.float128(tai_seconds) % 1)
+        # Solar model produces the J2000-ECEF quaternion so we need
+        # the inverse of that.
+        q_ecef_j2000 = solar_model(np.uint(tai_seconds), tai_subsec).inverse
+        pos = navigation['orb_pos'][i_pos]
+        pos[:] = q_ecef_j2000.rotate(1e3 * pos)
+        navigation['att_quat'][i_pos] = (
+            q_ecef_j2000 * navigation['att_quat'][i_pos])
+
+
+def interpolate_navigation_data(navigation: Navigation, l1: L1) -> None:
+    """Interpolate navigation data from orbit times to detector image
+    times.
+
+    """
+    n_alt = len(l1['timestamps'])
+    l1['orb_pos'] = np.empty((n_alt, 3))
+    l1['att_quat'] = np.empty(n_alt, dtype=Quaternion)
+    # Interpolate orbit positions
+    for i_dir in range(3):
+        s = CubicSpline(navigation['time'], navigation['orb_pos'][:, i_dir])
+        l1['orb_pos'][:, i_dir] = s(l1['timestamps'])
+    # Interpolate quaternions
+    indices = np.searchsorted(navigation['time'].astype(np.float64),
+                              l1['timestamps'])
+    for i_alt in range(n_alt):
+        idx_lo = indices[i_alt] - 1
+        idx_hi = indices[i_alt]
+        idx_delta = (
+            (l1['timestamps'][i_alt] - navigation['time'][idx_lo])
+            / (navigation['time'][idx_hi] - navigation['time'][idx_lo]))
+        q0 = navigation['att_quat'][idx_lo]
+        q1 = navigation['att_quat'][idx_hi]
+        l1['att_quat'][i_alt] = Quaternion.slerp(q0, q1, amount=idx_delta)
+
+
+def sensor_simulation(
+        config: dict,
+        sat_pos: dict,
+        orbit_timestamps: npt.NDArray[np.datetime64],
+        los: npt.NDArray[np.float64]) -> Geometry:
+    """Propogate sensor."""
+    thetas = np.rad2deg(np.arctan(los[:, 1] / los[:, 2]))
+    # Make and propage the sensor
+    sensor = Sensor(thetas)
+    sensor.compute_groundpoints(sat_pos,
+                                pitch=config['sensor']['pitch'],
+                                yaw=config['sensor']['yaw'],
+                                roll=config['sensor']['roll'])
+    log.info('Computing ground pixels:')
+    # Time range of observations and interval
+    dt_range = [
+        orbit_timestamps[0].astype(datetime.datetime)
+        + datetime.timedelta(minutes=config['sensor']['start_time']),
+        orbit_timestamps[0].astype(datetime.datetime)
+        + datetime.timedelta(minutes=config['sensor']['end_time']),
+        config['sensor']['integration_time']]
+    return sensor.get_groundpoints(
+        orbit_timestamps, dt_range[0], dt_range[1], dt_range[2], thetas)
+
+
+def get_orbit(config: dict) -> tuple[Navigation, Geometry, L1]:
+    """Propagate orbit and do geolocation.
+
+    Parameters
+    ----------
+    config
+        Configuration dictionary
+
+    Returns
+    -------
+        Navigation data, viewing and solar geometries, and detector
+        image timestamps. The latter are essentially part of geometry
+        information. Without the timestamps it is not clear what the
+        retrieved latitudes and longitudes refer to.
+
+    """
+    # Orbit times as datetime objects
+    log.info('Generating orbit timestamps')
+    orbit_timestamps = gen_orbit_timestamps(
+        config['orbit']['epoch'], config['orbit']['propagation_duration'])
+    # Orbit times in seconds since beginning of day
+    time_beg = orbit_timestamps[0].astype(datetime.datetime)
+    orb_time_day = 1e-6 * (
+        orbit_timestamps - np.datetime64(
+            datetime.datetime(time_beg.year,
+                              time_beg.month,
+                              time_beg.day))).astype(np.float64)
+
+    # Compute satellite position every n seconds
+    log.info('Generating satellite orbit')
+    satellite = Satellite(config['orbit'])
+    sat_pos = satellite.compute_positions(orbit_timestamps)
+
+    # Generate image timestamps
+    log.info('Generating detector image timestamps')
+    l1 = gen_image_timestamps(config['orbit']['epoch'],
+                              config['sensor']['start_time'],
+                              config['sensor']['end_time'],
+                              config['sensor']['integration_time'])
+
+    # Attitude quaternions
+    log.info('Generating attitude quaternions')
+    att_quat = generate_attitude_quaternions(
+        config, sat_pos['lat'], sat_pos['lon'], sat_pos['v'])
+
+    # Navigation data with orbit positions in ECEF. These will be
+    # converted to J2000 in convert_to_j2000.
+    navigation: Navigation = {
+        'time': orb_time_day,
+        'orb_pos': sat_pos['p'],   # ECEF for now
+        'att_quat': att_quat,   # SC-to-ECEF for now
+        'altitude': sat_pos['height'] * 1e3,  # m
+    }
+
+    # Do geolocation using the orbit positions and line-of-sight (LOS)
+    # vectors from the CKD. Default is to derive the orbit positions
+    # and quaternions in the J2000 frame and perform
+    # geolocation. Otherwise use the fallback Python implementation.
+    ckd = read_ckd(config['io_files']['ckd'])
+    log.info('Geolocation')
+    if not config['use_python_geolocation']:
+        # Convert orbit positions and quaternions from ECEF to J2000
+        convert_to_j2000(orbit_timestamps, navigation)
+        interpolate_navigation_data(navigation, l1)
+        geometry = geolocate(
+            l1, ckd['swath']['line_of_sights'], config['io_files']['dem'])
     else:
-        error_string = f"something went wrong in gm, code=3, unrecognized profile choise: {config['profile']}\nCan not continue. Stopping now!"
-        logger.error(error_string)
-        sys.exit(255)
-
-    # write data to output file
-    gm_output(logger, config, vza, vaa, sza, saa, lat_grid, lon_grid)
-
-    logger.info("=>gm calculation finished successfully. ")
-    return
+        # Configure sensors and compute ground pixel information
+        geometry = sensor_simulation(
+            config, sat_pos, orbit_timestamps, ckd['swath']['line_of_sights'])
+    return navigation, geometry, l1
 
 
-if __name__ == '__main__' :
+def write_navigation(filename: str,
+                     orbit_start: datetime.datetime,
+                     navigation: Navigation) -> None:
+    """Write navigation data to a file.
 
-    # Get logger for GM
-    gm_logger = Utils.get_logger()
-    # Get configuration info
-    cfgFile = sys.argv[1]
-    config = Utils.getConfig(gm_logger, cfgFile)
-    # Get information (like git hash and config file name and version (if available) 
-    # that will be added to the output file as attributes
-    main_attribute_dict = Utils.get_main_attributes(config, config_attributes_name='GM_configuration')
+    Parameters
+    ----------
+    filename
+        Output file path
+    orbit_start
+        Datetime of orbit start. Used to define the image time unit
+    navigation
+        Navigation data
 
-    geometry_module(config, gm_logger)
+    """
+    default_fill_value = -32767
+    nc = Dataset(filename, 'w')
+    nc.title = 'Tango Carbon E2ES navigation data'
+    dim_time = nc.createDimension('time', len(navigation['time']))
+    dim_vec = nc.createDimension('vector_elements', 3)
+    dim_quat = nc.createDimension('quaternion_elements', 4)
 
-    # add attributes to the output file
-    Utils.add_attributes_to_output(gm_logger, config['gm_file'], main_attribute_dict)
+    var = nc.createVariable(
+        'time', 'f8', dim_time, fill_value=default_fill_value)
+    var.long_name = 'orbit vector time (seconds of day)'
+    var.units = f'seconds since {orbit_start.strftime("%Y-%m-%d")}'
+    var.valid_min = 0
+    var.valid_max = 172800.0  # 2 x day
+    var[:] = navigation['time']
 
+    var = nc.createVariable(
+        'orb_pos', 'f8', (dim_time, dim_vec), fill_value=-9999999.0)
+    var.long_name = 'orbit position vectors (J2000)'
+    var.units = 'm'
+    var.valid_min = -7200000.0
+    var.valid_max = 7200000.0
+    var[:] = navigation['orb_pos']
+
+    var = nc.createVariable(
+        'att_quat', 'f8', (dim_time, dim_quat), fill_value=default_fill_value)
+    var.long_name = 'Attitude quaternions (spacecraft to J2000)'
+    var.units = '1'
+    var.valid_min = -1.0
+    var.valid_max = 1.0
+    for i in range(navigation['att_quat'].shape[0]):
+        var[i, :] = np.roll(navigation['att_quat'][i].elements, -1)
+
+    var = nc.createVariable(
+        'altitude', 'f8', (dim_time), fill_value=default_fill_value)
+    var.long_name = 'satellite altitude'
+    var.units = 'm'
+    var.valid_min = 400e3
+    var.valid_max = 6000e3
+    var[:] = navigation['altitude']
+
+    nc.close()
+
+
+def write_geometry(filename: str, geometry: Geometry) -> None:
+    """Write viewing and solar geometries to a file."""
+    default_fill_value = -32767
+    nc = Dataset(filename, 'w')
+    nc.title = 'Tango Carbon E2ES geometry'
+    n_alt, n_act = geometry['latitude'].shape
+    dim_alt = nc.createDimension('along_track_sample', n_alt)
+    dim_act = nc.createDimension('across_track_sample', n_act)
+
+    var = nc.createVariable('latitude',
+                            'f8',
+                            (dim_alt, dim_act),
+                            fill_value=default_fill_value)
+    var.long_name = 'latitudes'
+    var.units = 'degrees'
+    var.valid_min = -90.0
+    var.valid_max = 90.0
+    var[:] = np.rad2deg(geometry['latitude'])
+
+    var = nc.createVariable('longitude',
+                            'f8',
+                            (dim_alt, dim_act),
+                            fill_value=default_fill_value)
+    var.long_name = 'longitudes'
+    var.units = 'degrees'
+    var.valid_min = -180.0
+    var.valid_max = 180.0
+    var[:] = np.rad2deg(geometry['longitude'])
+
+    var = nc.createVariable('height',
+                            'f8',
+                            (dim_alt, dim_act),
+                            fill_value=default_fill_value)
+    var.long_name = 'height from sea level'
+    var.units = 'm'
+    var.valid_min = -1000.0
+    var.valid_max = 10000.0
+    var[:] = 0.0
+
+    var = nc.createVariable('sensor_zenith',
+                            'f8',
+                            (dim_alt, dim_act),
+                            fill_value=default_fill_value)
+    var.long_name = 'sensor zenith angles'
+    var.units = 'degrees'
+    var.valid_min = -90.0
+    var.valid_max = 90.0
+    var[:] = np.rad2deg(geometry['vza'])
+
+    var = nc.createVariable('sensor_azimuth',
+                            'f8',
+                            (dim_alt, dim_act),
+                            fill_value=default_fill_value)
+    var.long_name = 'sensor azimuth angles'
+    var.units = 'degrees'
+    var.valid_min = -180.0
+    var.valid_max = 180.0
+    var[:] = np.rad2deg(geometry['vaa'])
+
+    var = nc.createVariable('solar_zenith',
+                            'f8',
+                            (dim_alt, dim_act),
+                            fill_value=default_fill_value)
+    var.long_name = 'solar zenith angles'
+    var.units = 'degrees'
+    var.valid_min = -90.0
+    var.valid_max = 90.0
+    var[:] = np.rad2deg(geometry['sza'])
+
+    var = nc.createVariable('solar_azimuth',
+                            'f8',
+                            (dim_alt, dim_act),
+                            fill_value=default_fill_value)
+    var.long_name = 'solar azimuth angles'
+    var.units = 'degrees'
+    var.valid_min = -180.0
+    var.valid_max = 180.0
+    var[:] = np.rad2deg(geometry['saa'])
+
+    nc.close()
+
+
+def write_image_attributes(filename: str,
+                           orbit_start: datetime.datetime,
+                           l1: L1) -> None:
+    """Append image attributes (timestamps) to the geometry file.
+
+    Parameters
+    ----------
+    filename
+        Output file path
+    orbit_start
+        Datetime of orbit start. Used to define the image time unit
+    l1
+        L1 product containing the image timestamps
+
+    """
+    nc = Dataset(filename, 'a')
+    nc.title = 'Tango Carbon E2ES image attributes'
+    dim_time = nc.createDimension('time', len(l1['timestamps']))
+
+    var = nc.createVariable('tai_seconds', 'u4', dim_time, fill_value=0)
+    var.long_name = 'detector image TAI time (seconds)'
+    var.units = 'seconds since 1958-01-01 00:00:00 TAI'
+    var.valid_min = np.uint(1956528000)
+    var.valid_max = np.uint(2493072000)
+    var[:] = l1['tai_seconds']
+
+    var = nc.createVariable('tai_subsec', 'u2', dim_time)
+    var.long_name = 'detector image TAI time (subseconds)'
+    var.units = '1/65536 s'
+    var.valid_min = np.ushort(0)
+    var.valid_max = np.ushort(65535)
+    var[:] = (65535 * l1['tai_subsec']).astype(np.ushort)
+
+    var = nc.createVariable('time', 'f8', dim_time, fill_value=-32767)
+    var.long_name = 'detector image time'
+    var.description = 'integration start time in seconds of day'
+    var.units = f'seconds since {orbit_start.strftime("%Y-%m-%d")}'
+    var.valid_min = 0.0
+    var.valid_max = 172800.0  # 2 x day
+    var[:] = l1['timestamps']
+
+    var = nc.createVariable('day', 'f8', dim_time, fill_value=-32767)
+    var.long_name = 'days since start of year'
+    var.units = 's'
+    var.valid_min = 0.0
+    var.valid_max = 365.25
+    dates = Time('1958-01-01', scale='tai') + l1['tai_seconds'] * units.s
+    days = np.empty(len(dates))
+    for i in range(len(days)):
+        t = dates[i].datetime.timetuple()
+        days[i] = (t.tm_yday + (t.tm_hour * 3600 + t.tm_min * 60 + t.tm_sec
+                                + l1['tai_subsec'][i]) / 86400)
+    var[:] = days
+
+    nc.close()
+
+
+def geometry_module(config_user: dict | None = None) -> None:
+    """Generate viewing and solar geometries from orbit specification.
+
+    If run without an argument, print the list of all settings and
+    exit.
+
+    Parameters
+    ----------
+    config_user
+        Configuration dictionary directly from file, as given by the
+        user, to be expanded with default values for parameters not
+        specified by the user.
+
+    """
+    print_heading('Tango geometry module', empty_line=False)
+    print_system_info()
+    print()
+
+    config = merge_config_with_default(config_user, 'teds.gm')
+    check_config(config)
+
+    if config['profile'] == 'individual_spectra':
+        geometry = get_individual_spectra(config)
+    elif config['profile'] == 'orbit':
+        navigation, geometry, l1 = get_orbit(config)
+    else:
+        log.error(f'unknown profile: {config["profile"]}')
+        exit(1)
+
+    # Write output data
+    write_geometry(config['io_files']['geometry'], geometry)
+    if config['profile'] == 'orbit' and not config['use_python_geolocation']:
+        write_image_attributes(config['io_files']['geometry'],
+                               config['orbit']['epoch'],
+                               l1)
+        write_navigation(config['io_files']['navigation'],
+                         config['orbit']['epoch'],
+                         navigation)
+
+    # If this is shown then the simulation ran successfully
+    print_heading('Success')

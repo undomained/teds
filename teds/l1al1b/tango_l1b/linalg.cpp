@@ -9,7 +9,7 @@ auto dgemm(const char trans_a,
            const char trans_b,
            const int n_rows_a,
            const int n_cols_a,
-           const std::vector<double>& a,
+           const double* a,
            const std::vector<double>& b,
            std::vector<double>& c) -> void
 {
@@ -38,11 +38,22 @@ auto dgemm(const char trans_a,
            &one,
            b.data(),
            &LDA,
-           a.data(),
+           a,
            &LDB,
            &zero,
            c.data(),
            &M);
+}
+
+auto dgemm(const char trans_a,
+           const char trans_b,
+           const int n_rows_a,
+           const int n_cols_a,
+           const std::vector<double>& a,
+           const std::vector<double>& b,
+           std::vector<double>& c) -> void
+{
+    dgemm(trans_a, trans_b, n_rows_a, n_cols_a, a.data(), b, c);
 }
 
 } // namespace tango

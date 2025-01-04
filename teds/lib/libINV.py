@@ -9,7 +9,7 @@ import sys
 
 from .libRT import nonscat_fwd_model
 from .libSURF import surface_prop
-import matplotlib.pyplot as plt
+
 
 def lsq_fit(ymeas, Kmat, Sy):
     """
@@ -117,16 +117,6 @@ def Gauss_Newton_iteration(retrieval_init, atm, optics, measurement, max_iter, c
                                       atm,  optics, surface, measurement['mu0'],
                                       measurement['muv'], dev)
 
-        # # check kernels using finit difference
-
-        # fwd, runtime = nonscat_fwd_model(isrf_convolution, retrieval_init['solar irradiance'],
-        #                               atm,  optics, surface, measurement['mu0'],
-        #                               measurement['muv'], dev)
-
-        # klay = 25
-        # plt.plot(measurement['wavelength'],np.sum(fwd['layer_molec_07'], axis = 1))
-        # plt.plot(measurement['wavelength'],1.01*fwd['molec_07'][:])
-        # sys.exit()        
         for key in runtime.keys():
             runtime_cum[key] = runtime_cum[key] + runtime[key]
             
@@ -148,20 +138,6 @@ def Gauss_Newton_iteration(retrieval_init, atm, optics, measurement, max_iter, c
         Sx = np.linalg.inv(np.dot(Kmat.T, np.dot(Syinv, Kmat)))
         Gain = np.dot(Sx, np.dot(Kmat.T, Syinv))               # gain matrix
         xstat = np.dot(Gain, ytilde)                           # least square solution
-
-
-        # print(x0_lst[0:1])
-        # print('==========================================')
-        # print(iteration, xstat)
-        
-#        fig = plt.figure(figsize=(10, 8), dpi=100)
-#        plt.plot(measurement['ymeas'], color='blue', label='l1b')
-#        plt.plot(fwd['rad'], color='green', label='fwd')
-#        plt.plot((measurement['ymeas']-fwd['rad'])/measurement['ymeas']*100.)
-#        plt.xlabel('spec index')
-#        plt.ylabel('radiance')
-#       plt.legend()        
-#        sys.exit()
 
         x_lst_precision = []
         for m in range(0, len(xstat)):
@@ -237,14 +213,4 @@ def Gauss_Newton_iteration(retrieval_init, atm, optics, measurement, max_iter, c
                 delta_prof = col/retrieval_init['trace gases']['H2O']['ref_profile'][klay]
                 output['XH2O col avg kernel'][klay] = np.sum(Gain[ispec, :]*fwd['layer_'+value][:, klay])*delta_prof
 
-    #    print(np.sum(output['XCO2 col avg kernel']*retrieval_init['trace gases']['CO2']['ref_profile']))
-    # print(np.sum(retrieval_init['trace gases']['CO2']['ref_profile']))
-    
-    # plt.plot(output['XCO2 col avg kernel'], atm.zlay*1.E-3, label = 'CO2', color = 'blue')
-    # plt.plot(output['XCH4 col avg kernel'], atm.zlay*1.E-3, label = 'CH4', color = 'red')
-    # plt.plot(output['XH2O col avg kernel'], atm.zlay*1.E-3, label = 'H2O', color = 'orange')
-    # plt.legend()
-    # plt.xlabel('col avg kernel [1]')
-    # plt.ylabel('z [km]')
-    # sys.exit()
     return output, runtime_cum

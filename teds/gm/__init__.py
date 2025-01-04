@@ -3,3 +3,4 @@
 '''Functions for using GM.'''
 
 from teds.gm.gm import geometry_module  # noqa: F401
+from teds.gm.vincenty import vincenty  # noqa: F401

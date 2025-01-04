@@ -1,8 +1,10 @@
-import os, sys
 import logging
-import yaml
+import os
 import subprocess
+import sys
 import teds.lib.data_netcdf.data_netcdf as dn
+import yaml
+
 
 def get_logger():
     """
@@ -10,9 +12,9 @@ def get_logger():
     """
 
     log_level = logging.INFO
-    log_format = '%(asctime)s : %(name)s : %(module)s : %(lineno)d : %(levelname)s : %(message)s'
+    log_format = ('%(asctime)s : %(name)s : %(module)s : %(lineno)d : '
+                  '%(levelname)s : %(message)s')
     log_formatter = logging.Formatter(log_format)
-    date_format = '%d/%m/%Y %H:%M:%S'
 
     logger = logging.getLogger(__name__)
     logger.setLevel(log_level)
@@ -23,6 +25,7 @@ def get_logger():
 
     return logger
 
+
 def getConfig(logger, cfgFile):
     """
         Get the config information from the configuration file
@@ -32,15 +35,17 @@ def getConfig(logger, cfgFile):
        - configuration: configuration info
     """
     cfg_path, filename = os.path.split(cfgFile)
-    stream =  open(cfgFile, 'r')
+    stream = open(cfgFile, 'r')
     config = yaml.safe_load(stream)
     if 'header' in config.keys():
-        config['header']['path']=cfg_path
+        config['header']['path'] = cfg_path
     else:
-        config['header'] = {'path':cfg_path, 'file_name': filename, 'version': 'not set'}
+        config['header'] = {
+            'path': cfg_path, 'file_name': filename, 'version': 'not set'
+        }
 
-   #TODO do we need the below capability?
-   # Fill in variables in the configuration
+    # TODO do we need the below capability?
+    # Fill in variables in the configuration
     for key in config:
         if isinstance(config[key], str):
             config[key] = config[key].format(**config)
@@ -57,15 +62,20 @@ def getConfig(logger, cfgFile):
 
     return config
 
+
 def get_main_attributes(config, config_attributes_name='E2E_configuration'):
-    """
-        Define some info to add as attributes to the main of the ouput netCDF file
+    """Define some info to add as attributes to the main of the ouput
+        netCDF file.
+
     """
 
     attribute_dict = {}
 
-    attribute_dict['git_hash'] = str(subprocess.check_output(['git', 'rev-parse', 'HEAD']).decode('ascii').strip())
-    attribute_dict['git_hash_short'] = str( subprocess.check_output(['git', 'rev-parse', '--short', 'HEAD']).decode('ascii').strip())
+    attribute_dict['git_hash'] = str(
+        subprocess.check_output(
+            ['git', 'rev-parse', 'HEAD']).decode('ascii').strip())
+    attribute_dict['git_hash_short'] = str(subprocess.check_output(
+        ['git', 'rev-parse', '--short', 'HEAD']).decode('ascii').strip())
 
     # If header information exists also put it as attribute in output file
     if 'header' in config.keys():
@@ -75,9 +85,11 @@ def get_main_attributes(config, config_attributes_name='E2E_configuration'):
         config.pop('header')
 #    attribute_dict['E2E_configuration'] = str(config)
     attribute_dict[config_attributes_name] = str(config)
-    #TODO: Add other information that might be handy to have in the attributes of the netCDF output file.
+    # TODO: Add other information that might be handy to have in the
+    # attributes of the netCDF output file.
 
     return attribute_dict
+
 
 def add_attributes_to_output(logger, output_file, attribute_dict):
     """
@@ -89,4 +101,3 @@ def add_attributes_to_output(logger, output_file, attribute_dict):
         out_data.add(name, value=value, kind='attribute')
     out_data.write()
     return
-

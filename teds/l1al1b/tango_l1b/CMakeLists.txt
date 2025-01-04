@@ -23,6 +23,11 @@ target_sources(tango_l1b PRIVATE
   binning_table.cpp
   calibration.cpp
   ckd.cpp
+  # Geometry
+  quaternion.cpp
+  geometry.cpp
+  dem.cpp
+  solar_model.cpp
 )
 target_sources(tango_l1b.x PRIVATE main.cpp)
 

@@ -5,6 +5,8 @@
 
 #include "constants.h"
 
+#include <numeric>
+
 namespace tango {
 
 [[nodiscard]] auto binaryFindIdx(const std::vector<double>& list,
@@ -29,6 +31,13 @@ namespace tango {
             i_begin = i_mid + 1;
         }
     }
+}
+
+[[nodiscard]] auto dotProduct(const std::array<double, dims::vec>& a,
+                              const std::array<double, dims::vec>& b) -> double
+{
+    return std::inner_product(
+      a.cbegin(), a.cbegin() + dims::vec, b.cbegin(), 0.0);
 }
 
 } // namespace tango

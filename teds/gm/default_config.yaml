@@ -1,0 +1,48 @@
+# All user configurable settings and their default values of the
+# geometry module
+
+# Calculation type (orbit, individual_spectra)
+profile: orbit
+
+# Whether to use the fallback Python implementation of
+# geolocation. Default is to use the C++ implementation from the L1B
+# processor.
+use_python_geolocation: no
+
+# Scene specification if individual spectra
+scene_spec:
+  sza: []
+  saa: []
+  vza: []
+  vaa: []
+
+# Orbit propagation
+orbit:
+  epoch: 2022-08-12T12:00:00
+  sat_height: 500.0 # km
+  eccentricity: 0.0
+  arg_perigee: 0.0
+  mean_anomaly: 0.0
+  ltan: 13.823 # decimal hours
+  mean_motion_dot: 0.0
+  drag_coeff: 0.0
+  propagation_duration: 1.67 # hours
+
+sensor:
+  integration_time: 0.04 # s
+  start_time: 13.73 # minutes wrt orbit epoch
+  end_time: 13.80 # minutes wrt orbit epoch
+  pitch: 0.0
+  roll: 0.0
+  yaw: 0.0
+
+io_files:
+  # Calibration key data
+  ckd: ""
+  # Digital elevation model for geolocation, optional. If not present,
+  # the terrain correction algorithm is not included.
+  dem: ""
+  # Output file containing navigation data
+  navigation: ""
+  # Output file containing solar and viewing geometry
+  geometry: ""

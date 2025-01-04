@@ -1,0 +1,16 @@
+# This source code is licensed under the 3-clause BSD license found in
+# the LICENSE file in the root directory of this project.
+"""Wrapper for the solar model.
+
+"""
+from pyquaternion import Quaternion
+import numpy as np
+
+from .geolocation import solar_model as c_solar_model
+
+
+def solar_model(tai_seconds: np.uint,
+                tai_second_fraction: np.float64) -> Quaternion:
+    q_ecef_j2000 = np.empty(4)
+    c_solar_model(tai_seconds, tai_second_fraction, q_ecef_j2000)
+    return Quaternion(q_ecef_j2000[3], *q_ecef_j2000[:3]).normalised

@@ -58,6 +58,10 @@ public:
     BSpline2D(const int order,
               const std::vector<double>& x_values_r,
               const std::vector<double>& x_values_c,
+              const double* data_in);
+    BSpline2D(const int order,
+              const std::vector<double>& x_values_r,
+              const std::vector<double>& x_values_c,
               const std::vector<double>& data_in);
     // Evaluate the 2D B-spline for points on a target grid (can be
     // irregular). The result for one target point can be expressed as
@@ -70,10 +74,11 @@ public:
     // corresponding to the grid point ij. While the sum formally runs
     // over all basis functions in both directions, in practice we
     // only evaluate a limited set of non-zero basis functions by
-    // making use of de Boor's algorithm.
+    // making use of de Boor's algorithm. The result array z should be
+    // allocated and initialized outside this routine.
     auto eval(const std::vector<double>& x,
               const std::vector<double>& y,
-              std::vector<double>& z) const -> void;
+              double* z) const -> void;
 };
 
 } // namespace tango

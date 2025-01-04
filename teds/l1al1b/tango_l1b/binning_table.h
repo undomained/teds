@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include <algorithm>
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -55,14 +56,18 @@ public:
     auto bin(std::vector<double>& data) const -> void;
     // Bin a boolean array
     auto bin(std::vector<bool>& data) const -> void;
-    // Transform the spectra extraction row indices according to the
-    // binning table.
-    auto binPixelIndices(std::vector<std::vector<int>>& pix_indices) const
-      -> void;
+    // Like bin but don't multiply with the count table
+    auto binUnscaled(std::vector<double>& data) const -> void;
     // Unbin data using the binning table. Output array is the same
     // size as the binning table (bin_indices.size()).
-    auto unbin(const std::vector<double>& data,
-               std::vector<double>& data_unbinned) const -> void;
+    auto unbin(const std::ranges::range auto& data,
+               std::vector<double>& data_unbinned) const -> void
+    {
+        std::ranges::fill(data_unbinned, 0.0);
+        for (int i {}; i < static_cast<int>(bin_indices.size()); ++i) {
+            data_unbinned[i] = data[bin_indices[i]];
+        }
+    }
 };
 
 } // namespace tango

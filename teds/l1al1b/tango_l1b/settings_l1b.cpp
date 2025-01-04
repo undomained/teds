@@ -12,27 +12,31 @@ auto SettingsL1B::scanKeys() -> void
     scan(instrument);
     scan(processing_version);
     scan(cal_level);
-    scan(image_start);
-    scan(image_end);
+    scan(alt_beg);
+    scan(alt_end);
+    scan(bin_spectra);
 
     scan(dark.enabled);
 
     scan(noise.enabled);
 
+    scan(nonlin.enabled);
+
     scan(prnu.enabled);
 
     scan(stray.van_cittert_steps);
 
-    scan(swath.enabled);
     scan(swath.b_spline_order);
+    scan(swath.geolocation);
 
     scan(rad.enabled);
 
     scan(io.ckd);
     scan(io.binning_table);
     scan(io.l1a);
-    scan(io.geometry);
     scan(io.l1b);
+    scan(io.dem);
+    scan(io.geometry);
 }
 
 auto SettingsL1B::checkParameters() -> void
@@ -41,7 +45,7 @@ auto SettingsL1B::checkParameters() -> void
     checkPresenceOfFile(io.ckd, true);
     checkPresenceOfFile(io.binning_table, true);
     checkPresenceOfFile(io.l1a, true);
-    checkPresenceOfFile(io.geometry, true);
+    checkPresenceOfFile(io.geometry, !swath.geolocation);
 
     checkFileWritable(io.l1b);
 }

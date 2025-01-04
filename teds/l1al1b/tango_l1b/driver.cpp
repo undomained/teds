@@ -37,145 +37,108 @@ auto driver(const SettingsL1B& settings,
 
     // Initialize L1 products by reading all L1A data (everything is
     // stored in memory).
-    std::vector<L1> l1_products {};
-    readL1(settings.io.l1a,
-           settings.image_start,
-           settings.image_end.value_or(fill::i),
-           l1_products);
+    L1 l1_prod {};
+    readL1(settings.io.l1a, settings.alt_beg, settings.alt_end, l1_prod);
 
     // Initialize the binning table and bin the CKD
-    const BinningTable binning_table {
-        ckd.n_detector_rows,
-        ckd.n_detector_cols,
-        settings.io.binning_table,
-        static_cast<int>(l1_products.front().binning_table_id)
-    };
-    binning_table.bin(ckd.pixel_mask);
-    binning_table.bin(ckd.dark.offset);
-    binning_table.bin(ckd.dark.current);
-    binning_table.bin(ckd.noise.g);
-    binning_table.bin(ckd.noise.n2);
-    binning_table.bin(ckd.prnu.prnu);
+    const BinningTable binning_table { ckd.n_detector_rows,
+                                       ckd.n_detector_cols,
+                                       settings.io.binning_table,
+                                       static_cast<int>(
+                                         l1_prod.binning_table_id) };
+    ckd.bin(binning_table);
 
     // Run retrieval
     printHeading("Retrieval");
-    std::array<Timer, static_cast<int>(ProcLevel::n_levels)> timers {};
-    Timer timer_total {};
-    timer_total.start();
-#pragma omp parallel for schedule(dynamic)
-    for (int i_alt = 0; i_alt < static_cast<int>(l1_products.size()); ++i_alt) {
-        printPercentage(i_alt, l1_products.size(), "Processing images");
-        auto& l1 { l1_products[i_alt] };
-        // Normalize by bin sizes and unbin detector image if requested
-        if (l1.level == ProcLevel::l1a
-            && settings.cal_level >= ProcLevel::raw) {
-            binningTable(ckd, binning_table, l1);
-        }
-        // Dark offset
-        if (l1.level < ProcLevel::dark_offset
-            && settings.cal_level >= ProcLevel::dark_offset) {
-            timers[static_cast<int>(ProcLevel::dark_offset)].start();
-            darkOffset(ckd, settings.dark.enabled, l1);
-            timers[static_cast<int>(ProcLevel::dark_offset)].stop();
-        }
-        // Noise
-        if (l1.level < ProcLevel::noise
-            && settings.cal_level >= ProcLevel::noise) {
-            timers[static_cast<int>(ProcLevel::noise)].start();
-            noise(ckd, settings.noise.enabled, binning_table, l1);
-            timers[static_cast<int>(ProcLevel::noise)].stop();
-        }
-        // Dark current
-        if (l1.level < ProcLevel::dark_current
-            && settings.cal_level >= ProcLevel::dark_current) {
-            timers[static_cast<int>(ProcLevel::dark_current)].start();
-            darkCurrent(ckd, settings.dark.enabled, l1);
-            timers[static_cast<int>(ProcLevel::dark_current)].stop();
-        }
-        // Nonlinearity
-        if (l1.level < ProcLevel::nonlin
-            && settings.cal_level >= ProcLevel::nonlin) {
-            timers[static_cast<int>(ProcLevel::nonlin)].start();
-            nonlinearity(ckd, settings.nonlin.enabled, l1);
-            timers[static_cast<int>(ProcLevel::nonlin)].stop();
-        }
-        // PRNU and QE
-        if (l1.level < ProcLevel::prnu
-            && settings.cal_level >= ProcLevel::prnu) {
-            timers[static_cast<int>(ProcLevel::prnu)].start();
-            prnu(ckd, settings.prnu.enabled, l1);
-            timers[static_cast<int>(ProcLevel::prnu)].stop();
-        }
-        if (!l1.image.empty()) {
-            removeBadValues(ckd, l1);
-        }
-        // Stray light
-        if (l1.level < ProcLevel::stray
-            && settings.cal_level >= ProcLevel::stray) {
-            timers[static_cast<int>(ProcLevel::stray)].start();
-            strayLight(
-              ckd, binning_table, settings.stray.van_cittert_steps, l1);
-            timers[static_cast<int>(ProcLevel::stray)].stop();
-        }
-        // Swath
-        if (l1.level < ProcLevel::swath
-            && settings.cal_level >= ProcLevel::swath) {
-            timers[static_cast<int>(ProcLevel::swath)].start();
-            mapFromDetector(
-              ckd, binning_table, settings.swath.b_spline_order, l1);
-            timers[static_cast<int>(ProcLevel::swath)].stop();
-        }
-        // Interpolate from intermediate to the main CKD wavelength
-        // grids if necessary.
-        if (!l1.spectra.empty()
-            && l1.spectra.size() / ckd.n_act
-                 != ckd.wave.wavelengths.front().size()) {
-            changeWavelengthGrid(ckd, l1);
-        }
-        // Radiometric
-        if (l1.level < ProcLevel::l1b && settings.cal_level >= ProcLevel::l1b) {
-            timers[static_cast<int>(ProcLevel::l1b)].start();
-            radiometric(ckd, settings.rad.enabled, l1);
-            timers[static_cast<int>(ProcLevel::l1b)].stop();
-        }
+    Timer timer {};
+    timer.start();
+    // Normalize detector image by bin sizes
+    if (l1_prod.level == ProcLevel::l1a
+        && settings.cal_level > ProcLevel::l1a) {
+        spdlog::info("Scaling with bin size and coaddition factors");
+        binScaling(ckd, binning_table, l1_prod);
     }
-    timer_total.stop();
-    spdlog::info("Processing images 100.0%");
-    // For writing to output, store the CKD wavelength grid in L1
-    l1_products.front().wavelengths =
-      std::make_shared<std::vector<std::vector<double>>>(ckd.wave.wavelengths);
+    // Dark offset
+    if (l1_prod.level < ProcLevel::dark_offset
+        && settings.cal_level >= ProcLevel::dark_offset) {
+        spdlog::info("Dark offset");
+        darkOffset(ckd, settings.dark.enabled, l1_prod);
+    }
+    // Noise
+    if (l1_prod.level < ProcLevel::noise
+        && settings.cal_level >= ProcLevel::noise) {
+        spdlog::info("Noise");
+        noise(ckd, settings.noise.enabled, binning_table, l1_prod);
+    }
+    // Dark current
+    if (l1_prod.level < ProcLevel::dark_current
+        && settings.cal_level >= ProcLevel::dark_current) {
+        spdlog::info("Dark signal");
+        darkCurrent(ckd, settings.dark.enabled, l1_prod);
+    }
+    // Nonlinearity
+    if (l1_prod.level < ProcLevel::nonlin
+        && settings.cal_level >= ProcLevel::nonlin) {
+        spdlog::info("Nonlinearity");
+        nonlinearity(ckd, settings.nonlin.enabled, l1_prod);
+    }
+    // PRNU and QE
+    if (l1_prod.level < ProcLevel::prnu
+        && settings.cal_level >= ProcLevel::prnu) {
+        spdlog::info("PRNU");
+        prnu(ckd, settings.prnu.enabled, l1_prod);
+    }
+    if (!l1_prod.signal.empty() && settings.cal_level >= ProcLevel::stray) {
+        spdlog::info("Smoothing out bad detector signals");
+        removeBadValues(ckd, l1_prod);
+    }
+    // Stray light
+    if (l1_prod.level < ProcLevel::stray
+        && settings.cal_level >= ProcLevel::stray) {
+        spdlog::info("Stray light");
+        strayLight(
+          ckd, binning_table, settings.stray.van_cittert_steps, l1_prod);
+    }
+    // Swath
+    if (l1_prod.level < ProcLevel::swath
+        && settings.cal_level >= ProcLevel::swath) {
+        spdlog::info("Detector mapping");
+        mapFromDetector(
+          ckd, binning_table, settings.swath.b_spline_order, l1_prod);
+    }
+    // Interpolate from intermediate to the main CKD wavelength
+    // grids if necessary.
+    if (!l1_prod.spectra.empty()
+        && l1_prod.spectra.size() / ckd.n_act
+             != ckd.wave.wavelengths.front().size()) {
+        spdlog::info("Updating wavelength grids");
+        changeWavelengthGrid(ckd, l1_prod);
+    }
+    // Radiometric
+    if (l1_prod.level < ProcLevel::l1b
+        && settings.cal_level >= ProcLevel::l1b) {
+        spdlog::info("Radiometric");
+        radiometric(ckd, settings.rad.enabled, l1_prod);
+    }
+    if (settings.swath.geolocation) {
+        spdlog::info("Geolocation");
+        geolocate(settings.io.dem,
+                  ckd.swath.los,
+                  l1_prod.tai_seconds,
+                  l1_prod.tai_subsec,
+                  l1_prod.orb_pos,
+                  l1_prod.att_quat,
+                  l1_prod.geo);
+    } else {
+        spdlog::info("Copying geometry from geometry file");
+        copyGeometry(
+          settings.io.l1a, settings.io.geometry, settings.alt_beg, l1_prod);
+    }
 
-    // Placeholder until we have geolocation
-    copyGeometry(
-      settings.io.l1a, settings.io.geometry, settings.image_start, l1_products);
+    writeL1(settings.io.l1b, settings.getConfig(), l1_prod, argc, argv);
 
-    // Write output
-    Timer timer_output {};
-    timer_output.start();
-    writeL1(settings.io.l1b, settings.getConfig(), l1_products, argc, argv);
-    timer_output.stop();
-
-    // Overview of timings
-    spdlog::info("");
-    spdlog::info("Timings:");
-    spdlog::info("         Dark offset: {:8.3f} s",
-                 timers[static_cast<int>(ProcLevel::dark_offset)].time());
-    spdlog::info("               Noise: {:8.3f} s",
-                 timers[static_cast<int>(ProcLevel::noise)].time());
-    spdlog::info("        Dark current: {:8.3f} s",
-                 timers[static_cast<int>(ProcLevel::dark_current)].time());
-    spdlog::info("        Nonlinearity: {:8.3f} s",
-                 timers[static_cast<int>(ProcLevel::nonlin)].time());
-    spdlog::info("                PRNU: {:8.3f} s",
-                 timers[static_cast<int>(ProcLevel::prnu)].time());
-    spdlog::info("         Stray light: {:8.3f} s",
-                 timers[static_cast<int>(ProcLevel::stray)].time());
-    spdlog::info("               Swath: {:8.3f} s",
-                 timers[static_cast<int>(ProcLevel::swath)].time());
-    spdlog::info("         Radiometric: {:8.3f} s",
-                 timers[static_cast<int>(ProcLevel::l1b)].time());
-    spdlog::info("      Writing output: {:8.3f} s", timer_output.time());
-    spdlog::info("               Total: {:8.3f} s", timer_total.time());
+    timer.stop();
+    spdlog::info("Total time: {:8.3f} s", timer.time());
 
     printHeading("Success");
 }

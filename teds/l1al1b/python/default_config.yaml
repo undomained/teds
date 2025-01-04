@@ -1,4 +1,4 @@
-# All user configurable settings and their default values for the L1B
+# All user configurable settings and their default values of the L1B
 # processor
 
 # Global attributes
@@ -10,8 +10,8 @@ cal_level: L1B
 
 # The first and last (inclusive) along-track positions to be include
 # in processing.
-image_start: 0
-image_end: null
+alt_beg: 0
+alt_end: null
 
 dark:
   # Whether to calibrate for dark offset and current

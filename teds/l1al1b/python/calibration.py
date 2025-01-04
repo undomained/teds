@@ -37,8 +37,8 @@ def coadding_and_binning(l1_product: L1,
 
     """
     l1_product['proc_level'] = ProcLevel.raw
-    l1_product['image'] /= l1_product['coad_factors'][..., None]
-    l1_product['image'] /= count_table
+    l1_product['signal'] /= l1_product['coad_factors'][..., None]
+    l1_product['signal'] /= count_table
 
 
 def dark_offset(l1_product: L1, offset: npt.NDArray[np.float64]) -> None:
@@ -53,7 +53,7 @@ def dark_offset(l1_product: L1, offset: npt.NDArray[np.float64]) -> None:
 
     """
     l1_product['proc_level'] = ProcLevel.dark_offset
-    l1_product['image'] -= offset
+    l1_product['signal'] -= offset
 
 
 def noise(l1_product: L1,
@@ -81,7 +81,7 @@ def noise(l1_product: L1,
     # The absolute value of dark_signal should be taken because a
     # negative signal still increases the noise.
     variance = (ckd['read_noise']**2
-                + np.abs(l1_product['image']) / ckd['conversion_gain'])
+                + np.abs(l1_product['signal']) / ckd['conversion_gain'])
     l1_product['noise'] = np.sqrt(
         variance / (l1_product['coad_factors'][..., None] * count_table))
 
@@ -102,7 +102,7 @@ def dark_current(l1_product: L1,
 
     """
     l1_product['proc_level'] = ProcLevel.dark_current
-    l1_product['image'] -= dark_current * l1_product['exptimes'][..., None]
+    l1_product['signal'] -= dark_current * l1_product['exptimes'][..., None]
 
 
 def nonlinearity(l1_product: L1,
@@ -131,17 +131,17 @@ def nonlinearity(l1_product: L1,
     l1_product['proc_level'] = ProcLevel.nonlin
     dx = 0.001 * np.min(np.diff(ckd['expected']))
     good = ~pixel_mask
-    for i_alt in tqdm(range(l1_product['image'].shape[0])):
+    for i_alt in tqdm(range(l1_product['signal'].shape[0])):
         l1_product['noise'][i_alt, good] *= (
-            (np.interp(l1_product['image'][i_alt, good] + dx,
+            (np.interp(l1_product['signal'][i_alt, good] + dx,
                        ckd['observed'],
                        ckd['expected'])
-             - np.interp(l1_product['image'][i_alt, good] - dx,
+             - np.interp(l1_product['signal'][i_alt, good] - dx,
                          ckd['observed'],
                          ckd['expected']))
             / (2 * dx))
-        l1_product['image'][i_alt, good] = np.interp(
-            l1_product['image'][i_alt, good],
+        l1_product['signal'][i_alt, good] = np.interp(
+            l1_product['signal'][i_alt, good],
             ckd['observed'],
             ckd['expected'])
 
@@ -162,73 +162,15 @@ def prnu(l1_product: L1,
     """
     l1_product['proc_level'] = ProcLevel.prnu
     good = ~pixel_mask
-    for i_alt in tqdm(range(l1_product['image'].shape[0])):
+    for i_alt in tqdm(range(l1_product['signal'].shape[0])):
         _prnu = prnu_qe[good]
-        l1_product['image'][i_alt, good] /= _prnu
+        l1_product['signal'][i_alt, good] /= _prnu
         l1_product['noise'][i_alt, good] /= _prnu
-
-
-def convolve(
-        image: npt.NDArray[np.float64],
-        kernel_fft: npt.NDArray[np.complex128]) -> npt.NDArray[np.float64]:
-    """Convolve an image with kernel.
-
-    Parameters
-    ----------
-    image
-        Image in real space.
-    kernel_fft
-        Fourier transform of the kernel.
-
-    Returns
-    -------
-        Convolution result in real space.
-
-    """
-    image = np.pad(image, ((0, kernel_fft.shape[0]-image.shape[0]),
-                           (0, kernel_fft.shape[1]-image.shape[1])))
-    image_fft = fft2(image)
-    image_fft = image_fft * kernel_fft
-    image_convolved = ifft2(image_fft).real
-    return image_convolved
-
-
-def convolve_with_all_kernels(image: npt.NDArray[np.float64],
-                              ckd: CKDStray) -> npt.NDArray[np.float64]:
-    """Convolve an image with multiple kernels.
-
-    Parameters
-    ----------
-    image
-        Image in real space.
-    ckd
-        Stray light CKD containing a list of the Fourier transforms of
-        kernels, weights of subimages, and an 'edges' array which
-        specifies the location of each subimage within the original
-        image.
-
-    Returns
-    -------
-        Convolution result in real space.
-
-    """
-    original_shape = image.shape
-    detector_shape = ckd['weights'][0, :, :].shape
-    image_convolved = np.zeros(detector_shape)
-    for kernel_fft, weights, edges in zip(ckd['kernels_fft'],
-                                          ckd['weights'],
-                                          ckd['edges']):
-        image_weighted = image.reshape(detector_shape) * weights
-        sub_image = image_weighted[edges[0]:edges[1], edges[2]:edges[3]]
-        conv_result = convolve(sub_image, kernel_fft)
-        image_convolved[edges[0]:edges[1], edges[2]:edges[3]] += (
-            conv_result[:edges[1]-edges[0], :edges[3]-edges[2]])
-    return image_convolved.reshape(original_shape)
 
 
 def remove_bad_values(n_cols: int,
                       pixel_mask: npt.NDArray[np.bool_],
-                      images: npt.NDArray[np.float64]) -> None:
+                      signals: npt.NDArray[np.float64]) -> None:
     """Smooth over bad values in detector images.
 
     Some algorithms like stray light require all pixels to have a
@@ -237,14 +179,72 @@ def remove_bad_values(n_cols: int,
     """
     n_rows = len(pixel_mask) // n_cols
     mask = pixel_mask.reshape((n_rows, n_cols))
-    for i_alt in tqdm(range(images.shape[0])):
-        smooth_image = np.empty((n_rows, n_cols))
+    for i_alt in tqdm(range(signals.shape[0])):
+        smooth_signal = np.empty((n_rows, n_cols))
         for i_row in range(n_rows):
             good = np.where(~mask[i_row, :])[0]
-            image_row = images[i_alt, :].reshape((n_rows, n_cols))[i_row, :]
-            spline = CubicSpline(good, image_row[good])
-            smooth_image[i_row, :] = spline(np.arange(n_cols))
-        images[i_alt, :] = smooth_image.ravel()
+            signal_row = signals[i_alt, :].reshape((n_rows, n_cols))[i_row, :]
+            spline = CubicSpline(good, signal_row[good])
+            smooth_signal[i_row, :] = spline(np.arange(n_cols))
+        signals[i_alt, :] = smooth_signal.ravel()
+
+
+def convolve(
+        signal: npt.NDArray[np.float64],
+        kernel_fft: npt.NDArray[np.complex128]) -> npt.NDArray[np.float64]:
+    """Convolve a detector image with kernel.
+
+    Parameters
+    ----------
+    signal
+        Detector image in real space.
+    kernel_fft
+        Fourier transform of the kernel.
+
+    Returns
+    -------
+        Convolution result in real space.
+
+    """
+    signal = np.pad(signal, ((0, kernel_fft.shape[0]-signal.shape[0]),
+                             (0, kernel_fft.shape[1]-signal.shape[1])))
+    signal_fft = fft2(signal)
+    signal_fft = signal_fft * kernel_fft
+    signal_convolved = ifft2(signal_fft).real
+    return signal_convolved
+
+
+def convolve_with_all_kernels(signal: npt.NDArray[np.float64],
+                              ckd: CKDStray) -> npt.NDArray[np.float64]:
+    """Convolve a detector image with multiple kernels.
+
+    Parameters
+    ----------
+    signal
+        Detector image in real space.
+    ckd
+        Stray light CKD containing a list of the Fourier transforms of
+        kernels, weights of subsignals, and an 'edges' array which
+        specifies the location of each subsignal within the original
+        signal.
+
+    Returns
+    -------
+        Convolution result in real space.
+
+    """
+    original_shape = signal.shape
+    detector_shape = ckd['weights'][0, :, :].shape
+    signal_convolved = np.zeros(detector_shape)
+    for kernel_fft, weights, edges in zip(ckd['kernels_fft'],
+                                          ckd['weights'],
+                                          ckd['edges']):
+        signal_weighted = signal.reshape(detector_shape) * weights
+        sub_signal = signal_weighted[edges[0]:edges[1], edges[2]:edges[3]]
+        conv_result = convolve(sub_signal, kernel_fft)
+        signal_convolved[edges[0]:edges[1], edges[2]:edges[3]] += (
+            conv_result[:edges[1]-edges[0], :edges[3]-edges[2]])
+    return signal_convolved.reshape(original_shape)
 
 
 def stray_light(l1_product: L1,
@@ -272,15 +272,15 @@ def stray_light(l1_product: L1,
     l1_product['proc_level'] = ProcLevel.stray
     if van_cittert_steps == 0:
         return
-    n_alt = l1_product['image'].shape[0]
+    n_alt = l1_product['signal'].shape[0]
     eta = ckd['eta'].ravel()
     for i_alt in tqdm(range(n_alt)):
-        image = unbin_data(binning_table, l1_product['image'][i_alt])
-        image_ideal = image
+        signal = unbin_data(binning_table, l1_product['signal'][i_alt])
+        signal_ideal = signal
         for i_vc in range(van_cittert_steps):
-            stray_convolved = convolve_with_all_kernels(image_ideal, ckd)
-            image_ideal = (image - stray_convolved) / (1 - eta)
-        l1_product['image'][i_alt, :] = bin_data(binning_table, image_ideal)
+            stray_convolved = convolve_with_all_kernels(signal_ideal, ckd)
+            signal_ideal = (signal - stray_convolved) / (1 - eta)
+        l1_product['signal'][i_alt, :] = bin_data(binning_table, signal_ideal)
 
 
 def map_from_detector(l1_product: L1,
@@ -303,7 +303,7 @@ def map_from_detector(l1_product: L1,
 
     """
     l1_product['proc_level'] = ProcLevel.swath
-    n_alt = l1_product['image'].shape[0]
+    n_alt = l1_product['signal'].shape[0]
     n_cols = ckd['act_map'].shape[1]
     n_rows = len(count_table) // n_cols
     n_act, n_wavelengths = ckd['row_map'].shape
@@ -324,7 +324,7 @@ def map_from_detector(l1_product: L1,
         # Compute spectra and noise at intermediate wavelengths
         l1_product['spectra'][i_alt, :, :] = interpn(
             (row_indices, col_indices),
-            l1_product['image'][i_alt, :].reshape((n_rows, n_cols)),
+            l1_product['signal'][i_alt, :].reshape((n_rows, n_cols)),
             row_col_map,
             method='quintic',
             bounds_error=False,

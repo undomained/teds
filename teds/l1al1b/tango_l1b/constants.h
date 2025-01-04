@@ -10,6 +10,8 @@ namespace dims {
 
 // Number of vector components
 constexpr int vec { 3 };
+// Number of quaternion components
+constexpr int quat { 4 };
 
 } // namespace dims
 
@@ -21,6 +23,25 @@ constexpr float f { static_cast<float>(i) };
 constexpr double d { static_cast<double>(i) };
 
 } // namespace fill
+
+namespace math {
+
+// Multiply with this factor to convert from degrees to radians
+constexpr double deg_to_rad { 0.017453292519943295 };
+
+} // namespace math
+
+// Geolocation related
+namespace earth {
+
+constexpr double a { 6378137.0 };
+constexpr double b { 6356752.314245179499 };
+constexpr double f_inv { 298.257223563 };
+constexpr double f { 3.3528106647474804385e-3 };
+constexpr double e2 { 6.694379990141316435e-3 };
+constexpr double e { 8.1819190842621490908e-2 };
+
+} // namespace earth
 
 // Process ladder, an ordered list of possible states of
 // data. Possible data levels run from L1A to L1B.

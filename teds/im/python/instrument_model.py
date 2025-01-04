@@ -18,10 +18,7 @@ Input files are:
 - (optionally) netCDF geometry data io.geometry
 
 """
-from importlib.resources import files
 from pathlib import Path
-
-import yaml
 
 from . import forward_models as fw
 from teds import log
@@ -34,7 +31,7 @@ from teds.l1al1b.python.io import read_proc_level
 from teds.l1al1b.python.io import write_l1
 from teds.l1al1b.python.types import ProcLevel
 from teds.l1al1b.python.types import L1
-from teds.lib.io import merge_configs
+from teds.lib.io import merge_config_with_default
 
 
 def check_config(config: dict) -> None:
@@ -44,8 +41,6 @@ def check_config(config: dict) -> None:
     ----------
     config_file
         Path of YAML configuration file.
-    towards_l1b
-        Whether the processing direction is to L1B or L1A
 
     """
     for key in ('sgm', 'ckd'):
@@ -118,25 +113,18 @@ def run_instrument_model(config_user: dict | None = None) -> None:
         specified by the user.
 
     """
-    defaults_filename = str(files('teds.im.python') / 'default_config.yaml')
-    if config_user is None:
-        print(open(defaults_filename).read())
-        return
-    assert isinstance(config_user, dict)
-
     print_heading('Tango instrument model', empty_line=False)
     print_system_info()
 
     print_heading('Reading CKD and input data')
     # Start with the full default config and then merge in those
     # settings given by the user.
-    config: dict = yaml.safe_load(open(defaults_filename))
-    merge_configs(config, config_user)
+    config = merge_config_with_default(config_user, 'teds.im.python')
     check_config(config)
     ckd = read_ckd(config['io']['ckd'])
     log.info('Reading input data')
     l1_product: L1 = read_l1(
-        config['io']['sgm'], config['image_start'], config['image_end'])
+        config['io']['sgm'], config['alt_beg'], config['alt_end'])
     set_l1_meta(config, l1_product)
     # Read binning table corresponding to input data
     binning_table = read_binning_table(config['io']['binning_table'],
@@ -189,7 +177,7 @@ def run_instrument_model(config_user: dict | None = None) -> None:
         log.info('Dark offset')
         fw.dark_offset(l1_product, ckd['dark']['offset'])
     if step_needed(ProcLevel.raw, l1_product['proc_level'], cal_level):
-        log.info('Coadding and binning')
+        log.info('Analog-to-digital conversion')
         fw.coadding_and_binning(l1_product, binning_table)
 
     # Write output data

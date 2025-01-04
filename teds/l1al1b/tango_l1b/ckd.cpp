@@ -3,6 +3,7 @@
 
 #include "ckd.h"
 
+#include "binning_table.h"
 #include "constants.h"
 
 #include <algorithm>
@@ -32,6 +33,9 @@ CKD::CKD(const std::string& filename)
     n_detector_rows = static_cast<int>(nc.getDim("detector_row").getSize());
     n_detector_cols = static_cast<int>(nc.getDim("detector_column").getSize());
     npix = n_detector_cols * n_detector_rows;
+    n_detector_rows_binned = n_detector_rows;
+    n_detector_cols_binned = n_detector_cols;
+    npix_binned = npix;
     n_act = static_cast<int>(nc.getDim("across_track_sample").getSize());
     // Read the pixel mask which is possibly not yet in its final
     // state. It may be updated by one or more detector calibration
@@ -143,6 +147,20 @@ CKD::CKD(const std::string& filename)
     grp = nc.getGroup("radiometric");
     rad.rad.resize(n_act, std::vector<double>(n_detector_cols));
     getAndReshape(grp.getVar("radiometric"), rad.rad);
+}
+
+auto CKD::bin(const BinningTable& binning_table) -> void
+{
+    binning_table.bin(pixel_mask);
+    binning_table.bin(dark.offset);
+    binning_table.bin(dark.current);
+    binning_table.bin(noise.g);
+    binning_table.bin(noise.n2);
+    binning_table.bin(prnu.prnu);
+    // For now, assume no binning across columns and thus binned and
+    // unbinned number of columns are always the same.
+    npix_binned = binning_table.nBins();
+    n_detector_rows_binned = npix_binned / n_detector_cols_binned;
 }
 
 } // namespace tango

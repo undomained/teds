@@ -20,7 +20,7 @@
 
 #pragma once
 
-#include <Eigen/Sparse>
+#include <string>
 #include <vector>
 
 namespace tango {
@@ -34,41 +34,63 @@ class LinearSpline;
 // reduces data dimensions.
 auto applyISRF(const CKD& ckd,
                const bool enabled,
-               const Eigen::SparseMatrix<double>& isrf,
-               L1& l1) -> void;
+               const double fwhm_gauss,
+               const double shape,
+               L1& l1_prod) -> void;
 
 // Undo radiometric calibration
-auto radiometric(const CKD& ckd, const bool enabled, L1& l1) -> void;
+auto radiometric(const CKD& ckd, const bool enabled, L1& l1_prod) -> void;
 
 // Map spectra to the detector. After this spectra will be deallocated
 // and we work with the detector image.
-auto mapToDetector(const CKD& ckd, const int b_spline_order, L1& l1) -> void;
+auto mapToDetector(const CKD& ckd,
+                   const int b_spline_order,
+                   L1& l1_prod) -> void;
 
 // Add stray light to the image
-auto strayLight(const CKD& ckd, const bool enabled, L1& l1) -> void;
+auto strayLight(const CKD& ckd, const bool enabled, L1& l1_prod) -> void;
 
 // Multiply detector image with photoresponse nonuniformity (PRNU) factors
-auto prnu(const CKD& ckd, const bool enabled, L1& l1) -> void;
+auto prnu(const CKD& ckd, const bool enabled, L1& l1_prod) -> void;
 
 // Convert from the ideal to measured signal using the nonlinearity CKD
 auto nonlinearity(const CKD& ckd,
                   const bool enabled,
                   const LinearSpline& nonlin_spline,
-                  L1& l1) -> void;
+                  L1& l1_prod) -> void;
 
 // Add dark current to the image
-auto darkCurrent(const CKD& ckd, const bool enabled, L1& l1) -> void;
+auto darkCurrent(const CKD& ckd, const bool enabled, L1& l1_prod) -> void;
 
 // Add noise to the image
-auto noise(const CKD& ckd, const bool enabled, const int seed, L1& l1) -> void;
+auto noise(const CKD& ckd,
+           const bool enabled,
+           const int seed,
+           L1& l1_prod) -> void;
 
 // Add dark offset to the image
-auto darkOffset(const CKD& ckd, const bool enabled, L1& l1) -> void;
+auto darkOffset(const CKD& ckd, const bool enabled, L1& l1_prod) -> void;
+
+// Bin all detector images using the binning table and binning ID from
+// the configuration file. This is independent of the calibration
+// level and can be applied always if the detector images
+// exist.
+// n_rows and n_cols are the dimensions of the unbinned detector
+// image.
+// scale_by_binsize determines whether to divide each signal value by
+// the bin size. This is only relevant for L1A which must remained
+// unscaled because the scaling will take place in the L1B processor.
+auto binDetectorImages(const int n_rows,
+                       const int n_cols,
+                       const std::string& binning_filename,
+                       const int binning_table_id,
+                       const bool scale_by_binsize,
+                       L1& l1_prod) -> void;
 
 // Convert detector image to integer format. After this the detector
 // image in floating point format is allocated and with work with the
 // short integer format. No "enabled" argument necessary because this
 // is the final process (set cal_level to raw or higher to skip this).
-auto digitalToAnalog(const BinningTable& binning_table, L1& l1) -> void;
+auto digitalToAnalog(const int nr_coadditions, L1& l1_prod) -> void;
 
 } // namespace tango

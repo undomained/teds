@@ -1,10 +1,11 @@
 [build-system]
-requires = ['setuptools', 'cmake>=3.22']
+requires = ['setuptools', 'cmake>=3.22', 'numpy >= 2']
 build-backend = 'setuptools.build_meta'
 
 [project]
 name = 'teds'
 version = '0.0.1'
+requires-python = ">= 3.11"
 dependencies = [
     'netCDF4',
     'h5py',
@@ -23,7 +24,18 @@ dependencies = [
     'tables',
     'pyproj',
     'Glymur == 0.13.2',
-    'torch==2.4.1'
+    'torch==2.4.1',
+    'pyquaternion==0.9.9',
+    'piccolo_theme==0.22',
+    'flake8==7.1.1',
+    'mypy==1.11.1',
+    'types-pyyaml',
+    'types-tqdm==4.66',
+    'types-requests',
+    'sphinx==7.3.7',
+    'piccolo_theme==0.22.0',
+    'pytest==8.3',
+    'coverage==7.6.1',
 ]
 
 [tool.setuptools]
@@ -47,7 +59,11 @@ module = [
     'numba.*',
     'cartopy.*',
     'matplotlib.*',
-    'mpl_toolkits.*'
+    'mpl_toolkits.*',
+    'astropy.*',
+    'sgp4.*',
+    'pyquaternion.*',
+    'torch.*'
 ]
 ignore_missing_imports = true
 
@@ -55,13 +71,11 @@ ignore_missing_imports = true
 module = [
     'teds.lib.constants',
     'teds.lib.hapi',
-    'teds.lib.libGM',
     'teds.lib.libRT',
     'teds.lib.libSURF',
     'teds.lib.paths',
     'teds.lib.data_netcdf.*',
     'teds.lib.libINV',
-    'teds.lib.libOrbSim',
     'teds.lib.libAMF',
     'teds.lib.libATM',
     'teds.lib.libDOAS',
@@ -72,9 +86,6 @@ module = [
     'teds.lib.libWrite',
     'teds.lib.lib_utils',
     'teds.lib.remotap_preproc.*',
-    'teds.gm.create_gm_yaml_file',
-    'teds.gm.gm',
-    'teds.sgm.create_sgm_yaml_file',
     'teds.sgm.sgm_no2',
     'teds.sgm.sgm_Carbon_radscene',
     'teds.sgm.sgm_geoscene',
@@ -97,7 +108,6 @@ module = [
     'teds.l2l4.ModuleReadMicroHH',
     'teds.l2l4.ModuleRemoveBackground',
     'teds.l2l4.l2l4',
-    'teds.pam.pam',
     'teds.siml1b.radiance_offset',
     'teds.siml1b.siml1b',
     'teds.run_E2E',

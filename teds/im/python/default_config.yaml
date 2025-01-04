@@ -1,4 +1,4 @@
-# All user configurable settings and their default values for the
+# All user configurable settings and their default values of the
 # instrument model (IM)
 
 # Global attributes
@@ -10,8 +10,8 @@ cal_level: l1a
 
 # The first and last (inclusive) along-track positions to be include
 # in processing.
-image_start: 0
-image_end: null
+alt_beg: 0
+alt_end: null
 
 # Detector related settings
 detector:

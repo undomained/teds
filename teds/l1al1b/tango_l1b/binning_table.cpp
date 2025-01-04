@@ -3,7 +3,6 @@
 
 #include "binning_table.h"
 
-#include <algorithm>
 #include <netcdf>
 #include <numeric>
 #include <sstream>
@@ -47,6 +46,22 @@ auto BinningTable::bin(const std::vector<double>& data,
     }
 }
 
+auto BinningTable::binUnscaled(std::vector<double>& data) const -> void
+{
+    const size_t n_full { bin_indices.size() };
+    const size_t n_binned { count_table.size() };
+    const size_t n_alt { data.size() / n_full };
+    std::vector<double> data_binned(n_alt * count_table.size(), 0.0);
+#pragma omp parallel for
+    for (size_t i_alt = 0; i_alt < n_alt; ++i_alt) {
+        for (size_t i {}; i < n_full; ++i) {
+            data_binned[i_alt * n_binned + bin_indices[i]] +=
+              data[i_alt * n_full + i];
+        }
+    }
+    data = std::move(data_binned);
+}
+
 auto BinningTable::bin(std::vector<double>& data) const -> void
 {
     std::vector<double> data_binned(count_table.size());
@@ -61,27 +76,6 @@ auto BinningTable::bin(std::vector<bool>& data) const -> void
         data_binned[bin_indices[i]] = data_binned[bin_indices[i]] || data[i];
     }
     data = std::move(data_binned);
-}
-
-auto BinningTable::unbin(const std::vector<double>& data,
-                         std::vector<double>& data_unbinned) const -> void
-{
-    std::ranges::fill(data_unbinned, 0.0);
-    for (int i {}; i < static_cast<int>(bin_indices.size()); ++i) {
-        data_unbinned[i] = data[bin_indices[i]];
-    }
-}
-
-auto BinningTable::binPixelIndices(
-  std::vector<std::vector<int>>& pix_indices) const -> void
-{
-    // The row indices are transformed from those corresponding to an
-    // unbinned image to a binned image.
-    for (auto& pix_indices_act : pix_indices) {
-        for (auto& index : pix_indices_act) {
-            index = bin_indices[index];
-        }
-    }
 }
 
 } // namespace tango

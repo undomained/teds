@@ -6,6 +6,7 @@
 #include "algorithm.h"
 #include "solar_model.h"
 
+#include <algorithm>
 #include <cmath>
 #include <stdexcept>
 

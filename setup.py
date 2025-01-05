@@ -30,7 +30,7 @@ try:
         if 'libhdf5.so' in line:
             library_dirs.append(os.path.dirname(line))
             break
-except FileNotFoundError:
+except FileNotFoundError or subprocess.CalledProcessError:
     pass
 
 extension = Extension('teds.l1al1b.python.geolocation',

@@ -45,7 +45,7 @@ def check_config(config: dict) -> None:
         exit(1)
     ckd_path = Path(config['io_files']['ckd'])
     if not ckd_path.is_file():
-        log.error(f'{ckd_path} not found')
+        log.error(f'CKD ({ckd_path}) not found')
         exit(1)
 
 
@@ -87,12 +87,12 @@ def get_individual_spectra(config: dict) -> Geometry:
     }
     # Give lon_grid and lat_grid some values such that subsequent
     # modules do not crash.
-    geometry['longitude'][0, :] = 10.
-    geometry['latitude'][0, :] = 50 + 0.0025 * np.arange(nact)
-    geometry['sza'][0, :] = config['scene_spec']['sza']
-    geometry['saa'][0, :] = config['scene_spec']['saa']
-    geometry['vza'][0, :] = config['scene_spec']['vza']
-    geometry['vaa'][0, :] = config['scene_spec']['vaa']
+    geometry['longitude'][0, :] = np.deg2rad(10)
+    geometry['latitude'][0, :] = np.deg2rad(50 + 0.0025 * np.arange(nact))
+    geometry['sza'][0, :] = np.deg2rad(config['scene_spec']['sza'])
+    geometry['saa'][0, :] = np.deg2rad(config['scene_spec']['saa'])
+    geometry['vza'][0, :] = np.deg2rad(config['scene_spec']['vza'])
+    geometry['vaa'][0, :] = np.deg2rad(config['scene_spec']['vaa'])
     return geometry
 
 

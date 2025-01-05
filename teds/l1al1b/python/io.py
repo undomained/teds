@@ -393,7 +393,7 @@ def read_l1(filename: str, alt_beg: int, alt_end: int | None = None) -> L1:
     if 'science_data' in nc.groups:
         grp = nc['science_data']
         l1_product['signal'] = (
-            grp['detector_signal'][alt_beg:alt_end, :].astype('f8').data)
+            grp['detector_image'][alt_beg:alt_end, :].astype('f8').data)
         if 'detector_stdev' in grp.variables:
             l1_product['noise'] = (
                 grp['detector_stdev'][alt_beg:alt_end, :].data)
@@ -411,7 +411,7 @@ def read_l1(filename: str, alt_beg: int, alt_end: int | None = None) -> L1:
         n_alt = l1_product['spectra'].shape[0]
     if 'solar_irradiance' in nc.variables:
         l1_product['solar_irradiance'] = nc['solar_irradiance'][:].data
-    if 'signal_attributes' in nc.groups:
+    if 'image_attributes' in nc.groups:
         grp = nc['image_attributes']
         l1_product['timestamps'] = grp['time'][alt_beg:alt_end]
         l1_product['binning_table_ids'] = grp['binning_table'][alt_beg:alt_end]

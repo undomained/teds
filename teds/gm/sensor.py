@@ -268,7 +268,7 @@ class Sensor:
                          orbit_timestamps: npt.NDArray[np.datetime64],
                          dt_start: datetime.datetime,
                          dt_end: datetime.datetime,
-                         dt_interval: datetime.timedelta,
+                         dt_interval: float,
                          thetas: npt.NDArray[np.float64],
                          get_view_angles: bool = True,
                          get_solar_angles: bool = True) -> Geometry:

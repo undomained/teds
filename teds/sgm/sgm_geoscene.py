@@ -59,17 +59,14 @@ class Emptyclass:
 
 def get_gm_data(filename):
 
-    names = ['sza', 'saa', 'vza', 'vaa', 'lat', 'lon']
-
     input = nc.Dataset(filename, mode='r')
-
     gm_data = Emptyclass()
-
-    for name in names:
-        gm_data.__setattr__(name, input[name][:])
-
-    input.close()
-
+    gm_data.__setattr__('sza', input['solar_zenith'][:])
+    gm_data.__setattr__('saa', input['solar_azimuth'][:])
+    gm_data.__setattr__('vza', input['sensor_zenith'][:])
+    gm_data.__setattr__('vaa', input['sensor_azimuth'][:])
+    gm_data.__setattr__('lat', input['latitude'][:])
+    gm_data.__setattr__('lon', input['longitude'][:])
     return gm_data
 
 
@@ -128,9 +125,20 @@ def geosgm_output(filename, atm):
 
     # column_air
     _ = writevariablefromname(output_atm, 'column_air', _dims2d, atm.col_air)
-    # longitude/latitude coordiantes
-    _ = writevariablefromname(output_atm, 'latitude', _dims2d, atm.lat)
-    _ = writevariablefromname(output_atm, 'longitude', _dims2d, atm.lon)
+
+    var = output_atm.createVariable('latitude', 'f8', _dims2d)
+    var.long_name = 'latitudes'
+    var.units = 'degrees'
+    var.valid_min = -90.0
+    var.valid_max = 90.0
+    var[:] = atm.lat
+
+    var = output_atm.createVariable('longitude', 'f8', _dims2d)
+    var.long_name = 'longitudes'
+    var.units = 'degrees'
+    var.valid_min = -180.0
+    var.valid_max = 180.0
+    var[:] = atm.lon
 
     #information on emission source
     substr = 'source'

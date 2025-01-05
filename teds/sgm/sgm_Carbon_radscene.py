@@ -28,20 +28,14 @@ class Dict2Class:
         self.__dict__.update(arg_dict)
 
 def get_gm_data(filename):
-
-    names = [
-        'sza', 'saa', 'vza', 'vaa', 'lat', 'lon',
-    ]
-
     input = Dataset(filename, mode='r')
-
     gm_data = Emptyclass()
-
-    for name in names:
-        gm_data.__setattr__(name, input[name][:])
-
-    input.close()
-
+    gm_data.__setattr__('lat', input['latitude'][:])
+    gm_data.__setattr__('lon', input['longitude'][:])
+    gm_data.__setattr__('sza', input['solar_zenith'][:])
+    gm_data.__setattr__('saa', input['solar_azimuth'][:])
+    gm_data.__setattr__('vza', input['sensor_zenith'][:])
+    gm_data.__setattr__('vaa', input['sensor_azimuth'][:])
     return gm_data
 
 def radsgm_output(filename_rad, rad_output, gm_data):
@@ -77,17 +71,21 @@ def radsgm_output(filename_rad, rad_output, gm_data):
         rad_output['radiance'])
 
     # add coordinates to SGM atmosphere
-    _ = writevariablefromname(
-        nc,
-        'latitude',
-        ('along_track_sample', 'across_track_sample'),
-        gm_data.lat)
+    var = nc.createVariable(
+        'latitude', 'f8', ('along_track_sample', 'across_track_sample'))
+    var.long_name = 'latitudes'
+    var.units = 'degrees'
+    var.valid_min = -90.0
+    var.valid_max = 90.0
+    var[:] = gm_data.lat
 
-    _ = writevariablefromname(
-        nc,
-        'longitude',
-        ('along_track_sample', 'across_track_sample'),
-        gm_data.lon)
+    var = nc.createVariable(
+        'longitude', 'f8', ('along_track_sample', 'across_track_sample'))
+    var.long_name = 'longitudes'
+    var.units = 'degrees'
+    var.valid_min = -180.0
+    var.valid_max = 180.0
+    var[:] = gm_data.lon
 
     return
 
@@ -134,22 +132,36 @@ def sgm_output_atm_ref(filename, atm, albedo, gm_data, gases):
     # column_air
     _ = writevariablefromname(output_atm, 'column_air', _dims, atm.air)
 
-    # add coordinates to SGM atmosphere
-    _ = writevariablefromname(output_atm, 'latitude', _dims, gm_data.lat)
-    _ = writevariablefromname(output_atm, 'longitude', _dims, gm_data.lon)
+    # Add coordinates to SGM atmosphere
+    var = output_atm.createVariable('latitude', 'f8', _dims)
+    var.long_name = 'latitudes'
+    var.units = 'degrees'
+    var.valid_min = -90.0
+    var.valid_max = 90.0
+    var[:] = gm_data.lat
+
+    var = output_atm.createVariable('longitude', 'f8', _dims)
+    var.long_name = 'longitudes'
+    var.units = 'degrees'
+    var.valid_min = -180.0
+    var.valid_max = 180.0
+    var[:] = gm_data.lon
     output_atm.close()
+
 
 def get_geosgm_data(filename):
 
     input = Dataset(filename, mode='r')
 
-    names = ['col_air', 'dcol_ch4', 'dcol_co2', 'dcol_h2o', 'lat' , 'lon',
+    names = ['col_air', 'dcol_ch4', 'dcol_co2', 'dcol_h2o',
              'XCH4', 'XCO2', 'XH2O', 'zlay', 'zlev','xpos', 'ypos']
 
     atm_data = Emptyclass()
 
     for name in names:
         atm_data.__setattr__(name, input[name][:])
+    atm_data.__setattr__('lat', input['latitude'][:])
+    atm_data.__setattr__('lon', input['longitude'][:])
 
     atm_data.__setattr__('albedo', input['albedo B11'][:])
 

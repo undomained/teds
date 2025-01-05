@@ -77,11 +77,9 @@ public:
             "Forward motion compensating factor for the optimal coadding\n"
             "estimation. Does not affect anything else about the simulation."
         };
-        Setting<double> full_well {
-            { "optimal_coadd", "full_well" },
-            6679.665,
-            "full well width"
-        };
+        Setting<double> full_well { { "optimal_coadd", "full_well" },
+                                    6679.665,
+                                    "full well width" };
         Setting<double> t_dead { { "optimal_coadd", "t_dead" },
                                  0.006,
                                  "dead time, s" };

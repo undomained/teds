@@ -16,6 +16,7 @@ pipelines:
         script:
           - . /etc/profile
           - source /venv/bin/activate
+          - pip install -e .
           - bash flake8_check.sh
           - mypy teds
           - pytest

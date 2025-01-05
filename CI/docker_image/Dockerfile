@@ -36,7 +36,8 @@ RUN export DEBCONF_NOWARNINGS=yes \
     unzip \
     wget \
     liblapack-dev \
-    libeigen3-dev
+    libeigen3-dev \
+    libhdf5-dev
 ENV LANGUAGE=en_US.UTF-8 LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
 
 FROM builder-ubuntu AS builder-science
@@ -63,7 +64,8 @@ RUN wget https://bitbucket.org/sron_earth/teds/get/4bb6de69df5b.zip \
     && /opt/view/bin/python -m venv /venv \
     && . /venv/bin/activate \
     && pip install --upgrade pip \
-    && pip install -r sron_earth-teds-4bb6de69df5b/requirements.txt
+    && cd sron_earth-teds-4bb6de69df5b \
+    && pip install -e .
 
 # Expose the environment
 RUN . ./spack-$spack_version/share/spack/setup-env.sh \

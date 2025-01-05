@@ -1,9 +1,10 @@
 # This source code is licensed under the 3-clause BSD license found in
 # the LICENSE file in the root directory of this project.
 """Types used by various TEDS modules."""
-from enum import auto
+from dataclasses import dataclass
 from enum import IntEnum
-from typing import TypedDict
+from enum import auto
+from typing import Self
 
 from pyquaternion import Quaternion
 import numpy as np
@@ -41,7 +42,8 @@ class ProcLevel(IntEnum):
         return _names[self.value]
 
 
-class BinningTable(TypedDict):
+@dataclass
+class BinningTable:
     """Binning table indices and counts"""
     # Index of each detector pixel on the binned array
     bin_indices: npt.NDArray[np.int32]
@@ -49,7 +51,8 @@ class BinningTable(TypedDict):
     count_table: npt.NDArray[np.int32]
 
 
-class CKDDark(TypedDict):
+@dataclass
+class CKDDark:
     """Dark offset and dark current CKD."""
     # Dark offset (independent of integration time)
     offset: npt.NDArray[np.float64]
@@ -57,7 +60,8 @@ class CKDDark(TypedDict):
     current: npt.NDArray[np.float64]
 
 
-class CKDNoise(TypedDict):
+@dataclass
+class CKDNoise:
     """Noise CKD."""
     # Conversion gain (signal dependent noise term)
     conversion_gain: npt.NDArray[np.float64]
@@ -65,7 +69,8 @@ class CKDNoise(TypedDict):
     read_noise: npt.NDArray[np.float64]
 
 
-class CKDNonlin(TypedDict):
+@dataclass
+class CKDNonlin:
     """Signal nonlinearity CKD."""
     # Expected, linear signal in counts
     expected: npt.NDArray[np.float64]
@@ -73,13 +78,15 @@ class CKDNonlin(TypedDict):
     observed: npt.NDArray[np.float64]
 
 
-class CKDPRNU(TypedDict):
+@dataclass
+class CKDPRNU:
     """Photoresponse non-uniformity (PRNU) CKD."""
     # PRNU including quantum efficiency
     prnu_qe: npt.NDArray[np.float64]
 
 
-class CKDStray(TypedDict, total=False):
+@dataclass
+class CKDStray:
     """Stray light CKD."""
     # Fourier transforms of stray light kernels
     kernels_fft: list[npt.NDArray[np.complex128]]
@@ -94,7 +101,8 @@ class CKDStray(TypedDict, total=False):
     edges: npt.NDArray[np.int32]
 
 
-class CKDSwath(TypedDict):
+@dataclass
+class CKDSwath:
     """CKD related to the satellite swath."""
     # Across track angles
     act_angles: npt.NDArray[np.float64]
@@ -112,20 +120,23 @@ class CKDSwath(TypedDict):
     line_of_sights: npt.NDArray[np.float64]
 
 
-class CKDSpectral(TypedDict):
+@dataclass
+class CKDSpectral:
     """Spectral CKD."""
     # Wavelengths assigned to each detector column of each L1B
     # spectrum
     wavelengths: npt.NDArray[np.float64]
 
 
-class CKDRadiometric(TypedDict):
+@dataclass
+class CKDRadiometric:
     """Radiometric CKD."""
     # Radiometric calibration (correction) constants
     rad_corr: npt.NDArray[np.float64]
 
 
-class CKD(TypedDict, total=False):
+@dataclass
+class CKD:
     """Dictionary describing all calibration parameter for Tango Carbon."""
     # Number of detector pixels in the spatial direction
     n_detector_rows: int
@@ -144,7 +155,8 @@ class CKD(TypedDict, total=False):
     radiometric: CKDRadiometric
 
 
-class Navigation(TypedDict):
+@dataclass
+class Navigation:
     """Viewing and solar geometry describing a slice or full orbit."""
     # Timestamps of orbit positions and attitude quaternions, in
     # seconds from beginning of day
@@ -157,10 +169,11 @@ class Navigation(TypedDict):
     altitude: npt.NDArray[np.float64]
 
 
-class Geometry(TypedDict):
+@dataclass
+class Geometry:
     """Viewing and solar geometry describing a slice or full orbit."""
-    latitude: npt.NDArray[np.float64]
-    longitude: npt.NDArray[np.float64]
+    lat: npt.NDArray[np.float64]
+    lon: npt.NDArray[np.float64]
     height: npt.NDArray[np.float64]
     # Solar/viewing azimuth/zenith angles
     saa: npt.NDArray[np.float64]
@@ -168,8 +181,20 @@ class Geometry(TypedDict):
     vaa: npt.NDArray[np.float64]
     vza: npt.NDArray[np.float64]
 
+    @classmethod
+    def from_shape(cls, shape: tuple) -> Self:
+        """Initialize all geometry arrays with the same shape."""
+        return cls(np.zeros(shape),
+                   np.zeros(shape),
+                   np.zeros(shape),
+                   np.zeros(shape),
+                   np.zeros(shape),
+                   np.zeros(shape),
+                   np.zeros(shape))
 
-class L1(TypedDict, total=False):
+
+@dataclass
+class L1:
     """Partially or fully calibrated level 1 data.
 
     The data level can range from L1A to L1B depending on the
@@ -194,10 +219,29 @@ class L1(TypedDict, total=False):
     timestamps: npt.NDArray[np.float64]
     tai_seconds: npt.NDArray[np.uint]
     tai_subsec: npt.NDArray[np.float64]
-    binning_table_ids: npt.NDArray[np.int32]
-    coad_factors: npt.NDArray[np.int32]
-    exptimes: npt.NDArray[np.float64]
+    binning_table_id: int
+    coad_factor: int
+    exposure_time: float
 
     orb_pos: npt.NDArray[np.float64]
     att_quat: npt.NDArray[np.float64]
     geometry: Geometry
+
+    @classmethod
+    def from_empty(cls) -> Self:
+        return cls(proc_level=ProcLevel.l1a,
+                   signal=np.empty(0),
+                   noise=np.empty(0),
+                   wavelengths=np.empty(0),
+                   spectra=np.empty(0),
+                   spectra_noise=np.empty(0),
+                   solar_irradiance=np.empty(0),
+                   timestamps=np.empty(0),
+                   tai_seconds=np.empty(0, dtype=np.uint),
+                   tai_subsec=np.empty(0),
+                   binning_table_id=0,
+                   coad_factor=1,
+                   exposure_time=0.0,
+                   orb_pos=np.empty(0),
+                   att_quat=np.empty(0),
+                   geometry=Geometry.from_shape((0,)))

@@ -107,83 +107,78 @@ def run_l1al1b(config_user: dict | None = None) -> None:
         config['io']['l1a'], config['alt_beg'], config['alt_end'])
 
     # Read binning table corresponding to input data
-    data_binning_table_id = int(l1_product['binning_table_ids'][0])
     binning_table = read_binning_table(config['io']['binning_table'],
-                                       data_binning_table_id,
-                                       ckd['n_detector_rows'],
-                                       ckd['n_detector_cols'])
+                                       l1_product.binning_table_id,
+                                       ckd.n_detector_rows,
+                                       ckd.n_detector_cols)
     # Bin the CKD
-    ckd['pixel_mask'] = bin_data(binning_table, ckd['pixel_mask'])
-    ckd['dark']['offset'] = bin_data(binning_table, ckd['dark']['offset'])
-    ckd['dark']['current'] = bin_data(binning_table, ckd['dark']['current'])
-    ckd['noise']['conversion_gain'] = bin_data(binning_table,
-                                               ckd['noise']['conversion_gain'])
-    ckd['noise']['read_noise'] = bin_data(binning_table,
-                                          ckd['noise']['read_noise'])
-    ckd['prnu']['prnu_qe'] = bin_data(binning_table, ckd['prnu']['prnu_qe'])
+    ckd.pixel_mask = bin_data(binning_table, ckd.pixel_mask)
+    ckd.dark.offset = bin_data(binning_table, ckd.dark.offset)
+    ckd.dark.current = bin_data(binning_table, ckd.dark.current)
+    ckd.noise.conversion_gain = bin_data(
+        binning_table, ckd.noise.conversion_gain)
+    ckd.noise.read_noise = bin_data(binning_table, ckd.noise.read_noise)
+    ckd.prnu.prnu_qe = bin_data(binning_table, ckd.prnu.prnu_qe)
     # Processing steps
     print_heading('Retrieval')
     # Output processing level
     cal_level = ProcLevel[config['cal_level'].lower()]
-    if step_needed(ProcLevel.raw, l1_product['proc_level'], cal_level):
+    if step_needed(ProcLevel.raw, l1_product.proc_level, cal_level):
         log.info('Coadding and binning')
-        cal.coadding_and_binning(l1_product, binning_table['count_table'])
+        cal.coadding_and_binning(l1_product, binning_table.count_table)
     if config['dark']['enabled'] and step_needed(
-            ProcLevel.dark_offset, l1_product['proc_level'], cal_level):
+            ProcLevel.dark_offset, l1_product.proc_level, cal_level):
         log.info('Dark offset')
-        cal.dark_offset(l1_product, ckd['dark']['offset'])
-    if step_needed(ProcLevel.noise, l1_product['proc_level'], cal_level):
+        cal.dark_offset(l1_product, ckd.dark.offset)
+    if step_needed(ProcLevel.noise, l1_product.proc_level, cal_level):
         log.info('Noise')
         # C++ code does not have first check
         if config['dark']['enabled'] and config['noise']['enabled']:
             cal.noise(l1_product,
-                      binning_table['count_table'],
-                      ckd['noise'],
-                      ckd['dark']['current'])
+                      binning_table.count_table,
+                      ckd.noise,
+                      ckd.dark.current)
         else:
-            l1_product['noise'] = np.full_like(l1_product['signal'], np.nan)
+            l1_product.noise = np.full_like(l1_product.signal, np.nan)
     if config['dark']['enabled'] and step_needed(
-            ProcLevel.dark_current, l1_product['proc_level'], cal_level):
+            ProcLevel.dark_current, l1_product.proc_level, cal_level):
         log.info('Dark current')
-        cal.dark_current(l1_product, ckd['dark']['current'])
+        cal.dark_current(l1_product, ckd.dark.current)
     if config['nonlin']['enabled'] and step_needed(
-            ProcLevel.nonlin, l1_product['proc_level'], cal_level):
+            ProcLevel.nonlin, l1_product.proc_level, cal_level):
         log.info('Nonlinearity')
-        cal.nonlinearity(l1_product, ckd['pixel_mask'], ckd['nonlin'])
+        cal.nonlinearity(l1_product, ckd.pixel_mask, ckd.nonlin)
     if config['prnu']['enabled'] and step_needed(
-            ProcLevel.prnu, l1_product['proc_level'], cal_level):
+            ProcLevel.prnu, l1_product.proc_level, cal_level):
         log.info('PRNU')
-        cal.prnu(l1_product, ckd['pixel_mask'], ckd['prnu']['prnu_qe'])
-    if 'signal' in l1_product:
+        cal.prnu(l1_product, ckd.pixel_mask, ckd.prnu.prnu_qe)
+    if l1_product.signal.size > 0:
         log.info('Smoothing over bad values')
         cal.remove_bad_values(
-            ckd['n_detector_cols'], ckd['pixel_mask'], l1_product['signal'])
+            ckd.n_detector_cols, ckd.pixel_mask, l1_product.signal)
         cal.remove_bad_values(
-            ckd['n_detector_cols'], ckd['pixel_mask'], l1_product['noise'])
+            ckd.n_detector_cols, ckd.pixel_mask, l1_product.noise)
     if (
-            step_needed(ProcLevel.stray, l1_product['proc_level'], cal_level)
+            step_needed(ProcLevel.stray, l1_product.proc_level, cal_level)
             and config['stray']['van_cittert_steps'] > 0):
         log.info('Stray light')
         cal.stray_light(l1_product,
                         binning_table,
-                        ckd['stray'],
+                        ckd.stray,
                         config['stray']['van_cittert_steps'])
-    if step_needed(ProcLevel.swath, l1_product['proc_level'], cal_level):
+    if step_needed(ProcLevel.swath, l1_product.proc_level, cal_level):
         log.info('Mapping from detector')
         cal.map_from_detector(l1_product,
-                              ckd['swath'],
-                              binning_table['count_table'],
-                              ckd['spectral']['wavelengths'])
-    if 'spectra' in l1_product and (
-            l1_product['spectra'].shape[2]
-            != ckd['spectral']['wavelengths'].shape[1]):
+                              ckd.swath,
+                              binning_table.count_table,
+                              ckd.spectral.wavelengths)
+    if l1_product.spectra.shape[2] != ckd.spectral.wavelengths.shape[1]:
         log.info(
             'Interpolating from intermediate to main CKD wavelength grids')
-        cal.change_wavelength_grid(l1_product, ckd['spectral']['wavelengths'])
-    if step_needed(ProcLevel.l1b, l1_product['proc_level'], cal_level):
+        cal.change_wavelength_grid(l1_product, ckd.spectral.wavelengths)
+    if step_needed(ProcLevel.l1b, l1_product.proc_level, cal_level):
         log.info('Radiometric')
-        cal.radiometric(
-            l1_product, ckd['radiometric']['rad_corr'], l1_product['exptimes'])
+        cal.radiometric(l1_product, ckd.radiometric.rad_corr)
     log.info('Writing output data')
     copy_geometry(config['io']['l1a'],
                   config['io']['geometry'],

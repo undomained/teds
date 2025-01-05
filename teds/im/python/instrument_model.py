@@ -94,9 +94,9 @@ def set_l1_meta(config: dict, l1_product: L1) -> None:
         L1 product (signal and detector settings).
 
     """
-    l1_product['binning_table_ids'][:] = config['detector']['binning_table_id']
-    l1_product['coad_factors'][:] = config['detector']['nr_coadditions']
-    l1_product['exptimes'][:] = config['detector']['exposure_time']
+    l1_product.binning_table_id = config['detector']['binning_table_id']
+    l1_product.coad_factor = config['detector']['nr_coadditions']
+    l1_product.exposure_time = config['detector']['exposure_time']
 
 
 def run_instrument_model(config_user: dict | None = None) -> None:
@@ -129,54 +129,54 @@ def run_instrument_model(config_user: dict | None = None) -> None:
     # Read binning table corresponding to input data
     binning_table = read_binning_table(config['io']['binning_table'],
                                        config['detector']['binning_table_id'],
-                                       ckd['n_detector_rows'],
-                                       ckd['n_detector_cols'])
+                                       ckd.n_detector_rows,
+                                       ckd.n_detector_cols)
     # Processing steps
     print_heading('Forward model')
     # Output processing level
     cal_level = ProcLevel[config['cal_level'].lower()]
-    if step_needed(ProcLevel.sgm, l1_product['proc_level'], cal_level):
+    if step_needed(ProcLevel.sgm, l1_product.proc_level, cal_level):
         log.info('ISRF convolution')
         fw.apply_isrf(l1_product,
-                      ckd['swath']['wavelengths'],
+                      ckd.swath.wavelengths,
                       config['isrf']['enabled'],
                       config['isrf']['fwhm_gauss'],
                       config['isrf']['shape'])
     if config['l1b']['enabled'] and step_needed(
-            ProcLevel.l1b, l1_product['proc_level'], cal_level):
+            ProcLevel.l1b, l1_product.proc_level, cal_level):
         log.info('Radiometric')
-        fw.radiometric(l1_product, ckd['radiometric']['rad_corr'])
-    if step_needed(ProcLevel.swath, l1_product['proc_level'], cal_level):
+        fw.radiometric(l1_product, ckd.radiometric.rad_corr)
+    if step_needed(ProcLevel.swath, l1_product.proc_level, cal_level):
         log.info('Detector mapping')
-        fw.map_to_detector(l1_product, ckd['swath'])
+        fw.map_to_detector(l1_product, ckd.swath)
     if config['stray']['enabled'] and step_needed(
-            ProcLevel.stray, l1_product['proc_level'], cal_level):
+            ProcLevel.stray, l1_product.proc_level, cal_level):
         log.info('Stray light')
-        fw.stray_light(l1_product, ckd['stray'])
+        fw.stray_light(l1_product, ckd.stray)
     if config['prnu']['enabled'] and step_needed(
-            ProcLevel.prnu, l1_product['proc_level'], cal_level):
+            ProcLevel.prnu, l1_product.proc_level, cal_level):
         log.info('PRNU')
-        fw.prnu(l1_product, ckd['prnu']['prnu_qe'])
+        fw.prnu(l1_product, ckd.prnu.prnu_qe)
     if config['nonlin']['enabled'] and step_needed(
-            ProcLevel.nonlin, l1_product['proc_level'], cal_level):
+            ProcLevel.nonlin, l1_product.proc_level, cal_level):
         log.info('Nonlinearity')
-        fw.nonlinearity(l1_product, ckd['nonlin'])
+        fw.nonlinearity(l1_product, ckd.nonlin)
     if config['dark']['enabled'] and step_needed(
-            ProcLevel.dark_current, l1_product['proc_level'], cal_level):
+            ProcLevel.dark_current, l1_product.proc_level, cal_level):
         log.info('Dark signal')
-        fw.dark_current(l1_product, ckd['dark']['current'])
+        fw.dark_current(l1_product, ckd.dark.current)
     if config['noise']['enabled'] and step_needed(
-            ProcLevel.noise, l1_product['proc_level'], cal_level):
+            ProcLevel.noise, l1_product.proc_level, cal_level):
         log.info('Noise')
         fw.noise(l1_product,
-                 ckd['noise'],
-                 ckd['dark']['current'],
+                 ckd.noise,
+                 ckd.dark.current,
                  config['noise']['seed'])
     if config['dark']['enabled'] and step_needed(
-            ProcLevel.dark_offset, l1_product['proc_level'], cal_level):
+            ProcLevel.dark_offset, l1_product.proc_level, cal_level):
         log.info('Dark offset')
-        fw.dark_offset(l1_product, ckd['dark']['offset'])
-    if step_needed(ProcLevel.raw, l1_product['proc_level'], cal_level):
+        fw.dark_offset(l1_product, ckd.dark.offset)
+    if step_needed(ProcLevel.raw, l1_product.proc_level, cal_level):
         log.info('Analog-to-digital conversion')
         fw.coadding_and_binning(l1_product, binning_table)
 

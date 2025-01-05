@@ -41,45 +41,32 @@ def ckd_pixel_mask(scope='session'):
 
 @pytest.fixture
 def ckd_dark(scope='session'):
-    ckd: CKDDark = {
-        'offset': np.loadtxt(_fix_dir / 'ckd_dark_offset.txt', 'f8').ravel(),
-        'current': np.loadtxt(_fix_dir / 'ckd_dark_current.txt', 'f8').ravel()
-    }
-    return ckd
+    return CKDDark(np.loadtxt(_fix_dir / 'ckd_dark_offset.txt', 'f8').ravel(),
+                   np.loadtxt(_fix_dir / 'ckd_dark_current.txt', 'f8').ravel())
 
 
 @pytest.fixture
 def ckd_noise(scope='session'):
-    ckd: CKDNoise = {
-        'conversion_gain':
+    return CKDNoise(
         np.loadtxt(_fix_dir / 'ckd_conversion_gain.txt', 'f8').ravel(),
-        'read_noise': np.loadtxt(_fix_dir / 'ckd_read_noise.txt', 'f8').ravel()
-    }
-    return ckd
+        np.loadtxt(_fix_dir / 'ckd_read_noise.txt', 'f8').ravel())
 
 
 @pytest.fixture
 def ckd_nonlin(scope='session'):
     data = np.loadtxt(_fix_dir / 'ckd_nonlin.txt', 'f8')
-    ckd: CKDNonlin = {'expected': data[:, 0], 'observed': data[:, 1]}
-    return ckd
+    return CKDNonlin(data[:, 0], data[:, 1])
 
 
 @pytest.fixture
 def ckd_prnu(scope='session'):
-    ckd: CKDPRNU = {
-        'prnu_qe': np.loadtxt(_fix_dir / 'ckd_prnu.txt', 'f8').ravel()
-    }
-    return ckd
+    return CKDPRNU(np.loadtxt(_fix_dir / 'ckd_prnu.txt', 'f8').ravel())
 
 
 @pytest.fixture
 def l1(signal, scope='session'):
-    l1: L1 = {
-        'signal': signal,
-        'noise': np.ones(signal.shape),
-        'binning_table_ids': np.array([0]),
-        'coad_factors': np.ones(signal.shape),
-        'exptimes': np.array([0.0460833]),
-    }
+    l1 = L1.from_empty()
+    l1.signal = signal
+    l1.noise = np.ones(signal.shape)
+    l1.exposure_time = 0.0460833
     return l1

@@ -33,14 +33,14 @@ def bin_data(binning_table: BinningTable, data: BinType) -> BinType:
 
     """
     if data.dtype == bool:
-        binned_data = np.full(len(binning_table['count_table']), False)
-        for idx, idx_binned in enumerate(binning_table['bin_indices'].ravel()):
+        binned_data = np.full(len(binning_table.count_table), False)
+        for idx, idx_binned in enumerate(binning_table.bin_indices.ravel()):
             binned_data[idx_binned] = binned_data[idx_binned] | data[idx]
     else:
-        binned_data = np.zeros(len(binning_table['count_table']))
-        for idx, idx_binned in enumerate(binning_table['bin_indices'].ravel()):
+        binned_data = np.zeros(len(binning_table.count_table))
+        for idx, idx_binned in enumerate(binning_table.bin_indices.ravel()):
             binned_data[idx_binned] += data[idx]
-        binned_data /= binning_table['count_table']
+        binned_data /= binning_table.count_table
     return binned_data
 
 
@@ -77,9 +77,9 @@ def unbin_data(binning_table: BinningTable,
     # contains unbinned data. bin_indices has dimensions (n_rows,
     # n_cols). C++ code makes bad signals 0 but can also copy values
     # from neighbouring pixels when method is linear or cubic.
-    scaled_binned_data = binned_data / binning_table['count_table']
+    scaled_binned_data = binned_data / binning_table.count_table
     if method == 'nearest':
-        data = scaled_binned_data[binning_table['bin_indices']]
+        data = scaled_binned_data[binning_table.bin_indices]
     else:
         # Assuming only groups of directly neighbouring pixels are
         # binned, so a centroid makes sense. C++ code also assumes
@@ -89,19 +89,19 @@ def unbin_data(binning_table: BinningTable,
         # Guess how many neighbouring pixels should be used.
         area = {'linear': 9, 'cubic': 25, 'quintic': 49}.get(method, 25)
         idx_dict: dict = {}
-        for pos in np.ndindex(binning_table['bin_indices'].shape):
-            bi = binning_table['bin_indices'][pos]
+        for pos in np.ndindex(binning_table.bin_indices.shape):
+            bi = binning_table.bin_indices[pos]
             if np.isfinite(scaled_binned_data[:, bi]).all():
                 idx_dict[bi] = idx_dict.get(bi, []) + [pos]
-        # Unique values in binning_table['bin_indices'] or relevant
+        # Unique values in binning_table.bin_indices or relevant
         # indices of binned data
         bin_idx = np.array(list(idx_dict.keys()))
         # Average detector positions of bins
         bin_centroids = np.array(
             [np.mean(idx_dict[bi], axis=0) for bi in bin_idx])
         det_grid = np.mgrid[
-            :binning_table['bin_indices'].shape[0],
-            :binning_table['bin_indices'].shape[1]].reshape(2, -1).T
+            :binning_table.bin_indices.shape[0],
+            :binning_table.bin_indices.shape[1]].reshape(2, -1).T
         data_list: list = []
         for binned_frame in scaled_binned_data:
             # https://stackoverflow.com/questions/37872171

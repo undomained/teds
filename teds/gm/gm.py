@@ -76,23 +76,15 @@ def get_individual_spectra(config: dict) -> Geometry:
                       f"to {view} length ({len(config['scene_spec'][view])}).")
             exit(1)
     # Here we use the 2-dimensional data structure in an artificial way
-    geometry: Geometry = {
-        'latitude': np.empty([nalt, nact]),
-        'longitude': np.empty([nalt, nact]),
-        'height': np.zeros([nalt, nact]),
-        'sza': np.empty([nalt, nact]),
-        'saa': np.empty([nalt, nact]),
-        'vza': np.empty([nalt, nact]),
-        'vaa': np.empty([nalt, nact]),
-    }
+    geometry = Geometry.from_shape((nalt, nact))
     # Give lon_grid and lat_grid some values such that subsequent
     # modules do not crash.
-    geometry['longitude'][0, :] = np.deg2rad(10)
-    geometry['latitude'][0, :] = np.deg2rad(50 + 0.0025 * np.arange(nact))
-    geometry['sza'][0, :] = np.deg2rad(config['scene_spec']['sza'])
-    geometry['saa'][0, :] = np.deg2rad(config['scene_spec']['saa'])
-    geometry['vza'][0, :] = np.deg2rad(config['scene_spec']['vza'])
-    geometry['vaa'][0, :] = np.deg2rad(config['scene_spec']['vaa'])
+    geometry.lon[0, :] = np.deg2rad(10)
+    geometry.lat[0, :] = np.deg2rad(50 + 0.0025 * np.arange(nact))
+    geometry.sza[0, :] = np.deg2rad(config['scene_spec']['sza'])
+    geometry.saa[0, :] = np.deg2rad(config['scene_spec']['saa'])
+    geometry.vza[0, :] = np.deg2rad(config['scene_spec']['vza'])
+    geometry.vaa[0, :] = np.deg2rad(config['scene_spec']['vaa'])
     return geometry
 
 
@@ -146,10 +138,10 @@ def gen_image_timestamps(orbit_start: datetime.datetime,
     """
     n_time = int(60 * (exposure_time_end - exposure_time_beg) / interval)
     # L1 products, only used for storing the detector image times
-    l1: L1 = {}
-    l1['tai_seconds'] = np.empty(n_time, dtype=np.uint32)
-    l1['tai_subsec'] = np.empty(n_time)
-    l1['timestamps'] = np.empty(n_time, dtype=np.float64)
+    l1 = L1.from_empty()
+    l1.tai_seconds = np.empty(n_time, dtype=np.uint32)
+    l1.tai_subsec = np.empty(n_time)
+    l1.timestamps = np.empty(n_time, dtype=np.float64)
     exposure_tai_start = (Time(orbit_start, scale='tai')
                           + datetime.timedelta(minutes=exposure_time_beg)
                           - Time('1958-01-01', scale='tai'))
@@ -160,10 +152,10 @@ def gen_image_timestamps(orbit_start: datetime.datetime,
     for i in range(n_time):
         tai_seconds = (exposure_tai_start
                        + datetime.timedelta(seconds=i*interval)).to(units.s)
-        l1['tai_seconds'][i] = np.uint(tai_seconds)
-        l1['tai_subsec'][i] = np.float128(tai_seconds) % 1
-        l1['timestamps'][i] = (
-            np.float64((tai_seconds - day_tai_start).to(units.s)))
+        l1.tai_seconds[i] = np.uint(tai_seconds)
+        l1.tai_subsec[i] = np.float128(tai_seconds) % 1
+        l1.timestamps[i] = np.float64((tai_seconds
+                                       - day_tai_start).to(units.s))
     return l1
 
 
@@ -260,17 +252,16 @@ def convert_to_j2000(orbit_timestamps: npt.NDArray[np.datetime64],
         Orbit positions and nominal attitude quaternions in ECEF
 
     """
-    for i_pos in range(len(navigation['orb_pos'])):
+    for i_pos in range(len(navigation.orb_pos)):
         tai_seconds = (Time(orbit_timestamps[i_pos], scale='tai')
                        - Time('1958-01-01', scale='tai')).to(units.s)
         tai_subsec = np.float64(np.float128(tai_seconds) % 1)
         # Solar model produces the J2000-ECEF quaternion so we need
         # the inverse of that.
         q_ecef_j2000 = solar_model(np.uint(tai_seconds), tai_subsec).inverse
-        pos = navigation['orb_pos'][i_pos]
+        pos = navigation.orb_pos[i_pos]
         pos[:] = q_ecef_j2000.rotate(1e3 * pos)
-        navigation['att_quat'][i_pos] = (
-            q_ecef_j2000 * navigation['att_quat'][i_pos])
+        navigation.att_quat[i_pos] = q_ecef_j2000 * navigation.att_quat[i_pos]
 
 
 def interpolate_navigation_data(navigation: Navigation, l1: L1) -> None:
@@ -278,25 +269,24 @@ def interpolate_navigation_data(navigation: Navigation, l1: L1) -> None:
     times.
 
     """
-    n_alt = len(l1['timestamps'])
-    l1['orb_pos'] = np.empty((n_alt, 3))
-    l1['att_quat'] = np.empty(n_alt, dtype=Quaternion)
+    n_alt = len(l1.timestamps)
+    l1.orb_pos = np.empty((n_alt, 3))
+    l1.att_quat = np.empty(n_alt, dtype=Quaternion)
     # Interpolate orbit positions
     for i_dir in range(3):
-        s = CubicSpline(navigation['time'], navigation['orb_pos'][:, i_dir])
-        l1['orb_pos'][:, i_dir] = s(l1['timestamps'])
+        s = CubicSpline(navigation.time, navigation.orb_pos[:, i_dir])
+        l1.orb_pos[:, i_dir] = s(l1.timestamps)
     # Interpolate quaternions
-    indices = np.searchsorted(navigation['time'].astype(np.float64),
-                              l1['timestamps'])
+    indices = np.searchsorted(
+        navigation.time.astype(np.float64), l1.timestamps)
     for i_alt in range(n_alt):
         idx_lo = indices[i_alt] - 1
         idx_hi = indices[i_alt]
-        idx_delta = (
-            (l1['timestamps'][i_alt] - navigation['time'][idx_lo])
-            / (navigation['time'][idx_hi] - navigation['time'][idx_lo]))
-        q0 = navigation['att_quat'][idx_lo]
-        q1 = navigation['att_quat'][idx_hi]
-        l1['att_quat'][i_alt] = Quaternion.slerp(q0, q1, amount=idx_delta)
+        idx_delta = ((l1.timestamps[i_alt] - navigation.time[idx_lo])
+                     / (navigation.time[idx_hi] - navigation.time[idx_lo]))
+        q0 = navigation.att_quat[idx_lo]
+        q1 = navigation.att_quat[idx_hi]
+        l1.att_quat[i_alt] = Quaternion.slerp(q0, q1, amount=idx_delta)
 
 
 def sensor_simulation(
@@ -371,12 +361,10 @@ def get_orbit(config: dict) -> tuple[Navigation, Geometry, L1]:
 
     # Navigation data with orbit positions in ECEF. These will be
     # converted to J2000 in convert_to_j2000.
-    navigation: Navigation = {
-        'time': orb_time_day,
-        'orb_pos': sat_pos['p'],   # ECEF for now
-        'att_quat': att_quat,   # SC-to-ECEF for now
-        'altitude': sat_pos['height'] * 1e3,  # m
-    }
+    navigation = Navigation(time=orb_time_day,
+                            orb_pos=sat_pos['p'],   # ECEF for now
+                            att_quat=att_quat,   # SC-to-ECEF for now
+                            altitude=1e3 * sat_pos['height'])  # m
 
     # Do geolocation using the orbit positions and line-of-sight (LOS)
     # vectors from the CKD. Default is to derive the orbit positions
@@ -389,11 +377,11 @@ def get_orbit(config: dict) -> tuple[Navigation, Geometry, L1]:
         convert_to_j2000(orbit_timestamps, navigation)
         interpolate_navigation_data(navigation, l1)
         geometry = geolocate(
-            l1, ckd['swath']['line_of_sights'], config['io_files']['dem'])
+            l1, ckd.swath.line_of_sights, config['io_files']['dem'])
     else:
         # Configure sensors and compute ground pixel information
         geometry = sensor_simulation(
-            config, sat_pos, orbit_timestamps, ckd['swath']['line_of_sights'])
+            config, sat_pos, orbit_timestamps, ckd.swath.line_of_sights)
     return navigation, geometry, l1
 
 
@@ -415,7 +403,7 @@ def write_navigation(filename: str,
     default_fill_value = -32767
     nc = Dataset(filename, 'w')
     nc.title = 'Tango Carbon E2ES navigation data'
-    dim_time = nc.createDimension('time', len(navigation['time']))
+    dim_time = nc.createDimension('time', len(navigation.time))
     dim_vec = nc.createDimension('vector_elements', 3)
     dim_quat = nc.createDimension('quaternion_elements', 4)
 
@@ -425,7 +413,7 @@ def write_navigation(filename: str,
     var.units = f'seconds since {orbit_start.strftime("%Y-%m-%d")}'
     var.valid_min = 0
     var.valid_max = 172800.0  # 2 x day
-    var[:] = navigation['time']
+    var[:] = navigation.time
 
     var = nc.createVariable(
         'orb_pos', 'f8', (dim_time, dim_vec), fill_value=-9999999.0)
@@ -433,7 +421,7 @@ def write_navigation(filename: str,
     var.units = 'm'
     var.valid_min = -7200000.0
     var.valid_max = 7200000.0
-    var[:] = navigation['orb_pos']
+    var[:] = navigation.orb_pos
 
     var = nc.createVariable(
         'att_quat', 'f8', (dim_time, dim_quat), fill_value=default_fill_value)
@@ -441,8 +429,8 @@ def write_navigation(filename: str,
     var.units = '1'
     var.valid_min = -1.0
     var.valid_max = 1.0
-    for i in range(navigation['att_quat'].shape[0]):
-        var[i, :] = np.roll(navigation['att_quat'][i].elements, -1)
+    for i in range(navigation.att_quat.shape[0]):
+        var[i, :] = np.roll(navigation.att_quat[i].elements, -1)
 
     var = nc.createVariable(
         'altitude', 'f8', (dim_time), fill_value=default_fill_value)
@@ -450,7 +438,7 @@ def write_navigation(filename: str,
     var.units = 'm'
     var.valid_min = 400e3
     var.valid_max = 6000e3
-    var[:] = navigation['altitude']
+    var[:] = navigation.altitude
 
     nc.close()
 
@@ -460,7 +448,7 @@ def write_geometry(filename: str, geometry: Geometry) -> None:
     default_fill_value = -32767
     nc = Dataset(filename, 'w')
     nc.title = 'Tango Carbon E2ES geometry'
-    n_alt, n_act = geometry['latitude'].shape
+    n_alt, n_act = geometry.lat.shape
     dim_alt = nc.createDimension('along_track_sample', n_alt)
     dim_act = nc.createDimension('across_track_sample', n_act)
 
@@ -472,7 +460,7 @@ def write_geometry(filename: str, geometry: Geometry) -> None:
     var.units = 'degrees'
     var.valid_min = -90.0
     var.valid_max = 90.0
-    var[:] = np.rad2deg(geometry['latitude'])
+    var[:] = np.rad2deg(geometry.lat)
 
     var = nc.createVariable('longitude',
                             'f8',
@@ -482,7 +470,7 @@ def write_geometry(filename: str, geometry: Geometry) -> None:
     var.units = 'degrees'
     var.valid_min = -180.0
     var.valid_max = 180.0
-    var[:] = np.rad2deg(geometry['longitude'])
+    var[:] = np.rad2deg(geometry.lon)
 
     var = nc.createVariable('height',
                             'f8',
@@ -502,7 +490,7 @@ def write_geometry(filename: str, geometry: Geometry) -> None:
     var.units = 'degrees'
     var.valid_min = -90.0
     var.valid_max = 90.0
-    var[:] = np.rad2deg(geometry['vza'])
+    var[:] = np.rad2deg(geometry.vza)
 
     var = nc.createVariable('sensor_azimuth',
                             'f8',
@@ -512,7 +500,7 @@ def write_geometry(filename: str, geometry: Geometry) -> None:
     var.units = 'degrees'
     var.valid_min = -180.0
     var.valid_max = 180.0
-    var[:] = np.rad2deg(geometry['vaa'])
+    var[:] = np.rad2deg(geometry.vaa)
 
     var = nc.createVariable('solar_zenith',
                             'f8',
@@ -522,7 +510,7 @@ def write_geometry(filename: str, geometry: Geometry) -> None:
     var.units = 'degrees'
     var.valid_min = -90.0
     var.valid_max = 90.0
-    var[:] = np.rad2deg(geometry['sza'])
+    var[:] = np.rad2deg(geometry.sza)
 
     var = nc.createVariable('solar_azimuth',
                             'f8',
@@ -532,7 +520,7 @@ def write_geometry(filename: str, geometry: Geometry) -> None:
     var.units = 'degrees'
     var.valid_min = -180.0
     var.valid_max = 180.0
-    var[:] = np.rad2deg(geometry['saa'])
+    var[:] = np.rad2deg(geometry.saa)
 
     nc.close()
 
@@ -554,21 +542,21 @@ def write_image_attributes(filename: str,
     """
     nc = Dataset(filename, 'a')
     nc.title = 'Tango Carbon E2ES image attributes'
-    dim_time = nc.createDimension('time', len(l1['timestamps']))
+    dim_time = nc.createDimension('time', len(l1.timestamps))
 
     var = nc.createVariable('tai_seconds', 'u4', dim_time, fill_value=0)
     var.long_name = 'detector image TAI time (seconds)'
     var.units = 'seconds since 1958-01-01 00:00:00 TAI'
     var.valid_min = np.uint(1956528000)
     var.valid_max = np.uint(2493072000)
-    var[:] = l1['tai_seconds']
+    var[:] = l1.tai_seconds
 
     var = nc.createVariable('tai_subsec', 'u2', dim_time)
     var.long_name = 'detector image TAI time (subseconds)'
     var.units = '1/65536 s'
     var.valid_min = np.ushort(0)
     var.valid_max = np.ushort(65535)
-    var[:] = (65535 * l1['tai_subsec']).astype(np.ushort)
+    var[:] = (65535 * l1.tai_subsec).astype(np.ushort)
 
     var = nc.createVariable('time', 'f8', dim_time, fill_value=-32767)
     var.long_name = 'detector image time'
@@ -576,19 +564,19 @@ def write_image_attributes(filename: str,
     var.units = f'seconds since {orbit_start.strftime("%Y-%m-%d")}'
     var.valid_min = 0.0
     var.valid_max = 172800.0  # 2 x day
-    var[:] = l1['timestamps']
+    var[:] = l1.timestamps
 
     var = nc.createVariable('day', 'f8', dim_time, fill_value=-32767)
     var.long_name = 'days since start of year'
     var.units = 's'
     var.valid_min = 0.0
     var.valid_max = 365.25
-    dates = Time('1958-01-01', scale='tai') + l1['tai_seconds'] * units.s
+    dates = Time('1958-01-01', scale='tai') + l1.tai_seconds * units.s
     days = np.empty(len(dates))
     for i in range(len(days)):
         t = dates[i].datetime.timetuple()
         days[i] = (t.tm_yday + (t.tm_hour * 3600 + t.tm_min * 60 + t.tm_sec
-                                + l1['tai_subsec'][i]) / 86400)
+                                + l1.tai_subsec[i]) / 86400)
     var[:] = days
 
     nc.close()

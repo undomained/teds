@@ -28,32 +28,24 @@ def geolocate(
     -------
 
     """
-    n_alt = l1['orb_pos'].shape[0]
+    n_alt = l1.orb_pos.shape[0]
     n_act = los.shape[0]
-    geometry: Geometry = {
-        'latitude': np.zeros((n_alt, n_act)),
-        'longitude': np.zeros((n_alt, n_act)),
-        'height': np.zeros((n_alt, n_act)),
-        'vza': np.zeros((n_alt, n_act)),
-        'vaa': np.zeros((n_alt, n_act)),
-        'sza': np.zeros((n_alt, n_act)),
-        'saa': np.zeros((n_alt, n_act)),
-    }
+    geometry = Geometry.from_shape((n_alt, n_act))
     # Need to convert Pyquaternion objects into Numpy arrays first
     att_quat = np.empty((n_alt, 4))
     for i_alt in range(n_alt):
-        att_quat[i_alt, :] = np.roll(l1['att_quat'][i_alt].elements, -1)
+        att_quat[i_alt, :] = np.roll(l1.att_quat[i_alt].elements, -1)
     c_geolocate(dem_filename,
                 los,
-                l1['tai_seconds'],
-                l1['tai_subsec'],
-                l1['orb_pos'],
+                l1.tai_seconds,
+                l1.tai_subsec,
+                l1.orb_pos,
                 att_quat,
-                geometry['latitude'],
-                geometry['longitude'],
-                geometry['height'],
-                geometry['vza'],
-                geometry['vaa'],
-                geometry['sza'],
-                geometry['saa'])
+                geometry.lat,
+                geometry.lon,
+                geometry.height,
+                geometry.vza,
+                geometry.vaa,
+                geometry.sza,
+                geometry.saa)
     return geometry

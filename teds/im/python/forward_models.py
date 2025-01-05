@@ -55,9 +55,9 @@ def apply_isrf(l1_product: L1,
         spectrum
 
     """
-    l1_product['proc_level'] = ProcLevel.l1b
-    n_alt = l1_product['spectra'].shape[0]
-    n_act = l1_product['spectra'].shape[1]
+    l1_product.proc_level = ProcLevel.l1b
+    n_alt = l1_product.spectra.shape[0]
+    n_act = l1_product.spectra.shape[1]
     conv = np.empty((n_alt, n_act, len(wavelengths_out)))
     if convolve:
         # Convolve spectra with ISRF assuming wavelengths_in is
@@ -65,22 +65,21 @@ def apply_isrf(l1_product: L1,
         # reading). Extrapolated values are close to zero assuming no
         # bad values in the spectra.
         kernel = convolution.Kernel(
-            l1_product['wavelengths'], wavelengths_out, fwhm, shape)
+            l1_product.wavelengths, wavelengths_out, fwhm, shape)
         for i_alt in tqdm(range(n_alt), unit=' ALT'):
             for i_act in range(n_act):
                 conv[i_alt, i_act, :] = kernel.convolve(
-                    l1_product['spectra'][i_alt, i_act, :])
-        l1_product['spectra'] = conv
+                    l1_product.spectra[i_alt, i_act, :])
+        l1_product.spectra = conv
     else:
         for i_alt in tqdm(range(n_alt), unit=' ALT'):
             for i_act in range(n_act):
                 conv[i_alt, i_act, :] = np.interp(
                     wavelengths_out,
-                    l1_product['wavelengths'],
-                    l1_product['spectra'][i_alt, i_act, :])
-    l1_product['spectra'] = conv
-    l1_product['wavelengths'] = np.tile(wavelengths_out, n_act).reshape(n_act,
-                                                                        -1)
+                    l1_product.wavelengths,
+                    l1_product.spectra[i_alt, i_act, :])
+    l1_product.spectra = conv
+    l1_product.wavelengths = np.tile(wavelengths_out, n_act).reshape(n_act, -1)
 
 
 def radiometric(l1_product: L1, rad_corr: npt.NDArray[np.float64]) -> None:
@@ -98,10 +97,10 @@ def radiometric(l1_product: L1, rad_corr: npt.NDArray[np.float64]) -> None:
         Radiance responsivity correction factor [nm-1 sr-1 m-2].
 
     """
-    l1_product['proc_level'] = ProcLevel.swath
-    for i_alt in tqdm(range(l1_product['spectra'].shape[0])):
-        l1_product['spectra'][i_alt, :, :] *= (
-            l1_product['exptimes'][i_alt] / (rad_corr[0, 0]))
+    l1_product.proc_level = ProcLevel.swath
+    for i_alt in tqdm(range(l1_product.spectra.shape[0])):
+        l1_product.spectra[i_alt, :, :] *= (
+            l1_product.exposure_time / (rad_corr[0, 0]))
 
 
 def map_to_detector(l1_product: L1, ckd: CKDSwath) -> None:
@@ -123,16 +122,16 @@ def map_to_detector(l1_product: L1, ckd: CKDSwath) -> None:
         Number of detector rows.
 
     """
-    l1_product['proc_level'] = ProcLevel.stray
-    n_alt = l1_product['spectra'].shape[0]
-    n_rows, n_cols = ckd['act_map'].shape
-    l1_product['signal'] = np.empty((n_alt, n_rows * n_cols))
-    act_wavelength_map = np.column_stack((ckd['act_map'].ravel(),
-                                          ckd['wavelength_map'].ravel()))
+    l1_product.proc_level = ProcLevel.stray
+    n_alt = l1_product.spectra.shape[0]
+    n_rows, n_cols = ckd.act_map.shape
+    l1_product.signal = np.empty((n_alt, n_rows * n_cols))
+    act_wavelength_map = np.column_stack((ckd.act_map.ravel(),
+                                          ckd.wavelength_map.ravel()))
     for i_alt in tqdm(range(n_alt)):
-        l1_product['signal'][i_alt, :] = interpn(
-            (ckd['act_angles'], ckd['wavelengths']),
-            l1_product['spectra'][i_alt, :, :],
+        l1_product.signal[i_alt, :] = interpn(
+            (ckd.act_angles, ckd.wavelengths),
+            l1_product.spectra[i_alt, :, :],
             act_wavelength_map,
             method='quintic',
             bounds_error=False,
@@ -153,14 +152,14 @@ def stray_light(l1_product: L1, ckd: CKDStray) -> None:
         signal.
 
     """
-    l1_product['proc_level'] = ProcLevel.prnu
-    n_alt = l1_product['signal'].shape[0]
-    eta = ckd['eta'].ravel()
+    l1_product.proc_level = ProcLevel.prnu
+    n_alt = l1_product.signal.shape[0]
+    eta = ckd.eta.ravel()
     for i_alt in tqdm(range(n_alt)):
-        signal = l1_product['signal'][i_alt]
+        signal = l1_product.signal[i_alt]
         stray_convolved = convolve_with_all_kernels(signal, ckd)
         signal_convolved = (1 - eta) * signal + stray_convolved
-        l1_product['signal'][i_alt, :] = signal_convolved
+        l1_product.signal[i_alt, :] = signal_convolved
 
 
 def prnu(l1_product: L1, prnu_qe: npt.NDArray[np.float64]) -> None:
@@ -175,8 +174,8 @@ def prnu(l1_product: L1, prnu_qe: npt.NDArray[np.float64]) -> None:
         correction).
 
     """
-    l1_product['proc_level'] = ProcLevel.nonlin
-    l1_product['signal'] *= prnu_qe
+    l1_product.proc_level = ProcLevel.nonlin
+    l1_product.signal *= prnu_qe
 
 
 def nonlinearity(l1_product: L1, ckd: CKDNonlin) -> None:
@@ -200,9 +199,9 @@ def nonlinearity(l1_product: L1, ckd: CKDNonlin) -> None:
         [counts], and an observed, non-linear signal [counts].
 
     """
-    l1_product['proc_level'] = ProcLevel.dark_current
-    l1_product['signal'] = np.interp(
-        l1_product['signal'], ckd['expected'], ckd['observed'])
+    l1_product.proc_level = ProcLevel.dark_current
+    l1_product.signal = np.interp(
+        l1_product.signal, ckd.expected, ckd.observed)
 
 
 def dark_current(l1_product: L1,
@@ -220,8 +219,8 @@ def dark_current(l1_product: L1,
         Detector map of dark current [counts/s].
 
     """
-    l1_product['proc_level'] = ProcLevel.noise
-    l1_product['signal'] += dark_current * l1_product['exptimes'][..., None]
+    l1_product.proc_level = ProcLevel.noise
+    l1_product.signal += dark_current * l1_product.exposure_time
 
 
 def noise(l1_product: L1,
@@ -245,14 +244,13 @@ def noise(l1_product: L1,
         Seed for random number generator.
 
     """
-    l1_product['proc_level'] = ProcLevel.dark_offset
+    l1_product.proc_level = ProcLevel.dark_offset
     # The absolute value of dark_signal should be taken because a
     # negative signal still increases the noise.
-    variance = (ckd['read_noise']**2
-                + l1_product['signal'] / ckd['conversion_gain'])
+    variance = (ckd.read_noise**2 + l1_product.signal / ckd.conversion_gain)
     std = np.sqrt(np.clip(variance, 0, None))
     rng = np.random.default_rng(seed)
-    l1_product['signal'] += rng.normal(0.0, std, l1_product['signal'].shape)
+    l1_product.signal += rng.normal(0.0, std, l1_product.signal.shape)
 
 
 def dark_offset(l1_product: L1, offset: npt.NDArray[np.float64]) -> None:
@@ -266,8 +264,8 @@ def dark_offset(l1_product: L1, offset: npt.NDArray[np.float64]) -> None:
         Detector map of offset [counts].
 
     """
-    l1_product['proc_level'] = ProcLevel.raw
-    l1_product['signal'] += offset
+    l1_product.proc_level = ProcLevel.raw
+    l1_product.signal += offset
 
 
 def coadding_and_binning(l1_product: L1,
@@ -289,17 +287,16 @@ def coadding_and_binning(l1_product: L1,
         pixels in each bin of a binned frame.
 
     """
-    l1_product['proc_level'] = ProcLevel.l1a
-    n_alt = l1_product['signal'].shape[0]
-    binned_signals = np.zeros((n_alt, len(binning_table['count_table'])))
-    for i_alt in range(l1_product['signal'].shape[0]):
-        for idx, idx_binned in enumerate(binning_table['bin_indices'].ravel()):
-            binned_signals[i_alt, idx_binned] += (
-                l1_product['signal'][i_alt, idx])
-    l1_product['signal'] = binned_signals
-    l1_product['signal'] = l1_product['signal'] * l1_product['coad_factors'][0]
+    l1_product.proc_level = ProcLevel.l1a
+    n_alt = l1_product.signal.shape[0]
+    binned_signals = np.zeros((n_alt, len(binning_table.count_table)))
+    for i_alt in range(l1_product.signal.shape[0]):
+        for idx, idx_binned in enumerate(binning_table.bin_indices.ravel()):
+            binned_signals[i_alt, idx_binned] += l1_product.signal[i_alt, idx]
+    l1_product.signal = binned_signals
+    l1_product.signal = l1_product.signal * l1_product.coad_factor
     # In reality, the noise realization is different in every read-out
     # and the signal is rounded before summing. Here the noise is not
     # calculated for each read-out separately. Then the best
     # approximation is to round after summing.
-    l1_product['signal'] = np.round(l1_product['signal'])
+    l1_product.signal = np.round(l1_product.signal)

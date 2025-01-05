@@ -333,12 +333,10 @@ class Sensor:
         sza, saa = Sensor.get_theta_az(p, sun_p, lat, lon)
         saa = np.where(saa > 180.0, saa-360., saa)
 
-        return {
-            'latitude': np.deg2rad(lat),
-            'longitude': np.deg2rad(lon),
-            'height': np.zeros(lat.shape),
-            'vza': np.deg2rad(vza),
-            'vaa': np.deg2rad(vaa),
-            'sza': np.deg2rad(sza),
-            'saa': np.deg2rad(saa),
-        }
+        return Geometry(np.deg2rad(lat),
+                        np.deg2rad(lon),
+                        np.zeros(lat.shape),
+                        np.deg2rad(vza),
+                        np.deg2rad(vaa),
+                        np.deg2rad(sza),
+                        np.deg2rad(saa))

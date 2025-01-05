@@ -26,14 +26,10 @@ if (INCLUDE_COVERAGE)
   if (_lcov)
     add_custom_target(coverage
       WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
-      COMMAND lcov -c -d . -o tracefile.info
-      COMMAND
-      perl -ne 'print if s|^SF:\(?!${PROJECT_SOURCE_DIR}\)|\\1|' tracefile.info
-      | xargs lcov --ignore-errors unused,unused -r tracefile.info
-      -o tracefile_filtered.info
-      COMMAND genhtml tracefile_filtered.info -o out
+      COMMAND lcov --directory . --capture --output-file coverage.info
+      COMMAND genhtml --ignore-errors inconsistent --demangle-cpp -o coverage coverage.info
       COMMAND cmake -E echo
-      "Open ${PROJECT_BINARY_DIR}/out/index.html to see the detailed report"
+      "Open ${PROJECT_BINARY_DIR}/coverage/tango_l1b/index.html to see the detailed report"
       DEPENDS test)
   else()
     add_custom_target(coverage

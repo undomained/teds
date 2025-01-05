@@ -19,19 +19,19 @@ _fix_dir = _cur_dir / 'common'
 # Fixtures used by the instrument model and L1A-L1B processor
 @pytest.fixture
 def binning_table(scop='session'):
-    image = np.loadtxt(_fix_dir / 'detector_image.txt', 'i4')
-    return read_binning_table('', 0, image.shape[0], image.shape[1])
+    signal = np.loadtxt(_fix_dir / 'detector_image.txt', 'i4')
+    return read_binning_table('', 0, signal.shape[0], signal.shape[1])
 
 
 @pytest.fixture
-def image_i4(scope='session'):
-    image = np.loadtxt(_fix_dir / 'detector_image.txt', 'i4')
-    return image.reshape((1, -1))
+def signal_i4(scope='session'):
+    signal = np.loadtxt(_fix_dir / 'detector_image.txt', 'i4')
+    return signal.reshape((1, -1))
 
 
 @pytest.fixture
-def image(image_i4, scope='session'):
-    return image_i4.astype('f8')
+def signal(signal_i4, scope='session'):
+    return signal_i4.astype('f8')
 
 
 @pytest.fixture
@@ -74,12 +74,12 @@ def ckd_prnu(scope='session'):
 
 
 @pytest.fixture
-def l1(image, scope='session'):
+def l1(signal, scope='session'):
     l1: L1 = {
-        'image': image,
-        'noise': np.ones(image.shape),
+        'signal': signal,
+        'noise': np.ones(signal.shape),
         'binning_table_ids': np.array([0]),
-        'coad_factors': np.ones(image.shape),
+        'coad_factors': np.ones(signal.shape),
         'exptimes': np.array([0.0460833]),
     }
     return l1

@@ -123,7 +123,7 @@ auto cart2geo(const std::array<double, dims::vec>& xyz,
     // Fukushima "Transformation from Cartesian to Geodetic
     // Coordinates Accelerated by Halley's Method", J. Geodesy 79, 689
     // (2006).
-    static constexpr double ec { std::sqrt(1 - earth::e2) };
+    const double ec { std::sqrt(1 - earth::e2) };
     static constexpr double c { earth::a * earth::e2 };
     const double p { std::sqrt(xyz[0] * xyz[0] + xyz[1] * xyz[1]) };
     const double zc { ec * std::abs(xyz[2]) };

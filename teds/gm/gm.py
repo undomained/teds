@@ -152,7 +152,7 @@ def gen_image_timestamps(orbit_start: datetime.datetime,
     # Use hours since 1958 to offset the TAI time so that the
     # subsecond component can be calculated with better numerical
     # precision.
-    hours_since_epoch = np.float64(day_tai_start.to(units.h))
+    hours_since_epoch = int(np.float64(day_tai_start.to(units.h)))
     for i in range(n_time):
         tai_seconds = (exposure_tai_start
                        + datetime.timedelta(seconds=i*interval)).to(units.s)

@@ -32,12 +32,12 @@ def get_sgm_rad_data(filename, ialt):
 def get_gm_data(filename):
     input = nc.Dataset(filename, mode='r')
     gm_data = {}
-    gm_data['sza'] = deepcopy(input['sza'][:, :])
-    gm_data['saa'] = deepcopy(input['saa'][:, :])
-    gm_data['vza'] = deepcopy(input['vza'][:, :])
-    gm_data['vaa'] = deepcopy(input['vaa'][:, :])
-    gm_data['lat'] = deepcopy(input['lat'][:, :])
-    gm_data['lon'] = deepcopy(input['lon'][:, :])
+    gm_data['sza'] = deepcopy(input['solar_zenith'][:, :])
+    gm_data['saa'] = deepcopy(input['solar_azimuth'][:, :])
+    gm_data['vza'] = deepcopy(input['sensor_zenith'][:, :])
+    gm_data['vaa'] = deepcopy(input['sensor_azimuth'][:, :])
+    gm_data['lat'] = deepcopy(input['latitude'][:, :])
+    gm_data['lon'] = deepcopy(input['longitude'][:, :])
     input.close()
     return (gm_data)
 

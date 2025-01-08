@@ -1508,7 +1508,7 @@ remotap_julday:
     valid_max: 400
     FillValue: -32767
 
-remotap_latitude:
+latitude:
     name: latitude
     long_name: latitude
     units: degree north
@@ -1516,7 +1516,7 @@ remotap_latitude:
     valid_max: 90
     FillValue: -32767
 
-remotap_longitude:
+longitude:
     name: longitude
     long_name: longitude
     units: degree east

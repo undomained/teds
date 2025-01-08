@@ -3,9 +3,12 @@
 #image_start: 0
 #image_end: 70
 
-# for fmc = 5 we have enhanced the exposure time by a factor 5
+# for fmc = 5 we have enhanced the exposure time by a factor 5, exposure_time: 0.2304165 
+# for fmc = 3 we have enhanced the exposure time by a factor 5, exposure_time: 0.1382499 
+# for fmc = 2 we have enhanced the exposure time by a factor 5, exposure_time: 0.0921666 
+# for fmc = 1 we have enhanced the exposure time by a factor 5, exposure_time: 0.0460833 
 detector:
-  exposure_time: 0.2304165  
+  exposure_time: 0.2304165 
   binning_table_id: 5
   nr_coadditions: 3
 
@@ -23,11 +26,11 @@ noise:
 # prnu:
 #   enabled: no
 
-# stray:
-#   enabled: no
+stray:
+   enabled: no
 
 io:
-  ckd: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/ckd/ckd_Raul_20241111.nc
+  ckd: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/ckd/ckd_Raul_20250106.nc
   binning_table: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/ckd/binning_table.nc
   sgm: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/sgm/Tango_Carbon_sgm_radiance_exp1.0.nc
   l1a: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/level1a/Tango_Carbon_l1a_exp1.0.nc

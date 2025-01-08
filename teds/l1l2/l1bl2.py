@@ -1458,6 +1458,7 @@ def level1b_to_level2_processor(config, sw_diag_output = False):
             # XCO2_true_smoothed[iact] = np.dot(l2product[ialt, iact]['XCO2 col avg kernel'],
             #                                   atm_sgm['dcol_co2'][ialt, iact, :])/np.sum(atm.air)*1.E6
             # XCO2_true[iact] = np.sum(atm_sgm['dcol_co2'][ialt, iact, :])/np.sum(atm.air)*1.E6
+
             
     # output to netcdf file
     level2_output(config['io_files']['output_l2'], l2product, retrieval_init, l1b, config['retrieval_init'])
@@ -1469,7 +1470,7 @@ def level1b_to_level2_processor(config, sw_diag_output = False):
 
     #print('cumulative run time: ',runtime_cum)
 
-    return l2product
+    return #l2product
 
 def level2_nan(retrieval_init, nlay):
 

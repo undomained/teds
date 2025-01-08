@@ -15,7 +15,7 @@ reverse_wavelength: yes
 #   enabled: no
 
 stray:
-  van_cittert_steps: 3
+  van_cittert_steps: 0
 
 swath:
   spectrum_width: 3.0
@@ -24,7 +24,7 @@ swath:
 #   enabled: no
 
 io:
-  ckd: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/ckd/ckd_Raul_20241111.nc
+  ckd: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/ckd/ckd_Raul_20250106.nc
   binning_table: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/ckd/binning_table.nc
   l1b: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/level1b/Tango_Carbon_l1b_exp5.0.nc
   l1a: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/level1a/Tango_Carbon_l1a_exp5.0.nc

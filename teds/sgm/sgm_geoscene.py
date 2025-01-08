@@ -97,14 +97,14 @@ def geosgm_output(filename, atm):
     _ = writevariablefromname(output_atm, 'central_layer_height', _dims3dlay, atm.zlay)
 
     for gas in gases:
-
         # subcolumn density
         _ = writevariablefromname(output_atm, 'subcol_density_'+gas,
                                   _dims3dlay, atm.__getattribute__('dcol_'+gas))
-        # column mixing ratio
-        _ = writevariablefromname(output_atm, 'X'+gas, _dims2d,
-                                  constants.__getattribute__('scale_X'+gas)*
-                                  atm.__getattribute__('X'+gas))
+        if gas != 'air':
+            # column mixing ratio
+            _ = writevariablefromname(output_atm, 'X'+gas, _dims2d,
+                                      constants.__getattribute__('scale_X'+gas)*
+                                      atm.__getattribute__('X'+gas))
         
 #    if(config['profile']=='orbit'):
 

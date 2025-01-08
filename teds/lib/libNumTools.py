@@ -735,9 +735,8 @@ def expand_geometry(atm, gm):
     XY   = np.column_stack((yval, xval))
     
     for gm_para in [
-        'sza','vza','saa','vaa', 'julian_day', 'satellite_altitude'
+        'sza','vza','saa','vaa'
     ]:
-        
         #assign the data which is closest to a given point of the bounding box to this point  
         data = gm.__getattribute__(gm_para)
         data_bb = np.array([data[tuple(index[ip,:])] for ip in range(nnx)])            

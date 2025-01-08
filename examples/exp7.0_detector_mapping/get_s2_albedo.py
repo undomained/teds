@@ -48,10 +48,10 @@ def get_sentinel2_albedo(conf):
         fsize = conf['kernel_parameter']['size_factor']
 
         conv_settings['type'] = conf['kernel_parameter']['type']
-        conv_settings['1D kernel extension'] = np.int0(fsize*np.max([fwhm_x, fwhm_y])/S2_ssd)
+        conv_settings['1D kernel extension'] = np.intp(fsize*np.max([fwhm_x, fwhm_y])/S2_ssd)
         # convert all kernel parameter in units of sampling distance
-        conv_settings['fwhm x'] = np.int0(fwhm_x/S2_ssd)
-        conv_settings['fwhm y'] = np.int0(fwhm_y/S2_ssd)
+        conv_settings['fwhm x'] = np.intp(fwhm_x/S2_ssd)
+        conv_settings['fwhm y'] = np.intp(fwhm_y/S2_ssd)
 
     # copy data type
     S2_albedo_conv = deepcopy(S2_albedo_raw)

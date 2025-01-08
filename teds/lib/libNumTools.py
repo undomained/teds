@@ -189,10 +189,10 @@ def getconvolutionparams(kernel_settings, dx, dy):
         fwhm_y = kernel_settings['fwhm_y']
         fsize = kernel_settings['size_factor']
         conv_settings['type'] = kernel_settings['type']
-        conv_settings['1D kernel extension'] = np.int0(fsize*np.max([fwhm_x, fwhm_y])/np.min([dx, dy]))
+        conv_settings['1D kernel extension'] = np.intp(fsize*np.max([fwhm_x, fwhm_y])/np.min([dx, dy]))
         # convert all kernel parameter in units of sampling distance
-        conv_settings['fwhm x'] = np.int0(float(fwhm_x)/dx)
-        conv_settings['fwhm y'] = np.int0(float(fwhm_y)/dy)
+        conv_settings['fwhm x'] = np.intp(float(fwhm_x)/dx)
+        conv_settings['fwhm y'] = np.intp(float(fwhm_y)/dy)
     return conv_settings
 
 

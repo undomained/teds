@@ -17,10 +17,9 @@ isrf:
   fwhm_gauss: 0.45
 
 # dark:
-#   enabled: no
 
 noise:
-  enabled: yes
+  enabled: no
   seed: 10
 
 # prnu:

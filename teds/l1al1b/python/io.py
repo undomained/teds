@@ -10,13 +10,10 @@ a file is readable/writable.
 from datetime import datetime
 from datetime import timezone
 from pathlib import Path
-import importlib
-import os
 
 from netCDF4 import Dataset
 import numpy as np
 import numpy.typing as npt
-import subprocess
 import xarray as xr
 import yaml
 
@@ -26,75 +23,14 @@ from .types import CKDDark
 from .types import CKDNoise
 from .types import CKDNonlin
 from .types import CKDPRNU
+from .types import CKDRadiometric
+from .types import CKDSpectral
 from .types import CKDStray
 from .types import CKDSwath
-from .types import CKDSpectral
-from .types import CKDRadiometric
-from .types import Geometry
 from .types import L1
 from .types import ProcLevel
-
-
-def print_heading(heading: str, empty_line: bool = True) -> None:
-    """Print the name of a processing section.
-
-    For example, reading the CKD could start with
-    ######################
-    # CKD initialization #
-    ######################
-
-    This is meant to be called directly as opposed to using the
-    logger. Things like timestamps are not necessary for just printing
-    a section heading.
-
-    Parameters
-    ----------
-    heading
-        Title of the section to be displayed.
-    empty_line
-        Whether to print an empty line before printing the heading.
-
-    """
-    if empty_line:
-        print()
-    print('#' * (len(heading) + 4))
-    print(f'# {heading} #')
-    print('#' * (len(heading) + 4))
-
-
-def get_git_commit_hash() -> str:
-    """Return short git hash if .git found"""
-    git_hash = subprocess.run(
-        ['git', 'rev-parse', 'HEAD'],
-        shell=False,
-        capture_output=True,
-        cwd=os.path.dirname(__file__)).stdout.decode('utf-8')
-    if git_hash:
-        return git_hash[:8]
-    return ''
-
-
-def print_system_info() -> None:
-    """Print information about the host system and some runtime
-    options.
-
-    """
-    # Project version
-    print('Version                 :', importlib.metadata.version('teds'))
-    # Short git hash (only if .git found)
-    git_hash = get_git_commit_hash()
-    if git_hash:
-        print('Commit hash             :', git_hash)
-    # Datetime and contacts
-    print('Date and timezone       :', datetime.now().strftime('%Y %B %d %a'))
-    print('Contacts                : raullaasner@gmail.com')
-    print('                          '
-          'bitbucket.org/sron_earth/teds/issues (request permission)')
-    # Platform
-    host_system = subprocess.run(
-        ['uname', '-sr'], shell=False, capture_output=True).stdout
-    print('Host system             :',
-          host_system.decode('utf-8').split('\n')[0])
+from teds.gm.types import Geometry
+from teds.lib.io import get_git_commit_hash
 
 
 def read_binning_table(binning_file: str,

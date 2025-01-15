@@ -14,16 +14,17 @@ class Emptyclass:
 
 @njit(cache=True)
 def convolution(spectrum, isrf, istart, iend):
-    #spectral convolution of the spectrum with the isrf
+    """Spectral convolution of the spectrum with the ISRF."""
     sh = isrf.shape
     spectrum_conv = np.zeros(sh[0])
-    for iwav in range(sh[0]):
-        spectrum_conv[iwav] = np.dot(isrf[iwav, istart[iwav]:iend[iwav]], spectrum[istart[iwav]:iend[iwav]])
+    for i in range(sh[0]):
+        spectrum_conv[i] = np.dot(isrf[i, istart[i]:iend[i]],
+                                  spectrum[istart[i]:iend[i]])
     return spectrum_conv
 
 
 def get_isrf_gaussian(parameter, wave_target, wave_input):
-    #get a  Gaussian isrf specified by parameter dictionary
+    """Get a  Gaussian isrf specified by parameter dictionary"""
     fwhm = parameter['fwhm']
     isrf = {}
     nwave_target = wave_target.size
@@ -87,7 +88,7 @@ def get_isrf(wave_target, wave_input, parameter):
     elif (parameter['type'] == 'generalized_normal'):
         isrf = get_isrf_generalized_normal(parameter, wave_target, wave_input)
 
-    # convolution function with numba cannot be directly added here
+    # Convolution function with numba cannot be directly added here
     def conv(spectrum, isrf=isrf):
         return convolution(spectrum, isrf['isrf'], isrf['istart'], isrf['iend'])
     return conv

@@ -286,7 +286,6 @@ auto strayLight(const CKD& ckd,
                 signal_ideal[i] =
                   (signal_unbin[i] - conv_result[i]) / (1 - ckd.stray.eta[i]);
             }
-            // write(signal_unbin, 512);
         }
         std::vector<double> signal_binned(ckd.npix_binned);
         binning_table.bin(signal_ideal, signal_binned);

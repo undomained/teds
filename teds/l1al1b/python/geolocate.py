@@ -5,8 +5,8 @@ import numpy as np
 import numpy.typing as npt
 
 from .geolocation import geolocate as c_geolocate
-from .types import Geometry
 from .types import L1
+from teds.gm.types import Geometry
 
 
 def geolocate(

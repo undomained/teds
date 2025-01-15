@@ -13,11 +13,11 @@ from astropy.time import Time
 from scipy.interpolate import RectBivariateSpline
 from scipy.interpolate import interp1d
 from sgp4.earth_gravity import wgs84
-from teds.l1al1b.python.types import Geometry
 import datetime
 import numpy as np
 import numpy.typing as npt
 
+from .types import Geometry
 from teds import log
 
 

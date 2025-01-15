@@ -24,8 +24,6 @@ import numpy as np
 from . import calibration as cal
 from .binning import bin_data
 from .io import copy_geometry
-from .io import print_heading
-from .io import print_system_info
 from .io import read_binning_table
 from .io import read_ckd
 from .io import read_l1
@@ -35,6 +33,8 @@ from .types import L1
 from .types import ProcLevel
 from teds import log
 from teds.lib.io import merge_config_with_default
+from teds.lib.io import print_heading
+from teds.lib.io import print_system_info
 
 
 def check_config(config: dict) -> None:

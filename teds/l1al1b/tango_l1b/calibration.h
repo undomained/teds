@@ -18,7 +18,7 @@ class L1;
 
 // If the data level is L1A then the detector images are yet to be
 // divided by the coadding factors and bin sizes of the binning
-// table. Also, this is where noise get initialized.
+// table. Also, this is where noise gets initialized.
 auto binScaling(const CKD& ckd,
                 const BinningTable& binning_table,
                 L1& l1_prod) -> void;

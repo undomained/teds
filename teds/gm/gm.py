@@ -9,7 +9,6 @@ the CKD.
 """
 from astropy import units
 from astropy.time import Time
-from netCDF4 import Dataset
 from pathlib import Path
 from pyquaternion import Quaternion
 from scipy.interpolate import CubicSpline
@@ -17,18 +16,21 @@ import datetime
 import numpy as np
 import numpy.typing as npt
 
+from .io import write_geometry
+from .io import write_image_attributes
+from .io import write_navigation
 from .satellite import Satellite
 from .sensor import Sensor
+from .types import Navigation
 from teds import log
 from teds.l1al1b import geolocate
 from teds.l1al1b import solar_model
-from teds.l1al1b.python.io import print_heading
-from teds.l1al1b.python.io import print_system_info
 from teds.l1al1b.python.io import read_ckd
 from teds.l1al1b.python.types import Geometry
 from teds.l1al1b.python.types import L1
-from teds.l1al1b.python.types import Navigation
 from teds.lib.io import merge_config_with_default
+from teds.lib.io import print_heading
+from teds.lib.io import print_system_info
 
 
 def check_config(config: dict) -> None:
@@ -395,203 +397,6 @@ def get_orbit(config: dict) -> tuple[Navigation, Geometry, L1]:
     return navigation, geometry, l1
 
 
-def write_navigation(filename: str,
-                     orbit_start: datetime.datetime,
-                     navigation: Navigation) -> None:
-    """Write navigation data to a file.
-
-    Parameters
-    ----------
-    filename
-        Output file path
-    orbit_start
-        Datetime of orbit start. Used to define the image time unit
-    navigation
-        Navigation data
-
-    """
-    default_fill_value = -32767
-    nc = Dataset(filename, 'w')
-    nc.title = 'Tango Carbon E2ES navigation data'
-    dim_time = nc.createDimension('time', len(navigation.time))
-    dim_vec = nc.createDimension('vector_elements', 3)
-    dim_quat = nc.createDimension('quaternion_elements', 4)
-
-    var = nc.createVariable(
-        'time', 'f8', dim_time, fill_value=default_fill_value)
-    var.long_name = 'orbit vector time (seconds of day)'
-    var.units = f'seconds since {orbit_start.strftime("%Y-%m-%d")}'
-    var.valid_min = 0
-    var.valid_max = 172800.0  # 2 x day
-    var[:] = navigation.time
-
-    var = nc.createVariable(
-        'orb_pos', 'f8', (dim_time, dim_vec), fill_value=-9999999.0)
-    var.long_name = 'orbit position vectors (J2000)'
-    var.units = 'm'
-    var.valid_min = -7200000.0
-    var.valid_max = 7200000.0
-    var[:] = navigation.orb_pos
-
-    var = nc.createVariable(
-        'att_quat', 'f8', (dim_time, dim_quat), fill_value=default_fill_value)
-    var.long_name = 'Attitude quaternions (spacecraft to J2000)'
-    var.units = '1'
-    var.valid_min = -1.0
-    var.valid_max = 1.0
-    for i in range(navigation.att_quat.shape[0]):
-        var[i, :] = np.roll(navigation.att_quat[i].elements, -1)
-
-    var = nc.createVariable(
-        'altitude', 'f8', (dim_time), fill_value=default_fill_value)
-    var.long_name = 'satellite altitude'
-    var.units = 'm'
-    var.valid_min = 400e3
-    var.valid_max = 6000e3
-    var[:] = navigation.altitude
-
-    nc.close()
-
-
-def write_geometry(filename: str, geometry: Geometry) -> None:
-    """Write viewing and solar geometries to a file."""
-    default_fill_value = -32767
-    nc = Dataset(filename, 'w')
-    nc.title = 'Tango Carbon E2ES geometry'
-    n_alt, n_act = geometry.lat.shape
-    dim_alt = nc.createDimension('along_track_sample', n_alt)
-    dim_act = nc.createDimension('across_track_sample', n_act)
-
-    var = nc.createVariable('latitude',
-                            'f8',
-                            (dim_alt, dim_act),
-                            fill_value=default_fill_value)
-    var.long_name = 'latitudes'
-    var.units = 'degrees'
-    var.valid_min = -90.0
-    var.valid_max = 90.0
-    var[:] = np.rad2deg(geometry.lat)
-
-    var = nc.createVariable('longitude',
-                            'f8',
-                            (dim_alt, dim_act),
-                            fill_value=default_fill_value)
-    var.long_name = 'longitudes'
-    var.units = 'degrees'
-    var.valid_min = -180.0
-    var.valid_max = 180.0
-    var[:] = np.rad2deg(geometry.lon)
-
-    var = nc.createVariable('height',
-                            'f8',
-                            (dim_alt, dim_act),
-                            fill_value=default_fill_value)
-    var.long_name = 'height from sea level'
-    var.units = 'm'
-    var.valid_min = -1000.0
-    var.valid_max = 10000.0
-    var[:] = 0.0
-
-    var = nc.createVariable('sensor_zenith',
-                            'f8',
-                            (dim_alt, dim_act),
-                            fill_value=default_fill_value)
-    var.long_name = 'sensor zenith angles'
-    var.units = 'degrees'
-    var.valid_min = -90.0
-    var.valid_max = 90.0
-    var[:] = np.rad2deg(geometry.vza)
-
-    var = nc.createVariable('sensor_azimuth',
-                            'f8',
-                            (dim_alt, dim_act),
-                            fill_value=default_fill_value)
-    var.long_name = 'sensor azimuth angles'
-    var.units = 'degrees'
-    var.valid_min = -180.0
-    var.valid_max = 180.0
-    var[:] = np.rad2deg(geometry.vaa)
-
-    var = nc.createVariable('solar_zenith',
-                            'f8',
-                            (dim_alt, dim_act),
-                            fill_value=default_fill_value)
-    var.long_name = 'solar zenith angles'
-    var.units = 'degrees'
-    var.valid_min = -90.0
-    var.valid_max = 90.0
-    var[:] = np.rad2deg(geometry.sza)
-
-    var = nc.createVariable('solar_azimuth',
-                            'f8',
-                            (dim_alt, dim_act),
-                            fill_value=default_fill_value)
-    var.long_name = 'solar azimuth angles'
-    var.units = 'degrees'
-    var.valid_min = -180.0
-    var.valid_max = 180.0
-    var[:] = np.rad2deg(geometry.saa)
-
-    nc.close()
-
-
-def write_image_attributes(filename: str,
-                           orbit_start: datetime.datetime,
-                           l1: L1) -> None:
-    """Append image attributes (timestamps) to the geometry file.
-
-    Parameters
-    ----------
-    filename
-        Output file path
-    orbit_start
-        Datetime of orbit start. Used to define the image time unit
-    l1
-        L1 product containing the image timestamps
-
-    """
-    nc = Dataset(filename, 'a')
-    nc.title = 'Tango Carbon E2ES image attributes'
-    dim_time = nc.createDimension('time', len(l1.timestamps))
-
-    var = nc.createVariable('tai_seconds', 'u4', dim_time, fill_value=0)
-    var.long_name = 'detector image TAI time (seconds)'
-    var.units = 'seconds since 1958-01-01 00:00:00 TAI'
-    var.valid_min = np.uint(1956528000)
-    var.valid_max = np.uint(2493072000)
-    var[:] = l1.tai_seconds
-
-    var = nc.createVariable('tai_subsec', 'u2', dim_time)
-    var.long_name = 'detector image TAI time (subseconds)'
-    var.units = '1/65536 s'
-    var.valid_min = np.ushort(0)
-    var.valid_max = np.ushort(65535)
-    var[:] = (65535 * l1.tai_subsec).astype(np.ushort)
-
-    var = nc.createVariable('time', 'f8', dim_time, fill_value=-32767)
-    var.long_name = 'detector image time'
-    var.description = 'integration start time in seconds of day'
-    var.units = f'seconds since {orbit_start.strftime("%Y-%m-%d")}'
-    var.valid_min = 0.0
-    var.valid_max = 172800.0  # 2 x day
-    var[:] = l1.timestamps
-
-    var = nc.createVariable('day', 'f8', dim_time, fill_value=-32767)
-    var.long_name = 'days since start of year'
-    var.units = 's'
-    var.valid_min = 0.0
-    var.valid_max = 365.25
-    dates = Time('1958-01-01', scale='tai') + l1.tai_seconds * units.s
-    days = np.empty(len(dates))
-    for i in range(len(days)):
-        t = dates[i].datetime.timetuple()
-        days[i] = (t.tm_yday + (t.tm_hour * 3600 + t.tm_min * 60 + t.tm_sec
-                                + l1.tai_subsec[i]) / 86400)
-    var[:] = days
-
-    nc.close()
-
-
 def geometry_module(config_user: dict | None = None) -> None:
     """Generate viewing and solar geometries from orbit specification.
 
@@ -624,9 +429,8 @@ def geometry_module(config_user: dict | None = None) -> None:
     # Write output data
     write_geometry(config['io_files']['geometry'], geometry)
     if config['profile'] == 'orbit' and not config['use_python_geolocation']:
-        write_image_attributes(config['io_files']['geometry'],
-                               config['orbit']['epoch'],
-                               l1)
+        write_image_attributes(
+            config['io_files']['geometry'], config['orbit']['epoch'], l1)
         write_navigation(config['io_files']['navigation'],
                          config['orbit']['epoch'],
                          navigation)

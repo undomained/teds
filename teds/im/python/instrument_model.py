@@ -22,16 +22,16 @@ from pathlib import Path
 
 from . import forward_models as fw
 from teds import log
-from teds.l1al1b.python.io import print_heading
-from teds.l1al1b.python.io import print_system_info
 from teds.l1al1b.python.io import read_binning_table
 from teds.l1al1b.python.io import read_ckd
 from teds.l1al1b.python.io import read_l1
 from teds.l1al1b.python.io import read_proc_level
 from teds.l1al1b.python.io import write_l1
-from teds.l1al1b.python.types import ProcLevel
 from teds.l1al1b.python.types import L1
+from teds.l1al1b.python.types import ProcLevel
 from teds.lib.io import merge_config_with_default
+from teds.lib.io import print_heading
+from teds.lib.io import print_system_info
 
 
 def check_config(config: dict) -> None:

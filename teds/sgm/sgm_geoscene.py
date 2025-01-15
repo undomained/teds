@@ -1,22 +1,18 @@
 # This source code is licensed under the 3-clause BSD license found in
 # the LICENSE file in the root directory of this project.
-# =============================================================================
-#     geophysical scene generation module for different E2E simulator profiles
-#     This source code is licensed under the 3-clause BSD license found in
-#     the LICENSE file in the root directory of this project.
-# =============================================================================
-
-import sys
+"""Geophysical scene generation module for different E2E simulator profiles."""
+from netCDF4 import Dataset
+from typing import List
+from xarray import DataArray
 import netCDF4 as nc
 import numpy as np
-import yaml
-from ..lib import constants
-from ..lib import libATM, libSGM
-from ..lib.libWrite import writevariablefromname
+import sys
 
-from netCDF4 import Dataset
-from xarray import DataArray
-from typing import List
+from teds.gm.io import read_geometry
+from teds.lib import constants
+from teds.lib import libATM, libSGM
+from teds.lib.io import print_heading
+from teds.lib.libWrite import writevariablefromname
 
 
 def get_sentinel2_albedo(filename: str) -> List[DataArray]:
@@ -49,25 +45,6 @@ def get_sentinel2_scl(filename: str) -> DataArray:
     scl.attrs['gsd'] = grp['gsd'][:]
     scl.rio.write_crs(grp.crs, inplace=True)
     return scl
-
-
-class Emptyclass:
-    """Empty class. Data container."""
-
-    pass
-
-
-def get_gm_data(filename):
-
-    input = nc.Dataset(filename, mode='r')
-    gm_data = Emptyclass()
-    gm_data.__setattr__('sza', input['solar_zenith'][:])
-    gm_data.__setattr__('saa', input['solar_azimuth'][:])
-    gm_data.__setattr__('vza', input['sensor_zenith'][:])
-    gm_data.__setattr__('vaa', input['sensor_azimuth'][:])
-    gm_data.__setattr__('lat', input['latitude'][:])
-    gm_data.__setattr__('lon', input['longitude'][:])
-    return gm_data
 
 
 def geosgm_output(filename, atm):
@@ -105,7 +82,7 @@ def geosgm_output(filename, atm):
             _ = writevariablefromname(output_atm, 'X'+gas, _dims2d,
                                       constants.__getattribute__('scale_X'+gas)*
                                       atm.__getattribute__('X'+gas))
-        
+
 #    if(config['profile']=='orbit'):
 
     # albedo
@@ -156,6 +133,7 @@ def geosgm_output(filename, atm):
     output_atm.close()
 
     return
+
 
 def geosgm_output_ind_spec(filename, atm):
     # write geophysical scene data to output
@@ -210,62 +188,66 @@ def geosgm_output_ind_spec(filename, atm):
 def geoscene_generation(config: dict) -> None:
     """Generate a geophysical scene.
 
-    Args:
-      config
+    Parameters
+    ----------
+    config
         Configuration dictionary
 
     """
-    # first  the geometry data
-    gm_data = get_gm_data(config['io_files']['input_gm'])
+    gm_data = read_geometry(config['io_files']['input_gm'])
     nalt, nact = gm_data.sza.shape
 
-    # =============================================================================
-    # get a model atmosphere form AFGL files
-    # =============================================================================
+    # Get a model atmosphere form AFGL files
     nlay = config['atmosphere']['nlay']  # number of layers
     dzlay = config['atmosphere']['dzlay']
-    # we assume the same standard atmosphere for all pixels of the granule
+    # Assume the same standard atmosphere for all pixels of the granule
 
     atm_std = libATM.get_AFGL_atm_homogenous_distribution(
-        config['io_files']['input_afgl'], nlay, dzlay, config['scale_gas']['xco2'],
-        config['scale_gas']['xch4'], config['scale_gas']['xh2o'])
+        config['io_files']['input_afgl'],
+        nlay,
+        dzlay,
+        config['scale_gas']['xco2'],
+        config['scale_gas']['xch4'],
+        config['scale_gas']['xh2o'])
 
     # individual spectra and single swath
-    if (config['profile'] == 'individual_spectra'):
-        #use this profile whe you want to study the retrieval dependence as a
-        #function of one parameter
-        if(nalt!= 1):
-            sys.exit("input error in sgm, for profile = indiudual spectra, nalt!=1")
-        if (len(config['scene_spec']['albedo']) != nact):
-            sys.exit("input error in sgm, albedo dimension not consistent with gm")
+    if config['profile'] == 'individual_spectra':
+        # Use this profile whe you want to study the retrieval
+        # dependence as a function of one parameter.
+        if nalt != 1:
+            sys.exit(
+                "input error in sgm, for profile = indiudual spectra, nalt!=1")
+        if len(config['scene_spec']['albedo']) != nact:
+            sys.exit(
+                "input error in sgm, albedo dimension not consistent with gm")
 
         alb = np.zeros([nalt, nact])
         alb[0, :] = config['scene_spec']['albedo'][:]
         albedo = DataArray(alb,
                            dims=('y', 'x'),)
-        albedo.attrs['gsd'] = 300  #m 
+        albedo.attrs['gsd'] = 300  # m
         albedo.attrs['band_label'] = 'B11'
         albedo.attrs['central_wavelength'] = 1620
         albedo.attrs['bandwidth'] = '60'
 
-        atm = libATM.create_atmosphere_ind_spectra(nalt, nact, atm_std, albedo, gm_data)
+        atm = libATM.create_atmosphere_ind_spectra(
+            nalt, nact, atm_std, albedo, gm_data)
 
         geosgm_output(config['io_files']['output_geo'], atm)
-    # Orbit
-    if (config['profile'] == 'orbit'):
+    if config['profile'] == 'orbit':
 
         # meteorological data
-
-        meteodata = libATM.get_atmosphericdata_new(gm_data.lat, gm_data.lon, config['io_files']['meteo'])
+        meteodata = libATM.get_atmosphericdata_new(
+            gm_data.lat, gm_data.lon, config['io_files']['meteo'])
 
         # Get albedo on the microHH grid
         s2_albedos = get_sentinel2_albedo(config['io_files']['input_s2'])
 
-        #replace nan with closest non-nan value
+        # Replace nan with closest non-nan value
         for s2_alb in s2_albedos:
             mask = np.isnan(s2_alb.values)
-            idx = np.where(~mask,np.arange(mask.shape[1]),0)
-            np.maximum.accumulate(idx,axis=1, out=idx)
+            idx = np.where(~mask, np.arange(mask.shape[1]), 0)
+            np.maximum.accumulate(idx, axis=1, out=idx)
             s2_alb.values[mask] = s2_alb.values[np.nonzero(mask)[0], idx[mask]]
 
         s2_albedos = libSGM.interp_sentinel2_albedo(
@@ -280,8 +262,4 @@ def geoscene_generation(config: dict) -> None:
 
         geosgm_output(config['io_files']['output_geo'], atm)
 
-    print('=>sgm geoscene calculation finished successfully')
-
-if __name__ == '__main__':
-    config = yaml.safe_load(open(sys.argv[1]))
-    geoscene_generation(config)
+    print_heading('Success')

@@ -1,8 +1,11 @@
 # This source code is licensed under the 3-clause BSD license found in
 # the LICENSE file in the root directory of this project.
 """IO related operations."""
-
+from datetime import datetime
 from importlib.resources import files
+import importlib
+import os
+import subprocess
 import yaml
 
 from teds import log
@@ -70,3 +73,65 @@ def merge_config_with_default(config: dict | None, teds_module: str) -> dict:
     config_full: dict = yaml.safe_load(open(default_config_path))
     merge_dicts(config_full, config)
     return config_full
+
+
+def print_heading(heading: str, empty_line: bool = True) -> None:
+    """Print the name of a processing section.
+
+    For example, reading the CKD could start with
+    ######################
+    # CKD initialization #
+    ######################
+
+    This is meant to be called directly as opposed to using the
+    logger. Things like timestamps are not necessary for just printing
+    a section heading.
+
+    Parameters
+    ----------
+    heading
+        Title of the section to be displayed.
+    empty_line
+        Whether to print an empty line before printing the heading.
+
+    """
+    if empty_line:
+        print()
+    print('#' * (len(heading) + 4))
+    print(f'# {heading} #')
+    print('#' * (len(heading) + 4))
+
+
+def get_git_commit_hash() -> str:
+    """Return short git hash if .git found"""
+    git_hash = subprocess.run(
+        ['git', 'rev-parse', 'HEAD'],
+        shell=False,
+        capture_output=True,
+        cwd=os.path.dirname(__file__)).stdout.decode('utf-8')
+    if git_hash:
+        return git_hash[:8]
+    return ''
+
+
+def print_system_info() -> None:
+    """Print information about the host system and some runtime
+    options.
+
+    """
+    # Project version
+    print('Version                 :', importlib.metadata.version('teds'))
+    # Short git hash (only if .git found)
+    git_hash = get_git_commit_hash()
+    if git_hash:
+        print('Commit hash             :', git_hash)
+    # Datetime and contacts
+    print('Date and timezone       :', datetime.now().strftime('%Y %B %d %a'))
+    print('Contacts                : raullaasner@gmail.com')
+    print('                          '
+          'bitbucket.org/sron_earth/teds/issues (request permission)')
+    # Platform
+    host_system = subprocess.run(
+        ['uname', '-sr'], shell=False, capture_output=True).stdout
+    print('Host system             :',
+          host_system.decode('utf-8').split('\n')[0])

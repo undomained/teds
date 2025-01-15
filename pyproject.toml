@@ -5,7 +5,7 @@ build-backend = 'setuptools.build_meta'
 [project]
 name = 'teds'
 version = '0.0.1'
-requires-python = ">= 3.11"
+requires-python = ">= 3.11, < 3.13"
 dependencies = [
     'netCDF4',
     'h5py',
@@ -24,18 +24,18 @@ dependencies = [
     'tables',
     'pyproj',
     'Glymur == 0.13.2',
-    'torch==2.4.1',
-    'pyquaternion==0.9.9',
-    'piccolo_theme==0.22',
-    'flake8==7.1.1',
-    'mypy==1.11.1',
+    'torch == 2.4',
+    'pyquaternion == 0.9.9',
+    'piccolo_theme == 0.22',
+    'flake8 == 7.1.1',
+    'mypy == 1.11.1',
     'types-pyyaml',
-    'types-tqdm==4.66',
+    'types-tqdm == 4.66',
     'types-requests',
-    'sphinx==7.3.7',
-    'piccolo_theme==0.22.0',
-    'pytest==8.3',
-    'coverage==7.6.1',
+    'sphinx == 7.3',
+    'piccolo_theme == 0.22.0',
+    'pytest == 8.3',
+    'coverage == 7.6',
 ]
 
 [tool.setuptools]

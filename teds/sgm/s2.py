@@ -1,17 +1,21 @@
 # This source code is licensed under the 3-clause BSD license found in
 # the LICENSE file in the root directory of this project.
-
+"""Operations for fetching and manipulating Sentinel 2 granules."""
 from geopandas import GeoDataFrame
 from io import BytesIO
-from shapely import Point
-from shapely import Polygon
-from pystac_client import Client
-from pystac.item import Item as PystacItem
+from itertools import groupby
 from netCDF4 import Dataset
+from pystac.item import Item as PystacItem
+from pystac_client import Client
 from requests import get
 from rioxarray.merge import merge_arrays
+from shapely import Point
+from shapely import Polygon
 from tqdm import tqdm
+from typing import List
+from typing import cast
 from xarray import DataArray
+import datetime
 import numpy as np
 import numpy.typing as npt
 import os
@@ -21,8 +25,27 @@ import shapely
 from teds import log
 
 
-def generate_geometry(lat: DataArray,
-                      lon: npt.NDArray[np.float64]) -> list[PystacItem]:
+def fetch_granules(
+        lat: npt.NDArray[np.float64],
+        lon: npt.NDArray[np.float64],
+        date_range: tuple[datetime.date, datetime.date]) -> list[PystacItem]:
+    """Return S2 granules corresponding to a target box.
+
+    Parameters
+    ----------
+    lat
+        Latitudes of the target box
+    lon
+        Longitudes of the target box
+    date_range
+        Date range to narrow the search results
+
+    Returns
+    -------
+        List of pystac objects representing the granule metadata. The
+        actual albedos are not downloaded.
+
+    """
     # Generate geometry from latitude-longitude points
     latlon = [Point(xy) for xy in zip(lon.ravel(), lat.ravel())]
     # Link points to the WGS84 reference ellipsiod
@@ -38,35 +61,56 @@ def generate_geometry(lat: DataArray,
     # would be too much to download the full contents of all matching
     # granules. Filter the list first and then download only one or
     # more granules.
+    datetime_range = (
+        datetime.datetime.combine(date_range[0], datetime.time()),
+        datetime.datetime.combine(date_range[1], datetime.time()))
     search = api.search(
         collections=['sentinel-s2-l2a-cogs'],
+        datetime=datetime_range,
         query={
             'eo:cloud_cover': {'lt': 0.1},
             'sentinel:valid_cloud_cover': {'eq': True}, },
         intersects=target_box,)
+    log.info(f'Number of S2 granules found: {search.matched()}')
     collection = search.get_all_items()
-    # Narrow the list of granules to the minimal number that touch the
-    # bounding box. Consider the intersection of each granule with the
-    # target area and then sum up the intersections. Start with an
-    # empty polygon for the combined intersects.
-    all_boxes = Polygon()
-    # List of granules (metadata) being considered in the end
-    collection_filtered: list[PystacItem] = []
-    for i_granule, granule in enumerate(collection):
-        # Crop the bounding box of this granule with the target bounding box
-        assert granule.geometry is not None
-        coords = granule.geometry['coordinates']
-        intersect = Polygon(coords[0]).intersection(target_box)
-        # If adding this box to the list of previously accepted box increases
-        # the total area by a certain margin then accept this box.
-        all_boxes_cur = shapely.ops.unary_union([all_boxes, intersect])
-        if abs(all_boxes_cur.area - all_boxes.area) > 0.02:
-            all_boxes = all_boxes_cur
-            collection_filtered.append(granule)
-    return collection_filtered
+    # Group S2 granules by date
+    collection_grouped = []
+    # collection_grouped: list[dict] = []
+    for _, group in groupby(collection, key=lambda x:
+                            cast(datetime.datetime, x.get_datetime()).date()):
+        granules = list(group)
+        # Find the area of each group that is within the target box
+        geometries = [Polygon(
+            cast(dict[str, dict], granule.geometry)['coordinates'][0])
+                      for granule in granules]
+        group_polygon = (
+            shapely.ops.unary_union(geometries).intersection(target_box))
+        collection_grouped.append({
+            'granules': granules,
+            'area': group_polygon.area,
+        })
+    collection_sorted = sorted(
+        collection_grouped, key=lambda x: x['area'], reverse=True)
+    print('|-------------------------------------------------------------|')
+    print('| Platform    | UTM zone | Cloud cover | Datetime             |')
+    for item in collection_sorted:
+        print(
+            '|-------------+----------+-------------+----------------------|\n'
+            f'|                 overlap area: {item["area"]:.5f} deg^2     '
+            '            |')
+        for granule in item['granules']:
+            print(f'| {granule.properties["platform"]} |'
+                  f'       {granule.properties["sentinel:utm_zone"]} |'
+                  f'        {granule.properties["eo:cloud_cover"]:.2f} |'
+                  f' {granule.properties["datetime"]} |'
+                  )
+    print('|-------------------------------------------------------------|')
+    # Return the collection of granules that have the largest overlap
+    # with the target box.
+    return collection_sorted[0]['granules']
 
 
-def write_albedo_to_netcdf(albedo_file: str, albedos: list[DataArray]) -> None:
+def write_albedo(albedo_file: str, albedos: list[DataArray]) -> None:
     nc = Dataset(albedo_file, 'w')
     nc.title = 'Sentinel 2 albedos for different wavelength bands'
     for albedo in albedos:
@@ -126,20 +170,20 @@ def write_albedo_to_netcdf(albedo_file: str, albedos: list[DataArray]) -> None:
     nc.close()
 
 
-def download_sentinel2_albedo(config: dict) -> list[DataArray]:
+def download_albedo(config: dict) -> list[DataArray]:
     """Download Sentinel 2 albedo.
 
     Args:
       config: configuration settings
 
     """
-    nc = Dataset(config['gm_input'])
-    lat = nc['lat'][:]
-    lon = nc['lon'][:]
-    granules = generate_geometry(lat, lon)
+    nc = Dataset(config['io_files']['input_gm'])
+    lat = nc['latitude'][:]
+    lon = nc['longitude'][:]
+    granules = fetch_granules(lat, lon, config['sentinel2']['date_range'])
     # Extract the high resolution albedo map of selected wavelength bands
     albedos = []
-    for band_label in config['sentinel2']['band_section'] + ['SCL']:
+    for band_label in config['sentinel2']['band_label'] + ['SCL']:
         log.info(f'Downloading Sentinel 2 albedo for band {band_label}')
         # Fetch one or more S2 albedo maps at a given wavelength.
         # These will be merged into one so there will always be one
@@ -171,16 +215,47 @@ def download_sentinel2_albedo(config: dict) -> list[DataArray]:
                 albedo = rioxarray.open_rasterio(_filename)
                 os.remove(_filename)
             assert isinstance(albedo, DataArray)
-            albedo = albedo.assign_attrs({
-                'band_label': band_label,
-                'gsd': abs(albedo.x.values[1] - albedo.x.values[0])
-            })
             albedos_partial.append(albedo)
         # Merge albedos from different granules into one
         first_crs = albedos_partial[0].rio.crs
         for i in range(1, len(albedos_partial)):
             albedos_partial[i] = albedos_partial[i].rio.reproject(first_crs)
         albedo_combined = merge_arrays(albedos_partial)
+        albedo_combined = albedo_combined.assign_attrs({
+            'band_label': band_label,
+            'gsd': abs(albedos_partial[0].x.values[1]
+                       - albedos_partial[0].x.values[0])
+        })
         albedos.append(albedo_combined)
-    write_albedo_to_netcdf(config['sentinel2']['albedo_file'], albedos)
+    write_albedo(config['sentinel2']['albedo_file'], albedos)
     return albedos
+
+
+def read_albedo(filename: str) -> List[DataArray]:
+    """Read a list of Sentinel 2 albedos from a NetCDF file."""
+    nc = Dataset(filename)
+    albedos = []
+    for group in [x for x in nc.groups if x != 'SCL']:
+        albedo = DataArray(nc[group]['albedo'][:],
+                           dims=('y', 'x'),
+                           coords={
+                               'y': nc[group]['y'][:],
+                               'x': nc[group]['x'][:]
+                               })
+        albedo.attrs['gsd'] = nc[group]['gsd'][:]
+        albedo.attrs['band_label'] = group
+        albedo.rio.write_crs(nc[group].crs, inplace=True)
+        albedos.append(albedo)
+    return albedos
+
+
+def read_scl(filename: str) -> DataArray:
+    """Read Sentinel 2 surface classification layer from NetCDF file."""
+    nc = Dataset(filename)
+    grp = nc['SCL']
+    scl = DataArray(grp['scl'][:],
+                    dims=('y', 'x'),
+                    coords={'y': grp['y'][:], 'x': grp['x'][:]})
+    scl.attrs['gsd'] = grp['gsd'][:]
+    scl.rio.write_crs(grp.crs, inplace=True)
+    return scl

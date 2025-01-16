@@ -1,50 +1,17 @@
 # This source code is licensed under the 3-clause BSD license found in
 # the LICENSE file in the root directory of this project.
 """Geophysical scene generation module for different E2E simulator profiles."""
-from netCDF4 import Dataset
-from typing import List
 from xarray import DataArray
 import netCDF4 as nc
 import numpy as np
 import sys
 
+from .s2 import read_albedo
 from teds.gm.io import read_geometry
 from teds.lib import constants
 from teds.lib import libATM, libSGM
 from teds.lib.io import print_heading
 from teds.lib.libWrite import writevariablefromname
-
-
-def get_sentinel2_albedo(filename: str) -> List[DataArray]:
-    """Read a list of Sentinel 2 albedos from a NetCDF file."""
-    nc = Dataset(filename)
-    albedos = []
-
-    for group in [x for x in nc.groups if x != 'SCL']:
-
-        albedo = DataArray(nc[group]['albedo'][:],
-                           dims=('y', 'x'),
-                           coords={
-                               'y': nc[group]['y'][:],
-                               'x': nc[group]['x'][:]
-                               })
-        albedo.attrs['gsd'] = nc[group]['gsd'][:]
-        albedo.attrs['band_label'] = group
-        albedo.rio.write_crs(nc[group].crs, inplace=True)
-        albedos.append(albedo)
-    return albedos
-
-
-def get_sentinel2_scl(filename: str) -> DataArray:
-    """Read Sentinel 2 surface classification layer from NetCDF file."""
-    nc = Dataset(filename)
-    grp = nc['SCL']
-    scl = DataArray(grp['scl'][:],
-                    dims=('y', 'x'),
-                    coords={'y': grp['y'][:], 'x': grp['x'][:]})
-    scl.attrs['gsd'] = grp['gsd'][:]
-    scl.rio.write_crs(grp.crs, inplace=True)
-    return scl
 
 
 def geosgm_output(filename, atm):
@@ -233,7 +200,6 @@ def geoscene_generation(config: dict) -> None:
         atm = libATM.create_atmosphere_ind_spectra(
             nalt, nact, atm_std, albedo, gm_data)
 
-        geosgm_output(config['io_files']['output_geo'], atm)
     if config['profile'] == 'orbit':
 
         # meteorological data
@@ -241,7 +207,7 @@ def geoscene_generation(config: dict) -> None:
             gm_data.lat, gm_data.lon, config['io_files']['meteo'])
 
         # Get albedo on the microHH grid
-        s2_albedos = get_sentinel2_albedo(config['io_files']['input_s2'])
+        s2_albedos = read_albedo(config['io_files']['input_s2'])
 
         # Replace nan with closest non-nan value
         for s2_alb in s2_albedos:
@@ -260,6 +226,6 @@ def geoscene_generation(config: dict) -> None:
 
         atm = libATM.combine_meteo_standard_atm_new(meteodata, atm_std, config)
 
-        geosgm_output(config['io_files']['output_geo'], atm)
+    geosgm_output(config['io_files']['output_geo'], atm)
 
     print_heading('Success')

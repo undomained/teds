@@ -9,7 +9,7 @@ def generate(ncc):
     cfg = ncc.cfg
     seed = cfg['seed']
     mu = cfg['dark_current']
-    sigma is None
+    sigma = None
     if 'dark_current_sigma' in cfg:
         sigma = cfg['dark_current_sigma']
 

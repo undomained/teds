@@ -61,7 +61,7 @@ RUN . ./spack-$spack_version/share/spack/setup-env.sh \
 # Build TEDS Python requirements
 RUN git clone https://bitbucket.org/sron_earth/teds.git \
     && cd teds \
-    && git checkout 32f3847bfc \
+    && git checkout b42282a534 \
     && /opt/view/bin/python -m venv /venv \
     && . /venv/bin/activate \
     && pip install --upgrade pip \

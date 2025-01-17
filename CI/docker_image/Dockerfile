@@ -59,12 +59,12 @@ RUN . ./spack-$spack_version/share/spack/setup-env.sh \
     && spack gc -y
 
 # Build TEDS Python requirements
-RUN wget https://bitbucket.org/sron_earth/teds/get/4bb6de69df5b.zip \
-    && unzip 4bb6de69df5b.zip \
+RUN git clone https://bitbucket.org/sron_earth/teds.git \
+    && cd teds \
+    && git checkout 32f3847bfc \
     && /opt/view/bin/python -m venv /venv \
     && . /venv/bin/activate \
     && pip install --upgrade pip \
-    && cd sron_earth-teds-4bb6de69df5b \
     && pip install -e .
 
 # Expose the environment

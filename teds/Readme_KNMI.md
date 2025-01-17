@@ -113,13 +113,21 @@ First it is required to create a scenario file.
 
 ### Creation of input files that come from outside the E2E processor (like ckd and binning table)
 #### Creating binning table
-`python CKD/create_binning_table.py`
+Stand alone:
+`python ckd/create_binning_table.py ckd/binning.yaml`
+
+As part of E2E:
+`python run_E2E.py ../cfg/nitro/full_config.yaml bin`
 
 #### Creating CKD file
 **nitro**
-`python CKD/ckd_generation/ckd_generator_nitro.py`, creates ckd_nitro.nc in CKD directory. 
+Stand alone:
+`python ckd/ckd_generation/ckd_generator_nitro.py`, creates ckd_nitro.nc in CKD directory. 
 A custom `config.yaml` can be added as an argument, otherwise the ckd_nitro.yaml in the ckd_generation directory is used.
-More detailed information about the generator can be found in `CKD/ckd_generation/readme.md`.
+More detailed information about the generator can be found in `ckd/ckd_generation/readme.md`.
+
+As part of E2E:
+`python run_E2E.py ../cfg/nitro/full_config.yaml ckd`
 
 ### DISAMAR radiative transfer
 The Nitro SGM makes use of the KNMI DISAMAR software suite. This code is open source and available on https://gitlab.com/KNMI-OSS/disamar. See the DISAMAR readme for compiling instructions or run the provided building script in `sgm/build_disamar.sh`. The DISAMAR executable path has to be set in the Nitro configuration yaml file.

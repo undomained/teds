@@ -37,7 +37,7 @@ def cmdline(arguments):
     parser = argparse.ArgumentParser(description= usage)
     parser.add_argument( "cfg_file", metavar="FILE", help=cfg_help)
     parser.add_argument( "step", metavar='STEP', nargs="+",
-                         choices=['ckd', 'gm','sgm','im','l1al1b','l1l2','pam','all'],
+                         choices=['ckd', 'bin','gm','sgm','im','l1al1b','l1l2','pam','all'],
                          help="The steps that the E2E processor has to run.")
 
     args = parser.parse_args(arguments)
@@ -502,6 +502,11 @@ def build(config, steps, cfg_path, attribute_dict):
     configuration = config.copy()
 
     for step in steps:
+       if step == 'bin':
+            bin_config = configuration['bin']
+            bin_generator = importlib.import_module("ckd.create_binning_tables")
+            bin_generator.build_simple(bin_config)
+
        if step == 'ckd' or step == 'all':
             ckd_config = configuration['ckd']
             ckd_generator = importlib.import_module("ckd.ckd_generation.ckd_generator_nitro")

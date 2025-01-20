@@ -308,7 +308,7 @@ auto readL1(const std::string& filename,
         grp.getVar("orb_pos").getVar(orb_pos.data());
         grp.getVar("att_quat").getVar(att_quat_raw.data());
         // Interpolate orbit positions to detector image timestamps
-        l1_prod.orb_pos.resize(n_time * dims::vec);
+        l1_prod.orb_pos.resize(l1_prod.n_alt * dims::vec);
         for (int i_dir {}; i_dir < dims::vec; ++i_dir) {
             // Orbit position component (x/y/z)
             std::vector<double> pos_comp(n_time);
@@ -330,7 +330,7 @@ auto readL1(const std::string& filename,
                             att_quat_raw[i * dims::quat + 3] };
             att_quat[i].normalize();
         }
-        l1_prod.att_quat.resize(n_time);
+        l1_prod.att_quat.resize(l1_prod.n_alt);
         for (int i_alt {}; i_alt < l1_prod.n_alt; ++i_alt) {
             interpolateQuaternion(
               times, att_quat, l1_prod.time[i_alt], l1_prod.att_quat[i_alt]);

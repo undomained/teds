@@ -37,6 +37,8 @@ sensor:
   yaw: 0.0
 
 io_files:
+  # Navigation data from AOCSim
+  aocs_navigation: ""
   # Calibration key data
   ckd: ""
   # Digital elevation model for geolocation, optional. If not present,

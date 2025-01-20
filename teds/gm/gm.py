@@ -16,6 +16,7 @@ import datetime
 import numpy as np
 import numpy.typing as npt
 
+from .io import read_navigation
 from .io import write_geometry
 from .io import write_image_attributes
 from .io import write_navigation
@@ -356,9 +357,10 @@ def get_orbit(config: dict) -> tuple[Navigation, Geometry, L1]:
                               time_beg.day))).astype(np.float64)
 
     # Compute satellite position every n seconds
-    log.info('Generating satellite orbit')
-    satellite = Satellite(config['orbit'])
-    sat_pos = satellite.compute_positions(orbit_timestamps)
+    if not config['io_files']['aocs_navigation']:
+        log.info('Generating satellite orbit')
+        satellite = Satellite(config['orbit'])
+        sat_pos = satellite.compute_positions(orbit_timestamps)
 
     # Generate image timestamps
     log.info('Generating detector image timestamps')
@@ -368,16 +370,19 @@ def get_orbit(config: dict) -> tuple[Navigation, Geometry, L1]:
                               config['sensor']['integration_time'])
 
     # Attitude quaternions
-    log.info('Generating attitude quaternions')
-    att_quat = generate_attitude_quaternions(
-        config, sat_pos['lat'], sat_pos['lon'], sat_pos['v'])
-
-    # Navigation data with orbit positions in ECEF. These will be
-    # converted to J2000 in convert_to_j2000.
-    navigation = Navigation(time=orb_time_day,
-                            orb_pos=sat_pos['p'],   # ECEF for now
-                            att_quat=att_quat,   # SC-to-ECEF for now
-                            altitude=1e3 * sat_pos['height'])  # m
+    if config['io_files']['aocs_navigation']:
+        log.info('Reading AOCS generated quaternions')
+        navigation = read_navigation(config['io_files']['aocs_navigation'])
+    else:
+        log.info('Generating attitude quaternions')
+        att_quat = generate_attitude_quaternions(
+            config, sat_pos['lat'], sat_pos['lon'], sat_pos['v'])
+        # Navigation data with orbit positions in ECEF. These will be
+        # converted to J2000 in convert_to_j2000.
+        navigation = Navigation(time=orb_time_day,
+                                orb_pos=sat_pos['p'],   # ECEF for now
+                                att_quat=att_quat,   # SC-to-ECEF for now
+                                altitude=1e3 * sat_pos['height'])  # m
 
     # Do geolocation using the orbit positions and line-of-sight (LOS)
     # vectors from the CKD. Default is to derive the orbit positions
@@ -386,8 +391,10 @@ def get_orbit(config: dict) -> tuple[Navigation, Geometry, L1]:
     ckd = read_ckd(config['io_files']['ckd'])
     log.info('Geolocation')
     if not config['use_python_geolocation']:
-        # Convert orbit positions and quaternions from ECEF to J2000
-        convert_to_j2000(orbit_timestamps, navigation)
+        if not config['io_files']['aocs_navigation']:
+            # Convert orbit positions and quaternions from ECEF to
+            # J2000. AOCS data is already in J2000.
+            convert_to_j2000(orbit_timestamps, navigation)
         interpolate_navigation_data(navigation, l1)
         geometry = geolocate(
             l1, ckd.swath.line_of_sights, config['io_files']['dem'])

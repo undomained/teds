@@ -153,7 +153,8 @@ def simplified_instrument_model_and_l1b_processor(config):
     wave = l1b_output['wavelength']
 
     # define isrf function
-    isrf_convolution = libNumTools.get_isrf(wave, wave_lbl, config['isrf_settings'])
+    isrf_convolution = libNumTools.get_isrf(
+        wave, wave_lbl, config['isrf_settings'])
 
     for ialt in tqdm(range(nalt)):
 
@@ -165,14 +166,17 @@ def simplified_instrument_model_and_l1b_processor(config):
             # isrf convolution
             ymeas[ialt, iact, :] = isrf_convolution(spectrum_lbl)
 
-    # noise model based on SNR = a I / (sqrt (aI +b )) ; a[(e- m2 sr s nm) / phot], and [b] = e-
+    # Noise model based on SNR = a I / (sqrt (aI +b )) ; a[(e- m2 sr s
+    # nm) / phot], and [b] = e-.
     snr = config['snr_model']['a_snr'] * ymeas / \
-        (np.sqrt(config['snr_model']['a_snr']*ymeas + config['snr_model']['b_snr']))
+        (np.sqrt(config['snr_model']['a_snr']*ymeas
+                 + config['snr_model']['b_snr']))
 
     l1b_output['radiance_noise'] = ymeas/snr  # units [1]
 
-    # random noise
-    # Get nwav random numbers that are normally distributed with standard deviation 1
+    # Random noise
+    # Get nwav random numbers that are normally distributed with
+    # standard deviation 1.
     np.random.seed(config['snr_model']['seed'])
 
     ynoise = np.empty([nalt, nact, nwav])

@@ -336,7 +336,7 @@ class Sensor:
         return Geometry(np.deg2rad(lat),
                         np.deg2rad(lon),
                         np.zeros(lat.shape),
-                        np.deg2rad(vza),
-                        np.deg2rad(vaa),
                         np.deg2rad(sza),
-                        np.deg2rad(saa))
+                        np.deg2rad(saa),
+                        np.deg2rad(vza),
+                        np.deg2rad(vaa))

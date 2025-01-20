@@ -29,10 +29,10 @@ def interp_sentinel2_albedo(s2_albedos: list[DataArray],
         # value.
         logging.info('  Interpolating to MicroHH grid')
         interp = RegularGridInterpolator(
-             (s2_albedo.lat, s2_albedo.lon), s2_albedo.values, method='linear',)
+            (s2_albedo.lat, s2_albedo.lon), s2_albedo.values, method='linear')
 
         target_points = np.array(list(zip(lat.ravel(), lon.ravel())))
-        
+
         res = interp(target_points).reshape(lat.shape)
 
         crs = s2_albedo.rio.crs

@@ -231,10 +231,10 @@ def read_geometry(l1_product: L1, config: dict) -> Geometry:
         geo = Geometry(grp['latitude'][alt_beg:alt_end, :],
                        grp['longitude'][alt_beg:alt_end, :],
                        grp['height'][alt_beg:alt_end, :],
-                       grp['solar_azimuth'][alt_beg:alt_end, :],
                        grp['solar_zenith'][alt_beg:alt_end, :],
-                       grp['sensor_azimuth'][alt_beg:alt_end, :],
-                       grp['sensor_zenith'][alt_beg:alt_end, :])
+                       grp['solar_azimuth'][alt_beg:alt_end, :],
+                       grp['sensor_zenith'][alt_beg:alt_end, :],
+                       grp['sensor_azimuth'][alt_beg:alt_end, :])
     else:
         nc = Dataset(filename)
         if 'height' in groups:
@@ -244,10 +244,10 @@ def read_geometry(l1_product: L1, config: dict) -> Geometry:
         geo = Geometry(nc['lat'][alt_beg:alt_end, :],
                        nc['lon'][alt_beg:alt_end, :],
                        _height,
-                       nc['saa'][alt_beg:alt_end, :],
                        nc['sza'][alt_beg:alt_end, :],
-                       nc['vaa'][alt_beg:alt_end, :],
-                       nc['vza'][alt_beg:alt_end, :])
+                       nc['saa'][alt_beg:alt_end, :],
+                       nc['vza'][alt_beg:alt_end, :],
+                       nc['vaa'][alt_beg:alt_end, :])
     return geo
 
 
@@ -293,10 +293,10 @@ def copy_geometry(l1a_filename: str,
     l1_product.geometry = Geometry(nc_geo['latitude'][_beg:_end, :],
                                    nc_geo['longitude'][_beg:_end, :],
                                    _height[_beg:_end, :],
-                                   nc_geo['sensor_zenith'][_beg:_end, :],
-                                   nc_geo['sensor_azimuth'][_beg:_end, :],
                                    nc_geo['solar_zenith'][_beg:_end, :],
-                                   nc_geo['solar_azimuth'][_beg:_end, :])
+                                   nc_geo['solar_azimuth'][_beg:_end, :],
+                                   nc_geo['sensor_zenith'][_beg:_end, :],
+                                   nc_geo['sensor_azimuth'][_beg:_end, :])
 
 
 def read_l1(filename: str, alt_beg: int, alt_end: int | None = None) -> L1:

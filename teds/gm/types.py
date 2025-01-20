@@ -30,10 +30,10 @@ class Geometry:
     lon: npt.NDArray[np.float64]
     height: npt.NDArray[np.float64]
     # Solar/viewing azimuth/zenith angles
-    saa: npt.NDArray[np.float64]
     sza: npt.NDArray[np.float64]
-    vaa: npt.NDArray[np.float64]
+    saa: npt.NDArray[np.float64]
     vza: npt.NDArray[np.float64]
+    vaa: npt.NDArray[np.float64]
 
     @classmethod
     def from_shape(cls, shape: tuple) -> Self:

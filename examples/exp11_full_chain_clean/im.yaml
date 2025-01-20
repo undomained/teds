@@ -1,0 +1,44 @@
+# Input for Tango instrument model
+
+# cal_level: raw
+
+# alt_beg: 38
+# alt_end: 38
+
+detector:
+  # exposure_time: 0.0460833 # FMC 1
+  exposure_time: 0.2304165 # FMC 5
+  binning_table_id: 1
+  nr_coadditions: 3
+
+isrf:
+  # enabled: no
+  fwhm_gauss: 0.45
+  shape: 2
+
+# dark:
+#   enabled: no
+
+# noise:
+#   enabled: no
+#   seed: 10
+
+# nonlin:
+#   enabled: no
+
+# prnu:
+#   enabled: no
+
+# stray:
+#   enabled: no
+
+swath:
+  b_spline_order: 5
+
+io:
+  ckd: ckd.nc
+  binning_table: binning_table.nc
+  sgm: sgm_radiance.nc
+  l1a: l1a.nc
+  geometry: geometry.nc
+  navigation: navigation.nc

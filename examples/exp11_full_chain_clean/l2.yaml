@@ -1,0 +1,68 @@
+# Configuration file for running the L1-L2 processor
+
+# Initialization parameters for inversion
+retrieval_init:
+  # max_iter: 35
+  max_iter: 5
+  chi2_lim: 0.05
+  sw_pixel_mask: ''
+  sw_ALT_select: yes
+  first_ALT_index: 0
+  last_ALT_index: 1
+  # sw_prof_init: sgm
+  sw_prof_init: afgl
+  use_float64: yes
+  diag_output: no
+
+expert_settings:
+  batch_size: 10          # max ACT pixels to retrieve simultaneously
+  deallocate_chunk: False # set to True on memory-constrained systems
+  use_float64: False      # set to False unless you absolutely need it
+  prior_XCO2: 0.0003      # prior CO2 concentration
+  prior_XCH4: 0.0000017   # prior CH4 concentration
+  prior_XH2O: 0.001       # prior H2O concentration
+
+# If this block is omitted, chi2_lim from the retrieval_init block is used.
+convergence_criteria:
+    deltaplus: 0.05
+    deltaminus: -0.05
+    epsilon: 100000000
+    mean_epsilon: 100000000
+    chi2: 0.01
+
+pixel_mask: False
+
+atmosphere:
+    nlay: 30      # number of atmospheric layers
+    dzlay: 1000   # geometrical thickness of the layers [m]
+    psurf: 101300 # surface pressure [Pa]
+
+# Settings for line-by-line spectra
+spec_settings:
+  # initial wavelength (indicator)
+  wavestart:   1590
+  # final wavlength of measurement
+  waveend:     1675  # 1664
+  # shortwave and longwave extension of the measurement grid [nm]
+  wave_extend: 2.0
+  dwave:       0.002 # nm
+
+isrf_settings:
+  type: Gaussian
+  fwhm: 0.45
+
+surface:
+  # wavelengths at which the surface albedo is specified in the output
+  wave_alb: [1600, 1650]
+
+# Force new cross section calculation
+xsec_forced: no
+
+io_files:
+  input_l1b: l1b.nc
+  input_sgm: sgm_atmosphere.nc
+  input_afgl: prof.AFGL.US.std
+  input_sun_reference: solar_spectrum.nc
+  input_hapi: hapi
+  dump_xsec: xsec_dump_L2.pkl
+  output_l2: l2.nc

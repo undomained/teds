@@ -1,0 +1,34 @@
+# Input for Tango L1B code
+
+processing_version: 1.0
+
+# cal_level: l1b
+
+bin_spectra: 5
+
+# dark:
+#   enabled: no
+
+# noise:
+#   enabled: no
+
+# nonlin:
+#   enabled: no
+
+# prnu:
+#   enabled: no
+
+stray:
+  van_cittert_steps: 3
+
+swath:
+  b_spline_order: 5
+  # geolocation: no
+
+io:
+  ckd: ckd.nc
+  binning_table: binning_table.nc
+  dem: gebco_ocssw_v2020.nc
+  l1a: l1a.nc
+  l1b: l1b.nc
+  geometry: geometry.nc

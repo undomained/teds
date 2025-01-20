@@ -1,0 +1,75 @@
+# Configuration file for running the scene generation module
+
+# profile: individual_spectra
+profile: orbit
+
+# Parameter to configure the 2D blurring of the scene
+kernel_parameter:
+  # Type of kernel, current version has only one option
+  type: 2D Gaussian
+  fwhm_x:  80
+  fwhm_y:  300
+  # The size of the convolution kernel in units of fwhm
+  size_factor: 2
+
+atmosphere:
+  # Number of atmospheric layers
+  nlay: 30
+  # Geometrical thickness of the layers [m]
+  dzlay: 1000
+  psurf: 101300
+
+# latitude, longitude coordinates
+lat_lon_src: [51.83472, 14.46277]
+
+# AFGL model atmosphere
+std_atm: prof.AFGL.US.std
+
+# settings for line-by-line spectra
+spec_lbl_settings:
+    wave_start: 1577 # nm
+    wave_end:   1682 # nm
+    dwave:      0.002 # nm
+
+# only relevant for AFGL profiles
+scale_gas:
+  xco2: 410. # ppm
+  xch4: 1800. # ppb
+  xh2o: 10000. # ppm
+
+# configure use of AFGL background
+afgl:
+  # Whether to use homogenous AFGL background only
+  afgl_only: yes
+  gases: [co2, h2o, ch4]
+
+selected_gases: ['co2','ch4','h2o']
+
+convolve_atm_input: yes
+
+sentinel2:
+  band_label: ['B02', 'B03', 'B11']
+  date_range: [1900-01-01, 3000-01-01]
+  albedo_file: sentinel2.nc
+
+only_afgl: yes
+meteo_forced: no
+xsec_forced: no # Force new cross section calculation
+s2_forced: no # Force Sentinel 2 calculation
+microHH_forced: no # Force microHH data processing
+
+io_files:
+  input_gm: geometry.nc
+  input_afgl: prof.AFGL.US.std
+  input_s2: sentinel2.nc
+  input_hapi: hapi
+  input_sun_reference: solar_spectrum.nc
+  input_sgm_geo: sgm_atmosphere.nc
+  output_geo: sgm_atmosphere.nc
+  output_rad: sgm_radiance.nc
+  output_geo_ref: sgm_atmosphere_ref.nc
+  dump_xsec: xsec_dump.pkl
+  meteo:
+    path_data: ./
+    gases: [co2]
+    filesuffix: src1_20180523_1230

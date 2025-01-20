@@ -171,15 +171,46 @@ def write_albedo(albedo_file: str, albedos: list[DataArray]) -> None:
 
 
 def download_albedo(config: dict) -> list[DataArray]:
-    """Download Sentinel 2 albedo.
+    """Download Sentinel 2 albedo using a target area from GM output, using
+    the GM file given by the path config['io_files']['input_gm'].
 
-    Args:
-      config: configuration settings
+    Parameters
+    ----------
+    config
+        Configuration dictionary
+
+    Returns
+    -------
+        Sentinel 2 albedos, each corresponding to a different
+        wavelength band.
 
     """
     nc = Dataset(config['io_files']['input_gm'])
     lat = nc['latitude'][:]
     lon = nc['longitude'][:]
+    return download_albedo_for_coords(config, lat, lon)
+
+def download_albedo_for_coords(
+        config: dict,
+        lat: npt.NDArray[np.float64],
+        lon: npt.NDArray[np.float64]) -> list[DataArray]:
+    """Download Sentinel 2 albedo covering a target area.
+
+    Parameters
+    ----------
+    config
+        Configuration dictionary
+    lat
+        Latitudes of the target area
+    lon
+        Longitudes of the target area
+
+    Returns
+    -------
+        Sentinel 2 albedos, each corresponding to a different
+        wavelength band.
+
+    """
     granules = fetch_granules(lat, lon, config['sentinel2']['date_range'])
     # Extract the high resolution albedo map of selected wavelength bands
     albedos = []

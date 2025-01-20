@@ -164,6 +164,7 @@ def gen_image_timestamps(orbit_start: datetime.datetime,
         # offsetting with hours since epoch.
         tai_seconds_reduced = (
             exposure_tai_start
+            + datetime.timedelta(seconds=i*interval)
             - datetime.timedelta(hours=hours_since_epoch)).to(units.s)
         l1.tai_subsec[i] = np.float64(tai_seconds_reduced) % 1
         l1.timestamps[i] = np.float64((tai_seconds

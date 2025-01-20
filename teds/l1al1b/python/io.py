@@ -411,13 +411,12 @@ def write_l1(filename: str,
         yaml.dump(config).replace(' true', ' yes').replace(' false', ' no'))
     var_config[:] = np.array([config_text], dtype='object')
     var_config.comment = 'configuration parameters used to produce this file'
+    dim_alt = out.createDimension(
+        'along_track_sample', l1_product.signal.shape[0])
     if l1_product.proc_level <= ProcLevel.stray:
         grp_data = out.createGroup('science_data')
-        dim_alt = out.createDimension('signal', l1_product.signal.shape[0])
         dim_bins = out.createDimension('bin', l1_product.signal.shape[1])
     else:
-        dim_alt = out.createDimension('along_track_sample',
-                                      l1_product.spectra.shape[0])
         dim_act = out.createDimension('across_track_sample',
                                       l1_product.spectra.shape[1])
         dim_waves = out.createDimension('wavelength',

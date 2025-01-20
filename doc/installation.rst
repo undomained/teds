@@ -35,13 +35,12 @@ and activate it with
 
    source venv/bin/activate
 
-You will notice that the shell's prompt has changed to remind you that you are in a virtual environment. Any packages installed with the Python :command:`pip` command are now part of the current project only. Correct versions of packages that are required for this project are listed in :file:`pyproject.toml` and :file:`requirements.txt`. Install them all by issuing
+You will notice that the shell's prompt has changed to remind you that you are in a virtual environment. Any packages installed with the Python :command:`pip` command are now part of the current project only. Correct versions of packages that are required for this project are listed in :file:`pyproject.toml`. Install them by issuing
 
 .. code-block:: bash
 
    pip install --upgrade pip
    pip install --editable .
-   pip install -r requirements.txt
 
 The second command installs all dependencies found in :file:`pyproject.toml` and creates an *editable* build of TEDS suitable for development. The third command installs additional development tools such as linters and documentation tools. The reason for the split is an when distributing the package, only the second command needs to be run without the :token:`--editable` flag. This leaves out everything not required for the end user.
 

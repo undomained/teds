@@ -349,11 +349,11 @@ def read_l1(filename: str, alt_beg: int, alt_end: int | None = None) -> L1:
     if 'image_attributes' in nc.groups:
         grp = nc['image_attributes']
         l1_product.timestamps = grp['time'][alt_beg:alt_end]
+        l1_product.tai_seconds = grp['tai_seconds'][alt_beg:alt_end]
+        l1_product.tai_subsec = grp['tai_subsec'][alt_beg:alt_end]
         l1_product.binning_table_id = grp['binning_table'][:]
         l1_product.coad_factor = grp['nr_coadditions'][:]
         l1_product.exposure_time = grp['exposure_time'][:]
-    else:
-        l1_product.timestamps = np.zeros(n_alt)
     # Reading of main variables done. Now perform a few sanity checks.
     if n_alt == 0:
         raise SystemExit(f"ERROR: data slice [{alt_beg}:{alt_end}] is empty")
@@ -411,12 +411,14 @@ def write_l1(filename: str,
         yaml.dump(config).replace(' true', ' yes').replace(' false', ' no'))
     var_config[:] = np.array([config_text], dtype='object')
     var_config.comment = 'configuration parameters used to produce this file'
-    dim_alt = out.createDimension(
-        'along_track_sample', l1_product.signal.shape[0])
     if l1_product.proc_level <= ProcLevel.stray:
         grp_data = out.createGroup('science_data')
+        dim_alt = out.createDimension(
+            'along_track_sample', l1_product.signal.shape[0])
         dim_bins = out.createDimension('bin', l1_product.signal.shape[1])
     else:
+        dim_alt = out.createDimension(
+            'along_track_sample', l1_product.spectra.shape[0])
         dim_act = out.createDimension('across_track_sample',
                                       l1_product.spectra.shape[1])
         dim_waves = out.createDimension('wavelength',
@@ -424,14 +426,31 @@ def write_l1(filename: str,
         if l1_product.proc_level < ProcLevel.sgm:
             grp_data = out.createGroup('observation_data')
     if l1_product.proc_level < ProcLevel.l1b:
+        nc_geo = Dataset(config['io']['geometry'])
+        alt_beg = int(config['alt_beg'])
+        alt_end = alt_beg + dim_alt.size
         grp_attr = out.createGroup('image_attributes')
         var_timestamps = grp_attr.createVariable(
             'time', 'f8', (dim_alt,), fill_value=default_fill_value)
-        var_timestamps.long_name = 'image time'
-        var_timestamps.units = 'seconds since 2022-03-21'
+        var_timestamps.long_name = 'detector image time'
+        var_timestamps.units = nc_geo['time'].units
         var_timestamps.valid_min = 0.0
         var_timestamps.valid_max = 172800.0  # 2 x day
-        var_timestamps[:] = l1_product.timestamps
+        var_timestamps[:] = nc_geo['time'][alt_beg:alt_end]
+        var_tai_seconds = grp_attr.createVariable(
+            'tai_seconds', 'f8', (dim_alt,), fill_value=default_fill_value)
+        var_tai_seconds.long_name = 'detector image TAI time (seconds)'
+        var_tai_seconds.units = 'seconds since 1958-01-01 00:00:00 TAI'
+        var_tai_seconds.valid_min = np.uint(1956528000)
+        var_tai_seconds.valid_max = np.uint(2493072000)
+        var_tai_seconds[:] = nc_geo['tai_seconds'][alt_beg:alt_end]
+        var_tai_subsec = grp_attr.createVariable(
+            'tai_subsec', 'f8', (dim_alt,), fill_value=default_fill_value)
+        var_tai_subsec.long_name = 'detector image TAI time (subseconds)'
+        var_tai_subsec.units = '1/65536'
+        var_tai_subsec.valid_min = 0
+        var_tai_subsec.valid_max = 65535
+        var_tai_subsec[:] = nc_geo['tai_subsec'][alt_beg:alt_end]
         var_binning_table = grp_attr.createVariable('binning_table', 'i1')
         var_binning_table[:] = l1_product.binning_table_id
         var_binning_table.long_name = 'binning table ID'

@@ -51,4 +51,5 @@ io:
   l1a: ""
   # Viewing and solar geometry
   geometry: ""
+  # L1B or a lower-level product
   l1b: ""

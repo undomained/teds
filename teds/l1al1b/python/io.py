@@ -521,30 +521,28 @@ def write_l1(filename: str,
         var_noise[:] = l1_product.spectra_noise
     if l1_product.geometry.lat.size > 0:
         grp_geo = out.createGroup('geolocation_data')
-        var_latitude = grp_geo.createVariable(
-            'latitude',
-            'f4',
-            (dim_alt, dim_act),
-            compression='zlib',
-            fill_value=default_fill_value)
+        var_latitude = grp_geo.createVariable('latitude',
+                                              'f8',
+                                              (dim_alt, dim_act),
+                                              compression='zlib',
+                                              fill_value=default_fill_value)
         var_latitude[:] = l1_product.geometry.lat
         var_latitude.long_name = 'latitude at bin locations'
         var_latitude.units = 'degrees_north'
         var_latitude.valid_min = -90.0
         var_latitude.valid_max = 90.0
-        var_longitude = grp_geo.createVariable(
-            'longitude',
-            'f4',
-            (dim_alt, dim_act),
-            compression='zlib',
-            fill_value=default_fill_value)
+        var_longitude = grp_geo.createVariable('longitude',
+                                               'f8',
+                                               (dim_alt, dim_act),
+                                               compression='zlib',
+                                               fill_value=default_fill_value)
         var_longitude[:] = l1_product.geometry.lon
         var_longitude.long_name = 'longitude at bin locations'
         var_longitude.units = 'degrees_east'
         var_longitude.valid_min = -180.0
         var_longitude.valid_max = 180.0
         var_height = grp_geo.createVariable('height',
-                                            'f4',
+                                            'f8',
                                             (dim_alt, dim_act),
                                             compression='zlib',
                                             fill_value=default_fill_value)
@@ -554,7 +552,7 @@ def write_l1(filename: str,
         var_height.valid_min = -1000.0
         var_height.valid_max = 10000.0
         var_saa = grp_geo.createVariable('solar_azimuth',
-                                         'f4',
+                                         'f8',
                                          (dim_alt, dim_act),
                                          compression='zlib',
                                          fill_value=default_fill_value)
@@ -564,7 +562,7 @@ def write_l1(filename: str,
         var_saa.valid_min = -180.0
         var_saa.valid_max = 180.0
         var_sza = grp_geo.createVariable('solar_zenith',
-                                         'f4',
+                                         'f8',
                                          (dim_alt, dim_act),
                                          compression='zlib',
                                          fill_value=default_fill_value)
@@ -574,7 +572,7 @@ def write_l1(filename: str,
         var_sza.valid_min = -90.0
         var_sza.valid_max = 90.0
         var_vaa = grp_geo.createVariable('sensor_azimuth',
-                                         'f4',
+                                         'f8',
                                          (dim_alt, dim_act),
                                          compression='zlib',
                                          fill_value=default_fill_value)
@@ -584,7 +582,7 @@ def write_l1(filename: str,
         var_vaa.valid_min = -180.0
         var_vaa.valid_max = 180.0
         var_vza = grp_geo.createVariable('sensor_zenith',
-                                         'f4',
+                                         'f8',
                                          (dim_alt, dim_act),
                                          compression='zlib',
                                          fill_value=default_fill_value)

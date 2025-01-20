@@ -83,10 +83,11 @@ auto applyISRF(const CKD& ckd,
                       ckd.swath.wavelengths,
                       isrf);
 #pragma omp parallel for
-        for (int i_alt = 0; i_alt < l1_prod.n_alt; ++i_alt) {
+        for (size_t i_alt = 0; i_alt < static_cast<size_t>(l1_prod.n_alt);
+             ++i_alt) {
             Eigen::VectorXd result(ckd.n_detector_cols);
             for (int i_act {}; i_act < ckd.n_act; ++i_act) {
-                const int act_idx { i_alt * ckd.n_act + i_act };
+                const size_t act_idx { i_alt * ckd.n_act + i_act };
                 result = isrf
                          * Eigen::Map<Eigen::VectorXd>(
                            &l1_prod.spectra[act_idx * n_waves_in], n_waves_in);
@@ -97,9 +98,10 @@ auto applyISRF(const CKD& ckd,
         }
     } else {
 #pragma omp parallel for
-        for (int i_alt = 0; i_alt < l1_prod.n_alt; ++i_alt) {
+        for (size_t i_alt = 0; i_alt < static_cast<size_t>(l1_prod.n_alt);
+             ++i_alt) {
             for (int i_act {}; i_act < ckd.n_act; ++i_act) {
-                const int act_idx { i_alt * ckd.n_act + i_act };
+                const size_t act_idx { i_alt * ckd.n_act + i_act };
                 const std::vector<double> spectrum {
                     l1_prod.spectra.begin() + act_idx * n_waves_in,
                     l1_prod.spectra.begin() + (act_idx + 1) * n_waves_in

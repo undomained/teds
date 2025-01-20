@@ -252,7 +252,7 @@ auto readL1(const std::string& filename,
         const auto grp { nc.getGroup("science_data") };
         const auto n_bins { nc.getDim("bin").getSize() };
         l1_prod.signal.resize(n_alt * n_bins);
-        l1_prod.noise.resize(n_alt * n_bins);
+        l1_prod.noise.resize(n_alt * n_bins, 1.0);
         grp.getVar("detector_image")
           .getVar({ alt_beg, 0 }, { n_alt, n_bins }, l1_prod.signal.data());
         if (const auto var { grp.getVar("detector_stdev") }; !var.isNull()) {
@@ -288,11 +288,13 @@ auto readL1(const std::string& filename,
               .getVar({ alt_beg, 0, 0 },
                       { n_alt, n_act, n_wavelength },
                       l1_prod.spectra.data());
-            l1_prod.spectra_noise.resize(n_alt * n_act * n_wavelength);
-            grp.getVar("radiance_stdev")
-              .getVar({ alt_beg, 0, 0 },
-                      { n_alt, n_act, n_wavelength },
-                      l1_prod.spectra_noise.data());
+            l1_prod.spectra_noise.assign(n_alt * n_act * n_wavelength, 1.0);
+            if (const auto var { grp.getVar("radiance_stdev") };
+                !var.isNull()) {
+                var.getVar({ alt_beg, 0, 0 },
+                           { n_alt, n_act, n_wavelength },
+                           l1_prod.spectra_noise.data());
+            }
         }
     }
 

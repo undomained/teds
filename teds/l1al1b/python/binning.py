@@ -10,7 +10,9 @@ import numpy.typing as npt
 BinType = TypeVar('BinType', npt.NDArray[np.float64], npt.NDArray[np.bool_])
 
 
-def bin_data(binning_table: BinningTable, data: BinType) -> BinType:
+def bin_data(binning_table: BinningTable,
+             data: BinType,
+             scaled: bool = True) -> BinType:
     """Bin each frame in a set of frames and take the sum per bin.
 
     The sum over all data remains the same. If the set of frames
@@ -26,6 +28,9 @@ def bin_data(binning_table: BinningTable, data: BinType) -> BinType:
         pixels in each bin of a binned frame.
     data
         Unbinned frames.
+    scaled
+        Whether to divide each binned pixels by the bin size or leave
+        it unscaled.
 
     Returns
     -------
@@ -40,7 +45,8 @@ def bin_data(binning_table: BinningTable, data: BinType) -> BinType:
         binned_data = np.zeros(len(binning_table.count_table))
         for idx, idx_binned in enumerate(binning_table.bin_indices.ravel()):
             binned_data[idx_binned] += data[idx]
-        binned_data /= binning_table.count_table
+        if scaled:
+            binned_data /= binning_table.count_table
     return binned_data
 
 

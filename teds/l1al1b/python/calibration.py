@@ -278,7 +278,8 @@ def stray_light(l1_product: L1,
         for i_vc in range(van_cittert_steps):
             stray_convolved = convolve_with_all_kernels(signal_ideal, ckd)
             signal_ideal = (signal - stray_convolved) / (1 - eta)
-        l1_product.signal[i_alt, :] = bin_data(binning_table, signal_ideal)
+        l1_product.signal[i_alt, :] = bin_data(
+            binning_table, signal_ideal, False)
 
 
 def map_from_detector(l1_product: L1,

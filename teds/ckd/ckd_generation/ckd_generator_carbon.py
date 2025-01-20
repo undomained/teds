@@ -20,6 +20,7 @@ from scipy.interpolate import PchipInterpolator
 from scipy.interpolate import RBFInterpolator
 from scipy.interpolate import interpn
 from teds import log
+import pandas as pd
 import numpy as np
 import sys
 import yaml
@@ -164,27 +165,13 @@ def gen_swath_spectral(conf: dict, nc_ckd: Dataset) -> None:
     spot_act = (
         -1.7146, -1.1409, -0.56762, 0.00584267, 0.57931, 1.1526, 1.7262)
     # Spot wavelengths, nm
-    spot_wavelengths = (1590.0, 1610.0, 1632.5, 1650.0, 1675.0)
+    spot_wavelengths = (1590.0, 1610.0, 1630.0, 1650.0, 1675.0)
     # Spot distances from the center detector row, mm
-    row_distances = [
-        [-3.760067, -3.755833, -3.749533, -3.746533, -3.7609],
-        [-2.511, -2.508033, -2.5034, -2.500633, -2.508167],
-        [-1.257133, -1.2556, -1.253167, -1.251533, -1.2547],
-        [-7.68233e-05, -5.8018e-05, -3.853933e-05, -1.942e-05, 2.08867e-06],
-        [1.257, 1.2555, 1.2531, 1.2515, 1.2547],
-        [2.510867, 2.5079, 2.5033, 2.5006, 2.5082],
-        [3.7599, 3.755733, 3.749467, 3.746533, 3.7609],
-    ]
+    row_distances = pd.read_csv(
+        open(conf['swath']['row_distance_file']), sep='\t', header=None)
     # Spot distances from the center detector column, mm
-    col_distances = [
-        [3.9143, 1.9941, 0.0393533, -1.961433, -4.54967],
-        [4.041167, 2.1146, 0.1542133, -1.85, -4.441167],
-        [4.1177, 2.1873, 0.22349, -1.7841, -4.3759],
-        [4.1433, 2.2116, 0.2466633, -1.7618, -4.354133],
-        [4.1178, 2.1873, 0.22352, -1.7841, -4.3759],
-        [4.041267, 2.1147, 0.1542767, -1.850733, -4.4411],
-        [3.9144, 1.9942, 0.03944433, -1.961367, -4.549567],
-    ]
+    col_distances = pd.read_csv(
+        open(conf['swath']['col_distance_file']), sep='\t', header=None)
     # Convert distances to fractional row and column indices of the pixels
     pixel_size = 0.015  # mm
     row_indices = np.asarray(row_distances) / pixel_size
@@ -337,7 +324,10 @@ def gen_swath_spectral(conf: dict, nc_ckd: Dataset) -> None:
         'line_of_sight', 'f8', ('across_track_sample', 'vector'))
     nc_var.long_name = 'line of sight vector of each L1B spectrum'
     nc_var.units = '1'
-    nc_var[:] = np.zeros((n_act, 3))
+    l1b_act_angles_rad = np.deg2rad(l1b_act_angles)
+    nc_var[:] = np.stack((np.zeros(len(l1b_act_angles_rad)),
+                          np.sin(l1b_act_angles_rad),
+                          np.cos(l1b_act_angles_rad)), 1)
 
     # Write spectral group
     nc_grp = nc_ckd.createGroup('spectral')

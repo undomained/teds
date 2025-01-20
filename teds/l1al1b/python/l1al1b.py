@@ -179,11 +179,13 @@ def run_l1al1b(config_user: dict | None = None) -> None:
     if step_needed(ProcLevel.l1b, l1_product.proc_level, cal_level):
         log.info('Radiometric')
         cal.radiometric(l1_product, ckd.radiometric.rad_corr)
-    log.info('Writing output data')
     copy_geometry(config['io']['l1a'],
                   config['io']['geometry'],
                   config['alt_beg'],
                   l1_product)
+    if l1_product.proc_level >= ProcLevel.swath:
+        cal.bin_l1b(l1_product, config['bin_spectra'])
+    log.info('Writing output data')
     write_l1(config['io']['l1b'], config, l1_product)
 
     # If this is shown then the simulation ran successfully

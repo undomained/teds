@@ -23,6 +23,7 @@ import rioxarray
 import shapely
 
 from teds import log
+from teds.gm.io import read_geometry
 
 
 def fetch_granules(
@@ -75,7 +76,6 @@ def fetch_granules(
     collection = search.get_all_items()
     # Group S2 granules by date
     collection_grouped = []
-    # collection_grouped: list[dict] = []
     for _, group in groupby(collection, key=lambda x:
                             cast(datetime.datetime, x.get_datetime()).date()):
         granules = list(group)
@@ -171,8 +171,9 @@ def write_albedo(albedo_file: str, albedos: list[DataArray]) -> None:
 
 
 def download_albedo(config: dict) -> list[DataArray]:
-    """Download Sentinel 2 albedo using a target area from GM output, using
-    the GM file given by the path config['io_files']['input_gm'].
+    """Download Sentinel 2 albedo using a target area from GM output.
+
+    The geometry file is given by config['io_files']['input_gm'].
 
     Parameters
     ----------
@@ -185,10 +186,9 @@ def download_albedo(config: dict) -> list[DataArray]:
         wavelength band.
 
     """
-    nc = Dataset(config['io_files']['input_gm'])
-    lat = nc['latitude'][:]
-    lon = nc['longitude'][:]
-    return download_albedo_for_coords(config, lat, lon)
+    geometry = read_geometry(config['io_files']['input_gm'])
+    return download_albedo_for_coords(config, geometry.lat, geometry.lon)
+
 
 def download_albedo_for_coords(
         config: dict,

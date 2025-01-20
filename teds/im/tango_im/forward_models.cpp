@@ -332,11 +332,7 @@ auto binDetectorImages(const int n_rows,
     const BinningTable binning_table {
         n_rows, n_cols, binning_filename, binning_table_id
     };
-    if (scale_by_binsize) {
-        binning_table.bin(l1_prod.signal);
-    } else {
-        binning_table.binUnscaled(l1_prod.signal);
-    }
+    binning_table.bin(l1_prod.signal, scale_by_binsize);
     l1_prod.binning_table_id = static_cast<uint8_t>(binning_table_id);
 }
 
@@ -359,7 +355,7 @@ auto estimateOptimalCoadd(const CKD& ckd,
                           const L1& l1_prod) -> void
 {
     constexpr double dwell { 24.0 };
-    const double t_dwell { FMC / 24.0 };
+    const double t_dwell { FMC / dwell };
     for (int i_alt = 0; i_alt < l1_prod.n_alt; ++i_alt) {
         double max_val {};
         for (int i {}; i < ckd.npix; ++i) {

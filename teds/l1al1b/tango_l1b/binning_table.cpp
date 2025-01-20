@@ -35,37 +35,32 @@ BinningTable::BinningTable(const int detector_n_rows,
 }
 
 auto BinningTable::bin(const std::vector<double>& data,
-                       std::vector<double>& data_binned) const -> void
-{
-    std::ranges::fill(data_binned, 0.0);
-    for (int i {}; i < static_cast<int>(data.size()); ++i) {
-        data_binned[bin_indices[i]] += data[i];
-    }
-    for (int i {}; i < static_cast<int>(data_binned.size()); ++i) {
-        data_binned[i] /= count_table[i];
-    }
-}
-
-auto BinningTable::binUnscaled(std::vector<double>& data) const -> void
+                       std::vector<double>& data_binned,
+                       const bool scale_by_bin_size) const -> void
 {
     const size_t n_full { bin_indices.size() };
     const size_t n_binned { count_table.size() };
     const size_t n_alt { data.size() / n_full };
-    std::vector<double> data_binned(n_alt * count_table.size(), 0.0);
+    data_binned.assign(n_alt * n_binned, 0.0);
 #pragma omp parallel for
     for (size_t i_alt = 0; i_alt < n_alt; ++i_alt) {
         for (size_t i {}; i < n_full; ++i) {
             data_binned[i_alt * n_binned + bin_indices[i]] +=
               data[i_alt * n_full + i];
         }
+        if (scale_by_bin_size) {
+            for (size_t i {}; i < n_binned; ++i) {
+                data_binned[i_alt * n_binned + i] /= count_table[i];
+            }
+        }
     }
-    data = std::move(data_binned);
 }
 
-auto BinningTable::bin(std::vector<double>& data) const -> void
+auto BinningTable::bin(std::vector<double>& data,
+                       const bool scale_by_bin_size) const -> void
 {
-    std::vector<double> data_binned(count_table.size());
-    bin(data, data_binned);
+    std::vector<double> data_binned {};
+    bin(data, data_binned, scale_by_bin_size);
     data = std::move(data_binned);
 }
 

@@ -1411,18 +1411,6 @@ def level1b_to_level2_processor(config, sw_diag_output = False):
                     sun[idx]*np.pi/np.cos(np.deg2rad(l1b['sza'][ialt, iact]))
 
                 retrieval_init['surface'] = {'alb0': alb_first_guess, 'alb1': 0.0}
-    
-                # Non-scattering least squares fit  suggestion Raul, still need to be implemented 
-                # l2product = {
-                #     'XCO2 proxy': np.zeros(),
-                # }
-                # _result, runtime = libINV.Gauss_Newton_iteration(
-                #     retrieval_init, atm_ret, optics, measurement[ialt, iact],
-                #     config['retrieval_init']['max_iter'], config['retrieval_init']['chi2_lim'],
-                #     isrf_convolution)
-                # l2product['XCO2 proxy'][ialt, iact] =  _result['XCO2 proxy']
-
-
                 l2product[ialt, iact], runtime = libINV.Gauss_Newton_iteration(
                     retrieval_init, atm_ret, optics, measurement[ialt, iact],
                     config['retrieval_init']['max_iter'], config['retrieval_init']['chi2_lim'],

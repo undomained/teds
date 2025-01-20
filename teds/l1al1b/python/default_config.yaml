@@ -33,6 +33,14 @@ stray:
   # Number of deconvolution iterations, 0 disables stray light calibration
   van_cittert_steps: 3
 
+swath:
+  # Whether to include geolocation. If not then geometry is copied
+  # from the geometry file produced by the GM.
+  geolocation: yes
+
+# Reduce the number of L1B spectra by averaging over this many spectra
+bin_spectra: 1
+
 # Input/output file paths
 io:
   # Calibration key data (CKD)

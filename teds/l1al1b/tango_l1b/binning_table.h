@@ -51,13 +51,16 @@ public:
     }
     // Bin an array and save result in data_binned
     auto bin(const std::vector<double>& data,
-             std::vector<double>& data_binned) const -> void;
+             std::vector<double>& data_binned,
+             const bool scale_by_bin_size = true) const -> void;
     // Bin an array and save the result in the same array
-    auto bin(std::vector<double>& data) const -> void;
+    auto bin(std::vector<double>& data,
+             const bool scale_by_bin_size = true) const -> void;
     // Bin a boolean array
     auto bin(std::vector<bool>& data) const -> void;
+
     // Like bin but don't multiply with the count table
-    auto binUnscaled(std::vector<double>& data) const -> void;
+
     // Unbin data using the binning table. Output array is the same
     // size as the binning table (bin_indices.size()).
     auto unbin(const std::ranges::range auto& data,

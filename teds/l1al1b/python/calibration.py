@@ -385,3 +385,52 @@ def radiometric(l1_product: L1, rad_corr: npt.NDArray[np.float64]) -> None:
     l1_product.proc_level = ProcLevel.l1b
     l1_product.spectra *= rad_corr[0, 0] / l1_product.exposure_time
     l1_product.spectra_noise *= rad_corr[0, 0] / l1_product.exposure_time
+
+
+def bin_l1b(l1_product: L1, bin_spectra: int) -> None:
+    """Bin all observables of L1B product.
+
+    Parameters
+    ----------
+    l1_product
+        L1 product (signal and detector settings).
+    bin_spectra
+        Binning factor across ACT dimension
+
+    """
+    def bin_ACT(arr: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
+        """Bin across the ACT dimension.
+
+        Array shape is assumed to be (n_alt, n_act, n_wave), where
+        n_wave is the number of wavelengths. Arrays that have a
+        different shape need to be reshaped before and after calling
+        this function.
+
+        """
+        n_alt, n_act, n_wave = arr.shape
+        shape_binned = (n_alt, n_act // bin_spectra, n_wave)
+        arr_binned = np.zeros(shape_binned)
+        for i in range(bin_spectra):
+            arr_binned[:, :, :] += arr[:, i::bin_spectra, :]
+        arr_binned /= bin_spectra
+        return arr_binned
+
+    n_alt, n_act, n_wave = l1_product.spectra.shape
+    l1_product.spectra = bin_ACT(l1_product.spectra)
+    l1_product.spectra_noise = bin_ACT(l1_product.spectra_noise)
+    l1_product.wavelengths = bin_ACT(
+        l1_product.wavelengths.reshape(1, n_act, n_wave)).reshape(-1, n_wave)
+    l1_product.geometry.lat = bin_ACT(
+        l1_product.geometry.lat.reshape(n_alt, n_act, 1)).reshape(n_alt, -1)
+    l1_product.geometry.lon = bin_ACT(
+        l1_product.geometry.lon.reshape(n_alt, n_act, 1)).reshape(n_alt, -1)
+    l1_product.geometry.height = bin_ACT(
+        l1_product.geometry.height.reshape(n_alt, n_act, 1)).reshape(n_alt, -1)
+    l1_product.geometry.sza = bin_ACT(
+        l1_product.geometry.sza.reshape(n_alt, n_act, 1)).reshape(n_alt, -1)
+    l1_product.geometry.saa = bin_ACT(
+        l1_product.geometry.saa.reshape(n_alt, n_act, 1)).reshape(n_alt, -1)
+    l1_product.geometry.vza = bin_ACT(
+        l1_product.geometry.vza.reshape(n_alt, n_act, 1)).reshape(n_alt, -1)
+    l1_product.geometry.vaa = bin_ACT(
+        l1_product.geometry.vaa.reshape(n_alt, n_act, 1)).reshape(n_alt, -1)

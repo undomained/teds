@@ -69,4 +69,6 @@ auto changeWavelengthGrid(const CKD& ckd, L1& l1_prod) -> void;
 // Radiometrically calibrate
 auto radiometric(const CKD& ckd, const bool enabled, L1& l1_prod) -> void;
 
+auto binL1B(const int bin, L1& l1_prod) -> void;
+
 } // namespace tango

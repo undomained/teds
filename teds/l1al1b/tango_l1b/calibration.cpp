@@ -401,4 +401,56 @@ auto radiometric(const CKD& ckd, const bool enabled, L1& l1_prod) -> void
     }
 }
 
+// Bin a multi-dimensional array. Stride is the distance between
+// consecutive elements that should be averaged into one bin.
+static auto binNDArray(const int bin,
+                       const int stride,
+                       std::vector<double>& array) -> void
+{
+    const int n_rows { static_cast<int>(array.size() / stride) };
+    const int n_cols { stride };
+    const int n_rows_binned { n_rows / bin };
+    std::vector<double> array_binned(n_rows_binned * n_cols, 0.0);
+    for (int i {}; i < n_rows_binned; ++i) {
+        for (int j {}; j < n_cols; ++j) {
+            for (int k {}; k < bin; ++k) {
+                array_binned[i * n_cols + j] +=
+                  array[(i * bin + k) * n_cols + j];
+            }
+        }
+    }
+    for (double& x : array_binned) {
+        x /= bin;
+    }
+    array = std::move(array_binned);
+}
+
+auto binL1B(const int bin, L1& l1_prod) -> void
+{
+    const int n_waves { static_cast<int>(l1_prod.wavelengths.front().size()) };
+    binNDArray(bin, n_waves, l1_prod.spectra);
+    binNDArray(bin, n_waves, l1_prod.spectra_noise);
+    binNDArray(bin, 1, l1_prod.geo.lat);
+    binNDArray(bin, 1, l1_prod.geo.lon);
+    binNDArray(bin, 1, l1_prod.geo.height);
+    binNDArray(bin, 1, l1_prod.geo.sza);
+    binNDArray(bin, 1, l1_prod.geo.saa);
+    binNDArray(bin, 1, l1_prod.geo.vza);
+    binNDArray(bin, 1, l1_prod.geo.vaa);
+    // Wavelength array needs to be flattened first
+    std::vector<double> wavelengths_flat(l1_prod.wavelengths.size() * n_waves);
+    for (int i {}; i < static_cast<int>(l1_prod.wavelengths.size()); ++i) {
+        for (int j {}; j < n_waves; ++j) {
+            wavelengths_flat[i * n_waves + j] = l1_prod.wavelengths[i][j];
+        }
+    }
+    binNDArray(bin, n_waves, wavelengths_flat);
+    l1_prod.wavelengths.resize(l1_prod.wavelengths.size() / bin);
+    for (int i {}; i < static_cast<int>(l1_prod.wavelengths.size()); ++i) {
+        for (int j {}; j < n_waves; ++j) {
+            l1_prod.wavelengths[i][j] = wavelengths_flat[i * n_waves + j];
+        }
+    }
+}
+
 } // namespace tango

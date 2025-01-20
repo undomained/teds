@@ -134,6 +134,10 @@ auto driver(const SettingsL1B& settings,
         copyGeometry(
           settings.io.l1a, settings.io.geometry, settings.alt_beg, l1_prod);
     }
+    // Bin L1B spectra and geometry
+    if (l1_prod.level >= ProcLevel::swath) {
+        binL1B(settings.bin_spectra, l1_prod);
+    }
 
     writeL1(settings.io.l1b, settings.getConfig(), l1_prod, argc, argv);
 

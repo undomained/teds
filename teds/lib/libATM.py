@@ -930,6 +930,7 @@ def combine_meteo_standard_atm(meteodata, atm_std, gases, suffix=""):
 
     return atm
 
+
 def create_atmosphere_ind_spectra(nalt, nact, atm_std, albedo, gm_data):
     """Create default atmosphere.
 

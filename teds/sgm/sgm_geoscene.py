@@ -50,8 +50,6 @@ def geosgm_output(filename, atm):
                                       constants.__getattribute__('scale_X'+gas)*
                                       atm.__getattribute__('X'+gas))
 
-#    if(config['profile']=='orbit'):
-
     # albedo
     for s2_albedo in atm.albedo:
         var_alb = writevariablefromname(

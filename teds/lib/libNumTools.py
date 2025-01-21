@@ -94,67 +94,6 @@ def get_isrf(wave_target, wave_input, parameter):
     return conv
 
 
-
-class isrfct:
-    def __init__(self, wave_target, wave_input):
-
-        self.wave_target = wave_target
-        self.wave_input = wave_input
-        self.isrf = {}
-
-    def get_isrf(self, parameter):
-
-        nwave_target = self.wave_target.size
-        nwave_input = self.wave_input.size
-        self.isrf['isrf'] = np.zeros((nwave_target, nwave_input))
-
-        if(parameter['type'] == 'Gaussian'):
-            const = parameter['fwhm']**2/(4*np.log(2))
-            istart = []
-            iend = []
-            for l, wmeas in enumerate(self.wave_target):
-                wdiff = self.wave_input - wmeas
-                istart.append(np.argmin(np.abs(wdiff + 1.5*parameter['fwhm'])))
-                iend.append(np.argmin(np.abs(wdiff - 1.5*parameter['fwhm'])))
-
-                self.isrf['isrf'][l, istart[l]:iend[l]] = np.exp(-wdiff[istart[l]:iend[l]]**2/const)
-                self.isrf['isrf'][l, :] = self.isrf['isrf'][l, :] / np.sum(self.isrf['isrf'][l, :])
-
-            self.isrf['istart'] = istart
-            self.isrf['iend'] = iend
-
-        if (parameter['type'] =='generalized_normal'):
-            fwhm = parameter['fwhm']
-            bcoeff = parameter['bcoeff']
-            const = np.log(2)**bcoeff/(fwhm*math.gamma(1+bcoeff))
-
-            istart = []
-            iend = []
-            for l, wmeas in enumerate(self.wave_target):
-                wdiff = self.wave_input - wmeas
-                istart.append(np.argmin(np.abs(wdiff + 1.5*parameter['fwhm'])))
-                iend.append(np.argmin(np.abs(wdiff - 1.5*parameter['fwhm'])))
-
-                self.isrf['isrf'][l, istart[l]:iend[l]] = const*2**(-(2*np.abs(wdiff[istart[l]:iend[l]])/fwhm)**(1/bcoeff))
-                self.isrf['isrf'][l, :] = self.isrf['isrf'][l, :] / np.sum(self.isrf['isrf'][l, :])
-
-            self.isrf['istart'] = istart
-            self.isrf['iend'] = iend
-
-        return
-
-    def isrf_convolution(self, spectrum):
-
-        nwave_target = self.wave_target.size
-        spectrum_conv = np.empty(nwave_target)
-
-        for iwav in range(nwave_target):
-            istart = self.isrf['istart'][iwav]
-            iend = self.isrf['iend'][iwav]
-            spectrum_conv[iwav] = self.isrf['isrf'][iwav, istart:iend].dot(spectrum[istart:iend])
-        return spectrum_conv
-
-
 def Gaussian2D(size, fwhm_x, fwhm_y, center=None):
     # Make a 2 dimensional gaussian kernel as a product of two Gaussian
     # fwhm are given in units of pixel samples

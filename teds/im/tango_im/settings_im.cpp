@@ -28,6 +28,7 @@ auto SettingsIM::scanKeys() -> void
     scan(isrf.enabled);
     scan(isrf.fwhm_gauss);
     scan(isrf.shape);
+    scan(isrf.in_memory);
 
     scan(dark.enabled);
 

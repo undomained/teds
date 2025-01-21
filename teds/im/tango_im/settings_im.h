@@ -105,6 +105,12 @@ public:
         Setting<double> shape { { "isrf", "shape" },
                                 2.0,
                                 "ISRF shape parameter. Default is a Gauss." };
+        Setting<bool> in_memory {
+            { "isrf", "in_memory" },
+            false,
+            "Whether to load all spectra into memory before the convolution.\n"
+            "Only applied when input is SGM spectra.",
+        };
     } isrf;
 
     struct

@@ -31,11 +31,15 @@ class L1;
 class LinearSpline;
 
 // Convolve each radiance spectrum with the ISRF. This significantly
-// reduces data dimensions.
+// reduces data dimensions. The SGM file and starting ALT position are
+// only used if the spectra are already not in memory. In that case
+// they are read one by one for the convolution.
 auto applyISRF(const CKD& ckd,
                const bool enabled,
                const double fwhm_gauss,
                const double shape,
+               const std::string& sgm_filename,
+               const int alt_beg,
                L1& l1_prod) -> void;
 
 // Undo radiometric calibration

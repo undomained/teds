@@ -5,6 +5,7 @@
 
 #include <Eigen/Sparse>
 #include <algorithm>
+#include <netcdf>
 #include <random>
 #include <spdlog/spdlog.h>
 #include <tango_l1b/b_spline_2d.h>
@@ -65,14 +66,15 @@ auto applyISRF(const CKD& ckd,
                const bool enabled,
                const double fwhm_gauss,
                const double shape,
+               const std::string& sgm_filename,
+               const int alt_beg,
                L1& l1_prod) -> void
 {
     l1_prod.level = ProcLevel::l1b;
     // If this process is disabled then linearly interpolate the
     // line-by-line spectra onto the CKD wavelength grids. We cannot
     // simply return like the other processes.
-    const int n_waves_in { static_cast<int>(
-      l1_prod.wavelengths.front().size()) };
+    const size_t n_waves_in { l1_prod.wavelengths.front().size() };
     const int n_waves_out { static_cast<int>(ckd.swath.wavelengths.size()) };
     std::vector<double> spectra_out(l1_prod.n_alt * ckd.n_act * n_waves_out);
     if (enabled) {
@@ -82,17 +84,42 @@ auto applyISRF(const CKD& ckd,
                       l1_prod.wavelengths.front(),
                       ckd.swath.wavelengths,
                       isrf);
+        // If the spectra are not in memory then read them one by one
+        // for the convolution.
+        if (l1_prod.spectra.empty()) {
+            const netCDF::NcFile nc { sgm_filename, netCDF::NcFile::read };
+            const netCDF::NcVar nc_var { nc.getVar("radiance") };
+            for (size_t i_alt = 0; i_alt < static_cast<size_t>(l1_prod.n_alt);
+                 ++i_alt) {
+                Eigen::VectorXd result(ckd.n_detector_cols);
+                for (size_t i_act {}; i_act < static_cast<size_t>(ckd.n_act);
+                     ++i_act) {
+                    const size_t act_idx { i_alt * ckd.n_act + i_act };
+                    std::vector<double> buf(n_waves_in);
+                    nc_var.getVar(
+                      { i_alt, i_act, 0 }, { 1, 1, n_waves_in }, buf.data());
+                    result =
+                      isrf
+                      * Eigen::Map<Eigen::VectorXd>(buf.data(), n_waves_in);
+                    for (int i {}; i < n_waves_out; ++i) {
+                        spectra_out[act_idx * n_waves_out + i] = result[i];
+                    }
+                }
+            }
+        } else {
 #pragma omp parallel for
-        for (size_t i_alt = 0; i_alt < static_cast<size_t>(l1_prod.n_alt);
-             ++i_alt) {
-            Eigen::VectorXd result(ckd.n_detector_cols);
-            for (int i_act {}; i_act < ckd.n_act; ++i_act) {
-                const size_t act_idx { i_alt * ckd.n_act + i_act };
-                result = isrf
-                         * Eigen::Map<Eigen::VectorXd>(
-                           &l1_prod.spectra[act_idx * n_waves_in], n_waves_in);
-                for (int i {}; i < n_waves_out; ++i) {
-                    spectra_out[act_idx * n_waves_out + i] = result[i];
+            for (size_t i_alt = 0; i_alt < static_cast<size_t>(l1_prod.n_alt);
+                 ++i_alt) {
+                Eigen::VectorXd result(ckd.n_detector_cols);
+                for (int i_act {}; i_act < ckd.n_act; ++i_act) {
+                    const size_t act_idx { i_alt * ckd.n_act + i_act };
+                    result =
+                      isrf
+                      * Eigen::Map<Eigen::VectorXd>(
+                        &l1_prod.spectra[act_idx * n_waves_in], n_waves_in);
+                    for (int i {}; i < n_waves_out; ++i) {
+                        spectra_out[act_idx * n_waves_out + i] = result[i];
+                    }
                 }
             }
         }

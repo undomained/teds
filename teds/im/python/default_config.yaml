@@ -29,6 +29,9 @@ isrf:
   fwhm_gauss: 0.45
   # ISRF shape parameter. Default is a Gauss.
   shape: 2
+  # Whether to load all spectra into memory before the
+  # convolution. Only applied when input is SGM spectra.
+  in_memory: no
 
 dark:
   # Whether to add dark offset and current to detector images
@@ -69,3 +72,5 @@ io:
   l1a: ""
   # Viewing and solar geometry
   geometry: ""
+  # Navigation data (orbit positions and attitude quaternions)
+  navigation: ""

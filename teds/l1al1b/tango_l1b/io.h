@@ -73,11 +73,15 @@ auto splitString(const std::string& list,
 // Read a list of L1 products from a single NetCDF file. The input
 // data level may be L1A, L1B, or anything in between. alt_beg/end
 // specify a subrange of along-track positions to process. To process
-// all use values 0 and fill::i.
+// all use values 0 and fill::i. If the input is SGM spectra, memory
+// usage can be reduced with in_meomry=false. The spectra are then not
+// read into the L1 product and are only read later one by one for the
+// ISRF convolution.
 auto readL1(const std::string& filename,
             const size_t alt_beg,
             const std::optional<size_t> alt_end,
-            L1& l1_prod) -> void;
+            L1& l1_prod,
+            const bool in_memory = false) -> void;
 
 // Write a L1 product to file. The NetCDF structure of the product
 // depends on the data product level (L1A-L1B). argc and argv are used

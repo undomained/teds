@@ -22,6 +22,7 @@ from pathlib import Path
 
 from . import forward_models as fw
 from teds import log
+from teds.l1al1b.python.io import copy_navigation_data
 from teds.l1al1b.python.io import read_binning_table
 from teds.l1al1b.python.io import read_ckd
 from teds.l1al1b.python.io import read_l1
@@ -123,8 +124,10 @@ def run_instrument_model(config_user: dict | None = None) -> None:
     check_config(config)
     ckd = read_ckd(config['io']['ckd'])
     log.info('Reading input data')
-    l1_product: L1 = read_l1(
-        config['io']['sgm'], config['alt_beg'], config['alt_end'])
+    l1_product: L1 = read_l1(config['io']['sgm'],
+                             config['alt_beg'],
+                             config['alt_end'],
+                             config['isrf']['in_memory'])
     set_l1_meta(config, l1_product)
     if len(l1_product.spectra.shape) >= 2 and (
             l1_product.spectra.shape[1] != len(ckd.swath.act_angles)):
@@ -147,7 +150,9 @@ def run_instrument_model(config_user: dict | None = None) -> None:
                       ckd.swath.wavelengths,
                       config['isrf']['enabled'],
                       config['isrf']['fwhm_gauss'],
-                      config['isrf']['shape'])
+                      config['isrf']['shape'],
+                      config['io']['sgm'],
+                      config['alt_beg'])
     if config['l1b']['enabled'] and step_needed(
             ProcLevel.l1b, l1_product.proc_level, cal_level):
         log.info('Radiometric')
@@ -189,6 +194,8 @@ def run_instrument_model(config_user: dict | None = None) -> None:
     # Write output data
     log.info('Writing output data')
     write_l1(config['io']['l1a'], config, l1_product)
+    if config['io']['navigation']:
+        copy_navigation_data(config['io']['navigation'], config['io']['l1a'])
 
     # If this is shown then the simulation ran successfully
     print_heading('Success')

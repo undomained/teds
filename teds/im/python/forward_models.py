@@ -7,6 +7,7 @@ L1A-L1B processor, gradually bringing the data level from L1B to L1A
 or anywhere in between.
 
 """
+from netCDF4 import Dataset
 from scipy.interpolate import interpn
 from tqdm import tqdm
 import numpy as np
@@ -27,7 +28,9 @@ def apply_isrf(l1_product: L1,
                wavelengths_out: npt.NDArray[np.float64],
                convolve: bool,
                fwhm: float,
-               shape: float) -> None:
+               shape: float,
+               sgm_filename: str,
+               alt_beg: int) -> None:
     """Convolve spectra with the ISRF.
 
     The ISRF has a fixed shape as a function of wavelength and does not depend
@@ -50,9 +53,13 @@ def apply_isrf(l1_product: L1,
     shape
         ISRF shape parameter. Value 2 for Gauss (default), towards 1
         for stronger wings and large values for a more blocky shape.
-    in_memory
-        Whether to store the entire ISRF in memory or compute it per
-        spectrum
+    sgm_filename
+        SGM radiance filename. Only required if the spectra are not in
+        memory. Then read them one by one for ISRF convolution.
+    alt_begin
+        First ALT position for convolution if spectra are read from
+        the SGM file. The last position can be derived from the
+        dimensions of the allocated spectra variable.
 
     """
     l1_product.proc_level = ProcLevel.l1b
@@ -66,10 +73,19 @@ def apply_isrf(l1_product: L1,
         # bad values in the spectra.
         kernel = convolution.Kernel(
             l1_product.wavelengths, wavelengths_out, fwhm, shape)
+        # If the spectra are not in memory then read them one by one
+        # for the convolution.
+        in_memory = l1_product.spectra.shape[-1] > 0
+        if not in_memory:
+            nc = Dataset(sgm_filename)
         for i_alt in tqdm(range(n_alt), unit=' ALT'):
             for i_act in range(n_act):
-                conv[i_alt, i_act, :] = kernel.convolve(
-                    l1_product.spectra[i_alt, i_act, :])
+                if in_memory:
+                    conv[i_alt, i_act, :] = kernel.convolve(
+                        l1_product.spectra[i_alt, i_act, :])
+                else:
+                    conv[i_alt, i_act, :] = kernel.convolve(
+                        nc['radiance'][alt_beg + i_alt, i_act, :].data)
         l1_product.spectra = conv
     else:
         for i_alt in tqdm(range(n_alt), unit=' ALT'):

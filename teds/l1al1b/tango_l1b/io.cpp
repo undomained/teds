@@ -199,7 +199,8 @@ auto splitString(const std::string& list,
 auto readL1(const std::string& filename,
             const size_t alt_beg,
             const std::optional<size_t> alt_end,
-            L1& l1_prod) -> void
+            L1& l1_prod,
+            const bool in_memory) -> void
 {
     const netCDF::NcFile nc { filename, netCDF::NcFile::read };
 
@@ -261,7 +262,7 @@ auto readL1(const std::string& filename,
     } else {
         const auto n_act { nc.getDim("across_track_sample").getSize() };
         const auto n_wavelength { nc.getDim("wavelength").getSize() };
-        l1_prod.spectra.resize(n_alt * n_act * n_wavelength);
+        l1_prod.spectra.resize(n_alt * n_act * (in_memory ? n_wavelength : 0));
         l1_prod.wavelengths.resize(n_act, std::vector<double>(n_wavelength));
         if (l1_prod.level == ProcLevel::sgm) {
             std::vector<double> wavelengths(n_wavelength);
@@ -271,10 +272,12 @@ auto readL1(const std::string& filename,
                           wavelengths.begin() + n_wavelength,
                           l1_prod.wavelengths[i_act].begin());
             }
-            nc.getVar("radiance")
-              .getVar({ alt_beg, 0, 0 },
-                      { n_alt, n_act, n_wavelength },
-                      l1_prod.spectra.data());
+            if (in_memory) {
+                nc.getVar("radiance")
+                  .getVar({ alt_beg, 0, 0 },
+                          { n_alt, n_act, n_wavelength },
+                          l1_prod.spectra.data());
+            }
         } else {
             const auto grp { nc.getGroup("observation_data") };
             std::vector<double> wavelengths(n_act * n_wavelength);

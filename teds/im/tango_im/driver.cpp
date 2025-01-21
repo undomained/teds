@@ -40,7 +40,11 @@ auto driver(const SettingsIM& settings,
 
     // Read and initialize data
     L1 l1_prod {};
-    readL1(settings.io.sgm, settings.alt_beg, settings.alt_end, l1_prod);
+    readL1(settings.io.sgm,
+           settings.alt_beg,
+           settings.alt_end,
+           l1_prod,
+           settings.isrf.in_memory);
     l1_prod.exposure_time = settings.detector.exposure_time;
 
     // Run the forward model
@@ -55,6 +59,8 @@ auto driver(const SettingsIM& settings,
                   settings.isrf.enabled,
                   settings.isrf.fwhm_gauss,
                   settings.isrf.shape,
+                  settings.io.sgm,
+                  settings.alt_beg,
                   l1_prod);
     }
     // Radiometric

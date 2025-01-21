@@ -299,7 +299,33 @@ def copy_geometry(l1a_filename: str,
                                    nc_geo['sensor_azimuth'][_beg:_end, :])
 
 
-def read_l1(filename: str, alt_beg: int, alt_end: int | None = None) -> L1:
+def copy_navigation_data(navigation_filename: str, l1a_filename: str) -> None:
+    """Copy navigation data from one NetCDF file to another.
+
+    Parameters
+    ----------
+    navigation_filename
+        Path to file containing orbit positions and attitude
+        quaternions.
+    l1a_filename
+        Path to L1A (or L1X) product to which navigation data should
+        be appended.
+
+    """
+    nc_nav = Dataset(navigation_filename)
+    nc_l1a = Dataset(l1a_filename, 'a')
+    grp = nc_l1a.createGroup('navigation_data')
+    for name, dim in nc_nav.dimensions.items():
+        grp.createDimension(name, dim.size)
+    for name, var in nc_nav.variables.items():
+        grp.createVariable(name, var.datatype, var.dimensions)
+        grp[name].setncatts(var.__dict__)
+
+
+def read_l1(filename: str,
+            alt_beg: int,
+            alt_end: int | None,
+            spectra_in_memory: bool = True) -> L1:
     """Read a level 1 file.
 
     Read a list of L1 products from a NetCDF file. The input data
@@ -314,6 +340,10 @@ def read_l1(filename: str, alt_beg: int, alt_end: int | None = None) -> L1:
         First (zero-based) frame to read, default 0.
     alt_end
         Last frame to read, default last frame in data.
+    spectra_in_memory
+        Whether to load all spectra into memory. This will run faster
+        but might be too memory intensive if the input file has SGM
+        line-by-line radiances.
 
     Returns
     -------
@@ -342,7 +372,11 @@ def read_l1(filename: str, alt_beg: int, alt_end: int | None = None) -> L1:
         n_alt = l1_product.spectra.shape[0]
     elif 'radiance' in nc.variables:
         l1_product.wavelengths = nc['wavelength'][:].data
-        l1_product.spectra = nc['radiance'][alt_beg:alt_end, :, :].data
+        if spectra_in_memory:
+            l1_product.spectra = nc['radiance'][alt_beg:alt_end, :, :].data
+        else:
+            # Dummy slice just to extract the ALT and ACT dimension
+            l1_product.spectra = nc['radiance'][alt_beg:alt_end, :, :0].data
         n_alt = l1_product.spectra.shape[0]
     if 'solar_irradiance' in nc.variables:
         l1_product.solar_irradiance = nc['solar_irradiance'][:].data

@@ -1730,11 +1730,15 @@ def getDimensionsRad(radFile):
     # Get scanline and groundpixel dimensions from radiance file
 
     with nc.Dataset(radFile) as src:
-
-        scanN = src.dimensions['along_track'].size
-        pxlN = src.dimensions['across_track'].size
-        spectralN = src.dimensions['wavelength'].size
-
+        
+        if 'observation_data' in src.groups.keys():
+            scanN = src.dimensions['along_track'].size
+            pxlN = src.dimensions['across_track'].size
+            spectralN = src.dimensions['wavelength'].size
+        elif 'science_data' in src.groups.keys():
+            scanN = src.dimensions['along_track'].size
+            pxlN = src.dimensions['rows'].size
+            spectralN = src.dimensions['cols'].size
     return scanN,pxlN, spectralN
 
 def getDimensionsAtm(atmFile):
@@ -1800,12 +1804,19 @@ def ReadRad(f, iscan):
     '''
     Read radiance from L1B file. file is already open for thread safety
     '''
+    if 'observation_data' in f.groups.keys():
+        group = 'observation_data'
+        radName = 'radiance'
+        radErrorName = 'radiance_stdev'
+    elif 'science_data' in f.groups.keys():
+        group = 'science_data'
+        radName = 'detector_image'
+        radErrorName = 'detector_stdev'
 
-    rad = f['observation_data/radiance'][iscan,:,:] # [alt, act, spectral_bins] - "photons/(sr nm m2 s)
+    rad = f[f'{group}/{radName}'][iscan,:,:] # [alt, act, spectral_bins] - "photons/(sr nm m2 s)
     # radFlag = f['observation_data/radiance_mask'][iscan,:,:] # [alt, act, spectral_bins] -  0 = good, 1 = bad
-    radError = f['observation_data/radiance_stdev'][iscan,:,:] # [alt, act, spectral_bins] - 
-
-    radWvl = f['observation_data/wavelength'][:,:] # [act, spectral_bins] - nm
+    radError = f[f'{group}/{radErrorName}'][iscan,:,:] # [alt, act, spectral_bins] - 
+    radWvl = f[f'{group}/wavelength'][:,:] # [act, spectral_bins] - nm
 
     # photons to mol
     rad /= constants.NA

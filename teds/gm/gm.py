@@ -18,7 +18,6 @@ import numpy.typing as npt
 
 from .io import read_navigation
 from .io import write_geometry
-from .io import write_image_attributes
 from .io import write_navigation
 from .satellite import Satellite
 from .sensor import Sensor
@@ -328,20 +327,21 @@ def sensor_simulation(
         orbit_timestamps, dt_range[0], dt_range[1], dt_range[2], thetas)
 
 
-def get_orbit(config: dict) -> tuple[Navigation, Geometry, L1]:
+def get_orbit(config: dict, l1: L1) -> tuple[Navigation, Geometry]:
     """Propagate orbit and do geolocation.
 
     Parameters
     ----------
     config
         Configuration dictionary
+    l1
+        L1 product containing detector image timestamps. Required for
+        interpolating navigation data from navigation to detector time
+        axis.
 
     Returns
     -------
-        Navigation data, viewing and solar geometries, and detector
-        image timestamps. The latter are essentially part of geometry
-        information. Without the timestamps it is not clear what the
-        retrieved latitudes and longitudes refer to.
+        Navigation data and viewing and solar geometries.
 
     """
     # Orbit times as datetime objects
@@ -361,13 +361,6 @@ def get_orbit(config: dict) -> tuple[Navigation, Geometry, L1]:
         log.info('Generating satellite orbit')
         satellite = Satellite(config['orbit'])
         sat_pos = satellite.compute_positions(orbit_timestamps)
-
-    # Generate image timestamps
-    log.info('Generating detector image timestamps')
-    l1 = gen_image_timestamps(config['orbit']['epoch'],
-                              config['sensor']['start_time'],
-                              config['sensor']['end_time'],
-                              config['sensor']['integration_time'])
 
     # Attitude quaternions
     if config['io_files']['aocs_navigation']:
@@ -402,7 +395,7 @@ def get_orbit(config: dict) -> tuple[Navigation, Geometry, L1]:
         # Configure sensors and compute ground pixel information
         geometry = sensor_simulation(
             config, sat_pos, orbit_timestamps, ckd.swath.line_of_sights)
-    return navigation, geometry, l1
+    return navigation, geometry
 
 
 def geometry_module(config_user: dict | None = None) -> None:
@@ -426,19 +419,27 @@ def geometry_module(config_user: dict | None = None) -> None:
     config = merge_config_with_default(config_user, 'teds.gm')
     check_config(config)
 
+    # Generate image timestamps which are essentially part of geometry
+    # information. Without timestamps it is not clear what the
+    # retrieved latitudes and longitudes refer to.
+    log.info('Generating detector image timestamps')
+    l1 = gen_image_timestamps(config['orbit']['epoch'],
+                              config['sensor']['start_time'],
+                              config['sensor']['end_time'],
+                              config['sensor']['integration_time'])
+
     if config['profile'] == 'individual_spectra':
         geometry = get_individual_spectra(config)
     elif config['profile'] == 'orbit':
-        navigation, geometry, l1 = get_orbit(config)
+        navigation, geometry = get_orbit(config, l1)
     else:
         log.error(f'unknown profile: {config["profile"]}')
         exit(1)
 
     # Write output data
-    write_geometry(config['io_files']['geometry'], geometry)
+    write_geometry(
+        config['io_files']['geometry'], geometry, config['orbit']['epoch'], l1)
     if config['profile'] == 'orbit' and not config['use_python_geolocation']:
-        write_image_attributes(
-            config['io_files']['geometry'], config['orbit']['epoch'], l1)
         write_navigation(config['io_files']['navigation'],
                          config['orbit']['epoch'],
                          navigation)

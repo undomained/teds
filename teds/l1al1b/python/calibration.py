@@ -352,12 +352,17 @@ def change_wavelength_grid(l1_product: L1,
     n_act = l1_product.spectra.shape[1]
     new_spectra = np.empty((n_alt, n_act, wavelengths_out.shape[1]))
     new_spectra_noise = np.empty(new_spectra.shape)
+
     for i_alt in range(n_alt):
         for i_act in range(n_act):
-            spline = CubicSpline(l1_product.wavelengths,
+            if len(l1_product.wavelengths.shape) == 2:
+                wavelengths = l1_product.wavelengths[i_act, :]
+            else:
+                wavelengths = l1_product.wavelengths
+            spline = CubicSpline(wavelengths,
                                  l1_product.spectra[i_alt, i_act, :])
             new_spectra[i_alt, i_act, :] = spline(wavelengths_out[i_act, :])
-            spline = CubicSpline(l1_product.wavelengths,
+            spline = CubicSpline(wavelengths,
                                  l1_product.spectra_noise[i_alt, i_act, :])
             new_spectra_noise[i_alt, i_act, :] = spline(
                 wavelengths_out[i_act, :])

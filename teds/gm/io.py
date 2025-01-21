@@ -28,15 +28,14 @@ def write_navigation(filename: str,
         Navigation data
 
     """
-    default_fill_value = -32767
+    default_fill = -32767
     nc = Dataset(filename, 'w')
     nc.title = 'Tango Carbon E2ES navigation data'
     dim_time = nc.createDimension('time', len(navigation.time))
     dim_vec = nc.createDimension('vector_elements', 3)
     dim_quat = nc.createDimension('quaternion_elements', 4)
 
-    var = nc.createVariable(
-        'time', 'f8', dim_time, fill_value=default_fill_value)
+    var = nc.createVariable('time', 'f8', dim_time, fill_value=default_fill)
     var.long_name = 'orbit vector time (seconds of day)'
     var.units = f'seconds since {orbit_start.strftime("%Y-%m-%d")}'
     var.valid_min = 0
@@ -52,7 +51,7 @@ def write_navigation(filename: str,
     var[:] = navigation.orb_pos
 
     var = nc.createVariable(
-        'att_quat', 'f8', (dim_time, dim_quat), fill_value=default_fill_value)
+        'att_quat', 'f8', (dim_time, dim_quat), fill_value=default_fill)
     var.long_name = 'Attitude quaternions (spacecraft to J2000)'
     var.units = '1'
     var.valid_min = -1.0
@@ -61,7 +60,7 @@ def write_navigation(filename: str,
         var[i, :] = np.roll(navigation.att_quat[i].elements, -1)
 
     var = nc.createVariable(
-        'altitude', 'f8', (dim_time), fill_value=default_fill_value)
+        'altitude', 'f8', (dim_time), fill_value=default_fill)
     var.long_name = 'satellite altitude'
     var.units = 'm'
     var.valid_min = 400e3
@@ -71,8 +70,11 @@ def write_navigation(filename: str,
     nc.close()
 
 
-def write_geometry(filename: str, geometry: Geometry) -> None:
-    """Write viewing and solar geometries to a file.
+def write_geometry(filename: str,
+                   geometry: Geometry,
+                   orbit_start: datetime.datetime,
+                   l1: L1) -> None:
+    """Write viewing and solar geometries and image attributes to a file.
 
     Parameters
     ---------
@@ -80,107 +82,78 @@ def write_geometry(filename: str, geometry: Geometry) -> None:
         Output NetCDF file name
     geometry
         Geometry content to be written
-
-    """
-    default_fill_value = -32767
-    nc = Dataset(filename, 'w')
-    nc.title = 'Tango Carbon E2ES geometry'
-    n_alt, n_act = geometry.lat.shape
-    dim_alt = nc.createDimension('along_track_sample', n_alt)
-    dim_act = nc.createDimension('across_track_sample', n_act)
-
-    var = nc.createVariable('latitude',
-                            'f8',
-                            (dim_alt, dim_act),
-                            fill_value=default_fill_value)
-    var.long_name = 'latitudes'
-    var.units = 'degrees'
-    var.valid_min = -90.0
-    var.valid_max = 90.0
-    var[:] = np.rad2deg(geometry.lat)
-
-    var = nc.createVariable('longitude',
-                            'f8',
-                            (dim_alt, dim_act),
-                            fill_value=default_fill_value)
-    var.long_name = 'longitudes'
-    var.units = 'degrees'
-    var.valid_min = -180.0
-    var.valid_max = 180.0
-    var[:] = np.rad2deg(geometry.lon)
-
-    var = nc.createVariable('height',
-                            'f8',
-                            (dim_alt, dim_act),
-                            fill_value=default_fill_value)
-    var.long_name = 'height from sea level'
-    var.units = 'm'
-    var.valid_min = -1000.0
-    var.valid_max = 10000.0
-    var[:] = 0.0
-
-    var = nc.createVariable('sensor_zenith',
-                            'f8',
-                            (dim_alt, dim_act),
-                            fill_value=default_fill_value)
-    var.long_name = 'sensor zenith angles'
-    var.units = 'degrees'
-    var.valid_min = -90.0
-    var.valid_max = 90.0
-    var[:] = np.rad2deg(geometry.vza)
-
-    var = nc.createVariable('sensor_azimuth',
-                            'f8',
-                            (dim_alt, dim_act),
-                            fill_value=default_fill_value)
-    var.long_name = 'sensor azimuth angles'
-    var.units = 'degrees'
-    var.valid_min = -180.0
-    var.valid_max = 180.0
-    var[:] = np.rad2deg(geometry.vaa)
-
-    var = nc.createVariable('solar_zenith',
-                            'f8',
-                            (dim_alt, dim_act),
-                            fill_value=default_fill_value)
-    var.long_name = 'solar zenith angles'
-    var.units = 'degrees'
-    var.valid_min = -90.0
-    var.valid_max = 90.0
-    var[:] = np.rad2deg(geometry.sza)
-
-    var = nc.createVariable('solar_azimuth',
-                            'f8',
-                            (dim_alt, dim_act),
-                            fill_value=default_fill_value)
-    var.long_name = 'solar azimuth angles'
-    var.units = 'degrees'
-    var.valid_min = -180.0
-    var.valid_max = 180.0
-    var[:] = np.rad2deg(geometry.saa)
-
-    nc.close()
-
-
-def write_image_attributes(filename: str,
-                           orbit_start: datetime.datetime,
-                           l1: L1) -> None:
-    """Append image attributes (timestamps) to the geometry file.
-
-    Parameters
-    ----------
-    filename
-        Output file path
     orbit_start
         Datetime of orbit start. Used to define the image time unit
     l1
         L1 product containing the image timestamps
 
     """
-    nc = Dataset(filename, 'a')
-    nc.title = 'Tango Carbon E2ES image attributes'
+    default_fill = -32767
+    nc = Dataset(filename, 'w')
+    nc.title = 'Tango Carbon E2ES geometry'
+    n_alt, n_act = geometry.lat.shape
+    dim_alt = nc.createDimension('along_track_sample', n_alt)
+    dim_act = nc.createDimension('across_track_sample', n_act)
     dim_time = nc.createDimension('time', len(l1.timestamps))
 
+    # Geometry
+    var = nc.createVariable(
+        'latitude', 'f8', (dim_alt, dim_act), fill_value=default_fill)
+    var.long_name = 'latitudes'
+    var.units = 'degrees'
+    var.valid_min = -90.0
+    var.valid_max = 90.0
+    var[:] = np.rad2deg(geometry.lat)
+
+    var = nc.createVariable(
+        'longitude', 'f8', (dim_alt, dim_act), fill_value=default_fill)
+    var.long_name = 'longitudes'
+    var.units = 'degrees'
+    var.valid_min = -180.0
+    var.valid_max = 180.0
+    var[:] = np.rad2deg(geometry.lon)
+
+    var = nc.createVariable(
+        'height', 'f8', (dim_alt, dim_act), fill_value=default_fill)
+    var.long_name = 'height from sea level'
+    var.units = 'm'
+    var.valid_min = -1000.0
+    var.valid_max = 10000.0
+    var[:] = 0.0
+
+    var = nc.createVariable(
+        'sensor_zenith', 'f8', (dim_alt, dim_act), fill_value=default_fill)
+    var.long_name = 'sensor zenith angles'
+    var.units = 'degrees'
+    var.valid_min = -90.0
+    var.valid_max = 90.0
+    var[:] = np.rad2deg(geometry.vza)
+
+    var = nc.createVariable(
+        'sensor_azimuth', 'f8', (dim_alt, dim_act), fill_value=default_fill)
+    var.long_name = 'sensor azimuth angles'
+    var.units = 'degrees'
+    var.valid_min = -180.0
+    var.valid_max = 180.0
+    var[:] = np.rad2deg(geometry.vaa)
+
+    var = nc.createVariable(
+        'solar_zenith', 'f8', (dim_alt, dim_act), fill_value=default_fill)
+    var.long_name = 'solar zenith angles'
+    var.units = 'degrees'
+    var.valid_min = -90.0
+    var.valid_max = 90.0
+    var[:] = np.rad2deg(geometry.sza)
+
+    var = nc.createVariable(
+        'solar_azimuth', 'f8', (dim_alt, dim_act), fill_value=default_fill)
+    var.long_name = 'solar azimuth angles'
+    var.units = 'degrees'
+    var.valid_min = -180.0
+    var.valid_max = 180.0
+    var[:] = np.rad2deg(geometry.saa)
+
+    # Image attributes
     var = nc.createVariable('tai_seconds', 'u4', dim_time, fill_value=0)
     var.long_name = 'detector image TAI time (seconds)'
     var.units = 'seconds since 1958-01-01 00:00:00 TAI'

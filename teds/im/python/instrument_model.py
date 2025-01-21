@@ -126,6 +126,12 @@ def run_instrument_model(config_user: dict | None = None) -> None:
     l1_product: L1 = read_l1(
         config['io']['sgm'], config['alt_beg'], config['alt_end'])
     set_l1_meta(config, l1_product)
+    if len(l1_product.spectra.shape) >= 2 and (
+            l1_product.spectra.shape[1] != len(ckd.swath.act_angles)):
+        log.error(
+            f'L1 product has {l1_product.spectra.shape[1]} ACT positions '
+            f'whereas the CKD expects {len(ckd.swath.act_angles)}')
+        exit(1)
     # Read binning table corresponding to input data
     binning_table = read_binning_table(config['io']['binning_table'],
                                        config['detector']['binning_table_id'],

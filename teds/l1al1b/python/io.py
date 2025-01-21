@@ -356,7 +356,7 @@ def read_l1(filename: str, alt_beg: int, alt_end: int | None = None) -> L1:
         l1_product.exposure_time = grp['exposure_time'][:]
     # Reading of main variables done. Now perform a few sanity checks.
     if n_alt == 0:
-        raise SystemExit(f"ERROR: data slice [{alt_beg}:{alt_end}] is empty")
+        raise SystemExit(f"error: data slice [{alt_beg}:{alt_end}] is empty")
     return l1_product
 
 

@@ -91,8 +91,11 @@ def plot_map(cfg, lat, lon, var, f_name, var_name, save_location):
 
     ax.set_aspect('equal')
 
-    savestring = f_name.lower().replace(" ", "_") +'_'+ var_name.lower().replace(" ", "_")
-    plt.savefig(f'{save_location}/{savestring}.png',format='png', dpi=1000, bbox_inches='tight')
+    if save_location:
+        savestring = f_name.lower().replace(" ", "_") +'_'+ var_name.lower().replace(" ", "_")
+        plt.savefig(f'{save_location}/{savestring}.png',format='png', dpi=1000, bbox_inches='tight')
+    else:
+        plt.show()
 
     return
 
@@ -129,7 +132,10 @@ def plot_map_diff(cfg, lat, lon, var1, var2, f1_name, f2_name, var_name, save_lo
     ax.set_aspect('equal')
 
     savestring = 'diff_'+var_name.lower().replace(" ", "_").replace("-","_")
-    plt.savefig(f'{save_location}/{savestring}.png',format='png', dpi=1000, bbox_inches='tight')
+    if save_location:
+        plt.savefig(f'{save_location}/{savestring}.png',format='png', dpi=1000, bbox_inches='tight')
+    else:
+        plt.show()
 
     # plot rel diff
     reldiff = (var2 - var1)/var1 * 100
@@ -156,9 +162,11 @@ def plot_map_diff(cfg, lat, lon, var1, var2, f1_name, f2_name, var_name, save_lo
 
     ax.set_aspect('equal')
 
-    savestring = 'reldiff_'+var_name.lower().replace(" ", "_").replace("-","_")
-    plt.savefig(f'{save_location}/{savestring}.png',format='png', dpi=1000, bbox_inches='tight')
-
+    if save_location:
+        savestring = 'reldiff_'+var_name.lower().replace(" ", "_").replace("-","_")
+        plt.savefig(f'{save_location}/{savestring}.png',format='png', dpi=1000, bbox_inches='tight')
+    else:
+        plt.show()
 
     return
 
@@ -194,9 +202,12 @@ def plot_hist(cfg, var1, var2, f1_name, f2_name, var_name, save_location, req=No
         plt.ylabel('Count')
         plt.xlabel(f'{var_name} [{var1.units}]')
         plt.legend()
-        savestring = 'hist_'+var_name.lower().replace(" ", "_")
-        plt.savefig(f'{save_location}/{savestring}.png',format='png', dpi=1000, bbox_inches='tight')
 
+        if save_location:
+            savestring = 'hist_'+var_name.lower().replace(" ", "_")
+            plt.savefig(f'{save_location}/{savestring}.png',format='png', dpi=1000, bbox_inches='tight')
+        else:
+            plt.show()
 
     # make 1D error hist
     else:
@@ -215,8 +226,10 @@ def plot_hist(cfg, var1, var2, f1_name, f2_name, var_name, save_location, req=No
             plt.axvline(x=-req, color='gray',alpha=0.5, zorder = 1)
             plt.legend()
         savestring = 'hist_'+var_name.lower().replace(" ", "_")
-        plt.savefig(f'{save_location}/{savestring}.png',format='png', dpi=1000, bbox_inches='tight')
-
+        if save_location:
+            plt.savefig(f'{save_location}/{savestring}.png',format='png', dpi=1000, bbox_inches='tight')
+        else:
+            plt.show()
     return
 
 
@@ -283,10 +296,11 @@ def plot_scatter(cfg, var1, var2, f1_name, f2_name, var_name, save_location, req
     if cfg['font_size']:
         cax.get_xaxis().get_offset_text().set_fontsize(cfg['font_size'])
     
-
-    savestring = 'scatter_'+var_name.lower().replace(" ", "_")
-    plt.savefig(f'{save_location}/{savestring}.png',format='png', dpi=1000, bbox_inches='tight')
-
+    if save_location:
+        savestring = 'scatter_'+var_name.lower().replace(" ", "_")
+        plt.savefig(f'{save_location}/{savestring}.png',format='png', dpi=1000, bbox_inches='tight')
+    else:
+        plt.show()
     return
 
 def pam_l2(cfg, savedir):
@@ -473,8 +487,10 @@ def pam_gm(filen: str,
                            linestyle='None',
                            alpha=0.8)
         plt.legend(handles=[point_obs, point_tar])
-        plt.savefig(f'{save_dir}/geolocation.png',format='png', dpi=1000, bbox_inches='tight')
-
+        if save_dir:
+            plt.savefig(f'{save_dir}/geolocation.png',format='png', dpi=1000, bbox_inches='tight')
+        else:
+            plt.show()
 
     if plt_options == 'geometry':
 
@@ -527,8 +543,10 @@ def pam_gm(filen: str,
                              True,
                              'VAA [degree]'
                              )
-        plt.savefig(f'{save_dir}/geometry.png',format='png', dpi=1000, bbox_inches='tight')
-
+        if save_dir:
+            plt.savefig(f'{save_dir}/geometry.png',format='png', dpi=1000, bbox_inches='tight')
+        else:
+            plt.show()
 
 
 def pam_sgm_gps(filen: str, station_name: str, plt_options: str, save_dir: str) -> None:
@@ -571,8 +589,10 @@ def pam_sgm_gps(filen: str, station_name: str, plt_options: str, save_dir: str) 
                              True,
                              '$A_s$ [1]'
                              )
-        plt.savefig(f'{save_dir}/sgm_raw_{sgmgps_data[plt_options].name}.png',format='png', dpi=1000, bbox_inches='tight')
-        
+        if save_dir:
+            plt.savefig(f'{save_dir}/sgm_raw_{sgmgps_data[plt_options].name}.png',format='png', dpi=1000, bbox_inches='tight')
+        else:
+            plt.show()
 
     if 'col' in plt_options:
         key_list = list(sgmgps_data.variables.keys())
@@ -598,7 +618,10 @@ def pam_sgm_gps(filen: str, station_name: str, plt_options: str, save_dir: str) 
                              True,
                              cbar_title
                              )
-        plt.savefig(f'{save_dir}/sgm_raw_{sgmgps_data[plt_options].name}.png',format='png', dpi=1000, bbox_inches='tight')
+        if save_dir:
+            plt.savefig(f'{save_dir}/sgm_raw_{sgmgps_data[plt_options].name}.png',format='png', dpi=1000, bbox_inches='tight')
+        else:
+            plt.show()
 
 def pam_sgm_rad(file_rad: str,
                 file_gm: str,
@@ -681,8 +704,10 @@ def pam_sgm_rad(file_rad: str,
     ax3.legend()
     ax1.legend()
 
-    plt.savefig(f'{save_dir}/sgm_rad.png',format='png', dpi=1000, bbox_inches='tight')
-
+    if save_dir:
+        plt.savefig(f'{save_dir}/sgm_rad.png',format='png', dpi=1000, bbox_inches='tight')
+    else:
+        plt.show()
 
 
 def pam_im(filen: str,
@@ -727,8 +752,10 @@ def pam_im(filen: str,
     cb = fig.colorbar(psm, ax=ax)
     cb.set_label('binary units [1]')
 
-    plt.savefig(f'{save_dir}/im_{image_no}.png',format='png', dpi=1000, bbox_inches='tight')
-
+    if save_dir:
+        plt.savefig(f'{save_dir}/im_{image_no}.png',format='png', dpi=1000, bbox_inches='tight')
+    else:
+        plt.show()
 
 def pam_l1b(filen_l1b: str,
             filen_sgmrad: str,
@@ -825,8 +852,10 @@ def pam_l1b(filen_l1b: str,
         ax2.set_xlim([wave_min, wave_max])
         ax1.set_xlim([wave_min, wave_max])
 
-        plt.savefig(f'{save_dir}/l1b_spectrum_{ialt}_{iact}.png',format='png', dpi=1000, bbox_inches='tight')
-        
+        if save_dir:
+            plt.savefig(f'{save_dir}/l1b_spectrum_{ialt}_{iact}.png',format='png', dpi=1000, bbox_inches='tight')
+        else:
+            plt.show()
 
         # print(wave_min, wave_max)
 
@@ -876,9 +905,10 @@ def pam_l1b(filen_l1b: str,
         plt.xlabel('normalized radiance error [1]')
         plt.ylabel('frequency')
         plt.legend()
-
-        plt.savefig(f'{save_dir}/l1b_hist.png',format='png', dpi=1000, bbox_inches='tight')
-
+        if save_dir:
+            plt.savefig(f'{save_dir}/l1b_hist.png',format='png', dpi=1000, bbox_inches='tight')
+        else:
+            plt.show()
 
 
 def pam_nitro(cfg):
@@ -889,11 +919,14 @@ def pam_nitro(cfg):
     if 'font_size' in cfg:
         mpl.rcParams.update({'font.size': cfg['font_size']})
 
-    # create folder for figs
-    savedir = os.path.join(cfg['io']['base_dir'], 'figs' )
-    Path(savedir).mkdir(exist_ok=True)
-    log.info(f"Saving figures to: {savedir}")
-
+    if cfg['save']:
+        # create folder for figs
+        savedir = os.path.join(cfg['io']['base_dir'], 'figs' )
+        Path(savedir).mkdir(exist_ok=True)
+        log.info(f"Saving figures to: {savedir}")
+    else:
+        savedir = None
+    
     if cfg['gm']['run']:
         log.info(f'Plotting GM')
         pam_gm(cfg['io']['gm'], cfg['scene'], 'geoloc', savedir)

@@ -9,6 +9,7 @@ the CKD.
 """
 from astropy import units
 from astropy.time import Time
+from astropy.time import TimeDelta
 from pathlib import Path
 from pyquaternion import Quaternion
 from scipy.interpolate import CubicSpline
@@ -151,24 +152,13 @@ def gen_image_timestamps(orbit_start: datetime.datetime,
                                             orbit_start.month,
                                             orbit_start.day), scale='tai')
                      - Time('1958-01-01', scale='tai'))
-    # Use hours since 1958 to offset the TAI time so that the
-    # subsecond component can be calculated with better numerical
-    # precision.
-    hours_since_epoch = int(np.float64(day_tai_start.to(units.h)))
     for i in range(n_time):
-        tai_seconds = (exposure_tai_start
-                       + datetime.timedelta(seconds=i*interval)).to(units.s)
-        l1.tai_seconds[i] = np.uint(tai_seconds)
-        # Get the fractional part of TAI seconds. In order to improve
-        # numerical precision, reduce the total number of seconds by
-        # offsetting with hours since epoch.
-        tai_seconds_reduced = (
-            exposure_tai_start
-            + datetime.timedelta(seconds=i*interval)
-            - datetime.timedelta(hours=hours_since_epoch)).to(units.s)
-        l1.tai_subsec[i] = np.float64(tai_seconds_reduced) % 1
-        l1.timestamps[i] = np.float64((tai_seconds
-                                       - day_tai_start).to(units.s))
+        seconds = (exposure_tai_start
+                   + datetime.timedelta(seconds=i*interval)).to(units.s)
+        l1.tai_seconds[i] = np.uint(seconds)
+        l1.tai_subsec[i] = np.float64((
+            seconds - TimeDelta(val=l1.tai_seconds[i]*units.s)).to(units.s))
+        l1.timestamps[i] = np.float64((seconds - day_tai_start).to(units.s))
     return l1
 
 
@@ -268,7 +258,9 @@ def convert_to_j2000(orbit_timestamps: npt.NDArray[np.datetime64],
     for i_pos in range(len(navigation.orb_pos)):
         tai_seconds = (Time(orbit_timestamps[i_pos], scale='tai')
                        - Time('1958-01-01', scale='tai')).to(units.s)
-        tai_subsec = np.float64(np.float128(tai_seconds) % 1)
+        tai_subsec = np.float64((
+            tai_seconds
+            - TimeDelta(val=np.uint(tai_seconds)*units.s)).to(units.s))
         # Solar model produces the J2000-ECEF quaternion so we need
         # the inverse of that.
         q_ecef_j2000 = solar_model(np.uint(tai_seconds), tai_subsec).inverse

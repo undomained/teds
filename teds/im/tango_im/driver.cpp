@@ -73,7 +73,10 @@ auto driver(const SettingsIM& settings,
     if (l1_prod.level >= ProcLevel::swath
         && settings.cal_level < ProcLevel::swath) {
         spdlog::info("Detector mapping");
-        mapToDetector(ckd, settings.swath.b_spline_order, l1_prod);
+        mapToDetector(ckd,
+                      settings.swath.b_spline_order,
+                      settings.swath.exact_drawing,
+                      l1_prod);
     }
     // Stray light
     if (l1_prod.level >= ProcLevel::stray

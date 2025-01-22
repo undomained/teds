@@ -296,13 +296,14 @@ auto strayLight(const CKD& ckd,
 auto mapFromDetector(const CKD& ckd,
                      const BinningTable& binning_table,
                      const int b_spline_order,
+                     const bool exact_drawing,
                      L1& l1_prod) -> void
 {
     l1_prod.level = ProcLevel::swath;
     // Size of spectra per ALT position
     const size_t spec_size { ckd.n_act * ckd.swath.wavelengths.size() };
-    l1_prod.spectra.resize(l1_prod.n_alt * spec_size);
-    l1_prod.spectra_noise.resize(l1_prod.n_alt * spec_size);
+    l1_prod.spectra.assign(l1_prod.n_alt * spec_size, 0.0);
+    l1_prod.spectra_noise.assign(l1_prod.n_alt * spec_size, 0.0);
     // Assume there is binning only across rows. From that determine
     // the number of rows of the binned detector image.
     std::vector<double> rows(ckd.n_detector_rows_binned, 0.0);
@@ -335,10 +336,61 @@ auto mapFromDetector(const CKD& ckd,
                               ckd.swath.col_map,
                               &l1_prod.spectra_noise[i_alt * spec_size]);
     }
+    if (!exact_drawing) {
+        l1_prod.signal = std::vector<double> {};
+        l1_prod.noise = std::vector<double> {};
+        l1_prod.wavelengths =
+          std::vector<std::vector<double>>(ckd.n_act, ckd.swath.wavelengths);
+        return;
+    }
+    // Regrid row_map from intermediate wavelengths to wavelengths
+    // corresponding to detector columns.
+    std::vector<double> row_map(ckd.n_act * ckd.n_detector_cols);
+    for (int i_act {}; i_act < ckd.n_act; ++i_act) {
+        const CubicSpline spline {
+            ckd.swath.wavelengths,
+            { ckd.swath.row_map.cbegin() + i_act * ckd.swath.wavelengths.size(),
+              ckd.swath.row_map.cbegin()
+                + (i_act + 1) * ckd.swath.wavelengths.size() }
+        };
+        for (int i {}; i < ckd.n_detector_cols; ++i) {
+            row_map[i_act * ckd.n_detector_cols + i] =
+              spline.eval(ckd.wave.wavelengths[i_act][i]);
+        }
+    }
+    l1_prod.spectra.resize(l1_prod.n_alt * ckd.n_act * ckd.n_detector_cols);
+    l1_prod.spectra_noise.resize(l1_prod.n_alt * ckd.n_act
+                                 * ckd.n_detector_cols);
+#pragma omp parallel for
+    for (size_t i_alt = 0; i_alt < l1_prod.n_alt; ++i_alt) {
+        for (int i_act {}; i_act < ckd.n_act; ++i_act) {
+            for (int i_wave {}; i_wave < ckd.n_detector_cols; ++i_wave) {
+                const int row_dn { static_cast<int>(
+                  row_map[i_act * ckd.n_detector_cols + i_wave]) };
+                const int row_up { row_dn + 1 };
+                const double weight {
+                    row_map[i_act * ckd.n_detector_cols + i_wave] - row_dn
+                };
+                const int pix_dn { row_dn * ckd.n_detector_cols + i_wave };
+                const int pix_up { row_up * ckd.n_detector_cols + i_wave };
+                const size_t idx {
+                    (i_alt * ckd.n_act + i_act) * ckd.n_detector_cols + i_wave
+                };
+                l1_prod.spectra[idx] =
+                  weight * l1_prod.signal[i_alt * ckd.npix + pix_dn]
+                  + (1 - weight) * l1_prod.signal[i_alt * ckd.npix + pix_up];
+
+                const double a { weight
+                                 * l1_prod.noise[i_alt * ckd.npix + pix_dn] };
+                const double b { (1 - weight)
+                                 * l1_prod.noise[i_alt * ckd.npix + pix_up] };
+                l1_prod.spectra_noise[idx] = std::sqrt(a * a + b * b);
+            }
+        }
+    }
     l1_prod.signal = std::vector<double> {};
     l1_prod.noise = std::vector<double> {};
-    l1_prod.wavelengths =
-      std::vector<std::vector<double>>(ckd.n_act, ckd.swath.wavelengths);
+    l1_prod.wavelengths = ckd.wave.wavelengths;
 }
 
 auto changeWavelengthGrid(const CKD& ckd, L1& l1_prod) -> void

@@ -11,6 +11,7 @@
 #include <tango_l1b/b_spline_2d.h>
 #include <tango_l1b/binning_table.h>
 #include <tango_l1b/ckd.h>
+#include <tango_l1b/cubic_spline.h>
 #include <tango_l1b/fourier.h>
 #include <tango_l1b/l1.h>
 
@@ -171,6 +172,7 @@ auto radiometric(const CKD& ckd, const bool enabled, L1& l1_prod) -> void
 
 auto mapToDetector(const CKD& ckd,
                    const int b_spline_order,
+                   const bool exact_drawing,
                    L1& l1_prod) -> void
 {
     l1_prod.level = ProcLevel::stray;
@@ -189,6 +191,67 @@ auto mapToDetector(const CKD& ckd,
         for (int i {}; i < ckd.npix; ++i) {
             l1_prod.signal[i_alt * ckd.npix + i] =
               std::max(0.0, l1_prod.signal[i_alt * ckd.npix + i]);
+        }
+    }
+    if (!exact_drawing) {
+        l1_prod.spectra = std::vector<double> {};
+        return;
+    }
+    // Regrid row_map and spectra from intermediate wavelengths to
+    // wavelengths corresponding to detector columns.
+    std::vector<double> row_map(ckd.n_act * ckd.n_detector_cols);
+    for (int i_act {}; i_act < ckd.n_act; ++i_act) {
+        const CubicSpline spline {
+            ckd.swath.wavelengths,
+            { ckd.swath.row_map.cbegin() + i_act * ckd.swath.wavelengths.size(),
+              ckd.swath.row_map.cbegin()
+                + (i_act + 1) * ckd.swath.wavelengths.size() }
+        };
+        for (int i {}; i < ckd.n_detector_cols; ++i) {
+            row_map[i_act * ckd.n_detector_cols + i] =
+              spline.eval(ckd.wave.wavelengths[i_act][i]);
+        }
+    }
+    l1_prod.signal.assign(l1_prod.n_alt * ckd.npix, 0.0);
+#pragma omp parallel for
+    for (int i_alt = 0; i_alt < l1_prod.n_alt; ++i_alt) {
+        std::vector<double> spectra(ckd.n_act * ckd.n_detector_cols);
+        for (int i_act {}; i_act < ckd.n_act; ++i_act) {
+            const CubicSpline spline {
+                ckd.swath.wavelengths,
+                { l1_prod.spectra.cbegin()
+                    + (i_alt * ckd.n_act + i_act)
+                        * ckd.swath.wavelengths.size(),
+                  l1_prod.spectra.cbegin()
+                    + (i_alt * ckd.n_act + i_act + 1)
+                        * ckd.swath.wavelengths.size() }
+            };
+            for (int i {}; i < ckd.n_detector_cols; ++i) {
+                spectra[i_act * ckd.n_detector_cols + i] =
+                  spline.eval(ckd.wave.wavelengths[i_act][i]);
+            }
+        }
+        for (int i_wave {}; i_wave < ckd.n_detector_cols; ++i_wave) {
+            for (int i_act {}; i_act < ckd.n_act; ++i_act) {
+                const int row_dn { static_cast<int>(
+                  row_map[i_act * ckd.n_detector_cols + i_wave]) };
+                const int row_up { row_dn + 1 };
+                const double weight {
+                    row_map[i_act * ckd.n_detector_cols + i_wave] - row_dn
+                };
+                const int pix_dn { row_dn * ckd.n_detector_cols + i_wave };
+                const int pix_up { row_up * ckd.n_detector_cols + i_wave };
+                const double& signal {
+                    spectra[i_act * ckd.n_detector_cols + i_wave]
+                };
+                if (std::abs(l1_prod.signal[i_alt * ckd.npix + pix_dn])
+                    < 1e-100) {
+                    l1_prod.signal[i_alt * ckd.npix + pix_dn] = signal;
+                }
+                l1_prod.signal[pix_up] =
+                  (signal - weight * l1_prod.signal[i_alt * ckd.npix + pix_dn])
+                  / (1.0 - weight);
+            }
         }
     }
     l1_prod.spectra = std::vector<double> {};

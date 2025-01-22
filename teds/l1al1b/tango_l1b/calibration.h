@@ -57,6 +57,7 @@ auto strayLight(const CKD& ckd,
 auto mapFromDetector(const CKD& ckd,
                      const BinningTable& binning_table,
                      const int b_spline_order,
+                     const bool exact_drawing,
                      L1& l1_prod) -> void;
 
 // Mapping from the detector yields spectra on the intermediate

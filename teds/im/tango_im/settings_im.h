@@ -177,6 +177,14 @@ public:
             5,
             "order of 2D b-spline used for mapping spectra to the detector"
         };
+        Setting<bool> exact_drawing {
+            { "swath", "exact_drawing" },
+            false,
+            "Whether to use the 'exact' drawing algorithm. In principle, it\n"
+            "doesn't have any interpolation error but it yields an\n"
+            "unphysical detector image and does not work with a large number\n"
+            "of ACT angles."
+        };
     } swath;
 
     struct

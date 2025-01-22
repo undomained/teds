@@ -49,6 +49,7 @@ auto radiometric(const CKD& ckd, const bool enabled, L1& l1_prod) -> void;
 // and we work with the detector image.
 auto mapToDetector(const CKD& ckd,
                    const int b_spline_order,
+                   const bool exact_drawing,
                    L1& l1_prod) -> void;
 
 // Add stray light to the image

@@ -27,6 +27,7 @@ auto SettingsL1B::scanKeys() -> void
     scan(stray.van_cittert_steps);
 
     scan(swath.b_spline_order);
+    scan(swath.exact_drawing);
     scan(swath.geolocation);
 
     scan(rad.enabled);

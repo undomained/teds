@@ -103,8 +103,11 @@ auto driver(const SettingsL1B& settings,
     if (l1_prod.level < ProcLevel::swath
         && settings.cal_level >= ProcLevel::swath) {
         spdlog::info("Detector mapping");
-        mapFromDetector(
-          ckd, binning_table, settings.swath.b_spline_order, l1_prod);
+        mapFromDetector(ckd,
+                        binning_table,
+                        settings.swath.b_spline_order,
+                        settings.swath.exact_drawing,
+                        l1_prod);
     }
     // Interpolate from intermediate to the main CKD wavelength
     // grids if necessary.

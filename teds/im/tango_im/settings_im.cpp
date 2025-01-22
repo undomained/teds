@@ -42,6 +42,7 @@ auto SettingsIM::scanKeys() -> void
     scan(stray.enabled);
 
     scan(swath.b_spline_order);
+    scan(swath.exact_drawing);
 
     scan(rad.enabled);
 

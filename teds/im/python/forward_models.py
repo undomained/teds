@@ -8,6 +8,7 @@ or anywhere in between.
 
 """
 from netCDF4 import Dataset
+from scipy.interpolate import CubicSpline
 from scipy.interpolate import interpn
 from tqdm import tqdm
 import numpy as np
@@ -119,7 +120,10 @@ def radiometric(l1_product: L1, rad_corr: npt.NDArray[np.float64]) -> None:
             l1_product.exposure_time / (rad_corr[0, 0]))
 
 
-def map_to_detector(l1_product: L1, ckd: CKDSwath) -> None:
+def map_to_detector(l1_product: L1,
+                    ckd: CKDSwath,
+                    wavelengths: npt.NDArray[np.float64],
+                    exact_drawing: bool) -> None:
     """Map spectra to detector.
 
     Spectra are mapped to infinitely thin curves on the detector (instead of
@@ -131,11 +135,15 @@ def map_to_detector(l1_product: L1, ckd: CKDSwath) -> None:
     ----------
     l1_product
         L1 product (signal and detector settings).
-    spectrum_rows
-        Central row index (float) of a given spectrum and at each
-        column.
-    n_detrows
-        Number of detector rows.
+    ckd
+        Swath section of the CKD
+    wavelengths
+        Main CKD wavelength grids (not the intermediate grids). Only
+        used if exact_drawing is true.
+    exact_drawing
+        Option to draw each spectrum to the detector using the "up"
+        and "down" pixels. Use this for experimenting but not in
+        production.
 
     """
     l1_product.proc_level = ProcLevel.stray
@@ -152,6 +160,37 @@ def map_to_detector(l1_product: L1, ckd: CKDSwath) -> None:
             method='quintic',
             bounds_error=False,
             fill_value=None).reshape(n_rows * n_cols)
+    if not exact_drawing:
+        return
+    if l1_product.binning_table_id > 1:
+        raise SystemExit(
+            'error: exact drawing algorithm only works with binning 1x1')
+    l1_product.signal[:] = 0
+    # When using the exact drawing algorithm, first regrid row_map and
+    # spectra from intermediate wavelengths to wavelengths
+    # corresponding to detector columns.
+    n_act = ckd.row_map.shape[0]
+    row_map = np.empty((n_act, n_cols))
+    for i_act in range(n_act):
+        row_map[i_act, :] = CubicSpline(
+            ckd.wavelengths, ckd.row_map[i_act, :])(wavelengths[i_act, :])
+    for i_alt in tqdm(range(n_alt)):
+        spectra = np.empty((n_act, n_cols))
+        signal = l1_product.signal[i_alt, :].reshape((n_rows, n_cols))
+        for i_act in range(n_act):
+            spectra[i_act, :] = CubicSpline(
+                ckd.wavelengths,
+                l1_product.spectra[i_alt, i_act, :])(wavelengths[i_act, :])
+        for i_act in range(n_act):
+            for i_wave in range(n_cols):
+                row_dn = int(row_map[i_act, i_wave])
+                row_up = row_dn + 1
+                weight = row_map[i_act, i_wave] - row_dn
+                if abs(signal[row_dn, i_wave]) < 1e-100:
+                    signal[row_dn, i_wave] = spectra[i_act, i_wave]
+                signal[row_up, i_wave] = (
+                    spectra[i_act, i_wave]
+                    - weight * signal[row_dn, i_wave]) / (1 - weight)
 
 
 def stray_light(l1_product: L1, ckd: CKDStray) -> None:
@@ -242,6 +281,7 @@ def dark_current(l1_product: L1,
 def noise(l1_product: L1,
           ckd: CKDNoise,
           dark_current: npt.NDArray[np.float64],
+          artificial_scaling: float,
           seed: int) -> None:
     """Add random noise to signal.
 
@@ -264,7 +304,7 @@ def noise(l1_product: L1,
     # The absolute value of dark_signal should be taken because a
     # negative signal still increases the noise.
     variance = (ckd.read_noise**2 + l1_product.signal / ckd.conversion_gain)
-    std = np.sqrt(np.clip(variance, 0, None))
+    std = artificial_scaling * np.sqrt(np.clip(variance, 0, None))
     rng = np.random.default_rng(seed)
     l1_product.signal += rng.normal(0.0, std, l1_product.signal.shape)
 

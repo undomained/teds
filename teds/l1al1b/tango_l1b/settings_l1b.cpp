@@ -49,6 +49,11 @@ auto SettingsL1B::checkParameters() -> void
     checkPresenceOfFile(io.geometry, !swath.geolocation);
 
     checkFileWritable(io.l1b);
+
+    if (swath.exact_drawing) {
+        noise.artificial_scaling = std::sqrt(static_cast<double>(bin_spectra));
+        bin_spectra = 1;
+    }
 }
 
 } // namespace tango

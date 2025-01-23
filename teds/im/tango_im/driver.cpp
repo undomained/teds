@@ -106,7 +106,11 @@ auto driver(const SettingsIM& settings,
     if (l1_prod.level >= ProcLevel::noise
         && settings.cal_level < ProcLevel::noise) {
         spdlog::info("Noise");
-        noise(ckd, settings.noise.enabled, settings.noise.seed, l1_prod);
+        noise(ckd,
+              settings.noise.enabled,
+              settings.noise.seed,
+              settings.noise.artificial_scaling,
+              l1_prod);
     }
     // Dark offset
     if (l1_prod.level >= ProcLevel::dark_offset

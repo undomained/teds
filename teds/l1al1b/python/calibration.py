@@ -59,7 +59,8 @@ def dark_offset(l1_product: L1, offset: npt.NDArray[np.float64]) -> None:
 def noise(l1_product: L1,
           count_table: npt.NDArray[np.int32],
           ckd: CKDNoise,
-          dark_current: npt.NDArray[np.float64]) -> None:
+          dark_current: npt.NDArray[np.float64],
+          artificial_scaling: float) -> None:
     """Determine expected noise in signal.
 
     The signal is not changed.
@@ -82,7 +83,7 @@ def noise(l1_product: L1,
     # negative signal still increases the noise.
     variance = (
         ckd.read_noise**2 + np.abs(l1_product.signal) / ckd.conversion_gain)
-    l1_product.noise = np.sqrt(
+    l1_product.noise = artificial_scaling * np.sqrt(
         variance / (l1_product.coad_factor * count_table))
 
 
@@ -285,7 +286,8 @@ def stray_light(l1_product: L1,
 def map_from_detector(l1_product: L1,
                       ckd: CKDSwath,
                       count_table: npt.NDArray[np.int32],
-                      wavelengths: npt.NDArray[np.float64]) -> None:
+                      wavelengths: npt.NDArray[np.float64],
+                      exact_drawing: bool) -> None:
     """Map detector to spectra.
 
     Parameters
@@ -318,23 +320,53 @@ def map_from_detector(l1_product: L1,
             bin_size_half = 0.5 * (bin_sizes[i-1] - bin_sizes[i])
             row_indices[i] = row_indices[i-1] + bin_sizes[i] + bin_size_half
     col_indices = np.arange(n_cols)
+    if not exact_drawing:
+        for i_alt in tqdm(range(n_alt)):
+            # Compute spectra and noise at intermediate wavelengths
+            l1_product.spectra[i_alt, :, :] = interpn(
+                (row_indices, col_indices),
+                l1_product.signal[i_alt, :].reshape((n_rows, n_cols)),
+                row_col_map,
+                method='quintic',
+                bounds_error=False,
+                fill_value=None).reshape((n_act, n_wavelengths))
+            l1_product.spectra_noise[i_alt, :, :] = interpn(
+                (row_indices, col_indices),
+                l1_product.noise[i_alt, :].reshape((n_rows, n_cols)),
+                row_col_map,
+                method='quintic',
+                bounds_error=False,
+                fill_value=None).reshape((n_act, n_wavelengths))
+        l1_product.wavelengths = ckd.wavelengths
+        return
+    # When using the exact drawing algorithm, derive spectra directly
+    # on the final wavelengths grids (not intermediate).
+    l1_product.spectra = np.empty((n_alt, n_act, n_cols))
+    l1_product.spectra_noise = np.empty(l1_product.spectra.shape)
+    # Regrid row_map and spectra from intermediate wavelengths to
+    # wavelengths corresponding to detector columns.
+    n_act = ckd.row_map.shape[0]
+    row_map = np.empty((n_act, n_cols))
+    for i_act in range(n_act):
+        row_map[i_act, :] = CubicSpline(
+            ckd.wavelengths, ckd.row_map[i_act, :])(wavelengths[i_act, :])
     for i_alt in tqdm(range(n_alt)):
-        # Compute spectra and noise at intermediate wavelengths
-        l1_product.spectra[i_alt, :, :] = interpn(
-            (row_indices, col_indices),
-            l1_product.signal[i_alt, :].reshape((n_rows, n_cols)),
-            row_col_map,
-            method='quintic',
-            bounds_error=False,
-            fill_value=None).reshape((n_act, n_wavelengths))
-        l1_product.spectra_noise[i_alt, :, :] = interpn(
-            (row_indices, col_indices),
-            l1_product.noise[i_alt, :].reshape((n_rows, n_cols)),
-            row_col_map,
-            method='quintic',
-            bounds_error=False,
-            fill_value=None).reshape((n_act, n_wavelengths))
-    l1_product.wavelengths = ckd.wavelengths
+        signal = l1_product.signal[i_alt, :].reshape((n_rows, n_cols))
+        noise = l1_product.noise[i_alt, :].reshape((n_rows, n_cols))
+        spectra = l1_product.spectra[i_alt, :, :]
+        spectra_noise = l1_product.spectra_noise[i_alt, :, :]
+        for i_act in range(n_act):
+            for i_wave in range(n_cols):
+                row_dn = row_map[i_act, i_wave].astype(int)
+                row_up = row_dn + 1
+                weight = row_map[i_act, i_wave] - row_dn
+                spectra[i_act, i_wave] = (
+                    weight * signal[row_dn, i_wave]
+                    + (1 - weight) * signal[row_up, i_wave])
+                spectra_noise[i_act, i_wave] = np.sqrt(
+                    (weight * noise[row_dn, i_wave])**2
+                    + ((1 - weight) * noise[row_up, i_wave])**2)
+    l1_product.wavelengths = wavelengths
 
 
 def change_wavelength_grid(l1_product: L1,

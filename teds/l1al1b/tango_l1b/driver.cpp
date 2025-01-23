@@ -68,7 +68,11 @@ auto driver(const SettingsL1B& settings,
     if (l1_prod.level < ProcLevel::noise
         && settings.cal_level >= ProcLevel::noise) {
         spdlog::info("Noise");
-        noise(ckd, settings.noise.enabled, binning_table, l1_prod);
+        noise(ckd,
+              settings.noise.enabled,
+              binning_table,
+              settings.noise.artificial_scaling,
+              l1_prod);
     }
     // Dark current
     if (l1_prod.level < ProcLevel::dark_current
@@ -112,7 +116,7 @@ auto driver(const SettingsL1B& settings,
     // Interpolate from intermediate to the main CKD wavelength
     // grids if necessary.
     if (!l1_prod.spectra.empty()
-        && l1_prod.spectra.size() / ckd.n_act
+        && l1_prod.spectra.size() / l1_prod.n_alt / ckd.n_act
              != ckd.wave.wavelengths.front().size()) {
         spdlog::info("Updating wavelength grids");
         changeWavelengthGrid(ckd, l1_prod);

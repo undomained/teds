@@ -72,6 +72,12 @@ public:
             true,
             "whether to include noise calibration",
         };
+        // If swath.exact_drawing is true then do not bin the L1B data
+        // but instead artifically scale noise. bin_spectra is always
+        // set to 1 in that case. The value is determined by binning
+        // and the detector mapping algorithm choice and is not a user
+        // parameter.
+        double artificial_scaling { 1.0 };
     } noise;
 
     struct

@@ -57,6 +57,7 @@ auto darkOffset(const CKD& ckd, const bool enabled, L1& l1_prod) -> void
 auto noise(const CKD& ckd,
            const bool enabled,
            const BinningTable& binning_table,
+           const double artificial_scaling,
            L1& l1_prod) -> void
 {
     l1_prod.level = ProcLevel::noise;
@@ -74,7 +75,8 @@ auto noise(const CKD& ckd,
                                    + ckd.noise.n2[i] };
                 const double coad { l1_prod.noise[idx] };
                 l1_prod.noise[idx] =
-                  std::sqrt(var / (coad * binning_table.binSize(i)));
+                  artificial_scaling
+                  * std::sqrt(var / (coad * binning_table.binSize(i)));
             }
         }
     }
@@ -343,8 +345,9 @@ auto mapFromDetector(const CKD& ckd,
           std::vector<std::vector<double>>(ckd.n_act, ckd.swath.wavelengths);
         return;
     }
-    // Regrid row_map from intermediate wavelengths to wavelengths
-    // corresponding to detector columns.
+    // When using the exact drawing algorithm, first regrid row_map
+    // from intermediate wavelengths to wavelengths corresponding to
+    // detector columns.
     std::vector<double> row_map(ckd.n_act * ckd.n_detector_cols);
     for (int i_act {}; i_act < ckd.n_act; ++i_act) {
         const CubicSpline spline {

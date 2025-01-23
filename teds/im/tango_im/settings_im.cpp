@@ -63,6 +63,12 @@ auto SettingsIM::checkParameters() -> void
     checkPresenceOfFile(io.geometry, true);
 
     checkFileWritable(io.l1a);
+
+    if (swath.exact_drawing) {
+        noise.artificial_scaling =
+          std::sqrt(static_cast<double>(detector.binning_table_id));
+        detector.binning_table_id = 1;
+    }
 }
 
 } // namespace tango

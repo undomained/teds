@@ -19,6 +19,7 @@ Input files are:
 
 """
 from pathlib import Path
+import math
 import numpy as np
 
 from . import calibration as cal
@@ -46,6 +47,16 @@ def check_config(config: dict) -> None:
         Configuration dictionary
 
     """
+    # If swath.exact_drawing is true then do not bin the L1B data but
+    # instead artifically scale noise. bin_spectra is always set to 1
+    # in that case. The value is determined by binning and the
+    # detector mapping algorithm choice and is not a user parameter.
+    if config['swath']['exact_drawing']:
+        config['noise']['artificial_scaling'] = math.sqrt(
+            config['bin_spectra'])
+        config['bin_spectra'] = 1
+    else:
+        config['noise']['artificial_scaling'] = 1
     for key in ('l1a', 'ckd'):
         input_file = Path(config['io'][key])
         if not input_file.is_file():
@@ -137,7 +148,8 @@ def run_l1al1b(config_user: dict | None = None) -> None:
             cal.noise(l1_product,
                       binning_table.count_table,
                       ckd.noise,
-                      ckd.dark.current)
+                      ckd.dark.current,
+                      config['noise']['artificial_scaling'])
         else:
             l1_product.noise = np.full_like(l1_product.signal, np.nan)
     if config['dark']['enabled'] and step_needed(
@@ -171,7 +183,8 @@ def run_l1al1b(config_user: dict | None = None) -> None:
         cal.map_from_detector(l1_product,
                               ckd.swath,
                               binning_table.count_table,
-                              ckd.spectral.wavelengths)
+                              ckd.spectral.wavelengths,
+                              config['swath']['exact_drawing'])
     if l1_product.spectra.shape[2] != ckd.spectral.wavelengths.shape[1]:
         log.info(
             'Interpolating from intermediate to main CKD wavelength grids')

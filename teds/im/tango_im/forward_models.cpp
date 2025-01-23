@@ -197,8 +197,9 @@ auto mapToDetector(const CKD& ckd,
         l1_prod.spectra = std::vector<double> {};
         return;
     }
-    // Regrid row_map and spectra from intermediate wavelengths to
-    // wavelengths corresponding to detector columns.
+    // When using the exact drawing algorithm, first regrid row_map
+    // and spectra from intermediate wavelengths to wavelengths
+    // corresponding to detector columns.
     std::vector<double> row_map(ckd.n_act * ckd.n_detector_cols);
     for (int i_act {}; i_act < ckd.n_act; ++i_act) {
         const CubicSpline spline {
@@ -248,7 +249,7 @@ auto mapToDetector(const CKD& ckd,
                     < 1e-100) {
                     l1_prod.signal[i_alt * ckd.npix + pix_dn] = signal;
                 }
-                l1_prod.signal[pix_up] =
+                l1_prod.signal[i_alt * ckd.npix + pix_up] =
                   (signal - weight * l1_prod.signal[i_alt * ckd.npix + pix_dn])
                   / (1.0 - weight);
             }
@@ -376,6 +377,7 @@ auto darkCurrent(const CKD& ckd, const bool enabled, L1& l1_prod) -> void
 auto noise(const CKD& ckd,
            const bool enabled,
            const int seed,
+           const double artificial_scaling,
            L1& l1_prod) -> void
 {
     l1_prod.level = ProcLevel::dark_offset;
@@ -387,9 +389,11 @@ auto noise(const CKD& ckd,
         static std::mt19937 gen { static_cast<unsigned long>(seed) };
         for (int i {}; i < ckd.npix; ++i) {
             const int idx { i_alt * ckd.npix + i };
-            const double noise_value { std::sqrt(ckd.noise.n2[i]
-                                                 + std::abs(l1_prod.signal[idx])
-                                                     * ckd.noise.g[i]) };
+            const double noise_value {
+                artificial_scaling
+                * std::sqrt(ckd.noise.n2[i]
+                            + std::abs(l1_prod.signal[idx]) * ckd.noise.g[i])
+            };
             std::normal_distribution<> d { 0.0, noise_value };
             l1_prod.signal[idx] += d(gen);
         }

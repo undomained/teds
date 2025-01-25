@@ -1,4 +1,9 @@
 #cal_level: raw  # to switch off ACD
+swath:
+  exact_drawing: yes # default no
+detector:
+  # Data is not actually binned, only the noise values are scaled by sqrt of bin factor
+  binning_table_id: 5
 
 #image_start: 0
 #image_end: 70
@@ -29,7 +34,8 @@ stray:
    enabled: no
 
 io:
-  ckd: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/ckd/ckd_Raul_20250106.nc
+  ckd: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/ckd/ckd_ACT100.nc
   binning_table: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/ckd/binning_table.nc
-  sgm: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/sgm/Tango_Carbon_sgm_radiance_exp1.0.nc
-  l1a: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/level1a/Tango_Carbon_l1a_exp1.0.nc
+  sgm: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/sgm/Tango_Carbon_sgm_radiance_exp5.0.nc
+  l1a: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/level1a/Tango_Carbon_l1a_exp5.0.nc
+  geometry: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/gm/Tango_Carbon_gm_exp5.0.nc

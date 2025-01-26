@@ -362,23 +362,33 @@ def gen_prnu(conf: dict, nc_ckd: Dataset) -> None:
         spline = CubicSpline(temperatures_qe,
                              nc_ckd_in['quantum_efficiency'][:, i])
         qe[i] = spline(conf['main']['temperature'])
+    # Find the shortest CKD wavelength and pad the QE values so there
+    # is always data at all wavelengths.
+    ckd_wavelengths = nc_ckd['spectral/wavelength'][:]
+    min_ckd_wavelength = ckd_wavelengths.min() - 1.0  # Margin for safety
+    qe_wavelengths = nc_ckd_in['wavelength'][:].data
+    qe_wavelength_step = qe_wavelengths[1] - qe_wavelengths[0]
+    while qe_wavelengths[0] > min_ckd_wavelength:
+        next_wavelength = qe_wavelengths[0] - qe_wavelength_step
+        next_qe = qe[0]
+        qe_wavelengths = np.insert(qe_wavelengths, 0, next_wavelength)
+        qe = np.insert(qe, 0, next_qe)
     # Next interpolate QE onto the L1B spectra
-    qe_spline = CubicSpline(nc_ckd_in['wavelength'][:], qe)
-    wavelength = nc_ckd['spectral/wavelength'][:]
-    spectra = np.zeros((n_act, conf['main']['n_detector_cols']))
+    qe_spline = CubicSpline(qe_wavelengths, qe)
+    qe_spectra = np.zeros((n_act, conf['main']['n_detector_cols']))
     for i_act in range(n_act):
-        spectra[i_act, :] = qe_spline(wavelength[i_act, :])
+        qe_spectra[i_act, :] = qe_spline(ckd_wavelengths[i_act, :])
     # At this point, we have a QE value for each L1B spectrum
     act_angles = nc_ckd['swath/act_angle'][:]
     act_wave_map_in = np.column_stack((
         np.repeat(act_angles, conf['main']['n_detector_cols']),
-        wavelength.ravel()))
+        ckd_wavelengths.ravel()))
     act_map = nc_ckd['swath/act_map'][:]
     wave_map = nc_ckd['swath/wavelength_map'][:]
     act_wave_map_out = np.column_stack((act_map.ravel(), wave_map.ravel()))
     qe_map = RBFInterpolator(
         act_wave_map_in,
-        spectra.ravel(),
+        qe_spectra.ravel(),
         kernel='cubic',
         neighbors=49)(act_wave_map_out).reshape(
             conf['main']['n_detector_rows'],

@@ -52,7 +52,7 @@ def check_config(config: dict) -> None:
     # in that case. The value is determined by binning and the
     # detector mapping algorithm choice and is not a user parameter.
     if config['swath']['exact_drawing']:
-        config['noise']['artificial_scaling'] = math.sqrt(
+        config['noise']['artificial_scaling'] = 1 / math.sqrt(
             config['bin_spectra'])
         config['bin_spectra'] = 1
     else:

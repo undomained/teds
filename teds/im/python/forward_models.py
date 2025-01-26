@@ -281,6 +281,7 @@ def dark_current(l1_product: L1,
 def noise(l1_product: L1,
           ckd: CKDNoise,
           dark_current: npt.NDArray[np.float64],
+          n_coadditions: int,
           artificial_scaling: float,
           seed: int) -> None:
     """Add random noise to signal.
@@ -303,7 +304,8 @@ def noise(l1_product: L1,
     l1_product.proc_level = ProcLevel.dark_offset
     # The absolute value of dark_signal should be taken because a
     # negative signal still increases the noise.
-    variance = (ckd.read_noise**2 + l1_product.signal / ckd.conversion_gain)
+    variance = ((ckd.read_noise**2 + l1_product.signal / ckd.conversion_gain)
+                / n_coadditions)
     std = artificial_scaling * np.sqrt(np.clip(variance, 0, None))
     rng = np.random.default_rng(seed)
     l1_product.signal += rng.normal(0.0, std, l1_product.signal.shape)
@@ -325,7 +327,8 @@ def dark_offset(l1_product: L1, offset: npt.NDArray[np.float64]) -> None:
 
 
 def coadding_and_binning(l1_product: L1,
-                         binning_table: BinningTable) -> None:
+                         binning_table: BinningTable,
+                         n_coadditions: int) -> None:
     """Coadd over time and bin over the detector, both as sums.
 
     Coaddition effectively makes exact copies of existing frames and
@@ -336,11 +339,11 @@ def coadding_and_binning(l1_product: L1,
     ----------
     l1_product
         L1 product (signal and detector settings).
-    coad_factor
-        Coaddition factor.
     binning_table
         Bin index of each pixel in an unbinned frame and number of
         pixels in each bin of a binned frame.
+    coad_factor
+        Coaddition factor.
 
     """
     l1_product.proc_level = ProcLevel.l1a
@@ -350,6 +353,7 @@ def coadding_and_binning(l1_product: L1,
         for idx, idx_binned in enumerate(binning_table.bin_indices.ravel()):
             binned_signals[i_alt, idx_binned] += l1_product.signal[i_alt, idx]
     l1_product.signal = binned_signals
+    l1_product.coad_factor = n_coadditions
     l1_product.signal = l1_product.signal * l1_product.coad_factor
     # In reality, the noise realization is different in every read-out
     # and the signal is rounded before summing. Here the noise is not

@@ -66,7 +66,7 @@ auto SettingsIM::checkParameters() -> void
 
     if (swath.exact_drawing) {
         noise.artificial_scaling =
-          std::sqrt(static_cast<double>(detector.binning_table_id));
+          1.0 / std::sqrt(static_cast<double>(detector.binning_table_id));
         detector.binning_table_id = 1;
     }
 }

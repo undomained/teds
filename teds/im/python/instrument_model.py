@@ -51,7 +51,7 @@ def check_config(config: dict) -> None:
     # and the detector mapping algorithm choice and is not a user
     # parameter.
     if config['swath']['exact_drawing']:
-        config['noise']['artificial_scaling'] = math.sqrt(
+        config['noise']['artificial_scaling'] = 1 / math.sqrt(
             config['detector']['binning_table_id'])
         config['detector']['binning_table_id'] = 1
     else:
@@ -108,7 +108,6 @@ def set_l1_meta(config: dict, l1_product: L1) -> None:
 
     """
     l1_product.binning_table_id = config['detector']['binning_table_id']
-    l1_product.coad_factor = config['detector']['nr_coadditions']
     l1_product.exposure_time = config['detector']['exposure_time']
 
 
@@ -194,9 +193,17 @@ def run_instrument_model(config_user: dict | None = None) -> None:
     if config['noise']['enabled'] and step_needed(
             ProcLevel.noise, l1_product.proc_level, cal_level):
         log.info('Noise')
+        # Only scale noise by coaddition factor if target level is
+        # L1A. Otherwise the signal will not be scaled by coadditions
+        # and neither should the noise be scaled.
+        if cal_level == ProcLevel.l1a:
+            n_coadditions = config['detector']['nr_coadditions']
+        else:
+            n_coadditions = 1
         fw.noise(l1_product,
                  ckd.noise,
                  ckd.dark.current,
+                 n_coadditions,
                  config['noise']['artificial_scaling'],
                  config['noise']['seed'])
     if config['dark']['enabled'] and step_needed(
@@ -205,7 +212,8 @@ def run_instrument_model(config_user: dict | None = None) -> None:
         fw.dark_offset(l1_product, ckd.dark.offset)
     if step_needed(ProcLevel.raw, l1_product.proc_level, cal_level):
         log.info('Analog-to-digital conversion')
-        fw.coadding_and_binning(l1_product, binning_table)
+        fw.coadding_and_binning(
+            l1_product, binning_table, config['detector']['nr_coadditions'])
 
     # Write output data
     log.info('Writing output data')

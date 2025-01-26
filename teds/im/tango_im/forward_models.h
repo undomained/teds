@@ -72,6 +72,7 @@ auto darkCurrent(const CKD& ckd, const bool enabled, L1& l1_prod) -> void;
 auto noise(const CKD& ckd,
            const bool enabled,
            const int seed,
+           const int n_coadditions,
            const double artificial_scaling,
            L1& l1_prod) -> void;
 

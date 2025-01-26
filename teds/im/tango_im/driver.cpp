@@ -106,9 +106,16 @@ auto driver(const SettingsIM& settings,
     if (l1_prod.level >= ProcLevel::noise
         && settings.cal_level < ProcLevel::noise) {
         spdlog::info("Noise");
+        // Only scale noise by coaddition factor if target level is
+        // L1A. Otherwise the signal will not be scaled by coadditions
+        // and neither should the noise be scaled.
+        const int n_coadditions { settings.cal_level == ProcLevel::l1a
+                                    ? settings.detector.nr_coadditions
+                                    : 1 };
         noise(ckd,
               settings.noise.enabled,
               settings.noise.seed,
+              n_coadditions,
               settings.noise.artificial_scaling,
               l1_prod);
     }

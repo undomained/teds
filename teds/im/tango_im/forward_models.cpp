@@ -377,6 +377,7 @@ auto darkCurrent(const CKD& ckd, const bool enabled, L1& l1_prod) -> void
 auto noise(const CKD& ckd,
            const bool enabled,
            const int seed,
+           const int n_coadditions,
            const double artificial_scaling,
            L1& l1_prod) -> void
 {
@@ -391,8 +392,9 @@ auto noise(const CKD& ckd,
             const int idx { i_alt * ckd.npix + i };
             const double noise_value {
                 artificial_scaling
-                * std::sqrt(ckd.noise.n2[i]
-                            + std::abs(l1_prod.signal[idx]) * ckd.noise.g[i])
+                * std::sqrt((ckd.noise.n2[i]
+                             + std::abs(l1_prod.signal[idx]) * ckd.noise.g[i])
+                            / n_coadditions)
             };
             std::normal_distribution<> d { 0.0, noise_value };
             l1_prod.signal[idx] += d(gen);

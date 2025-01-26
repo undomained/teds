@@ -51,7 +51,8 @@ auto SettingsL1B::checkParameters() -> void
     checkFileWritable(io.l1b);
 
     if (swath.exact_drawing) {
-        noise.artificial_scaling = std::sqrt(static_cast<double>(bin_spectra));
+        noise.artificial_scaling =
+          1 / std::sqrt(static_cast<double>(bin_spectra));
         bin_spectra = 1;
     }
 }

@@ -26,7 +26,7 @@ TEST_CASE("unit tests")
 
     SECTION("Noise")
     {
-        tango::noise(ckd, true, 0, 1.0, l1);
+        tango::noise(ckd, true, 0, 1, 1.0, l1);
         CHECK_THAT(absSum(l1.signal), WithinRel(8261612.4975394309, 1e-6));
         CHECK_THAT(absSum(l1.noise), WithinRel(3264.0, 1e-6));
     }

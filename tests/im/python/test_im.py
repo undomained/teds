@@ -12,5 +12,5 @@ def test_dark_offset(l1, ckd_dark):
 
 
 def test_noise(l1, binning_table, ckd_dark, ckd_noise):
-    cal.noise(l1, ckd_noise, ckd_dark.current, 1.0, 0)
+    cal.noise(l1, ckd_noise, ckd_dark.current, 1, 1.0, 0)
     assert abs(l1.signal).sum() == approx(8229957.105920106)

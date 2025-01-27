@@ -376,9 +376,9 @@ auto mapFromDetector(const CKD& ckd,
                 };
                 const int pix_dn { row_dn * ckd.n_detector_cols + i_wave };
                 const int pix_up { row_up * ckd.n_detector_cols + i_wave };
-                const size_t idx {
-                    (i_alt * ckd.n_act + i_act) * ckd.n_detector_cols + i_wave
-                };
+                const size_t idx { (i_alt * ckd.n_act + i_act)
+                                     * ckd.n_detector_cols
+                                   + ckd.n_detector_cols - 1 - i_wave };
                 l1_prod.spectra[idx] =
                   weight * l1_prod.signal[i_alt * ckd.npix + pix_dn]
                   + (1 - weight) * l1_prod.signal[i_alt * ckd.npix + pix_up];

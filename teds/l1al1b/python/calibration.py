@@ -301,6 +301,9 @@ def map_from_detector(l1_product: L1,
         Number of pixels in each bin of a binned frame.
     wavelengths
         Wavelength [nm] at a given spectrum and column.
+    exact_drawing
+        Option to extract each spectral element from "up" and "down"
+        pixels. Use this for experimenting but not in production.
 
     """
     l1_product.proc_level = ProcLevel.swath
@@ -360,10 +363,10 @@ def map_from_detector(l1_product: L1,
                 row_dn = row_map[i_act, i_wave].astype(int)
                 row_up = row_dn + 1
                 weight = row_map[i_act, i_wave] - row_dn
-                spectra[i_act, i_wave] = (
+                spectra[i_act, n_cols - 1 - i_wave] = (
                     weight * signal[row_dn, i_wave]
                     + (1 - weight) * signal[row_up, i_wave])
-                spectra_noise[i_act, i_wave] = np.sqrt(
+                spectra_noise[i_act, n_cols - 1 - i_wave] = np.sqrt(
                     (weight * noise[row_dn, i_wave])**2
                     + ((1 - weight) * noise[row_up, i_wave])**2)
     l1_product.wavelengths = wavelengths

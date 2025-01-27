@@ -60,7 +60,6 @@ auto driver(const SettingsIM& settings,
                   settings.isrf.fwhm_gauss,
                   settings.isrf.shape,
                   settings.io.sgm,
-                  settings.alt_beg,
                   l1_prod);
     }
     // Radiometric

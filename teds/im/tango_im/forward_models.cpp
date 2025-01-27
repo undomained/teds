@@ -68,7 +68,6 @@ auto applyISRF(const CKD& ckd,
                const double fwhm_gauss,
                const double shape,
                const std::string& sgm_filename,
-               const int alt_beg,
                L1& l1_prod) -> void
 {
     l1_prod.level = ProcLevel::l1b;
@@ -243,7 +242,8 @@ auto mapToDetector(const CKD& ckd,
                 const int pix_dn { row_dn * ckd.n_detector_cols + i_wave };
                 const int pix_up { row_up * ckd.n_detector_cols + i_wave };
                 const double& signal {
-                    spectra[i_act * ckd.n_detector_cols + i_wave]
+                    spectra[i_act * ckd.n_detector_cols + ckd.n_detector_cols
+                            - 1 - i_wave]
                 };
                 if (std::abs(l1_prod.signal[i_alt * ckd.npix + pix_dn])
                     < 1e-100) {

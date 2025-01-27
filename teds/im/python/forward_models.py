@@ -162,9 +162,6 @@ def map_to_detector(l1_product: L1,
             fill_value=None).reshape(n_rows * n_cols)
     if not exact_drawing:
         return
-    if l1_product.binning_table_id > 1:
-        raise SystemExit(
-            'error: exact drawing algorithm only works with binning 1x1')
     l1_product.signal[:] = 0
     # When using the exact drawing algorithm, first regrid row_map and
     # spectra from intermediate wavelengths to wavelengths
@@ -187,9 +184,10 @@ def map_to_detector(l1_product: L1,
                 row_up = row_dn + 1
                 weight = row_map[i_act, i_wave] - row_dn
                 if abs(signal[row_dn, i_wave]) < 1e-100:
-                    signal[row_dn, i_wave] = spectra[i_act, i_wave]
+                    signal[row_dn, i_wave] = spectra[i_act,
+                                                     n_cols - 1 - i_wave]
                 signal[row_up, i_wave] = (
-                    spectra[i_act, i_wave]
+                    spectra[i_act, n_cols - 1 - i_wave]
                     - weight * signal[row_dn, i_wave]) / (1 - weight)
 
 

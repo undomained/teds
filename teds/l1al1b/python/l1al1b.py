@@ -51,12 +51,10 @@ def check_config(config: dict) -> None:
     # instead artifically scale noise. bin_spectra is always set to 1
     # in that case. The value is determined by binning and the
     # detector mapping algorithm choice and is not a user parameter.
+    config['noise']['artificial_scaling'] = (
+        1 / math.sqrt(config['bin_spectra']))
     if config['swath']['exact_drawing']:
-        config['noise']['artificial_scaling'] = 1 / math.sqrt(
-            config['bin_spectra'])
         config['bin_spectra'] = 1
-    else:
-        config['noise']['artificial_scaling'] = 1
     for key in ('l1a', 'ckd'):
         input_file = Path(config['io'][key])
         if not input_file.is_file():
@@ -143,7 +141,6 @@ def run_l1al1b(config_user: dict | None = None) -> None:
         cal.dark_offset(l1_product, ckd.dark.offset)
     if step_needed(ProcLevel.noise, l1_product.proc_level, cal_level):
         log.info('Noise')
-        # C++ code does not have first check
         if config['dark']['enabled'] and config['noise']['enabled']:
             cal.noise(l1_product,
                       binning_table.count_table,
@@ -151,7 +148,7 @@ def run_l1al1b(config_user: dict | None = None) -> None:
                       ckd.dark.current,
                       config['noise']['artificial_scaling'])
         else:
-            l1_product.noise = np.full_like(l1_product.signal, np.nan)
+            l1_product.noise = np.full_like(l1_product.signal, 1.0)
     if config['dark']['enabled'] and step_needed(
             ProcLevel.dark_current, l1_product.proc_level, cal_level):
         log.info('Dark current')

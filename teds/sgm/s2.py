@@ -110,7 +110,11 @@ def fetch_granules(
     return collection_sorted[0]['granules']
 
 
-def write_albedo(albedo_file: str, albedos: list[DataArray]) -> None:
+def write_albedo(
+        albedo_file: str,
+        albedos: list[DataArray],
+        metadata: dict | None) -> None:
+
     nc = Dataset(albedo_file, 'w')
     nc.title = 'Sentinel 2 albedos for different wavelength bands'
     for albedo in albedos:
@@ -167,6 +171,11 @@ def write_albedo(albedo_file: str, albedos: list[DataArray]) -> None:
             nc_var.set_auto_scale(False)
             nc_var.scale_factor = 1e-4
         nc_var[:] = albedo.values[0]
+
+        if metadata is not None:
+            for k, v in metadata.items():
+                setattr(nc, k, v)
+
     nc.close()
 
 
@@ -258,7 +267,21 @@ def download_albedo_for_coords(
                        - albedos_partial[0].x.values[0])
         })
         albedos.append(albedo_combined)
-    write_albedo(config['sentinel2']['albedo_file'], albedos)
+
+    metadata = {
+        'epsg': granules[0].properties['proj:epsg'],
+        'granule_datetime': [
+            str(granule.properties['datetime']) for granule in granules
+        ],
+        'granule_product_id': [
+            granule.properties['sentinel:product_id'] for granule in granules
+        ],
+        'granule_cloud_cover': [
+            granule.properties['eo:cloud_cover'] for granule in granules
+        ]
+    }
+
+    write_albedo(config['sentinel2']['albedo_file'], albedos, metadata)
     return albedos
 
 

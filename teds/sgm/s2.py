@@ -111,18 +111,13 @@ def fetch_granules(
 
 
 def write_albedo(
-        albedo_file: str,
-        albedos: list[DataArray],
-        metadata: dict | None) -> None:
-
+        albedo_file: str, albedos: list[DataArray], metadata: dict) -> None:
     nc = Dataset(albedo_file, 'w')
     nc.title = 'Sentinel 2 albedos for different wavelength bands'
     for albedo in albedos:
         nc_grp = nc.createGroup(albedo.band_label)
         nc_grp.createDimension('x', len(albedo.x))
         nc_grp.createDimension('y', len(albedo.y))
-
-        nc_grp.crs = int(albedo.rio.crs.to_epsg())
 
         nc_var = nc_grp.createVariable('gsd', 'f8')
         nc_var.long_name = 'ground sampling distance'
@@ -171,11 +166,8 @@ def write_albedo(
             nc_var.set_auto_scale(False)
             nc_var.scale_factor = 1e-4
         nc_var[:] = albedo.values[0]
-
-        if metadata is not None:
-            for k, v in metadata.items():
-                setattr(nc, k, v)
-
+    for k, v in metadata.items():
+        setattr(nc, k, v)
     nc.close()
 
 
@@ -268,9 +260,8 @@ def download_albedo_for_coords(
                        - albedos_partial[0].x.values[0])
         })
         albedos.append(albedo_combined)
-
     metadata = {
-        'crs': first_crs.to_string(),
+        'crs': str(first_crs),
         'granule_epsg': [
             granule.properties['proj:epsg'] for granule in granules
         ],
@@ -284,7 +275,6 @@ def download_albedo_for_coords(
             granule.properties['eo:cloud_cover'] for granule in granules
         ]
     }
-
     write_albedo(config['sentinel2']['albedo_file'], albedos, metadata)
     return albedos
 
@@ -302,7 +292,7 @@ def read_albedo(filename: str) -> List[DataArray]:
                                })
         albedo.attrs['gsd'] = nc[group]['gsd'][:]
         albedo.attrs['band_label'] = group
-        albedo.rio.write_crs(nc[group].crs, inplace=True)
+        albedo.rio.write_crs(nc.crs, inplace=True)
         albedos.append(albedo)
     return albedos
 

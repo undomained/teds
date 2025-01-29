@@ -223,6 +223,7 @@ def download_albedo_for_coords(
     granules = fetch_granules(lat, lon, config['sentinel2']['date_range'])
     # Extract the high resolution albedo map of selected wavelength bands
     albedos = []
+    first_crs = None
     for band_label in config['sentinel2']['band_label'] + ['SCL']:
         log.info(f'Downloading Sentinel 2 albedo for band {band_label}')
         # Fetch one or more S2 albedo maps at a given wavelength.
@@ -269,7 +270,10 @@ def download_albedo_for_coords(
         albedos.append(albedo_combined)
 
     metadata = {
-        'epsg': granules[0].properties['proj:epsg'],
+        'crs': first_crs.to_string(),
+        'granule_epsg': [
+            granule.properties['proj:epsg'] for granule in granules
+        ],
         'granule_datetime': [
             str(granule.properties['datetime']) for granule in granules
         ],

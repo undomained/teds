@@ -10,6 +10,7 @@ the CKD.
 from astropy import units
 from astropy.time import Time
 from astropy.time import TimeDelta
+from netCDF4 import Dataset
 from pathlib import Path
 from pyquaternion import Quaternion
 from scipy.interpolate import CubicSpline
@@ -319,7 +320,10 @@ def sensor_simulation(
         orbit_timestamps, dt_range[0], dt_range[1], dt_range[2], thetas)
 
 
-def get_orbit(config: dict, l1: L1) -> tuple[Navigation, Geometry]:
+def get_orbit(
+        config: dict,
+        l1: L1,
+        aocs_navigation: Navigation | None) -> tuple[Navigation, Geometry]:
     """Propagate orbit and do geolocation.
 
     Parameters
@@ -330,6 +334,10 @@ def get_orbit(config: dict, l1: L1) -> tuple[Navigation, Geometry]:
         L1 product containing detector image timestamps. Required for
         interpolating navigation data from navigation to detector time
         axis.
+    aocs_navigation
+        Navigation data from the AOCS simulator. If not present, then
+        run the SGP4 orbit simulator to generate the orbit positions
+        and attitude quaternions. If present, use this instead.
 
     Returns
     -------
@@ -349,15 +357,14 @@ def get_orbit(config: dict, l1: L1) -> tuple[Navigation, Geometry]:
                               time_beg.day))).astype(np.float64)
 
     # Compute satellite position every n seconds
-    if not config['io_files']['aocs_navigation']:
+    if not aocs_navigation:
         log.info('Generating satellite orbit')
         satellite = Satellite(config['orbit'])
         sat_pos = satellite.compute_positions(orbit_timestamps)
 
     # Attitude quaternions
-    if config['io_files']['aocs_navigation']:
-        log.info('Reading AOCS generated quaternions')
-        navigation = read_navigation(config['io_files']['aocs_navigation'])
+    if aocs_navigation:
+        navigation = aocs_navigation
     else:
         log.info('Generating attitude quaternions')
         att_quat = generate_attitude_quaternions(
@@ -365,8 +372,8 @@ def get_orbit(config: dict, l1: L1) -> tuple[Navigation, Geometry]:
         # Navigation data with orbit positions in ECEF. These will be
         # converted to J2000 in convert_to_j2000.
         navigation = Navigation(time=orb_time_day,
-                                orb_pos=sat_pos['p'],   # ECEF for now
-                                att_quat=att_quat,   # SC-to-ECEF for now
+                                orb_pos=sat_pos['p'],   # ECEF here
+                                att_quat=att_quat,   # SC-to-ECEF here
                                 altitude=1e3 * sat_pos['height'])  # m
 
     # Do geolocation using the orbit positions and line-of-sight (LOS)
@@ -376,7 +383,7 @@ def get_orbit(config: dict, l1: L1) -> tuple[Navigation, Geometry]:
     ckd = read_ckd(config['io_files']['ckd'])
     log.info('Geolocation')
     if not config['use_python_geolocation']:
-        if not config['io_files']['aocs_navigation']:
+        if not aocs_navigation:
             # Convert orbit positions and quaternions from ECEF to
             # J2000. AOCS data is already in J2000.
             convert_to_j2000(orbit_timestamps, navigation)
@@ -411,6 +418,16 @@ def geometry_module(config_user: dict | None = None) -> None:
     config = merge_config_with_default(config_user, 'teds.gm')
     check_config(config)
 
+    # If present, use AOCS navigation data. Otherwise ignore it and
+    # simulate orbit using the SPG4 routines instead.
+    aocs_navigation = None
+    if config['io_files']['aocs_navigation']:
+        log.info('Reading AOCS generated quaternions')
+        aocs_navigation = read_navigation(
+            config['io_files']['aocs_navigation'])
+        config['orbit']['epoch'] = datetime.datetime.fromisoformat(Dataset(
+            config['io_files']['aocs_navigation']).epoch)
+
     # Generate image timestamps which are essentially part of geometry
     # information. Without timestamps it is not clear what the
     # retrieved latitudes and longitudes refer to.
@@ -423,7 +440,7 @@ def geometry_module(config_user: dict | None = None) -> None:
     if config['profile'] == 'individual_spectra':
         geometry = get_individual_spectra(config)
     elif config['profile'] == 'orbit':
-        navigation, geometry = get_orbit(config, l1)
+        navigation, geometry = get_orbit(config, l1, aocs_navigation)
     else:
         log.error(f'unknown profile: {config["profile"]}')
         exit(1)

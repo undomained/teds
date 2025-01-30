@@ -4,12 +4,23 @@
 # the present directory. The configuration files only contain relative
 # paths assuming all files are in the present directory. The auxiliary
 # files can be downloaded from
-# https://surfdrive.surf.nl/files/index.php/s/xs0PS5KyxvNxYTX.
+# https://surfdrive.surf.nl/files/index.php/s/xs0PS5KyxvNxYTX. For
+# this example, the following files and directories are required:
+#   hapi
+#   binning_table.nc
+#   ckd_stray_1.nc
+#   co2_src1_20180523_1230.nc
+#   gebco_ocssw_v2020.nc
+#   OWL640S_low-gain_ckd.nc
+#   prof.AFGL.US.std
+#   solar_spectrum.nc
+#   spot_col_distances.dat
+#   spot_row_distances.dat
 #
 # Run as follows:
 #
 #  # Activate virtual environment
-#  # Download all files into the present directory
+#  # Download auxiliary files into the present directory
 #  python driver.py
 #
 # This example excludes the simplified L1B processor and runs the

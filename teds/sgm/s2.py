@@ -292,7 +292,10 @@ def read_albedo(filename: str) -> List[DataArray]:
                                })
         albedo.attrs['gsd'] = nc[group]['gsd'][:]
         albedo.attrs['band_label'] = group
-        albedo.rio.write_crs(nc.crs, inplace=True)
+        if hasattr(nc, 'crs'):
+            albedo.rio.write_crs(nc.crs, inplace=True)
+        else:
+            albedo.rio.write_crs(nc[group].crs, inplace=True)
         albedos.append(albedo)
     return albedos
 

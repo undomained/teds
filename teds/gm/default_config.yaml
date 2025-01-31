@@ -29,7 +29,16 @@ orbit:
   propagation_duration: 1.67 # hours
 
 sensor:
-  integration_time: 0.04 # s
+  # Interval at which detector images are recorded (the exposure time
+  # is a small part of dwell time and is specified separately in the
+  # instrument model configuration).
+  # For Tango Carbon:
+  #   FMC = 1: dwell time = 0.0425 s
+  #   FMC = 2: dwell time = 0.0850 s
+  #   FMC = 3: dwell time = 0.1275 s
+  #   FMC = 4: dwell time = 0.1700 s
+  #   FMC = 5: dwell time = 0.2124 s
+  dwell_time: 0.0425 # s
   start_time: 13.73 # minutes wrt orbit epoch
   end_time: 13.80 # minutes wrt orbit epoch
   pitch: 0.0

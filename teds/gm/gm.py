@@ -315,7 +315,7 @@ def sensor_simulation(
         + datetime.timedelta(minutes=config['sensor']['start_time']),
         orbit_timestamps[0].astype(datetime.datetime)
         + datetime.timedelta(minutes=config['sensor']['end_time']),
-        config['sensor']['integration_time']]
+        config['sensor']['dwell_time']]
     return sensor.get_groundpoints(
         orbit_timestamps, dt_range[0], dt_range[1], dt_range[2], thetas)
 
@@ -435,7 +435,7 @@ def geometry_module(config_user: dict | None = None) -> None:
     l1 = gen_image_timestamps(config['orbit']['epoch'],
                               config['sensor']['start_time'],
                               config['sensor']['end_time'],
-                              config['sensor']['integration_time'])
+                              config['sensor']['dwell_time'])
 
     if config['profile'] == 'individual_spectra':
         geometry = get_individual_spectra(config)

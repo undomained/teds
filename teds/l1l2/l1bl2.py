@@ -11,7 +11,7 @@ import os
 import sys
 import numpy as np
 import pickle as pkl
-from tqdm import tqdm
+from tqdm import tqdm, trange
 from copy import deepcopy
 import netCDF4 as nc
 import torch
@@ -725,6 +725,12 @@ def level1b_to_level2_processor_RTorCH4(config):
         config['isrf_settings']['fwhm'] * np.ones(N_obs_wls)
     )
 
+    homogeneous_wls = False
+    obs_wl_delta = np.amax(obs_wls, axis=0) - np.amin(obs_wls, axis=0)
+    if np.all(np.abs(obs_wl_delta) < 1e-4):
+        homogeneous_wls = True
+        print("Notice: enabling homogeneous wavelength optimisations")
+
     isrf_beta = 2
     if config['isrf_settings']['type'] == 'generalized_normal':
         isrf_beta = 1/config['isrf_settings']['bcoeff']
@@ -877,7 +883,7 @@ def level1b_to_level2_processor_RTorCH4(config):
         print('Begin retrieval at', retstart)
 
         # ALT scanline main loop
-        for batch in tqdm(range(N_alt)):
+        for batch in trange(N_alt):
             # If we have a profiler, step it; if not, be quiet about it.
             try:
                 prof.step()
@@ -900,22 +906,41 @@ def level1b_to_level2_processor_RTorCH4(config):
                 )
 
                 if isrfs[chunk] is None:
-                    isrfs[chunk] = rt.GeneralisedNormalISRF(isrf_beta)
+                    if (
+                        homogeneous_wls
+                        and chunk >= 1
+                        and isrfs[chunk-1].N == N
+                    ):
+                        isrfs[chunk] = isrfs[chunk-1]
+                    else:
+                        isrfs[chunk] = rt.GeneralisedNormalISRF(isrf_beta)
 
                 if radtran[chunk] is None:
-                    radtran[chunk] = rt.RTForwardModel(
-                        obs_wls[chunk_inds,:],
-                        obs_fwhm,
-                        wave_lbl,
-                        tau_base,
-                        sun_lbl,
-                        sza,
-                        vza,
-                        tau_offset=None,
-                        isrf=isrfs[chunk],
-                        dtype=dtype,
-                        device=device
-                    )
+                    if (
+                        homogeneous_wls
+                        and chunk >= 1
+                        and radtran[chunk-1].N == N
+                    ):
+                        radtran[chunk] = radtran[chunk-1]
+                        radtran[chunk].setup_measurement(
+                            sza,
+                            vza,
+                            tau_base=tau_base
+                        )
+                    else:
+                        radtran[chunk] = rt.RTForwardModel(
+                            obs_wls[chunk_inds,:],
+                            obs_fwhm,
+                            wave_lbl,
+                            tau_base,
+                            sun_lbl,
+                            sza,
+                            vza,
+                            tau_offset=None,
+                            isrf=isrfs[chunk],
+                            dtype=dtype,
+                            device=device
+                        )
                 else:
                     # In the forward model, only the geometry/optical depth
                     # changes per batch, so use setup_measurement to reduce
@@ -927,18 +952,25 @@ def level1b_to_level2_processor_RTorCH4(config):
                     )
 
                 if sun_obs[chunk] is None:
-                    isrfs[chunk].set_parameters(
-                        obs_wls[chunk_inds,:],
-                        obs_fwhm,
-                        wave_lbl,
-                        cache_hint=True
-                    )
-                    sun_obs[chunk] = isrfs[chunk].convolve(
-                        torch.outer(
-                            torch.ones(N, dtype=dtype, device=device),
-                            sun_lbl
+                    if (
+                        homogeneous_wls
+                        and chunk >= 1
+                        and isrfs[chunk-1].N == N
+                    ):
+                        sun_obs[chunk] = sun_obs[chunk-1]
+                    else:
+                        isrfs[chunk].set_parameters(
+                            obs_wls[chunk_inds,:],
+                            obs_fwhm,
+                            wave_lbl,
+                            cache_hint=True
                         )
-                    )
+                        sun_obs[chunk] = isrfs[chunk].convolve(
+                            torch.outer(
+                                torch.ones(N, dtype=dtype, device=device),
+                                sun_lbl
+                            )
+                        )
 
                 idx = torch.argmax(radiance, dim=1)
                 pixidx = torch.arange(N)
@@ -1127,7 +1159,7 @@ def level1b_to_level2_processor_RTorCH4(config):
                         waveshift.cpu().detach().numpy()
                     )
 
-                if deallocate_chunk:
+                if deallocate_chunk and not homogeneous_wls:
                     radtran[chunk] = None
                     isrfs[chunk] = None
                     sun_obs[chunk] = None

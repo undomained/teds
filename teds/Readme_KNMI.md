@@ -131,3 +131,7 @@ As part of E2E:
 
 ### DISAMAR radiative transfer
 The Nitro SGM makes use of the KNMI DISAMAR software suite. This code is open source and available on https://gitlab.com/KNMI-OSS/disamar. See the DISAMAR readme for compiling instructions or run the provided building script in `sgm/build_disamar.sh`. The DISAMAR executable path has to be set in the Nitro configuration yaml file.
+
+
+To run DISAMAR built with ifort on KNMI workstation the following shell script needs to be sourced in order to set the environment variables required for ifort:
+`. /opt/intel/oneapi/compiler/latest/env/vars.sh`

@@ -19,9 +19,10 @@ import h5py
 import shutil
 from teds import log
 import tqdm
-from scipy.interpolate import RegularGridInterpolator
+from scipy.interpolate import RegularGridInterpolator, interp1d
 import xarray as xr
 import logging
+import pandas as pd
 
 from teds import log
 from teds.lib import libATM, libSGM, libRT_no2, libNumTools, constants
@@ -858,6 +859,160 @@ def sgm_output_atm(config, atm, albedo, microhh_data, mode='raw'):
     return
 
 
+def create_mrd_ref_scene(config, atm, albedo):
+    '''
+    Create reference scene according to TANGO MRD
+    Options are:
+        L_ref       : moderately dark scene at high latitudes
+        L_Tr_bright : bright scene for tropical conditions
+        L_ML_nom    : nominal case for midlatitude solar geometry
+    
+    Nitro spectra and parameters are used.
+
+    Adjusts existing gm and sgm_rad file
+    Adjusts atm dictionary that is written out in a later step
+
+    Reference spectra obtainable from:
+    https://zenodo.org/records/10845741/files/TANGO_reference_spectra.xlsx
+
+    Observation and atmospheric parameters: see Table 10 & 11 TANGO MRD
+    '''
+
+    # reference data
+    ref_scenes = {
+        'L_ref': {'sza':70, 'vza':0, 'raa':0, 'albedo':0.05, 'L_max':8.48E12},
+        'L_Tr_bright': {'sza':0, 'vza':0, 'raa':0, 'albedo':1.0, 'L_max':1.68E+14},
+        'L_ML_nom': {'sza':50, 'vza':0, 'raa':0, 'albedo':0.05, 'L_max':1.33E+13}
+        }
+    
+    # no2_total_column = 1.3E16  # molec./cm2
+    # no2_total_column = 1.43E16  # molec./cm2 <--- according to disamar / camelot european polluted
+    # no2_trop_column = 1.0E16  # molec./cm2
+    o3_total_column = 300 # DU
+
+    molecm2_to_DU = 2.6867E16 
+
+    # load reference spectra from xls
+    df = pd.read_excel(config['io']['mrd_ref_spec'] , 'TANGO Nitro', header=5)
+    data_array = np.array(df)
+
+    wvl = data_array[:,0] # [nm]
+    irr = data_array[:,1]  # [ph/s/cm²/nm]
+    rad = {}
+    rad['L_Tr_bright'] = data_array[:,2] # [ph/s/cm²/nm/sr]
+    rad['L_ML_nom'] = data_array[:,3] # [ph/s/cm²/nm/sr]
+    rad['L_ref'] = data_array[:,4] # [ph/s/cm²/nm/sr]
+    rad['L_cld'] = data_array[:,5] # [ph/s/cm²/nm/sr]
+
+    # select ref scene
+    ref_scene = ref_scenes[config['mrd_ref_scene']]
+    rad = rad[config['mrd_ref_scene']]
+
+    # convert to cm-2 to m-2
+    irr *= 1E4
+    rad *= 1E4
+
+    # modify geometry
+    with nc.Dataset(config['io']['gm'], 'a') as fgm:
+        shape = fgm['solarazimuthangle'].shape
+        fgm['solarazimuthangle'][:] = np.full(shape, ref_scene['raa'])
+        fgm['viewingazimuthangle'][:] = np.full(shape, ref_scene['raa'])
+        fgm['solarzenithangle'][:] = np.full(shape, ref_scene['sza'])
+        fgm['viewingzenithangle'][:] = np.full(shape, ref_scene['vza'])
+    
+
+    # modify radiance
+    with nc.Dataset(config['io']['sgm_rad'], 'a') as frad:
+        sgm_wvl = frad['wavelength'][:] # nm
+
+        # interpolate (same wavelength grid, just wider range, so copied values for out of range wvl)
+        sgm_rad = np.interp(sgm_wvl, wvl, rad)
+        sgm_irr = np.interp(sgm_wvl, wvl, irr)
+        
+        frad['radiance'][:] = sgm_rad[np.newaxis,np.newaxis,:]
+        frad['solar_irradiance'][:] = sgm_irr
+
+
+    # modify albedo
+    for albedo_band in albedo:
+        albedo_band.values = np.full(shape, ref_scene['albedo'])
+
+    # modify atmosphere
+
+    # load camelot profiles used in ref spec disamar. defined at levels!
+    prof = np.loadtxt(config['io']['mrd_prof'] )
+    plev = prof[:,0]
+    no2_vmr = prof[:,1]
+    o3_vmr = prof[:,2]
+    tlev = prof[:,3]
+
+    # interpolate on ln(vmr) to more levels
+    # otherwise issued with integrating camelot profile due to low vertical resolution
+    
+    plev2 = np.hstack((np.linspace(plev[0],plev[3],200),plev[4:]))
+    f_no2_vmr = interp1d(plev, np.log(no2_vmr))
+    no2_vmr2 = np.exp(f_no2_vmr(plev2))
+
+    f_o3_vmr = interp1d(plev, np.log(o3_vmr))
+    o3_vmr2 = np.exp(f_o3_vmr(plev2))
+
+    f_tlev_vmr = interp1d(plev, np.log(tlev))
+    tlev2 = np.exp(f_tlev_vmr(plev2))
+
+    plev = plev2
+    no2_vmr = no2_vmr2
+    o3_vmr = o3_vmr2
+    tlev = tlev2
+
+    # pressure drop per level [Pa]
+    pdlev = (plev[:-1] - plev[1:])*1e2
+    play  = plev[:-1]-pdlev*1e-2/2
+
+    # temperature drop per level
+    tdlev = tlev[:-1] - tlev[1:]
+    tlay = tlev[:-1]-tdlev/2
+
+    # partial column in [mol/m2] per layer
+    no2_partialcolumn = pdlev * no2_vmr[:-1]*1e-6 / ( constants.g0 * constants.MDRYAIR ) 
+    o3_partialcolumn = pdlev * o3_vmr[:-1]*1e-6 / ( constants.g0 * constants.MDRYAIR ) 
+
+    # convert to [molec/cm^2]
+    no2_partialcolumn *=  constants.NA * 1e-4
+    o3_partialcolumn *=  constants.NA * 1e-4
+
+    # total column
+    no2_total_column_prof =  no2_partialcolumn.sum()
+    o3_total_column_prof =  o3_partialcolumn.sum() / molecm2_to_DU 
+
+    no2_total_column = no2_total_column_prof
+
+    # calculate and apply scaling profile (only O3)
+    # scale_no2 = no2_total_column / no2_partialcolumn.sum()
+    scale_o3 = o3_total_column / o3_total_column_prof
+
+    # no2_vmr *= scale_no2
+    # no2_partialcolumn *= scale_no2
+    o3_vmr *= scale_o3
+    o3_partialcolumn *= scale_o3
+
+    # write new atm
+    nscan, nrow = atm.ppmv_no2.shape[:2]
+
+    atm.plev = np.tile(plev[::-1],(nscan,nrow,1))
+    atm.play = np.tile(play[::-1],(nscan,nrow,1))
+
+    atm.ppmv_no2 = np.tile(no2_vmr[:-1][::-1],(nscan,nrow,1))
+    atm.dcol_no2 = np.tile(no2_partialcolumn[::-1],(nscan,nrow,1))
+    atm.ppmv_o3 = np.tile(o3_vmr[:-1][::-1],(nscan,nrow,1))
+    atm.dcol_o3 = np.tile(o3_partialcolumn[::-1],(nscan,nrow,1))
+
+    atm.col_no2 = np.tile(no2_total_column,(nscan,nrow))
+    atm.col_o3 = np.tile(o3_total_column*molecm2_to_DU,(nscan,nrow))
+
+    atm.tlay = np.tile(tlay[::-1],(nscan,nrow,1))
+
+    return atm
+
 def scene_generation_module_nitro(config):
     """
     Scene generation algorithm for NO2
@@ -1082,6 +1237,12 @@ def scene_generation_module_nitro(config):
     log.info(f"Writing scene radiance to: {config['io']['sgm_rad']}")
 
     sgm_output_radio(config, dis_output)
+
+    if 'mrd_ref_scene' in config:
+        if config['mrd_ref_scene']:
+            log.info(f"Adjusting scene to MRD ref spec")
+            atm = create_mrd_ref_scene(config, atm, albedo)
+            sgm_output_atm(config, atm, albedo, microhh_data, mode = 'convolved')
 
     log.info(f'SGM calculation finished in {np.round(time.time()-start_time,1)} s')
     return

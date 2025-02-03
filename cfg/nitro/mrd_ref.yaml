@@ -1,0 +1,485 @@
+# Combined config file for all steps in E2E analysis.
+# Used to generate reference scenes as defined in MRD for Nitro
+#
+log_level: 'info' # 'info' or 'debug'
+show_progress: True # toggle show progress bars
+header:
+    file_name: 'mrd_ref.yaml'
+    version: '0.000'
+#########################################################
+# General settings.
+# Used by more than one step in the E2E simulator
+#########################################################
+io:
+    base_dir: '../data/no2/mrd_ref/L_ref/'
+## GM IO
+    gm: 'geometry.nc'
+## SGM IO
+    # output of SGM (sgm_rad is input for IM)
+    sgm_rad: 'sgm_radiance.nc'
+    sgm_atm_raw: 'sgm_atmosphere_raw.nc'
+    sgm_atm: 'sgm_atmosphere.nc'
+## IM & L1B IO
+    binning_table: '../data/no2/ckd/binning_table_no2.nc'
+    # output of IM (and input for L1AL1B):
+    l1a: 'l1a.nc'
+    # output of L1AL1B:
+    l1b: 'l1b.nc'
+#####
+    # possibility to have different ckds for IM and L1B
+    # CKD for L1AL1B
+    ckd: '../data/no2/ckd/ckd_nitro.nc'
+    # L1B uses ckd. IM uses ckd_im
+    # Note: in run_E2E.py this is renamed to ckd
+    ckd_im: '../data/no2/ckd/ckd_nitro.nc'
+#####
+    # Define in between output files for IM (Python version)
+    # Base name:
+    im_algo_output: 'im_l1x_{algo_name}.nc'
+    # Define in between output files for L1B (Python version)
+    # Base name:
+    l1b_algo_output: 'l1b_l1x_{algo_name}.nc'
+## L2 IO
+    l2: 'l2.nc'
+#########################################################
+#
+# CKD
+# Configuration file for CKD
+#
+#########################################################
+ckd:  
+    # General paths
+    paths : 
+        'dir_nitro'             : './ckd/ckd_generation/nitro_ckds'
+        'dir_external'          : './ckd/ckd_generation/data_external/'
+        'ckd_nitro'             : '../data/no2/ckd/ckd_nitro.nc' 
+        'im_inputs_tno'         : './ckd/ckd_generation/data_external/TANGO_Nitro_V005_Nominal_Instrument_Model_Inputs_17102024.xlsx'
+    # Dimensions
+    dimensions: 
+        detector_row : 4112 # n_rows
+        detector_column : 3008 # n_cols
+        across_track : 100
+        lbl_samples : 2141 # number of wavelength samples in scene
+        vector       : 3
+        number_of_views         : 1
+        single_double           : 1 
+    # Global attributes
+    attributes: 
+        institution     : 'KNMI Royal Netherlands Meteorological Institute'
+        conventions     : 'CF-1.6'
+        project         : 'TANGO'
+        instrument      : 'Nitro Instrument'
+        product_name    : 'ckd_nitro.nc'
+        version         : '0.0'
+        creator_name    : 'KNMI RDSW L01'
+        creator_url     : 'knmi.nl'
+        publisher_name  : 'KNMI RDSW'
+        publisher_url   : 'knmi.nl'
+        arrcamera       : '3DCM800 Space Camera Head (3D Plus)'
+    # Single value parameters
+    seed: 2025
+    noise_conversion_gain: 0.023    # noise_g, src: carbon ckd
+    gain: 43.91735                  # gain, from carbon radiometry.xls 
+    read_out_noise: 2.5             # e-, src:  nitro model inputs
+    dark_current: 10                # e/s, at 25C
+    prnu: 5                         # in %, src: SNR budget
+    fov: 3.44                       # in degrees, src: SNR budget
+    spectral_resolution: 0.6        # in nm
+    image_extent_act: 9.9           # in mm, across track direction
+    image_extent_spec: 5.77         # in mm, spectral direction
+    detector_pixel_size: 0.00345    # in mm
+    lbl_min_wl: 395                 # nm, line by line spectrum minimum wavelength
+    lbl_max_wl: 502                 # nm, line by line spectrum maximum wavelength
+    det_min_wl: 405                 # nm, detector minimum wavelength
+    det_max_wl: 490                 # nm, detector maximum wavelength
+    rcc: 4222381848451.05           # radiometric calibration constant temporary,
+    etendue: 0.0349                 # mm2 sr
+    n_van_cittert: 2                # number of straylight convolution iterations
+
+    #  Test Cases:
+    test_cases: 
+        no_keystone: True
+#########################################################
+#
+# BIN
+# Configuration file for binning tables
+#
+#########################################################
+#
+bin:
+    binning_table_file_name: "../data/no2/ckd/binning_table_no2_test_final.nc"
+# !!Note: nrows should be same as detector_row in ckd chapter
+# !!Note: ncols should be same as detector_column in ckd chapter
+    nrows: 4112
+    ncols: 3008
+    row_binnings:
+        BF1: 
+            factor: 1
+            requested: null
+        BF2:
+            factor: 2
+            requested: null
+        BF3:
+            factor: 3
+            requested: null
+        BF4:
+            factor: 4
+            requested: null
+        BF5:
+            factor: 5
+            requested: null
+        BF6:
+            factor: 6
+            requested: null
+        BF40:
+            factor: 40 
+            requested: null
+        BF41:
+            factor: 41 
+            requested: 100
+    col_factor: 1
+
+#########################################################
+#
+# GM
+# Configuration file for running the geometry module
+#
+#########################################################
+#
+gm:
+    profile: orbit
+#
+    orbit:
+      epoch: 2022-08-12T12:00:00
+      sat_height: 500.0     # km
+      eccentricity: 0.0
+      arg_perigee: 0.0
+      mean_anomaly: 0.0
+      ltan: 13.823            # decimal hours
+      mean_motion_dot: 0.0
+      drag_coeff: 0.0
+      propagation_duration: 1.67 #hours
+#
+    sensors:
+      sensor_00__00:
+        n_ground_pixels: 100
+        swath_width: 30.0   # km
+        integration_time: 0.04 # seconds
+        start_time: 13.730 # minutes wrt orbit epoch
+        end_time: 13.731   # minutes wrt orbit epoch
+        pitch: 0.0
+        roll: 0.0
+        yaw: 0.0
+#########################################################
+#
+# SGM nitro
+# Configuration file for running the SGM nitro module
+#
+#########################################################
+sgm:
+    io:
+        albedo: '../data/no2/albedo_jaenschwalde.nc'
+        afgl: '../data/no2/prof.AFGL.US.std'
+        cams: '../data/cams/cams_global_forecast_20230523.nc' # hourly, 137 layers
+        microHH_folder: '../data/no2/microHH/Jaenschwalde/'
+        microHH_filesuffix: 'src3_20180523_0930'
+        dem: '../data/no2/dem.nc'
+        tmp_dir: '../data/no2/tmp/'
+        disamar_cfg_template: '../cfg/nitro/disamar_config_sim.in_template'
+        disamar_exe: '../data/no2/disamar/Disamar_old.exe'
+        
+        ## MRD reference spectra: https://zenodo.org/records/10845741/files/TANGO_reference_spectra.xlsx?download=1
+        mrd_ref_spec: ../cfg/nitro/TANGO_reference_spectra.xlsx 
+        mrd_prof: ../cfg/nitro/no2_camelot_polluted.dat
+
+    kernel_parameter:               #parameter to configure the 2D blurring of the scene
+        type:    2D Gaussian        #type of kernel, current version has only one option
+        fwhm_x:  300                #FWHM in ACT direction
+        fwhm_y:  300                #FWHM in flight direction
+        size_factor: 2              #the size of the convolution kernel in units of fwhm
+
+    atm: # atm simulation settings
+        type: afgl                  # cams or afgl atmosphere
+        gases: [no2, o3]            # for now only no2 and o3
+        afgl:
+            nlay: 30                #number of atmospheric layers
+            dzlay: 1000             #geometrical thickness of the layers [m]
+        cams_datetime: 2023-05-23T09:30:00 # only used if microHH: use = False
+        microHH:
+            use: False               # replace lower atm with microHH
+            gases: [no2]
+        use_dem:  False               # correct surface pressure using tropomi dem (3k radius), only for CAMS
+        cloud:                  # HG scattering clouds
+            use: False
+            cloud_fraction: 1.0
+            cloud_optical_thickness: 10.0
+            cloud_bottom_pressure: 900 # hPa
+            cloud_top_pressure: 800 # hPa
+            # define pixels where to put cloud, default is all pixels
+            alt:
+                start: 0
+                stop: 5
+            act:
+                start: 0
+                stop: 50
+
+    rtm:   # disamar (RTM) settings
+        dismas_sim: True
+        dismas_fwhm: 0.05           #nm
+        n_threads: 16
+        wave_start: 395             #nm
+        wave_end:   502             #nm
+        dwave:      0.05            #nm
+        cleanup: True               # rm disamartmp directory when finished
+        o2o2: False                  # add o2-o2 absorption
+        albedo: B01
+
+    sentinel2: # albedo download
+        band_section: [B01,B02]
+        forced: False
+    
+    mrd_ref_scene: L_ref
+        #  MRD reference scene
+        # False       : Do not use
+        # L_ref       : moderately dark scene at high latitudes
+        # L_Tr_bright : bright scene for tropical conditions
+        # L_ML_nom    : nominal case for midlatitude solar geometry
+
+#########################################################
+#
+# IM specific
+# Configuration file for running the Instrument module
+#
+#########################################################
+im:
+    do_python: false
+    proctable:
+        file: '../cfg/nitro/proctable.yaml'
+        algo_list: 'algos_im'
+    instrument: 'nitro'
+    processing_version: 0.000
+    #image_start: 0
+    #image_end: 0
+    detector:
+        binning_table_id: 1         # across track binning
+        exposure_time:    0.021     # exposure time [sec]
+        nr_coadditions:   1         # along track co-adding
+#########################################################
+#
+# L1AL1B specific
+# Configuration file for running the L1AL1B module
+#
+#########################################################
+l1al1b:
+    do_python: false
+    proctable:
+        file: '../cfg/nitro/proctable.yaml'
+#        algo_list: 'algos_l1b'
+        algo_list: 'algos_l1b'
+    instrument: 'nitro'
+    processing_version: 0.000
+    # image_start: 0
+    # image_end: 0
+#############################
+#########################################################
+#
+# L1L2 nitro
+# Configuration file for running the L1L2 nitro module
+#
+#########################################################
+l1l2:
+    # start and stop pixels along-track and across-track
+    # alt:
+    #     start: 0
+    #     stop: 16
+    # act:
+    #     start: 0
+    #     stop: 16
+
+    run_doas: yes
+    run_clouds: yes
+    run_amf: yes
+
+    threads: 6 # multi-threading for DOAS, on KNMI workstation optimum around 6 threads
+
+    rad_from_sgm: no
+    irr_from_sgm: yes
+    convolve_rad: ISRF # Convolve SGM radiance: 'no', 'Gaussian' or 'ISRF'
+    convolve_irr: ISRF # Convolve SGM irradiance: 'no', 'Gaussian' or 'ISRF'
+    gaussian_fwhm: 0.6 # [nm], only used if convolve_rad/convolve_irr = 'Gaussian'
+    isrf_file: './ckd/ckd_generation/data_external/Nominal_ISRF_dataset_17102024.xlsx'
+        
+    export_spectra: no
+    debug:
+        plot: no
+        log: no
+
+    retrieve:
+        no2: yes
+        o2o2: yes
+
+    no2:
+        # The window for the DOAS fit.
+        fit_window: [405.0, 465.0]
+
+        #The number of coefficients of the DOAS polynomial (which is the degree of the polynomial + 1)# minimum is 3, maximum is 10.
+        polynomial_coefs: 6
+
+        #List of the trace gases to use, separated by spaces, e.g.: NO2  O3  O2O2  H2Ovap  H2Oliq
+        # Do NOT include 'Ring' here!
+        # Use 'None' for zero trace gases, i.e. fit only a polynomial.
+        trace_gas_list: [O2O2, NO2, O3]
+
+        # Specify whether and if so how to fit the Ring spectrum:
+        #    No  = do not apply Ring correction
+        #    Iring = use the non-linear Ring correction approach,
+        #            based on the Ring radiance spectrun Iring
+        #    sigma = use the linear Ring correction approach,
+        #            based on the differential Ring spectrum
+        ring_fit_term: No
+
+        # Number of intensity offset correction coefficients:
+        #    0 = no intensity offset correction
+        #    1 = a constant   offset correction : Aoff
+        #    2 = a linear     offset correction : Aoff + Boff*lambda
+        # Note that fitting an intensity offset makes no sense if all
+        # else there is to fit is a polynomial.
+        # scaling factor Soff:  scaling factor to absorb the unit of IO(w)
+        intensity_coefs: 0
+        intensity_scaling_factor: 1.0
+
+        # Maximum number of iterations to use in the DOAS fit
+        max_iterations: 8
+
+        # Spike removal: off/on
+        spike_removal: off
+
+        #Max number of outliers that iis accepted
+        max_outliers: 10
+
+        # convergence threshold for OE
+        convergence_threshold: 1.0
+
+        # ---- Reference Spectra ----
+        # ref spec convolved with ISRF
+        ref_spectra: ../data/no2/refspec_isrf.nc
+
+        # ---- Wavelength calibration ----
+
+        # Wavelength calibation for solar and earth spectra (off/on)
+        wlcal_solar: yes
+        wlcal_earth: yes
+
+        # Include wavelength stretch in wavelength calibration(off/on)
+        wlcal_solar_stretch: off
+        wlcal_earth_stretch: off
+
+        # window to use for the calibration, but use the full
+        #                   fit window if wlcal_[solar/earth]_stretch = 1
+        wlcal_window: [405.0, 465.0]
+
+        # prior values for OE: [value, error]
+        prior:
+            doas: # P is polynomial, C is intensity offset
+                P0: [1.0, 1.0]
+                P1: [0.015625, 0.015625]
+                P2: [0.015625, 0.015625]
+                P3: [0.015625, 0.015625]
+                P4: [0.015625, 0.015625]
+                P5: [0.015625, 0.015625]
+                C0: [1.0, 1.0]
+                C1: [0.125, 0.125]
+                C2: [0.015625, 0.015625]
+                C3: [0.015625, 0.015625]
+                Cring: [0.06, 0.2]
+                Dring: [0.06, 0.2]
+                NO2: [1.2e-5, 1.0e-2]
+                O2O2: [8.0e+5, 2.0e+6]
+                O3: [3.6e-1, 5.0]
+                H20vap: [1.5e+3, 1.0e+4]
+                H20liq: [0.0, 20.0]
+
+            wvl_cal: # ws = shift, wq = stretch/squeeze, error: 1/3th of spacing of nominal grid: sigma=dlambda/3
+                ws: [0.0, 0.07]
+                wq: [0.0, 0.07]
+                P0: [1.0, 1.0]
+                P1: [0.1, 0.1]
+                P2: [0.01, 0.01]
+                Cring: [0.06, 0.06]
+                Dring: [0.06, 0.06]
+
+    o2o2:
+        fit_window: [460.0, 490.0]
+        polynomial_coefs: 3
+        trace_gas_list: [O2O2, NO2, O3]
+        ring_fit_term: No
+        intensity_coefs: 0
+        intensity_scaling_factor: 1.0
+        max_iterations: 8
+        spike_removal: off
+        max_outliers: 10
+        convergence_threshold: 1.0
+        ref_spectra: ../data/no2/refspec_isrf.nc
+        wlcal_solar: off
+        wlcal_earth: off
+        wlcal_solar_stretch: off
+        wlcal_earth_stretch: off
+        wlcal_window: [460.0, 490.0]
+        prior:
+            doas:
+                P0: [1.0, 1.0]
+                P1: [0.125, 0.125]
+                P2: [0.015625, 0.015625]
+                P3: [0.015625, 0.015625]
+                P4: [0.015625, 0.015625]
+                P5: [0.015625, 0.015625]
+                Cring: [0.06, 0.2]
+                NO2: [1.8e-4, 1.0e-2]
+                O2O2: [8.0e+5, 2.0e+6]
+                O3: [3.6e-1, 5.0]
+                H20vap: [1.5e+3, 1.0e+4]
+                H20liq: [0.0, 20.0]
+            wvl_cal:
+                ws: [0.0, 0.07]
+                wq: [0.0, 0.07]
+                P0: [1.0, 1.0]
+                P1: [0.1, 0.1]
+                P2: [0.01, 0.01]
+                Cring: [0.06, 0.06]
+                Dring: [0.06, 0.06]
+
+    LUT_NN_file: ../data/no2/LUT_NN_combined_20240429.nc # file containing a neural network of the NO2 look-up tables
+
+########################################################
+#
+# PAM nitro
+# Configuration file for running the perfomance assesment module
+#
+#########################################################
+pam:
+    scene: Jaenschwalde
+    gm:
+        run: no
+    sgm:
+        run: no
+        ialt_iact: [[50,50], [100,3], [105,79], [0,1]]
+        wvl: 440 #nm
+    im:
+        run: no
+        ialt: 0
+    l1b:
+        run: no
+        isrf_fwhm: 0.6 # nm. FWHM of Gaaussian to convolve SGM specra
+        ialt: 0 # which spectrum to plot
+        iact: 0
+    l2:
+        run: yes
+        plot_list: { # usage: '{title}' : {'f1':<file 1>, 'f2':<file 2>,'f1_var':<var name in file 1>, 'f2_var':<var name in file 2>}
+                'NO2 vertical column': {'f1':'sgm_atm', 'f2':'l2', 'f1_name':'SGM', 'f2_name':'L2', 'f1_var':'col_no2', 'f2_var':'no2_total_vcd' },
+                # 'NO2 vertical column': {'f1':'sgm_atm', 'f2':'l2', 'f1_name':'SGM', 'f2_name':'L2', 'f1_var':'col_no2', 'f2_var':'no2_total_vcd', 'requirement':True },
+                # 'Cloud optical thickness': {'f1':'sgm_atm', 'f2':'l2', 'f1_name':'SGM', 'f2_name':'L2', 'f1_var':'cloud_optical_thickness', 'f2_var':'cloud_optical_thickness'},
+                # 'Cloud top pressure': {'f1':'sgm_atm', 'f2':'l2', 'f1_name':'SGM', 'f2_name':'L2', 'f1_var':'cloud_top_pressure', 'f2_var':'cloud_top_pressure'},
+        }
+    save: yes
+    create_pdf: no
+    font_size: 14

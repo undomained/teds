@@ -1,5 +1,5 @@
 numpy==1.26.4
-netCDF4
+netCDF4==1.6.5
 PyYAML
 tqdm
 scipy
@@ -25,3 +25,5 @@ sphinx==7.3.7
 piccolo_theme==0.22.0
 pytest==8.3
 coverage==7.6.1
+matplotlib
+openpyxl

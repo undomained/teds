@@ -42,9 +42,11 @@ void Binning::binWavelength(L1& l1, BinningTable const& binning) {
         }
     }
 
+// todo THIS ONLY works in case there is no binning in col direction. Needs to be fixed.
     for (size_t i_col {}; i_col < n_detector_cols; ++i_col) {
-        for (int i_bin {}; i_bin < static_cast<int>((*wavelength_binned).size()); ++i_bin) {
-            (*wavelength_binned)[i_bin][i_col] /= binning.binSize(i_bin);
+        for (int i_row {}; i_row < static_cast<int>((*wavelength_binned).size()); ++i_row) {
+            int idx = i_row*n_detector_cols + i_col;
+            (*wavelength_binned)[i_row][i_col] /= binning.binSize(idx);
         }
     }
 

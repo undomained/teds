@@ -1893,7 +1893,7 @@ def SplineInterp1D(x,y,xnew):
 
     return ynew
 
-def initOutput(l2_file, results, geo):
+def initOutput(l2_file, results, geo, slice_alt=slice(0,None), slice_act=slice(0,None)):
     # initialise output
 
     with nc.Dataset(l2_file, 'w', format='NETCDF4') as dst:
@@ -1905,12 +1905,12 @@ def initOutput(l2_file, results, geo):
         alt_dim = dst.createDimension('scanline', results['errorFlag'].shape[0])
         act_dim = dst.createDimension('ground_pixel', results['errorFlag'].shape[1])
 
-        _ = writevariablefromname(dst, 'latitude', ('scanline','ground_pixel'), geo['lat'])
-        _ = writevariablefromname(dst, 'longitude', ('scanline','ground_pixel'), geo['lon'])
-        _ = writevariablefromname(dst, 'solarzenithangle', ('scanline','ground_pixel'), geo['sza'])
-        _ = writevariablefromname(dst, 'viewingzenithangle', ('scanline','ground_pixel'), geo['vza'])
-        _ = writevariablefromname(dst, 'solarazimuthangle', ('scanline','ground_pixel'), geo['saa'])
-        _ = writevariablefromname(dst, 'viewingazimuthangle', ('scanline','ground_pixel'), geo['vaa'])
+        _ = writevariablefromname(dst, 'latitude', ('scanline','ground_pixel'), geo['lat'][slice_alt, slice_act])
+        _ = writevariablefromname(dst, 'longitude', ('scanline','ground_pixel'), geo['lon'][slice_alt, slice_act])
+        _ = writevariablefromname(dst, 'solarzenithangle', ('scanline','ground_pixel'), geo['sza'][slice_alt, slice_act])
+        _ = writevariablefromname(dst, 'viewingzenithangle', ('scanline','ground_pixel'), geo['vza'][slice_alt, slice_act])
+        _ = writevariablefromname(dst, 'solarazimuthangle', ('scanline','ground_pixel'), geo['saa'][slice_alt, slice_act])
+        _ = writevariablefromname(dst, 'viewingazimuthangle', ('scanline','ground_pixel'), geo['vaa'][slice_alt, slice_act])
 
         newgroup = dst.createGroup('doas')
 
@@ -2206,10 +2206,19 @@ def ifdoe_run(config, mode='no2'):
 
     # read geometry
 
+    takeFromL1B = False
+    with nc.Dataset(cfg['io']['l1b']) as f:
+        print(f"keys of f: {f.groups.keys()}")
+        if 'geolocation_data' in f.groups.keys():
+            takeFromL1B = True
+
     if 'act' in cfg: # L1B geometry not working correctly when using act subset
         geo = readGeometryGm(cfg['io']['gm'])
     else:
-        geo = readGeometryL1b(cfg['io']['l1b'])
+        if takeFromL1B:
+            geo = readGeometryL1b(cfg['io']['l1b'])
+        else:
+            geo = readGeometryGm(cfg['io']['gm'])
 
     # B)  Solar spectrum
     # ------------------
@@ -2701,7 +2710,13 @@ def ifdoe_run(config, mode='no2'):
 
     # H)  Finishing up
     if not os.path.isfile(cfg['io']['l2']):
-        initOutput(cfg['io']['l2'], results, geo)
+        slice_alt=slice(0,None) 
+        slice_act=slice(0,None)
+        if geo['lat'].shape[0] != scanN:
+            slice_alt = slice(scanBeg, scanEnd)
+        if geo['lat'].shape[1] != pxlN:
+            slice_alt = slice(pxlBeg, pxlEnd)
+        initOutput(cfg['io']['l2'], results, geo, slice_alt, slice_act)
 
     # write results to output file
     writeOutput(cfg['io']['l2'], cfg, parameterNames, results)

@@ -69,5 +69,11 @@ def level2_to_level4_processor(config: dict) -> dict:
     l4_tools.create_grouped_dataset(l4_filename, l4_product)
 
     log.info('=> Level 2 to Level 4 processing finished successfully')
-
+    print('*************************************************')
+    print('L4 approach: ' + method )
+    print(f"true emission:                   {l4_product[method]['XCO2 proxy'][0]:.3f} kg/s")
+    print(f"estimated emission:              {l4_product[method]['XCO2 proxy'][1]:.3f} kg/s")
+    print(f"precision of estimated emission: {l4_product[method]['XCO2 proxy'][2]:.3f} kg/s")
+    print('*************************************************')
+    
     return l4_product

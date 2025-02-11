@@ -3,9 +3,6 @@ profile: individual_spectra
 atmosphere:
     nlay: 30                    #number of atmospheric layers
     dzlay: 1000                 #geometrical thickness of the layers [m]
-
-scene_spec:
-  albedo: [0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15] 
             
 scale_gas:                  #only relevant for AFGL profiles 
     xco2: 410.              #ppm

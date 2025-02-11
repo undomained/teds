@@ -1,0 +1,22 @@
+profile: orbit
+
+atmosphere:
+    nlay: 30                    #number of atmospheric layers
+    dzlay: 1000                 #geometrical thickness of the layers [m]
+        
+afgl:                           #configure use of AFGL background
+    afgl_only: False            #true means homogenous AFGL background only
+    gases: ["co2", "h2o", "ch4"]
+            
+scale_gas:                  #only relevant for AFGL profiles 
+    xco2: 410.              #ppm
+    xch4: 1800.             #ppb
+    xh2o: 10000.            #ppm
+
+sentinel2:
+    band_label: ['B02', 'B03', 'B11']   # use e.g. https://en.wikipedia.org/wiki/Sentinel-2 for band defintion
+
+io_files:
+    input_gm: '/home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/gm/Tango_Carbon_gm_exp1.0.nc'
+    input_afgl: '/home/jochen/TANGO_E2ES/EndtoEndProject/data/AFGL/prof.AFGL.US.std'
+    output_geo: '/home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/sgm/Tango_Carbon_sgm_atmosphere_exp1.0.nc'

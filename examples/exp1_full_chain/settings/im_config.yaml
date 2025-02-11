@@ -1,32 +1,37 @@
 #cal_level: raw  # to switch off ACD
 
-#image_start: 0
-#image_end: 70
+swath:
+  exact_drawing:  True
 
 detector:
-  binning_table_id: 1
-  exposure_time: 0.0460833
+#  exposure_time: 0.0045    #FMC 1
+#  exposure_time: 0.013     #FMC 2
+#  exposure_time: 0.0215    #FNC 3
+#  exposure_time: 0.030     #FMC 4
+  exposure_time: 0.0385    #FMC 5
+  binning_table_id: 5
   nr_coadditions: 3
 
 isrf:
   # enabled: no
   fwhm_gauss: 0.45
 
-# dark:
-#   enabled: no
+dark:
+  enabled: no
 
 noise:
   enabled: yes
   seed: 10
 
-# prnu:
-#   enabled: no
+prnu:
+  enabled: no
 
-# stray:
-#   enabled: no
+stray:
+  enabled: no
 
 io:
-  ckd: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/ckd/ckd_Raul_20241111.nc
+  ckd: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/ckd/ckd_ACT100_20250126.nc 
   binning_table: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/ckd/binning_table.nc
   sgm: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/sgm/Tango_Carbon_sgm_radiance_exp1.0.nc
   l1a: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/level1a/Tango_Carbon_l1a_exp1.0.nc
+  geometry: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/gm/Tango_Carbon_gm_exp1.0.nc

@@ -10,27 +10,7 @@ retrieval_init:                 #initialization parameter for inversion
     prior_XCO2: 0.0003          #prior CO2 concentration
     prior_XCH4: 0.0000017       #prior CH4 concentration
     prior_XH2O: 0.001           #prior H2O concentration
-    no_clobber: False           #if True, don't overwrite existing output files
-    fit_spectral_shift: False   #fit a constant spectral shift per pixel
     diag_output: True           #output diagnostic information
-
-# Note on special options:
-
-# Convergence criteria. A batch is considered converged if:
-# (
-#   prev_χ2-cur_χ2 < deltaplus for all pixels AND
-#   prev_χ2-cur_χ2 > deltaminus for all pixels AND
-#   1-epsilon < cur_χ2/prev_χ2 < 1+epsilon
-#       for all pixels AND
-#   1-mean_epsilon < ⟨cur_χ2/prev_χ2⟩ < 1+mean_epsilon
-# ) OR cur_χ2 < chi2 for all pixels
-# If this block is omitted, chi2_lim from the retrieval_init block is used.
-convergence_criteria:
-    deltaplus: 0.05
-    deltaminus: -0.05
-    epsilon: 100000000
-    mean_epsilon: 100000000
-    chi2: 0.01
 
 atmosphere:
     nlay: 30                    #number of atmospheric layers
@@ -71,22 +51,3 @@ io_files:
     output_l2_diag: '/home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/level2/Tango_Carbon_l2_diag_exp1.0.nc'
     dump_xsec: '/home/jochen/TANGO_E2ES/EndtoEndProject/data/tmp/Tango_Carbon_xsec_exp1.0_l2.pkl'
 
-# Expert settings for debugging and performance tuning.
-expert_settings:
-    # deallocate_chunk
-    # Aggressively deallocate memory after each ACT chunk.
-    # This has an extreme performance impact (a factor of 3 is typical)
-    # and should not be used unless absolutely necessary.
-    deallocate_chunk: False
-
-    # use_float64
-    # Use 64-bit floating point instead of the default 32.
-    # This is usually not necessary, and tends to impact performance
-    # by a factor of 2 or more. Only set to True for debugging.
-    use_float64: False
-
-    # force_cpu
-    # Force running on the CPU even if a GPU is available.
-    # End users should set this to False except when using a system with
-    # insufficient GPU memory.
-    force_cpu: False

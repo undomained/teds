@@ -1,0 +1,26 @@
+# Input for Tango L1B code
+
+processing_version: 1.0
+
+# cal_level: rad
+
+# dark:
+#   enabled: no
+
+# prnu:
+#   enabled: no
+
+stray:
+  van_cittert_steps: 0
+
+swath:
+  exact_drawing: False # default False
+
+bin_spectra: 5
+
+io:
+  ckd: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/ckd/ckd_ACT500_20250126.nc
+  binning_table: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/ckd/binning_table.nc
+  l1b: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/level1b/Tango_Carbon_l1b_exp7.1.nc
+  l1a: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/level1a/Tango_Carbon_l1a_exp7.1.nc
+  geometry: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/gm/Tango_Carbon_gm_exp7.1.nc

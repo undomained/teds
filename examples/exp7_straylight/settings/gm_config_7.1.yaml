@@ -1,0 +1,5 @@
+io_files:
+  geometry: '/home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/gm/Tango_Carbon_gm_exp7.1.nc'
+  ckd: '/home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/ckd/ckd_ACT500_20250126.nc'
+
+profile: 'individual_spectra'

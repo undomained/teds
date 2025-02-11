@@ -1,0 +1,10 @@
+#use_python_geolocation: yes  #default no, python version is simplified version of the C++ function.
+
+io_files:
+  ckd: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/ckd/ckd_ACT500_20250126.nc
+  dem: /home/jochen/TANGO_E2ES/EndtoEndProject/data/dem/gebco_ocssw_v2020_uncompressed.nc
+  geometry: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/gm/Tango_Carbon_gm_exp7.0.nc
+  navigation: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/gm/Tango_Carbon_navigation_exp7.0.nc
+
+profile: 'orbit'
+

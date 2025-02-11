@@ -1,0 +1,27 @@
+Matimba:
+    input_s2: '/home/jochen/TANGO_E2ES/EndtoEndProject/data/Sentinel2/s2_Matimba.nc'
+    meteo:                          #configure use of microHH plume simulation
+        path_data: "/home/jochen/TANGO_E2ES/EndtoEndProject/data//microHH/Matimba/"
+        filesuffix: "src2_20200724_1000"  # sourcename_yyyymmdd_hhmm
+        gases: ["co2",]
+
+Jaenschwalde:
+    input_s2: '/home/jochen/TANGO_E2ES/EndtoEndProject/data/Sentinel2/s2_Jaenschwalde.nc'
+    meteo:                          #configure use of microHH plume simulation
+        path_data: "/home/jochen/TANGO_E2ES/EndtoEndProject/data/microHH/Jaenschwalde/"
+        filesuffix: "src3_20180523_1100"  # sourcename_yyyymmdd_hhmm
+        gases: ["co2", "no2", "no"]
+
+Belchatow:
+    input_s2: '/home/jochen/TANGO_E2ES/EndtoEndProject/data/Sentinel2/s2_Belchatow.nc'
+    meteo:                          #configure use of microHH plume simulation
+        path_data: "/home/jochen/TANGO_E2ES/EndtoEndProject/data/microHH/Belchatow/"
+        filesuffix: "src3_20180606_1100"  # sourcename_yyyymmdd_hhmm
+        gases: ["co2", "no2", "no"]
+
+Lipetsk:
+    input_s2: '/home/jochen/TANGO_E2ES/EndtoEndProject/data/Sentinel2/s2_Lipetsk.nc'
+    meteo:                          #configure use of microHH plume simulation
+        path_data: "/home/jochen/TANGO_E2ES/EndtoEndProject/data/microHH/Lipetsk/"
+        filesuffix: "src2_20190613_1000" # sourcename_yyyymmdd_hhmm
+        gases: ["co2", "no2", "no"]

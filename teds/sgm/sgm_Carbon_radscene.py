@@ -14,6 +14,7 @@ from ..lib import libNumTools, libRT, libSURF, libATM
 from ..lib.libWrite import writevariablefromname
 from ..lib.libNumTools import TransformCoords, convert
 from scipy.interpolate import RegularGridInterpolator,griddata
+from teds.lib.io import print_heading
 
 class Emptyclass:
     """Empty class. Data container."""
@@ -87,13 +88,15 @@ def radsgm_output(filename_rad, rad_output, gm_data):
     var.valid_max = 180.0
     var[:] = gm_data.lon
 
+    nc.close()
     return
 
-def sgm_output_atm_ref(filename, atm, albedo, gm_data, gases):
+def sgm_output_atm_ref(filename, atm, albedo, gm_data, gases, act_binning):
 
     #define dimensions
 
     dim_alt,dim_act, dim_lay = atm.zlay.shape
+    dim_act_binned = np.int16(dim_act/act_binning)
     dim_lev = atm.zlev.shape[2]
 
     output_atm = Dataset(filename, mode='w')
@@ -101,7 +104,8 @@ def sgm_output_atm_ref(filename, atm, albedo, gm_data, gases):
 #    output_atm.createDimension('along_gm_org.__getattribute__(gm_para)track', dim_alt)      # along track axis
     output_atm.createDimension('along_track_sample', dim_alt)      # along track axis
     output_atm.createDimension('across_track_sample', dim_act)     # across track axis
-    output_atm.createDimension('number_layers', dim_lay)         # layer axis
+    output_atm.createDimension('across_track_sample_binned', dim_act_binned)     # across track axis
+    output_atm.createDimension('number_layers', dim_lay)              # layer axis
     output_atm.createDimension('number_levels', dim_lev)         # level axis
     _dims = ('along_track_sample', 'across_track_sample', 'number_layers')
     # central layer height
@@ -116,36 +120,76 @@ def sgm_output_atm_ref(filename, atm, albedo, gm_data, gases):
     _dims = ('along_track_sample', 'across_track_sample', 'number_levels')
     _ = writevariablefromname(output_atm, 'levelheight', _dims, atm.zlev)
 
-    xco2 = np.sum(atm.CO2,axis=2)/atm.air*1.e6  #[ppm]
-    xch4 = np.sum(atm.CH4,axis=2)/atm.air*1.e9  #[ppb]
-    xh2o = np.sum(atm.H2O,axis=2)/atm.air*1.e6  #[ppm]
-
-    _dims = ('along_track_sample', 'across_track_sample')
-    # albedo
-    _ = writevariablefromname(output_atm, 'albedo', _dims, albedo)
-    # column_co2
-    _ = writevariablefromname(output_atm, 'XCO2', _dims, xco2)
-    # column_ch4
-    _ = writevariablefromname(output_atm, 'XCH4', _dims, xch4)
-    # column_h2o
-    _ = writevariablefromname(output_atm, 'XH2O', _dims, xh2o)
-    # column_air
-    _ = writevariablefromname(output_atm, 'column_air', _dims, atm.air)
-
     # Add coordinates to SGM atmosphere
-    var = output_atm.createVariable('latitude', 'f8', _dims)
-    var.long_name = 'latitudes'
+    _dims = ('along_track_sample', 'across_track_sample')
+    var = output_atm.createVariable('latitude unbinned', 'f8', _dims)
+    var.long_name = 'latitudes unbinned'
     var.units = 'degrees'
     var.valid_min = -90.0
     var.valid_max = 90.0
     var[:] = gm_data.lat
 
-    var = output_atm.createVariable('longitude', 'f8', _dims)
-    var.long_name = 'longitudes'
+    var = output_atm.createVariable('longitude unbinned', 'f8', _dims)
+    var.long_name = 'longitudes unbinned'
     var.units = 'degrees'
     var.valid_min = -180.0
     var.valid_max = 180.0
     var[:] = gm_data.lon
+
+    # next, we generate xco2, xch4, xh20, alebdo, and lon/lat data for ACT-binned pixels
+    
+    xco2 = np.sum(atm.CO2,axis=2)/atm.air*1.e6  #[ppm]
+    xch4 = np.sum(atm.CH4,axis=2)/atm.air*1.e9  #[ppb]
+    xh2o = np.sum(atm.H2O,axis=2)/atm.air*1.e6  #[ppm]
+
+    albedo_binned = np.zeros([dim_alt, dim_act_binned])
+    xco2_binned   = np.zeros([dim_alt, dim_act_binned])
+    xch4_binned   = np.zeros([dim_alt, dim_act_binned])
+    xh2o_binned   = np.zeros([dim_alt, dim_act_binned])
+    air_binned    = np.zeros([dim_alt, dim_act_binned])
+    lat_binned    = np.zeros([dim_alt, dim_act_binned])
+    lon_binned    = np.zeros([dim_alt, dim_act_binned])
+
+    for iactb in range(dim_act_binned):
+        albedo_binned[:,iactb] = np.mean(albedo[:,act_binning*iactb:act_binning*(iactb+1)],axis=1)
+        xco2_binned[:,iactb]   = np.mean(xco2[:,act_binning*iactb:act_binning*(iactb+1)],axis=1)
+        xch4_binned[:,iactb]   = np.mean(xch4[:,act_binning*iactb:act_binning*(iactb+1)],axis=1)
+        xh2o_binned[:,iactb]   = np.mean(xh2o[:,act_binning*iactb:act_binning*(iactb+1)],axis=1)
+        air_binned[:,iactb]    = np.mean(atm.air[:,act_binning*iactb:act_binning*(iactb+1)],axis=1)
+        lat_binned[:,iactb]    = np.mean(gm_data.lat[:,act_binning*iactb:act_binning*(iactb+1)],axis=1)
+        lon_binned[:,iactb]    = np.mean(gm_data.lon[:,act_binning*iactb:act_binning*(iactb+1)],axis=1)
+
+    _dims_binned = ('along_track_sample', 'across_track_sample_binned')
+    # albedo
+    _ = writevariablefromname(output_atm, 'albedo', _dims_binned, albedo_binned)
+
+    # column_co2
+    _ = writevariablefromname(output_atm, 'XCO2', _dims_binned, xco2_binned)
+
+    # column_ch4
+    _ = writevariablefromname(output_atm, 'XCH4', _dims_binned, xch4_binned)
+
+    # column_h2o
+    _ = writevariablefromname(output_atm, 'XH2O', _dims_binned, xh2o_binned)
+
+    # column_air
+    _ = writevariablefromname(output_atm, 'column_air', _dims_binned, air_binned)
+
+    # Add binned coordinates to SGM atmosphere
+    var = output_atm.createVariable('latitudes', 'f8', _dims_binned)
+    var.long_name = 'latitudes'
+    var.units = 'degrees'
+    var.valid_min = -90.0
+    var.valid_max = 90.0
+    var[:] = lat_binned
+
+    var = output_atm.createVariable('longitudes', 'f8', _dims_binned)
+    var.long_name = 'longitudes'
+    var.units = 'degrees'
+    var.valid_min = -180.0
+    var.valid_max = 180.0
+    var[:] = lon_binned
+
     output_atm.close()
 
 
@@ -237,12 +281,14 @@ def Carbon_radiation_scene_generation(config: dict) -> None:
 
     #prepare the input data to calculate the radiation scene
 
+
+
     if(runset[0]==0):
 
         # This option takes the gm data from gm_org and convolves the atmospheric
         # and albedo data with the SEDF. It provide one atmosphere for each observation grid point
         # It has the advantage to have a well-defined reference scene for each observation.
-        # Its disaadvantage is that it cannot be used to study sub-pixel effects
+        # Its disadvantage is that it cannot be used to study sub-pixel effects
 
         gm_data = gm_org
         #convolution with instrument spatial response
@@ -250,7 +296,15 @@ def Carbon_radiation_scene_generation(config: dict) -> None:
         #interpolate convolved data to gm grid
         albedo, atm = libNumTools.interpolate_data_regular(atm_conv, gm_data, config["selected_gases"])
         #store sgm data that are used for RT simulations
-        sgm_output_atm_ref(config['io_files']['output_geo_ref'], atm, albedo, gm_data, config["selected_gases"])
+
+        sgm_output_atm_ref(
+            config['io_files']['output_geo_ref'], 
+            atm, 
+            albedo, 
+            gm_data, 
+            config["selected_gases"],
+            config["binning_act"], 
+            )         
 
     if(runset[0]==1):
 
@@ -283,7 +337,12 @@ def Carbon_radiation_scene_generation(config: dict) -> None:
         #The orginal gm data for SZA, SAA. VZA, VAA are extrapolated to the atmospheric mesh
         gm_data = gm_org
         #store sgm data that are used for RT simulations
-        sgm_output_atm_ref(config['io_files']['output_geo_ref'], atm, albedo, gm_data, config["selected_gases"])
+        sgm_output_atm_ref(config['io_files']['output_geo_ref'], 
+                           atm, 
+                           albedo, 
+                           gm_data, 
+                           config["selected_gases"], 
+                           config["binning_act"],)
 
         #fig, (ax0, ax1) = plt.subplots(2, 1)
         #im1 = ax0.pcolormesh(gm_org.ypos,gm_org.xpos,gm_org.vza)
@@ -415,7 +474,8 @@ def Carbon_radiation_scene_generation(config: dict) -> None:
     # sgm output to radiometric file
     radsgm_output(config['io_files']['output_rad'], rad_output, gm_data)
 
-    print('=>Carbon radsgm calculation finished successfully')
+    print_heading('Success')
+
     return
 
 if __name__ == '__main__':

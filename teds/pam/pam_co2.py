@@ -1,5 +1,6 @@
 # This source code is licensed under the 3-clause BSD license found in
 # the LICENSE file in the root directory of this project.
+import sys
 import cartopy.crs as ccrs
 import matplotlib.pyplot as plt
 import matplotlib
@@ -119,8 +120,8 @@ def pam_gm_Tango_Carbon(filen: str,
         gls.top_labels = False   # suppress top labels
         gls.right_labels = False  # suppress right labels
 
-        plt.plot(gm_data['lon'][:],
-                 gm_data['lat'][:],
+        plt.plot(gm_data['longitude'][:],
+                 gm_data['latitude'][:],
                  c='red',
                  marker='o',
                  alpha=0.8,
@@ -166,9 +167,9 @@ def pam_gm_Tango_Carbon(filen: str,
 
         ax = axs[0, 0]
         ax, cbar = geo_panel(ax,
-                             gm_data['lon'],
-                             gm_data['lat'],
-                             gm_data['sza'],
+                             gm_data['longitude'],
+                             gm_data['latitude'],
+                             gm_data['solar_zenith'],
                              lon_lat_bbox,
                              'Solar Zenith Angle',
                              True,
@@ -176,9 +177,9 @@ def pam_gm_Tango_Carbon(filen: str,
 
         ax = axs[0, 1]
         ax, cbar = geo_panel(ax,
-                             gm_data['lon'],
-                             gm_data['lat'],
-                             gm_data['vza'],
+                             gm_data['longitude'],
+                             gm_data['latitude'],
+                             gm_data['sensor_zenith'],
                              lon_lat_bbox,
                              'Viewing Zenith Angle',
                              True,
@@ -186,9 +187,9 @@ def pam_gm_Tango_Carbon(filen: str,
 
         ax = axs[1, 0]
         ax, cbar = geo_panel(ax,
-                             gm_data['lon'],
-                             gm_data['lat'],
-                             gm_data['saa'],
+                             gm_data['longitude'],
+                             gm_data['latitude'],
+                             gm_data['solar_azimuth'],
                              lon_lat_bbox,
                              'Solar Azimuth Angle',
                              True,
@@ -197,9 +198,9 @@ def pam_gm_Tango_Carbon(filen: str,
 
         ax = axs[1, 1]
         ax, cbar = geo_panel(ax,
-                             gm_data['lon'],
-                             gm_data['lat'],
-                             gm_data['vaa'],
+                             gm_data['longitude'],
+                             gm_data['latitude'],
+                             gm_data['sensor_azimuth'],
                              lon_lat_bbox,
                              'Viewing Azimuth Angle',
                              True,
@@ -209,7 +210,10 @@ def pam_gm_Tango_Carbon(filen: str,
     plt.show()
 
 
-def pam_sgm_gps(filen: str, station_name: str, plt_options: str) -> None:
+def pam_sgm_gps(filen: str, 
+                station_name: str, 
+                plt_options: str) -> None:
+    
     """ simple plotting routine to visualize sgm-gps output
         input:  filen
                 station_name ('Jaenschwalde', Belchotow, Lipetsk, Matimba)
@@ -241,8 +245,8 @@ def pam_sgm_gps(filen: str, station_name: str, plt_options: str) -> None:
         fig.suptitle(station_name, fontsize=16)
 
         ax, cbar = geo_panel(ax,
-                             sgmgps_data['lon'],
-                             sgmgps_data['lat'],
+                             sgmgps_data['longitude'],
+                             sgmgps_data['latitude'],
                              sgmgps_data[plt_options],
                              lon_lat_bbox,
                              plt_options,
@@ -266,8 +270,8 @@ def pam_sgm_gps(filen: str, station_name: str, plt_options: str) -> None:
         cbar_title = plt_options + ' [' + sgmgps_data[plt_options].units + ']'
         panel_title = sgmgps_data[plt_options].long_name
         ax, cbar = geo_panel(ax,
-                             sgmgps_data['lon'],
-                             sgmgps_data['lat'],
+                             sgmgps_data['longitude'],
+                             sgmgps_data['latitude'],
                              sgmgps_data[plt_options],
                              lon_lat_bbox,
                              panel_title,
@@ -280,11 +284,12 @@ def pam_sgm_rad(filen: str,
                 station_name: str,
                 wavel: float,
                 ialt_iact: list[float]) -> None:
-    """ simple plotting routine to visualize sgm-gps output
-        input:  filen
-                station_name ('Jaenschwalde', Belchotow, Lipetsk, Matimba)
-                plt_options ('rad_map', 'rad_spec')
-                wavel   single wavelength for radiation scene map
+    """ 
+    simple plotting routine to visualize sgm-gps output
+    input:  filen
+            station_name ('Jaenschwalde', Belchotow, Lipetsk, Matimba)
+            plt_options ('rad_map', 'rad_spec')
+            wavel   single wavelength for radiation scene map
     """
     sgmrad_data = Dataset(filen)
 
@@ -313,8 +318,8 @@ def pam_sgm_rad(filen: str,
 
     idxw = np.abs(sgmrad_data['wavelength'][:] - wavel).argmin()
     ax1, mesh = geo_panel(ax1,
-                          sgmrad_data['lon'],
-                          sgmrad_data['lat'],
+                          sgmrad_data['longitude'],
+                          sgmrad_data['latitude'],
                           sgmrad_data['radiance'][:, :, idxw],
                           lon_lat_bbox,
                           f"{sgmrad_data['wavelength'][idxw]:.2f}" + ' nm',
@@ -333,8 +338,8 @@ def pam_sgm_rad(filen: str,
     for ispec in range(nspec):
         ialt, iact = idx[ispec, :]
 
-        ax1.plot(sgmrad_data['lon'][ialt, iact],
-                 sgmrad_data['lat'][ialt, iact],
+        ax1.plot(sgmrad_data['longitude'][ialt, iact],
+                 sgmrad_data['latitude'][ialt, iact],
                  c=cols[ispec],
                  marker='o',
                  markersize=5,
@@ -369,14 +374,12 @@ def pam_im(filen: str,
     n_bins = level0.dimensions['bin'].size
     n_cols = 640
     n_rows = np.int16(n_bins/n_cols)
-
+    
     # Read data
     science_data = level0['science_data']
     image = science_data['detector_image'][image_no, :]
     image = image.reshape(n_rows, n_cols)
 
-    print(np.max(image))
-    print(np.min(image))
     x_values = np.linspace(0, n_cols+1, n_cols+1)
     y_values = np.linspace(0, n_rows+1, n_rows+1)
 
@@ -390,8 +393,8 @@ def pam_im(filen: str,
         x_values,
         y_values,
         image,
-        cmap='rainbow',
-        vmax=data_max)
+        cmap='rainbow',)
+#        vmax=data_max)
 
     cb = fig.colorbar(psm, ax=ax)
     cb.set_label('binary units [1]')
@@ -403,7 +406,8 @@ def pam_l1b(filen_l1b: str,
             plt_options: str,
             ialt: int,
             iact: int,
-            spec_nominal: bool) -> None:
+            spec_nominal: bool,
+            err_bounds: float, ) -> None:
     """
     input:  filen      filename of input data
             image_no   index pointing to along track readout
@@ -412,12 +416,15 @@ def pam_l1b(filen_l1b: str,
     level1b = Dataset(filen_l1b)
     sgmrad = Dataset(filen_sgmrad)
 
+    nalt, nact, nwave = sgmrad['radiance'].shape
+
     if plt_options == 'spectrum':
 
         # define isrf function
         wave_lbl = sgmrad['wavelength'][:].data
         wave = level1b['observation_data']['wavelength'][iact, :].data
         isrf_convolution = get_isrf(wave, wave_lbl, isrf_config)
+
         sgmrad_conv = isrf_convolution(sgmrad['radiance'][ialt, iact, :].data)
 
         wave_min = wave_lbl.min()
@@ -443,11 +450,11 @@ def pam_l1b(filen_l1b: str,
                  sgmrad_conv,
                  color='darkblue',
                  linestyle=':',
-                 label='convolved level 1B',
+                 label='convolved sgm',
                  alpha=0.6)
 
         ax1.plot(sgmrad['wavelength'][:].data,
-                 sgmrad['radiance'][ialt, iact, :].data,
+                 sgmrad['radiance'][ialt, iact, :],
                  color='blue',
                  label='sgm line-by-line',
                  alpha=0.2)
@@ -491,19 +498,19 @@ def pam_l1b(filen_l1b: str,
         ax2.set_xlim([wave_min, wave_max])
         ax1.set_xlim([wave_min, wave_max])
 
-        print(wave_min, wave_max)
-
     if plt_options == 'histo':
         # Calculate a linear array of all errors normalized by the
         # spectral standard deviation.
         sgmrad_conv = np.empty(level1b['observation_data']['radiance'].shape)
         nalt = np.size(sgmrad_conv, axis=0)
         nact = np.size(sgmrad_conv, axis=1)
+
         for iact in range(nact):
             # define isrf function
             wave_lbl = sgmrad['wavelength'][:].data
             wave = level1b['observation_data']['wavelength'][iact, :].data
             isrf_convolution = get_isrf(wave, wave_lbl, isrf_config)
+
             for ialt in range(nalt):
                 sgmrad_conv[ialt, iact, :] = isrf_convolution(
                     sgmrad['radiance'][ialt, iact, :].data)
@@ -520,9 +527,16 @@ def pam_l1b(filen_l1b: str,
         else:
             err = error.flatten()
 
-        print('==>>', err.size)
+        # data filtering
+        err = np.ma.masked_invalid(err)
+        idx = np.where((err >= err_bounds[0]) & (err <= err_bounds[1]))
+        err = err[idx]
+
         num_bins = 201
-        bindef = np.arange(num_bins)/20. - 5.
+
+        bindef = np.arange(num_bins)- num_bins/2
+        bindef = err_bounds[1]*bindef/np.max(bindef)
+
         error_mean = np.mean(err)
         error_std = np.std(err)
 
@@ -655,12 +669,17 @@ def pam_l2(filen: str,
            vscale: tuple[float, float] | None = None) -> None:
 
     level2 = Dataset(filen)
-    sgmgps_data = Dataset(filen_ref)
+    sgmgeo_data = Dataset(filen_ref)
 
     XCO2 = np.array(level2['XCO2 proxy'][:].data)
     XCO2err = np.array(level2['precision XCO2 proxy'][:].data)
-    XCO2sgm = np.array(sgmgps_data['XCO2'][:].data)
+    XCO2sgm = np.array(sgmgeo_data['XCO2'][:].data)
 
+    XCO2err_max  = np.max(XCO2err)
+    XCO2err_min  = np.min(XCO2err)
+    XCO2err_mean = np.mean(XCO2err)
+
+#    print(f"{XCO2err_min:.f2,XCO2err_mean:.f2,XCO2err_max:.f2}")
     plt.rcParams.update({'font.size': 8})
 
     if plt_options == 'map':
@@ -688,8 +707,8 @@ def pam_l2(filen: str,
 
         ax = axs[0]
         ax, cbar = geo_panel(ax,
-                             level2['lon'],
-                             level2['lat'],
+                             level2['longitude'],
+                             level2['latitude'],
                              XCO2,
                              lon_lat_bbox,
                              'retrieved XCO2',
@@ -699,27 +718,38 @@ def pam_l2(filen: str,
                              valmin=XCO2min)
 
         ax = axs[1]
+        # ax, cbar = geo_panel(ax,
+        #                      sgmgps_data['longitude'],
+        #                      sgmgps_data['latitude'],
+        #                      sgmgps_data['XCO2'],
+        #                      lon_lat_bbox,
+        #                      'SGM-GEO XCO2',
+        #                      True,
+        #                      'XCO2 [ppm]',
+        #                      valmax=XCO2max,
+        #                      valmin=XCO2min)
+
         ax, cbar = geo_panel(ax,
-                             sgmgps_data['lon'],
-                             sgmgps_data['lat'],
-                             sgmgps_data['XCO2'],
-                             lon_lat_bbox,
-                             'SGM-GEO XCO2',
-                             True,
-                             'XCO2 [ppm]',
-                             valmax=XCO2max,
-                             valmin=XCO2min)
+                            level2['longitude'],
+                            level2['latitude'],
+                            XCO2err,
+                            lon_lat_bbox,
+                            f"XCO2 precision (min,mean,max)=({XCO2err_min:.2f}, {XCO2err_mean:.2f},{XCO2err_max:.2f})",
+                            True,
+                            '$\sigma_{XCO2}$ [ppm]',
+                            valmax=8,
+                            valmin=0)
 
     if plt_options == 'histo':
         # Calculate a linear array of all errors normalized by the
         # spectral standard deviation.
         # the histogram of the data
-        fig, axs = plt.subplots(1,
-                                2,
+        fig, ax = plt.subplots(1,
+                                1,
                                 figsize=(16, 6),
                                 dpi=100,
                                 )
-        ax = axs[0]
+        ax = ax
         error_norm = (XCO2.flatten() - XCO2sgm.flatten())/XCO2err.flatten()
 
         num_bins = 201
@@ -734,37 +764,7 @@ def pam_l2(filen: str,
                                    color='blue')
         ax.set_xlabel('normalized XCO2 error [1]')
         ax.set_ylabel('frequency')
-        ax.title.set_text('(L1B-SGM)/$\\sigma$')
-
-        ax.text(0.95,
-                0.95,
-                textstr,
-                transform=ax.transAxes,
-                va='top',
-                ha='right',
-                bbox=dict(boxstyle='round,pad=0.5',
-                          fc='white',
-                          ec='gray',
-                          alpha=0.8))
-
-        ax = axs[1]
-        error = (XCO2.flatten() - XCO2sgm.flatten())
-
-        num_bins = 201
-        bindef = (np.arange(num_bins)/200. - 0.5)*6*np.std(error)
-
-        rmse = np.sqrt(np.mean(np.square(error)))
-        textstr = f"mean: {np.mean(error):.2f} ppm\n"
-        textstr += f"std. dev.: {np.std(error):.2f} ppm\n"
-        textstr += f"RMSE.: {rmse:.2f} ppm"
-
-        n, bins, patches = ax.hist(error,
-                                   bins=bindef,
-                                   alpha=0.5,
-                                   color='blue')
-        ax.set_xlabel('XCO2 error [ppm]')
-        ax.set_ylabel('frequency')
-        ax.title.set_text('L1B-SGM')
+        ax.title.set_text('(L2-SGM_ref)/$\\sigma$')
 
         ax.text(0.95,
                 0.95,

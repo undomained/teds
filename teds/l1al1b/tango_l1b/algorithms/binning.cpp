@@ -73,10 +73,6 @@ void Binning::algoExecute(L1& l1, const Dataset& input_data) {
     BinningTable const& binning = input_data.get_container<BinningTable>("binning");
 
     binning.bin(l1.image);   
-    // For some reason the bin fct devides by binSize. Need to multiply by binsize here.
-    for (int i {}; i < static_cast<int>(l1.image.size()); ++i) {
-        l1.image[i] = l1.image[i] * binning.binSize(i);
-    }
 
     // wavelength also needs to be binned.
     binWavelength(l1, binning);

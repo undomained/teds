@@ -40,7 +40,6 @@ auto driver_nitro(const SettingsL1B& settings,
     spdlog::info("CKD initialized");
 
     Dataset input_data;
-    input_data.add_container("ckd",ckd);
 
     const std::string& config = settings.getConfig();
 
@@ -57,14 +56,16 @@ auto driver_nitro(const SettingsL1B& settings,
 
     if (settings.unbinning == Unbin::none) {
         binning_table.bin(ckd.pixel_mask);
-        binning_table.bin(ckd.dark.offset);
-        binning_table.bin(ckd.dark.current);
-        binning_table.bin(ckd.noise.g);
-        binning_table.bin(ckd.noise.n2);
-        binning_table.bin(ckd.prnu.prnu);
-        binning_table.bin(ckd.rad.rad);
+        binning_table.binAvg(ckd.dark.offset);
+        binning_table.binAvg(ckd.dark.current);
+        binning_table.binAvg(ckd.noise.g);
+        binning_table.binAvg(ckd.noise.n2);
+        binning_table.binAvg(ckd.prnu.prnu);
+        binning_table.binAvg(ckd.rad.rad);
         binning_table.binPixelIndices(ckd.swath.pix_indices);
     }
+
+    input_data.add_container("ckd",ckd);
 
     // Run retrieval
     printHeading("Retrieval");

@@ -35,7 +35,7 @@ BinningTable::BinningTable(const int detector_n_rows,
     nc.getGroup(group_name).getVar("count_table").getVar(count_table.data());
 }
 
-auto BinningTable::bin(const std::vector<double>& data,
+auto BinningTable::binAvg(const std::vector<double>& data,
                        std::vector<double>& data_binned) const -> void
 {
     std::ranges::fill(data_binned, 0.0);
@@ -45,6 +45,22 @@ auto BinningTable::bin(const std::vector<double>& data,
     for (int i {}; i < static_cast<int>(data_binned.size()); ++i) {
         data_binned[i] /= count_table[i];
     }
+}
+
+auto BinningTable::bin(const std::vector<double>& data,
+                       std::vector<double>& data_binned) const -> void
+{
+    std::ranges::fill(data_binned, 0.0);
+    for (int i {}; i < static_cast<int>(data.size()); ++i) {
+        data_binned[bin_indices[i]] += data[i];
+    }
+}
+
+auto BinningTable::binAvg(std::vector<double>& data) const -> void
+{
+    std::vector<double> data_binned(count_table.size());
+    binAvg(data, data_binned);
+    data = std::move(data_binned);
 }
 
 auto BinningTable::bin(std::vector<double>& data) const -> void

@@ -17,7 +17,7 @@ std::string ExtractSpectra::getName() const {
     return std::string("ExtractSpectra");
 }
 
-bool ExtractSpectra::algoCheckInput(const CKD& ckd, L1& l1) {
+bool ExtractSpectra::algoCheckInput(L1& l1, const Dataset& input_data){
 //    bool sig_input = l1.observation_sig.size() > 0;
 //    bool wl_input = (*l1.observation_wl).size() > 0;
 //    if (sig_input && wl_input){

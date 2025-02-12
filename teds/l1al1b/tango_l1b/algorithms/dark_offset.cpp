@@ -15,8 +15,9 @@ std::string DarkOffset::getName() const {
     return std::string("DarkOffset");
 }
 
-bool DarkOffset::algoCheckInput(const CKD& ckd, L1& l1) {
+bool DarkOffset::algoCheckInput(L1& l1, const Dataset& input_data){
     // Check if image and ckd have the same dimensions
+    CKD const& ckd = input_data.get_container<CKD>("ckd");
     if (l1.image.size() == ckd.dark.offset.size()) {
         return true;
     } else {

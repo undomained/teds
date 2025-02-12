@@ -53,7 +53,7 @@ void Binning::binWavelength(L1& l1, BinningTable const& binning) {
     l1.wavelength_binned = wavelength_binned;
 }
 
-bool Binning::algoCheckInput(const CKD& ckd, L1& l1) {
+bool Binning::algoCheckInput(L1& l1, const Dataset& input_data){
     if (l1.nr_coadditions == 0) {
         spdlog::warn("nr of coadditions = 0, skipping coaddition step");
         return false;

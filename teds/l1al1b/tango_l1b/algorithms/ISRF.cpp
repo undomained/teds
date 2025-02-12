@@ -19,7 +19,8 @@ std::string ISRF::getName() const {
     return std::string("ISRF");
 }
 
-bool ISRF::algoCheckInput(const CKD& ckd, L1& l1) {
+bool ISRF::algoCheckInput(L1& l1, const Dataset& input_data){
+    CKD const& ckd = input_data.get_container<CKD>("ckd");
     // Check if isrf wavelengths match with input wavelengths. If so, wavelength
     // dependend ISRF can be applied
     int n_input_samples = ckd.n_act * ckd.n_lbl;

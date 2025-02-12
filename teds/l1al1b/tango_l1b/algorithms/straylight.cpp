@@ -27,7 +27,9 @@ bool Straylight::isInteger(double N)
     return true;
 }
 
-bool Straylight::algoCheckInput(const CKD& ckd, L1& l1) {
+bool Straylight::algoCheckInput(L1& l1, const Dataset& input_data){
+
+    CKD const& ckd = input_data.get_container<CKD>("ckd");
 
     int crows = ckd.stray.coarse_rows;
     int ccols = ckd.stray.coarse_cols;

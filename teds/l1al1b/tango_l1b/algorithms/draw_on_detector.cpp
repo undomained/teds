@@ -17,7 +17,7 @@ std::string DrawOnDetector::getName() const {
     return std::string("Draw On Detector");
 }
 
-bool DrawOnDetector::algoCheckInput(const CKD& ckd, L1& l1) {
+bool DrawOnDetector::algoCheckInput(L1& l1, const Dataset& input_data){
     bool sig_input = l1.observation_sig.size() > 0;
     bool wl_input = (*l1.observation_wl).size() > 0;
     if (sig_input && wl_input){

@@ -15,7 +15,8 @@ std::string Radiometric::getName() const {
     return std::string("Radiometric");
 }
 
-bool Radiometric::algoCheckInput(const CKD& ckd, L1& l1) {
+bool Radiometric::algoCheckInput(L1& l1, const Dataset& input_data){
+    CKD const& ckd = input_data.get_container<CKD>("ckd");
     // Check if image and ckd have the same dimensions
     if (l1.image.size() != ckd.rad.rad.size()) {
         spdlog::warn("Radiometric: Image and CKD dimensions do not match, skipping");

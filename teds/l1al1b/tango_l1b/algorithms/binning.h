@@ -26,7 +26,7 @@ public:
     std::string getName() const override;
 
     /// Retrieve the required datasets
-    bool algoCheckInput(const CKD& ckd, L1& l1) override;
+    bool algoCheckInput(L1& l1, const Dataset& input_data) override;
 
 //    /// Set all loaded data to null.
 //    virtusl void unloadData();

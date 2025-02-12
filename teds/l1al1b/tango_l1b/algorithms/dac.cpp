@@ -19,7 +19,7 @@ std::string DAC::getName() const {
     }
 }
 
-bool DAC::algoCheckInput(const CKD& ckd, L1& l1) {
+bool DAC::algoCheckInput(L1& l1, const Dataset& input_data){
     // Check if image and ckd have the same dimensions
     if (l1.image.size() > 0) {
         return true;

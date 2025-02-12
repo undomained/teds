@@ -15,7 +15,7 @@ std::string Coaddition::getName() const {
     return std::string("Coaddition");
 }
 
-bool Coaddition::algoCheckInput(const CKD& ckd, L1& l1) {
+bool Coaddition::algoCheckInput(L1& l1, const Dataset& input_data){
     if (l1.nr_coadditions == 0) {
         spdlog::warn("nr of coadditions = 0, skipping coaddition step");
         return false;

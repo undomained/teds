@@ -15,8 +15,9 @@ std::string PRNU::getName() const {
     return std::string("PRNU");
 }
 
-bool PRNU::algoCheckInput(const CKD& ckd, L1& l1)
+bool PRNU::algoCheckInput(L1& l1, const Dataset& input_data)
 {
+    CKD const& ckd = input_data.get_container<CKD>("ckd");
     // Check if image and ckd have the same dimensions
     if (l1.image.size() == ckd.prnu.prnu.size()) {
         return true;

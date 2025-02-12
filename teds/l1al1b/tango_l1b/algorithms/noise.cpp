@@ -16,7 +16,8 @@ std::string Noise::getName() const {
     return std::string("Noise");
 }
 
-bool Noise::algoCheckInput(const CKD& ckd, L1& l1) {
+bool Noise::algoCheckInput(L1& l1, const Dataset& input_data){
+    CKD const& ckd = input_data.get_container<CKD>("ckd");
     // Fill stdev if needed
     if ((l1.stdev.size()) != l1.image.size()) {
         l1.stdev.resize(l1.image.size());

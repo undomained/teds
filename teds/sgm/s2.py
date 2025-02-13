@@ -29,7 +29,8 @@ from teds.gm.io import read_geometry
 def fetch_granules(
         lat: npt.NDArray[np.float64],
         lon: npt.NDArray[np.float64],
-        date_range: tuple[datetime.date, datetime.date]) -> list[PystacItem]:
+        date_range: tuple[datetime.date, datetime.date],
+        max_cloud_cover: float = 0.1) -> list[PystacItem]:
     """Return S2 granules corresponding to a target box.
 
     Parameters
@@ -40,6 +41,8 @@ def fetch_granules(
         Longitudes of the target box
     date_range
         Date range to narrow the search results
+    max_cloud_cover
+        Maximum cloud cover for each granule [0-100]
 
     Returns
     -------
@@ -69,7 +72,7 @@ def fetch_granules(
         collections=['sentinel-s2-l2a-cogs'],
         datetime=datetime_range,
         query={
-            'eo:cloud_cover': {'lt': 0.1},
+            'eo:cloud_cover': {'lt': max_cloud_cover},
             'sentinel:valid_cloud_cover': {'eq': True}, },
         intersects=target_box,)
     log.info(f'Number of S2 granules found: {search.matched()}')
@@ -212,7 +215,11 @@ def download_albedo_for_coords(
         wavelength band.
 
     """
-    granules = fetch_granules(lat, lon, config['sentinel2']['date_range'])
+    mcc = 0.1
+    if "max_cloud_cover" in config["sentinel2"]:
+        mcc = config["sentinel2"]["max_cloud_cover"]
+    granules = fetch_granules(
+        lat, lon, config['sentinel2']['date_range'], mcc)
     # Extract the high resolution albedo map of selected wavelength bands
     albedos = []
     first_crs = None

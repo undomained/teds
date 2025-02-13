@@ -221,8 +221,8 @@ def plot_hist(cfg, var1, var2, f1_name, f2_name, var_name, save_location, req=No
         plt.ylabel('Count')
         plt.xlabel(f'difference {var_name} [{var1.units}]')
         plt.title('stdev = {:.3E}, mean = {:.3E}'.format(stdev_diff, mean_diff))
-        if req_name == 'precision': # add requirement lines
-            plt.axvline(x=req, color='gray',alpha=0.5, zorder = 1, label=f'{req_name} requirement')
+        if req_name: # add requirement lines
+            plt.axvline(x=req, color='gray',alpha=0.5, zorder = 1, label=req_name)
             plt.axvline(x=-req, color='gray',alpha=0.5, zorder = 1)
             plt.legend()
         savestring = 'hist_'+var_name.lower().replace(" ", "_")
@@ -772,8 +772,8 @@ def pam_l1b(filen_l1b: str,
 
     level1b = nc.Dataset(filen_l1b)
     sgmrad = nc.Dataset(filen_sgmrad)
-
-    if plt_options == 'spectrum':
+    
+    if plt_options == 'residuals':
 
         # define isrf function
         wave_lbl = sgmrad['wavelength'][:].data
@@ -846,14 +846,14 @@ def pam_l1b(filen_l1b: str,
             alpha=0.2)
         ax2.legend()
         ax2.set_xlabel(
-            'wavelength' + level1b['observation_data']['wavelength'].units)
+            'wavelength ' + level1b['observation_data']['wavelength'].units)
         ax2.set_ylabel('$\\delta$ I [%]')
 
         ax2.set_xlim([wave_min, wave_max])
         ax1.set_xlim([wave_min, wave_max])
 
         if save_dir:
-            plt.savefig(f'{save_dir}/l1b_spectrum_{ialt}_{iact}.png',format='png', dpi=1000, bbox_inches='tight')
+            plt.savefig(f'{save_dir}/l1b_residual_{ialt}_{iact}.png',format='png', dpi=1000, bbox_inches='tight')
         else:
             plt.show()
 
@@ -910,6 +910,76 @@ def pam_l1b(filen_l1b: str,
         else:
             plt.show()
 
+    if plt_options == 'spectrum':
+        rad = level1b['observation_data']['radiance'][ialt,iact,:]*1e-4
+        wvl = level1b['observation_data']['wavelength'][iact,:]
+        sgm_rad= sgmrad['radiance'][ialt, iact, :]*1e-4
+        sgm_wvl = sgmrad['wavelength'][:]
+
+        plt.figure(figsize=(15, 5))
+        plt.plot(sgm_wvl,sgm_rad, label='SGM', alpha=0.5)
+        plt.plot(wvl,rad, label='L1B')
+        plt.xlabel('wavelength [nm]')
+        plt.ylabel('Radiance [ph sr-1 cm-2 nm-2 s-1]')
+        plt.legend()
+        plt.title(f'Ialt = {ialt}, Iact = {iact}', fontsize=16)
+
+        if save_dir:
+            plt.savefig(f'{save_dir}/l1b_spectrum_{ialt}_{iact}.png',format='png', dpi=1000, bbox_inches='tight')
+        else:
+            plt.show()
+
+    if plt_options == 'snr' or plt_options == 'snr_req':
+        noise = level1b['observation_data']['radiance_stdev'][ialt,iact,:]
+        signal = level1b['observation_data']['radiance'][ialt,iact,:]
+        wvl = level1b['observation_data']['wavelength'][iact,:]
+        snr = signal/noise
+
+        # if plt_options == 'snr_req':
+        #     snr[np.where(signal<6.24E16)] = np.ma.masked
+
+        plt.figure(figsize=(15, 5))
+        plt.plot(wvl,snr)
+        plt.xlabel('wavelength [nm]')
+        plt.ylabel('SNR [-]')
+        plt.title(f'SNR: Ialt = {ialt}, Iact = {iact}', fontsize=16)
+        if plt_options == 'snr_req':
+            plt.axhline(y=240, color='r', linestyle='--', label = 'SNR2 = 240' )
+            plt.legend()
+
+        if save_dir:
+            plt.savefig(f'{save_dir}/l1b_snr_{ialt}_{iact}.png',format='png', dpi=1000, bbox_inches='tight')
+        else:
+            plt.show()
+
+
+        noise = level1b['observation_data']['radiance_stdev'][ialt,:,:]
+        signal = level1b['observation_data']['radiance'][ialt,:,:]
+        snr = signal/noise
+
+        # scatter plot
+        fig,ax = plt.subplots(figsize=(9,9))
+        h = plt.hist2d(signal.flatten(), snr.flatten() ,bins=100, norm=mpl.colors.LogNorm())
+        if plt_options == 'snr_req':
+            snr_mean = np.ma.mean(snr)
+            plt.title(f'Ialt = {ialt}. All ACT pixels. Mean SNR: {snr_mean:.0f}')
+            plt.axhline(y=240, color='r', linestyle='--', label = 'SNR2 = 240' )
+            plt.axvline(x=6.24E16, color='k', linestyle='--', label = 'L2 = 6.24E16' )
+            plt.legend(loc='upper left')
+        plt.xlabel('Radiance [ph sr-1 cm-2 nm-2 s-1]')
+        plt.ylabel('SNR [-]')
+        # plt.title('N = {}, R$^2$ = {:.3f}, stdev(error) = {:.3E}, mean(error) = {:.3E}'.format(var1_flat.size,r2, sigma, bias))
+        # plt.plot(lims,lims*slope+intercept,'k--',alpha=0.5,zorder=2,label='y={:.2f}x+{:.2E}'.format(slope, intercept))
+        
+        cax,kw = colorbar.make_axes(ax,location='right',pad=0.02,shrink=0.5)
+        cbar=fig.colorbar(h[-1],cax=cax, extend='neither')
+        cbar.set_label('Number of pixels')
+
+        if save_dir:
+            plt.savefig(f'{save_dir}/l1b_snr_Scatter_{ialt}_{iact}.png',format='png', dpi=1000, bbox_inches='tight')
+        else:
+            plt.show()
+
 
 def pam_nitro(cfg):
 
@@ -949,8 +1019,8 @@ def pam_nitro(cfg):
         isrf_config['type'] = 'Gaussian'  #type of ISRF, currently only Gaussian or generalized_normal
         isrf_config['fwhm'] = cfg['l1b']['isrf_fwhm']  #fwhm [nm]
 
-        pam_l1b(cfg['io']['l1b'], cfg['io']['sgm_rad'], isrf_config, 'histo', cfg['l1b']['ialt'], cfg['l1b']['iact'], False, savedir)
-        pam_l1b(cfg['io']['l1b'], cfg['io']['sgm_rad'], isrf_config, 'spectrum', cfg['l1b']['ialt'], cfg['l1b']['iact'], False, savedir)
+        for plot_option in cfg['l1b']['plot_options']:
+            pam_l1b(cfg['io']['l1b'], cfg['io']['sgm_rad'], isrf_config, plot_option, cfg['l1b']['ialt'], cfg['l1b']['iact'], False, savedir)
 
     if cfg['l2']['run']:
         log.info(f'Plotting L2')

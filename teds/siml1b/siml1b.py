@@ -32,12 +32,12 @@ def get_sgm_rad_data(filename, ialt):
 def get_gm_data(filename):
     input = nc.Dataset(filename, mode='r')
     gm_data = {}
-    gm_data['sza'] = deepcopy(input['sza'][:, :])
-    gm_data['saa'] = deepcopy(input['saa'][:, :])
-    gm_data['vza'] = deepcopy(input['vza'][:, :])
-    gm_data['vaa'] = deepcopy(input['vaa'][:, :])
-    gm_data['lat'] = deepcopy(input['lat'][:, :])
-    gm_data['lon'] = deepcopy(input['lon'][:, :])
+    gm_data['sza'] = deepcopy(input['solarzenithangle'][:, :])
+    gm_data['saa'] = deepcopy(input['solarazimuthangle'][:, :])
+    gm_data['vza'] = deepcopy(input['viewingzenithangle'][:, :])
+    gm_data['vaa'] = deepcopy(input['viewingazimuthangle'][:, :])
+    gm_data['lat'] = deepcopy(input['latitude'][:, :])
+    gm_data['lon'] = deepcopy(input['longitude'][:, :])
     input.close()
     return (gm_data)
 
@@ -71,7 +71,7 @@ def sim_output(filename, gm_data, l1b_output):
     nc_var[:] = gm_data['lon']
 
     nc_var = nc_grp.createVariable(
-        'solar_zenith', 'f4', _dims, fill_value=-32767.0)
+        'solarzenithangle', 'f4', _dims, fill_value=-32767.0)
     nc_var.long_name = 'solar zenith angle at bin locations'
     nc_var.valid_min = -90.0
     nc_var.valid_max = 90.0
@@ -79,7 +79,7 @@ def sim_output(filename, gm_data, l1b_output):
     nc_var[:] = gm_data['sza']
 
     nc_var = nc_grp.createVariable(
-        'solar_azimuth', 'f4', _dims, fill_value=-32767.0)
+        'solarazimuthangle', 'f4', _dims, fill_value=-32767.0)
     nc_var.long_name = 'solar azimuth angle at bin locations'
     nc_var.valid_min = -180.0
     nc_var.valid_max = 180.0
@@ -87,7 +87,7 @@ def sim_output(filename, gm_data, l1b_output):
     nc_var[:] = gm_data['saa']
 
     nc_var = nc_grp.createVariable(
-        'sensor_zenith', 'f4', _dims, fill_value=-32767.0)
+        'viewingzenithangle', 'f4', _dims, fill_value=-32767.0)
     nc_var.long_name = 'sensor zenith angle at bin locations'
     nc_var.valid_min = -90.0
     nc_var.valid_max = 90.0
@@ -95,7 +95,7 @@ def sim_output(filename, gm_data, l1b_output):
     nc_var[:] = gm_data['vza']
 
     nc_var = nc_grp.createVariable(
-        'sensor_azimuth', 'f4', _dims, fill_value=-32767.0)
+        'viewingazimuthangle', 'f4', _dims, fill_value=-32767.0)
     nc_var.long_name = 'sensor azimuth angle at bin locations'
     nc_var.valid_min = -180.0
     nc_var.valid_max = 180.0

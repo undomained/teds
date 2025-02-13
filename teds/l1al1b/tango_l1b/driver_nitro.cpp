@@ -99,8 +99,8 @@ auto driver_nitro(const SettingsL1B& settings,
         // Initialize pixel mask
         l1.pixel_mask = ckd.pixel_mask;
         
-        std::string i_alt_msg = " Processing image [" + std::to_string(i_alt) +  "] ";
-        spdlog::info("{:=^30}", i_alt_msg);
+        // std::string i_alt_msg = " Processing image [" + std::to_string(i_alt) +  "] ";
+        // spdlog::info("{:=^30}", i_alt_msg);
         int i_algo = 0;
         for (YAML::const_iterator it=algo_list.begin(); it!=algo_list.end();it++){
             
@@ -113,8 +113,8 @@ auto driver_nitro(const SettingsL1B& settings,
             BaseAlgo* algo = algo_builder.CreateAlgo(it->as<std::string>());
             if (algo) {
                 timers[static_cast<int>(i_algo)].start();
-                if (algo->algoCheckInput( l1, input_data)) {
-                    spdlog::info("{: ^30}", algo->getName()); // Remove this later
+                if (algo->algoCheckInput(ckd, l1)) {
+                    // spdlog::info("{: ^30}", algo->getName()); // Remove this later
                     algo->algoExecute(l1, input_data);
                 }
                 timers[static_cast<int>(i_algo)].stop();
@@ -123,7 +123,7 @@ auto driver_nitro(const SettingsL1B& settings,
         }
     }
     if (is_spectra){
-        spdlog::info("{: ^30}", "ExtractSpectra wavelength"); // Remove this later
+        // spdlog::info("{: ^30}", "ExtractSpectra wavelength"); // Remove this later
         auto& l1 { l1_measurement.front() };
         l1_measurement.extractSpectraWavelength(l1, ckd);
     }

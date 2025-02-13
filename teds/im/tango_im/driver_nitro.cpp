@@ -102,8 +102,8 @@ auto driver_nitro(const SettingsIM& settings,
         // Initialize pixel mask
         l1.pixel_mask = ckd.pixel_mask;
         
-        std::string i_alt_msg = " Processing image [" + std::to_string(i_alt) +  "] ";
-        spdlog::info("{:=^30}", i_alt_msg);
+        // std::string i_alt_msg = " Processing image [" + std::to_string(i_alt) +  "] ";
+        // spdlog::info("{:=^30}", i_alt_msg);
         int i_algo = 0;
         for (YAML::const_iterator it=algo_list.begin(); it!=algo_list.end();it++){
             BuildAlgo algo_builder;

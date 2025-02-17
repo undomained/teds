@@ -247,8 +247,8 @@ l1l2:
         start: 0
         stop: 9
 
-    run_doas: no
-    run_clouds: no
+    run_doas: yes
+    run_clouds: yes
     run_amf: yes
 
     threads: 6 # multi-threading for DOAS, on KNMI workstation optimum around 6 threads

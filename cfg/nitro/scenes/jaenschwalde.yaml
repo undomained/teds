@@ -24,7 +24,7 @@ io:
     # output of IM (and input for L1AL1B):
     l1a: 'l1a.nc'
     # output of L1AL1B:
-    l1b: 'l1b_noise.nc'
+    l1b: 'l1b.nc'
 #####
     # possibility to have different ckds for IM and L1B
     # CKD for L1AL1B
@@ -40,7 +40,7 @@ io:
     # Base name:
     l1b_algo_output: 'l1b_l1x_{algo_name}.nc'
 ## L2 IO
-    l2: 'l2_noise.nc'
+    l2: 'l2.nc'
 #########################################################
 #
 # CKD

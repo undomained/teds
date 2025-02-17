@@ -113,7 +113,7 @@ auto driver_nitro(const SettingsL1B& settings,
             BaseAlgo* algo = algo_builder.CreateAlgo(it->as<std::string>());
             if (algo) {
                 timers[static_cast<int>(i_algo)].start();
-                if (algo->algoCheckInput(ckd, l1)) {
+                if (algo->algoCheckInput(l1, input_data)) {
                     // spdlog::info("{: ^30}", algo->getName()); // Remove this later
                     algo->algoExecute(l1, input_data);
                 }

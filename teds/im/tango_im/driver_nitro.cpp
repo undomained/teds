@@ -115,7 +115,7 @@ auto driver_nitro(const SettingsIM& settings,
             if (algo) {
                 timers[static_cast<int>(i_algo)].start();
                 if (algo->algoCheckInput(l1, input_data)) {
-                    spdlog::info("{: ^30}", algo->getName()); // Remove this later
+                    // spdlog::info("{: ^30}", algo->getName()); // Remove this later
                     algo->algoExecute(l1, input_data);
                 }
                 timers[static_cast<int>(i_algo)].stop();

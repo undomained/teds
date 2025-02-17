@@ -15,9 +15,10 @@ from matplotlib.lines import Line2D
 from cartopy.feature import LAND, COASTLINE, RIVERS, LAKES
 from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+from scipy.interpolate import CubicSpline
 
 from teds import log
-from teds.lib.libNumTools import get_isrf
+from teds.lib import libConv
 
 
 lat_lon_bb = {}  # (lon_low, lon_high, lat_low, lat_high)
@@ -73,7 +74,7 @@ def plot_map(cfg, lat, lon, var, f_name, var_name, save_location):
     gl.xformatter = LONGITUDE_FORMATTER
     gl.yformatter = LATITUDE_FORMATTER
 
-    cs = ax.pcolormesh(lon,lat,var,transform=crs.PlateCarree())
+    cs = ax.pcolormesh(lon,lat,var,transform=crs.PlateCarree(), zorder=1)
         # vmin=args.var_min, vmax=args.var_max,alpha=args.opacity, cmap=args.colormap, zorder=3)
     plt.title(f'{f_name} {var_name}')
     
@@ -115,8 +116,18 @@ def plot_map_diff(cfg, lat, lon, var1, var2, f1_name, f2_name, var_name, save_lo
     ax = plt.axes(projection=projection)
 
     cs = ax.pcolormesh(lon,lat,diff,transform=crs.PlateCarree(),
-        vmin=-minmax, vmax=minmax, cmap='bwr', zorder=3)
+        vmin=-minmax, vmax=minmax, cmap='bwr', zorder=1)
     plt.title(f'({f2_name} - {f1_name}) {var_name}')
+
+    ax.add_feature(LAND)
+    ax.add_feature(COASTLINE)
+    ax.add_feature(RIVERS)
+    ax.add_feature(LAKES)
+    gl = ax.gridlines(draw_labels=True)
+    gl.top_labels = False
+    gl.right_labels = False
+    gl.xformatter = LONGITUDE_FORMATTER
+    gl.yformatter = LATITUDE_FORMATTER
     
     cax,kw = colorbar.make_axes(ax,location='bottom',pad=0.05,shrink=0.5)
     cbar=fig.colorbar(cs,cax=cax,**kw)
@@ -146,8 +157,18 @@ def plot_map_diff(cfg, lat, lon, var1, var2, f1_name, f2_name, var_name, save_lo
     projection = crs.Orthographic(central_longitude=np.mean(lon), central_latitude=np.mean(lat) )
     ax = plt.axes(projection=projection)
     cs = ax.pcolormesh(lon,lat,reldiff,transform=crs.PlateCarree(),
-        vmin=-minmax, vmax=minmax, cmap='bwr', zorder=3)
+        vmin=-minmax, vmax=minmax, cmap='bwr', zorder=1)
     plt.title(f'({f2_name} - {f1_name})/{f1_name}*100 %')
+
+    ax.add_feature(LAND)
+    ax.add_feature(COASTLINE)
+    ax.add_feature(RIVERS)
+    ax.add_feature(LAKES)
+    gl = ax.gridlines(draw_labels=True)
+    gl.top_labels = False
+    gl.right_labels = False
+    gl.xformatter = LONGITUDE_FORMATTER
+    gl.yformatter = LATITUDE_FORMATTER
     
     cax,kw = colorbar.make_axes(ax,location='bottom',pad=0.05,shrink=0.5)
     cbar=fig.colorbar(cs,cax=cax,**kw)
@@ -432,7 +453,7 @@ def pam_gm(filen: str,
         fig, ax = plt.subplots(1,
                                1,
                                figsize=(10, 10),
-                               dpi=100,
+                            #    dpi=100,
                                subplot_kw={
                                    'projection': crs.Orthographic(
                                        central_point[0],
@@ -497,7 +518,7 @@ def pam_gm(filen: str,
         fig, axs = plt.subplots(2,
                                 2,
                                 figsize=(14, 10),
-                                dpi=100,
+                                # dpi=100,
                                 subplot_kw={'projection': crs.Orthographic(
                                     central_point[0], central_point[1])},)
         fig.suptitle(station_name)#, fontsize=16)
@@ -575,7 +596,7 @@ def pam_sgm_gps(filen: str, station_name: str, plt_options: str, save_dir: str) 
         fig, ax = plt.subplots(1,
                                1,
                                figsize=(14, 10),
-                               dpi=100,
+                            #    dpi=100,
                                subplot_kw={'projection': crs.Orthographic(
                                    central_point[0], central_point[1])},)
         fig.suptitle(station_name)#, fontsize=16)
@@ -602,7 +623,7 @@ def pam_sgm_gps(filen: str, station_name: str, plt_options: str, save_dir: str) 
             raise Exception('plt_options not well chosen. For gases use an '
                             'imput from the list', Xgases)
 
-        fig, ax = plt.subplots(1, 1, figsize=(14, 10), dpi=100,
+        fig, ax = plt.subplots(1, 1, figsize=(14, 10), #dpi=100,
                                subplot_kw={'projection': crs.Orthographic(
                                    central_point[0], central_point[1])},)
         fig.suptitle(station_name)#, fontsize=16)
@@ -657,7 +678,7 @@ def pam_sgm_rad(file_rad: str,
     fig, ax1 = plt.subplots(1,
                             1,
                             figsize=(13, 6),
-                            dpi=100,
+                            # dpi=100,
                             subplot_kw={'projection': crs.Orthographic(
                                 central_point[0], central_point[1])},)
     fig.suptitle(station_name)#, fontsize=16)
@@ -773,17 +794,32 @@ def pam_l1b(filen_l1b: str,
     level1b = nc.Dataset(filen_l1b)
     sgmrad = nc.Dataset(filen_sgmrad)
     
-    if plt_options == 'residuals':
+    if ('residuals' in plt_options or 'histo' in plt_options):
+        if isrf_config['load_rad_conv']:
+            filen_sgmrad_conv = filen_sgmrad.replace('.nc','_conv_rad.nc')
+        else:
+            # Convolve sgm rad with Gaussian or ISRF
+            if isrf_config['type'] == 'gaussian':
+                filen_sgmrad_conv = libConv.conv_rad(filen_sgmrad, mode='Gaussian', fwhm=isrf_config['fwhm'])
+            elif isrf_config['type'] == 'ckd':
+                filen_sgmrad_conv = libConv.conv_rad(filen_sgmrad, mode='ISRF', isrf_file=isrf_config['isrf_file'])
+            else:
+                log.error(f'Type {isrf_config['type']} not recognised / supported')
 
-        # define isrf function
-        wave_lbl = sgmrad['wavelength'][:].data
+    if 'residuals' in plt_options:
+
+        f_sgmrad_conv = nc.Dataset(filen_sgmrad_conv)
+        sgmrad_conv = f_sgmrad_conv['radiance'][ialt, iact, :].data
+        wave_lbl = f_sgmrad_conv['wavelength'][:].data
         wave = level1b['observation_data']['wavelength'][iact, :].data
-        isrf_convolution = get_isrf(wave, wave_lbl, isrf_config)
-        sgmrad_conv = isrf_convolution(sgmrad['radiance'][ialt, iact, :].data)
+    
+        spl = CubicSpline(wave_lbl, sgmrad_conv)
+        sgmrad_conv = spl(wave)
+
 
         wave_min = wave_lbl.min()
         wave_max = wave_lbl.max()
-        fig, axs = plt.subplots(2, 1, figsize=(10, 10), dpi=100,)
+        fig, axs = plt.subplots(2, 1, figsize=(10, 10))#, dpi=100,)
         fig.suptitle(
             f'Spectral residuals: Ialt = {ialt}, Iact = {iact}', fontsize=16)
         ax1 = axs[0]
@@ -804,7 +840,7 @@ def pam_l1b(filen_l1b: str,
                  sgmrad_conv,
                  color='darkblue',
                  linestyle=':',
-                 label='convolved level 1B',
+                 label='sgm convolved',
                  alpha=0.6)
 
         ax1.plot(sgmrad['wavelength'][:].data,
@@ -859,20 +895,26 @@ def pam_l1b(filen_l1b: str,
 
         # print(wave_min, wave_max)
 
-    if plt_options == 'histo':
+    if 'histo' in plt_options:
         # Calculate a linear array of all errors normalized by the
         # spectral standard deviation.
-        sgmrad_conv = np.empty(level1b['observation_data']['radiance'].shape)
+
+        f_sgmrad_conv = nc.Dataset(filen_sgmrad_conv)
+        sgmrad_conv = f_sgmrad_conv['radiance'][:, :, :].data
+
         nalt = np.size(sgmrad_conv, axis=0)
         nact = np.size(sgmrad_conv, axis=1)
-        for iact in range(nact):
-            # define isrf function
-            wave_lbl = sgmrad['wavelength'][:].data
-            wave = level1b['observation_data']['wavelength'][iact, :].data
-            isrf_convolution = get_isrf(wave, wave_lbl, isrf_config)
-            for ialt in range(nalt):
-                sgmrad_conv[ialt, iact, :] = isrf_convolution(
-                    sgmrad['radiance'][ialt, iact, :].data)
+        
+        wave_lbl = f_sgmrad_conv['wavelength'][:].data
+        wave = level1b['observation_data']['wavelength'][:, :].data
+
+        sgmrad_conv_interp = np.empty((nalt,nact,wave.shape[-1]))
+        for ialt in range(nalt):
+            for iact in range(nact):
+                spl = CubicSpline(wave_lbl, sgmrad_conv[ialt,iact,:])
+                sgmrad_conv_interp[ialt,iact,:] = spl(wave[iact,:])
+
+        sgmrad_conv = sgmrad_conv_interp
 
         error = (
             (level1b['observation_data']['radiance'][:].data - sgmrad_conv)
@@ -910,7 +952,7 @@ def pam_l1b(filen_l1b: str,
         else:
             plt.show()
 
-    if plt_options == 'spectrum':
+    if 'spectrum' in plt_options:
         rad = level1b['observation_data']['radiance'][ialt,iact,:]*1e-4
         wvl = level1b['observation_data']['wavelength'][iact,:]
         sgm_rad= sgmrad['radiance'][ialt, iact, :]*1e-4
@@ -929,22 +971,24 @@ def pam_l1b(filen_l1b: str,
         else:
             plt.show()
 
-    if plt_options == 'snr' or plt_options == 'snr_req':
+    if 'snr' in plt_options or 'snr_req' in plt_options:
         noise = level1b['observation_data']['radiance_stdev'][ialt,iact,:]
         signal = level1b['observation_data']['radiance'][ialt,iact,:]
         wvl = level1b['observation_data']['wavelength'][iact,:]
         snr = signal/noise
 
-        # if plt_options == 'snr_req':
-        #     snr[np.where(signal<6.24E16)] = np.ma.masked
+        # MRD-L1B-0190
+        snr2 = 240
+        L2 = 6.24E16
 
         plt.figure(figsize=(15, 5))
         plt.plot(wvl,snr)
         plt.xlabel('wavelength [nm]')
         plt.ylabel('SNR [-]')
         plt.title(f'SNR: Ialt = {ialt}, Iact = {iact}', fontsize=16)
-        if plt_options == 'snr_req':
-            plt.axhline(y=240, color='r', linestyle='--', label = 'SNR2 = 240' )
+
+        if 'snr_req' in plt_options:
+            plt.axhline(y=snr2, color='r', linestyle='--', label = f'SNR2 = {snr2}' )
             plt.legend()
 
         if save_dir:
@@ -960,17 +1004,15 @@ def pam_l1b(filen_l1b: str,
         # scatter plot
         fig,ax = plt.subplots(figsize=(9,9))
         h = plt.hist2d(signal.flatten(), snr.flatten() ,bins=100, norm=mpl.colors.LogNorm())
-        if plt_options == 'snr_req':
-            snr_mean = np.ma.mean(snr)
-            plt.title(f'Ialt = {ialt}. All ACT pixels. Mean SNR: {snr_mean:.0f}')
-            plt.axhline(y=240, color='r', linestyle='--', label = 'SNR2 = 240' )
-            plt.axvline(x=6.24E16, color='k', linestyle='--', label = 'L2 = 6.24E16' )
-            plt.legend(loc='upper left')
+        plt.title(f'Ialt = {ialt}. All ACT pixels.')
         plt.xlabel('Radiance [ph sr-1 cm-2 nm-2 s-1]')
         plt.ylabel('SNR [-]')
-        # plt.title('N = {}, R$^2$ = {:.3f}, stdev(error) = {:.3E}, mean(error) = {:.3E}'.format(var1_flat.size,r2, sigma, bias))
-        # plt.plot(lims,lims*slope+intercept,'k--',alpha=0.5,zorder=2,label='y={:.2f}x+{:.2E}'.format(slope, intercept))
-        
+        if 'snr_req' in plt_options:
+            snr_mean = np.ma.mean(snr[np.where((signal>L2*0.999)&(signal<L2*1.001))])
+            plt.axhline(y=snr2, color='r', linestyle='--', label = f'SNR2 = {snr2}' )
+            plt.axvline(x=L2, color='k', linestyle='--', label = f'L2 = {L2}' )
+            plt.scatter(L2, snr_mean, color='magenta', label=f'Mean SNR @ L2 =  {snr_mean:.0f}',zorder=10)
+            plt.legend(loc='upper left')
         cax,kw = colorbar.make_axes(ax,location='right',pad=0.02,shrink=0.5)
         cbar=fig.colorbar(h[-1],cax=cax, extend='neither')
         cbar.set_label('Number of pixels')
@@ -1015,12 +1057,16 @@ def pam_nitro(cfg):
     
     if cfg['l1b']['run']:
         log.info(f'Plotting L1B')
-        isrf_config={}
-        isrf_config['type'] = 'Gaussian'  #type of ISRF, currently only Gaussian or generalized_normal
-        isrf_config['fwhm'] = cfg['l1b']['isrf_fwhm']  #fwhm [nm]
 
-        for plot_option in cfg['l1b']['plot_options']:
-            pam_l1b(cfg['io']['l1b'], cfg['io']['sgm_rad'], isrf_config, plot_option, cfg['l1b']['ialt'], cfg['l1b']['iact'], False, savedir)
+        isrf_config = {}
+        isrf_config['type'] = cfg['l1b']['isrf']  #type of ISRF, currently only Gaussian or generalized_normal or CKD
+        if isrf_config['type'] == 'gaussian':
+            isrf_config['fwhm'] = cfg['l1b']['gaussian_fwhm']  #fwhm [nm]
+        elif isrf_config['type'] == 'ckd':
+            isrf_config['isrf_file'] = cfg['l1b']['isrf_file']  #fwhm [nm]
+        if cfg['l1b']['load_rad_conv']:
+            isrf_config['load_rad_conv'] = True
+        pam_l1b(cfg['io']['l1b'], cfg['io']['sgm_rad'], isrf_config, cfg['l1b']['plot_options'], cfg['l1b']['ialt'], cfg['l1b']['iact'], False, savedir)
 
     if cfg['l2']['run']:
         log.info(f'Plotting L2')

@@ -2208,7 +2208,6 @@ def ifdoe_run(config, mode='no2'):
 
     takeFromL1B = False
     with nc.Dataset(cfg['io']['l1b']) as f:
-        print(f"keys of f: {f.groups.keys()}")
         if 'geolocation_data' in f.groups.keys():
             takeFromL1B = True
 
@@ -2216,8 +2215,10 @@ def ifdoe_run(config, mode='no2'):
         geo = readGeometryGm(cfg['io']['gm'])
     else:
         if takeFromL1B:
+            log.info("Using geometry from L1B file")
             geo = readGeometryL1b(cfg['io']['l1b'])
         else:
+            log.info("Using geometry from GM file")
             geo = readGeometryGm(cfg['io']['gm'])
 
     # B)  Solar spectrum

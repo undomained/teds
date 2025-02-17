@@ -97,7 +97,7 @@ ckd:
 
     #  Test Cases:
     test_cases: 
-        no_keystone: True
+        no_keystone: False
 #########################################################
 #
 # BIN
@@ -456,9 +456,12 @@ pam:
         ialt: 0
     l1b:
         run: no
-        isrf_fwhm: 0.6 # nm. FWHM of Gaaussian to convolve SGM specra
+        isrf: ckd # options: 'gaussian' or 'ckd'
+        # gaussian_fwhm: 0.6 # nm. FWHM of Gaussian to convolve SGM specra
+        isrf_file: './ckd/ckd_generation/data_external/Nominal_ISRF_dataset_17102024.xlsx'
         ialt: 0 # which spectrum to plot
         iact: 0
+        plot_options: ['spectrum, histo'] # options: 'spectrum', 'histp', 'snr' and 'snr_req'
     l2:
         run: no
         plot_list: { # usage: '{title}' : {'f1':<file 1>, 'f2':<file 2>,'f1_var':<var name in file 1>, 'f2_var':<var name in file 2>}

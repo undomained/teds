@@ -1,17 +1,16 @@
 # Combined config file for all steps in E2E analysis.
-# Used to generate reference scenes as defined in MRD for Nitro
 #
 log_level: 'info' # 'info' or 'debug'
 show_progress: True # toggle show progress bars
 header:
-    file_name: 'mrd_ref.yaml'
+    file_name: 'full_config.yaml'
     version: '0.000'
 #########################################################
 # General settings.
 # Used by more than one step in the E2E simulator
 #########################################################
 io:
-    base_dir: '../data/no2/mrd_ref/L_ref/'
+    base_dir: '../data/no2/notebook'
 ## GM IO
     gm: 'geometry.nc'
 ## SGM IO
@@ -28,10 +27,10 @@ io:
 #####
     # possibility to have different ckds for IM and L1B
     # CKD for L1AL1B
-    ckd: '../data/no2/ckd/ckd_nitro.nc'
+    ckd: '../data/no2/notebook/ckd_nitro.nc' 
     # L1B uses ckd. IM uses ckd_im
     # Note: in run_E2E.py this is renamed to ckd
-    ckd_im: '../data/no2/ckd/ckd_nitro.nc'
+    ckd_im: '../data/no2/notebook/ckd_nitro.nc' 
 #####
     # Define in between output files for IM (Python version)
     # Base name:
@@ -52,7 +51,7 @@ ckd:
     paths : 
         'dir_nitro'             : './ckd/ckd_generation/nitro_ckds'
         'dir_external'          : './ckd/ckd_generation/data_external/'
-        'ckd_nitro'             : '../data/no2/ckd/ckd_nitro.nc' 
+        'ckd_nitro'             : '../data/no2/notebook/ckd_nitro.nc' 
         'im_inputs_tno'         : './ckd/ckd_generation/data_external/TANGO_Nitro_V005_Nominal_Instrument_Model_Inputs_17102024.xlsx'
     # Dimensions
     dimensions: 
@@ -98,7 +97,7 @@ ckd:
 
     #  Test Cases:
     test_cases: 
-        no_keystone: True
+        no_keystone: False
 #########################################################
 #
 # BIN
@@ -165,8 +164,8 @@ gm:
         n_ground_pixels: 100
         swath_width: 30.0   # km
         integration_time: 0.04 # seconds
-        start_time: 13.730 # minutes wrt orbit epoch
-        end_time: 13.731   # minutes wrt orbit epoch
+        start_time: 13.73 # minutes wrt orbit epoch
+        end_time: 13.80   # minutes wrt orbit epoch
         pitch: 0.0
         roll: 0.0
         yaw: 0.0
@@ -187,10 +186,6 @@ sgm:
         tmp_dir: '../data/no2/tmp/'
         disamar_cfg_template: '../cfg/nitro/disamar_config_sim.in_template'
         disamar_exe: '../data/no2/disamar/Disamar_old.exe'
-        
-        ## MRD reference spectra: https://zenodo.org/records/10845741/files/TANGO_reference_spectra.xlsx?download=1
-        mrd_ref_spec: ../cfg/nitro/TANGO_reference_spectra.xlsx 
-        mrd_prof: ../cfg/nitro/no2_camelot_polluted.dat
 
     kernel_parameter:               #parameter to configure the 2D blurring of the scene
         type:    2D Gaussian        #type of kernel, current version has only one option
@@ -199,18 +194,18 @@ sgm:
         size_factor: 2              #the size of the convolution kernel in units of fwhm
 
     atm: # atm simulation settings
-        type: afgl                  # cams or afgl atmosphere
+        type: cams                  # cams or afgl atmosphere
         gases: [no2, o3]            # for now only no2 and o3
         afgl:
             nlay: 30                #number of atmospheric layers
             dzlay: 1000             #geometrical thickness of the layers [m]
         cams_datetime: 2023-05-23T09:30:00 # only used if microHH: use = False
         microHH:
-            use: False               # replace lower atm with microHH
+            use: True               # replace lower atm with microHH
             gases: [no2]
-        use_dem:  False               # correct surface pressure using tropomi dem (3k radius), only for CAMS
+        use_dem:  True               # correct surface pressure using tropomi dem (3k radius), only for CAMS
         cloud:                  # HG scattering clouds
-            use: False
+            use: True
             cloud_fraction: 1.0
             cloud_optical_thickness: 10.0
             cloud_bottom_pressure: 900 # hPa
@@ -230,21 +225,13 @@ sgm:
         wave_start: 395             #nm
         wave_end:   502             #nm
         dwave:      0.05            #nm
-        cleanup: True               # rm disamartmp directory when finished
-        o2o2: False                  # add o2-o2 absorption
+        cleanup: True              # rm disamartmp directory when finished
+        o2o2: True                  # add o2-o2 absorption
         albedo: B01
 
     sentinel2: # albedo download
         band_section: [B01,B02]
         forced: False
-    
-    mrd_ref_scene: L_ref
-        #  MRD reference scene
-        # False       : Do not use
-        # L_ref       : moderately dark scene at high latitudes
-        # L_Tr_bright : bright scene for tropical conditions
-        # L_ML_nom    : nominal case for midlatitude solar geometry
-
 #########################################################
 #
 # IM specific
@@ -462,21 +449,26 @@ pam:
         run: no
     sgm:
         run: no
-        ialt_iact: [[0,1]]
+        ialt_iact: [[50,50], [100,3], [105,79], [0,1]]
         wvl: 440 #nm
     im:
         run: no
         ialt: 0
     l1b:
-        run: no
+        run: yes
         isrf: ckd # options: 'gaussian' or 'ckd'
         isrf_file: './ckd/ckd_generation/data_external/Nominal_ISRF_dataset_17102024.xlsx'
+        load_rad_conv: yes
         ialt: 0 # which spectrum to plot
         iact: 0
-        plot_options: ['spectrum', 'residuals', 'histo', 'snr_req']
+        plot_options: ['spectrum', 'histo']
     l2:
         run: no
         plot_list: { # usage: '{title}' : {'f1':<file 1>, 'f2':<file 2>,'f1_var':<var name in file 1>, 'f2_var':<var name in file 2>}
+                'NO2 vertical column': {'f1':'sgm_atm', 'f2':'l2', 'f1_name':'SGM', 'f2_name':'L2', 'f1_var':'col_no2', 'f2_var':'no2_total_vcd' },
+                # 'NO2 vertical column': {'f1':'sgm_atm', 'f2':'l2', 'f1_name':'SGM', 'f2_name':'L2', 'f1_var':'col_no2', 'f2_var':'no2_total_vcd', 'requirement':True },
+                'Cloud optical thickness': {'f1':'sgm_atm', 'f2':'l2', 'f1_name':'SGM', 'f2_name':'L2', 'f1_var':'cloud_optical_thickness', 'f2_var':'cloud_optical_thickness'},
+                'Cloud top pressure': {'f1':'sgm_atm', 'f2':'l2', 'f1_name':'SGM', 'f2_name':'L2', 'f1_var':'cloud_top_pressure', 'f2_var':'cloud_top_pressure'},
         }
     save: no
     create_pdf: no

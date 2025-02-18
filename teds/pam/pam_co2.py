@@ -407,7 +407,7 @@ def pam_l1b(filen_l1b: str,
             iact: int,
             act_binning: int,
             spec_nominal: bool,
-            err_bounds: float) -> None:
+            err_bounds: tuple[float, float]) -> None:
     """Plot L1B data.
 
     Parameters
@@ -753,8 +753,8 @@ def pam_l2(filen: str,
             f"{XCO2err_mean:.2f},{XCO2err_max:.2f})",
             True,
             '$\\sigma_{XCO2}$ [ppm]',
-            valmax=8,
-            valmin=0)
+            valmax=np.float64(8),
+            valmin=np.float64(0))
 
     if plt_options == 'histo':
         # Calculate a linear array of all errors normalized by the

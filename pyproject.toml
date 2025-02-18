@@ -64,7 +64,6 @@ module = [
     'astropy.*',
     'sgp4.*',
     'pyquaternion.*',
-    'torch.*'
 ]
 ignore_missing_imports = true
 
@@ -96,10 +95,9 @@ module = [
     'teds.ckd.ckd_generation.nitro_ckds.*',
     'teds.ckd.create_binning_tables',
     'teds.l1al1b.create_l1a1b_configuration_file_nitro',
-    'teds.l1l2.create_l2_yaml_file',
-    'teds.l1l2.sl2',
     'teds.l1l2.l1bl2_no2',
     'teds.l1l2.l1bl2',
+    'teds.l1l2.l1l2_pyTorch',
     'teds.l2l4.ModuleCFM',
     'teds.l2l4.ModuleDataContainer',
     'teds.l2l4.ModuleLSQ',

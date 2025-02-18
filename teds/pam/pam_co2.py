@@ -1,6 +1,5 @@
 # This source code is licensed under the 3-clause BSD license found in
 # the LICENSE file in the root directory of this project.
-import sys
 import cartopy.crs as ccrs
 import matplotlib.pyplot as plt
 import matplotlib
@@ -210,10 +209,10 @@ def pam_gm_Tango_Carbon(filen: str,
     plt.show()
 
 
-def pam_sgm_gps(filen: str, 
-                station_name: str, 
+def pam_sgm_gps(filen: str,
+                station_name: str,
                 plt_options: str) -> None:
-    
+
     """ simple plotting routine to visualize sgm-gps output
         input:  filen
                 station_name ('Jaenschwalde', Belchotow, Lipetsk, Matimba)
@@ -284,7 +283,7 @@ def pam_sgm_rad(filen: str,
                 station_name: str,
                 wavel: float,
                 ialt_iact: list[float]) -> None:
-    """ 
+    """
     simple plotting routine to visualize sgm-gps output
     input:  filen
             station_name ('Jaenschwalde', Belchotow, Lipetsk, Matimba)
@@ -374,7 +373,7 @@ def pam_im(filen: str,
     n_bins = level0.dimensions['bin'].size
     n_cols = 640
     n_rows = np.int16(n_bins/n_cols)
-    
+
     # Read data
     science_data = level0['science_data']
     image = science_data['detector_image'][image_no, :]
@@ -393,8 +392,8 @@ def pam_im(filen: str,
         x_values,
         y_values,
         image,
-        cmap='rainbow',)
-#        vmax=data_max)
+        cmap='rainbow',
+        vmax=data_max)
 
     cb = fig.colorbar(psm, ax=ax)
     cb.set_label('binary units [1]')
@@ -406,26 +405,41 @@ def pam_l1b(filen_l1b: str,
             plt_options: str,
             ialt: int,
             iact: int,
+            act_binning: int,
             spec_nominal: bool,
-            err_bounds: float, ) -> None:
-    """
-    input:  filen      filename of input data
-            image_no   index pointing to along track readout
-    """
+            err_bounds: float) -> None:
+    """Plot L1B data.
 
+    Parameters
+    ----------
+    input
+        filename of input data
+    image_no
+        index pointing to along track readout
+
+    """
     level1b = Dataset(filen_l1b)
     sgmrad = Dataset(filen_sgmrad)
 
     nalt, nact, nwave = sgmrad['radiance'].shape
 
-    if plt_options == 'spectrum':
+    # Bin the radiance in ACT direction using the binning factor of
+    # the simulation.
+    nact_binned = np.int16(nact / act_binning)
+    rad_binned = np.zeros([nalt, nact_binned, nwave])
+    for iactb in range(nact_binned):
+        rad_binned[:, iactb, :] = np.mean(
+            sgmrad['radiance'][
+                :, act_binning * iactb:act_binning*(iactb+1), :],
+            axis=1)
 
+    if plt_options == 'spectrum':
         # define isrf function
         wave_lbl = sgmrad['wavelength'][:].data
         wave = level1b['observation_data']['wavelength'][iact, :].data
         isrf_convolution = get_isrf(wave, wave_lbl, isrf_config)
 
-        sgmrad_conv = isrf_convolution(sgmrad['radiance'][ialt, iact, :].data)
+        sgmrad_conv = isrf_convolution(rad_binned[ialt, iact, :])
 
         wave_min = wave_lbl.min()
         wave_max = wave_lbl.max()
@@ -454,7 +468,7 @@ def pam_l1b(filen_l1b: str,
                  alpha=0.6)
 
         ax1.plot(sgmrad['wavelength'][:].data,
-                 sgmrad['radiance'][ialt, iact, :],
+                 rad_binned[ialt, iact, :],
                  color='blue',
                  label='sgm line-by-line',
                  alpha=0.2)
@@ -513,7 +527,7 @@ def pam_l1b(filen_l1b: str,
 
             for ialt in range(nalt):
                 sgmrad_conv[ialt, iact, :] = isrf_convolution(
-                    sgmrad['radiance'][ialt, iact, :].data)
+                    rad_binned[ialt, iact, :])
 
         error = (
             (level1b['observation_data']['radiance'][:].data - sgmrad_conv)
@@ -534,7 +548,7 @@ def pam_l1b(filen_l1b: str,
 
         num_bins = 201
 
-        bindef = np.arange(num_bins)- num_bins/2
+        bindef = np.arange(num_bins) - num_bins/2
         bindef = err_bounds[1]*bindef/np.max(bindef)
 
         error_mean = np.mean(err)
@@ -675,8 +689,8 @@ def pam_l2(filen: str,
     XCO2err = np.array(level2['precision XCO2 proxy'][:].data)
     XCO2sgm = np.array(sgmgeo_data['XCO2'][:].data)
 
-    XCO2err_max  = np.max(XCO2err)
-    XCO2err_min  = np.min(XCO2err)
+    XCO2err_max = np.max(XCO2err)
+    XCO2err_min = np.min(XCO2err)
     XCO2err_mean = np.mean(XCO2err)
 
 #    print(f"{XCO2err_min:.f2,XCO2err_mean:.f2,XCO2err_max:.f2}")
@@ -729,32 +743,29 @@ def pam_l2(filen: str,
         #                      valmax=XCO2max,
         #                      valmin=XCO2min)
 
-        ax, cbar = geo_panel(ax,
-                            level2['longitude'],
-                            level2['latitude'],
-                            XCO2err,
-                            lon_lat_bbox,
-                            f"XCO2 precision (min,mean,max)=({XCO2err_min:.2f}, {XCO2err_mean:.2f},{XCO2err_max:.2f})",
-                            True,
-                            '$\sigma_{XCO2}$ [ppm]',
-                            valmax=8,
-                            valmin=0)
+        ax, cbar = geo_panel(
+            ax,
+            level2['longitude'],
+            level2['latitude'],
+            XCO2err,
+            lon_lat_bbox,
+            f"XCO2 precision (min,mean,max)=({XCO2err_min:.2f}, "
+            f"{XCO2err_mean:.2f},{XCO2err_max:.2f})",
+            True,
+            '$\\sigma_{XCO2}$ [ppm]',
+            valmax=8,
+            valmin=0)
 
     if plt_options == 'histo':
         # Calculate a linear array of all errors normalized by the
         # spectral standard deviation.
         # the histogram of the data
-        fig, ax = plt.subplots(1,
-                                1,
-                                figsize=(16, 6),
-                                dpi=100,
-                                )
+        fig, ax = plt.subplots(1, 1, figsize=(16, 6), dpi=100)
         ax = ax
         error_norm = (XCO2.flatten() - XCO2sgm.flatten())/XCO2err.flatten()
 
         num_bins = 201
         bindef = np.arange(num_bins)/20. - 5.
-        rmse = np.sqrt(np.mean(np.square(error_norm)))
         textstr = f"mean: {np.mean(error_norm):.2f}\n"
         textstr += f"std. dev.: {np.std(error_norm):.2f}"
 

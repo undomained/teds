@@ -1064,8 +1064,8 @@ def pam_nitro(cfg):
             isrf_config['fwhm'] = cfg['l1b']['gaussian_fwhm']  #fwhm [nm]
         elif isrf_config['type'] == 'ckd':
             isrf_config['isrf_file'] = cfg['l1b']['isrf_file']  #fwhm [nm]
-        if cfg['l1b']['load_rad_conv']:
-            isrf_config['load_rad_conv'] = True
+        if 'load_rad_conv' in cfg['l1b'].keys():
+            isrf_config['load_rad_conv'] = cfg['l1b']['load_rad_conv']
         pam_l1b(cfg['io']['l1b'], cfg['io']['sgm_rad'], isrf_config, cfg['l1b']['plot_options'], cfg['l1b']['ialt'], cfg['l1b']['iact'], False, savedir)
 
     if cfg['l2']['run']:

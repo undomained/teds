@@ -87,8 +87,6 @@ def pam_gm_Tango_Carbon(filen: str,
     """
     gm_data = Dataset(filen)
 
-    plt.rcParams.update({'font.size': 8})
-
     global lat_lon_bb, targetp
 
     lon_lat_bbox = lat_lon_bb[station_name]
@@ -221,8 +219,6 @@ def pam_sgm_gps(filen: str,
     """
     sgmgps_data = Dataset(filen)
 
-    plt.rcParams.update({'font.size': 8})
-
     global lat_lon_bb, targetp
 
     lon_lat_bbox = lat_lon_bb[station_name]
@@ -301,8 +297,6 @@ def pam_sgm_rad(filen: str,
 
     cols = ['blue', 'orange', 'green', 'hotpink']
 
-    plt.rcParams.update({'font.size': 8})
-
     global lat_lon_bb, targetp
 
     lon_lat_bbox = lat_lon_bb[station_name]
@@ -369,7 +363,6 @@ def pam_im(filen: str,
     level0 = Dataset(filen)
 
     # detector dimensions
-    plt.rcParams['font.size'] = 14
     n_bins = level0.dimensions['bin'].size
     n_cols = 640
     n_rows = np.int16(n_bins/n_cols)
@@ -692,9 +685,6 @@ def pam_l2(filen: str,
     XCO2err_max = np.max(XCO2err)
     XCO2err_min = np.min(XCO2err)
     XCO2err_mean = np.mean(XCO2err)
-
-#    print(f"{XCO2err_min:.f2,XCO2err_mean:.f2,XCO2err_max:.f2}")
-    plt.rcParams.update({'font.size': 8})
 
     if plt_options == 'map':
 

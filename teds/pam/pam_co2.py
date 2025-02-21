@@ -1,16 +1,17 @@
 # This source code is licensed under the 3-clause BSD license found in
 # the LICENSE file in the root directory of this project.
-import cartopy.crs as ccrs
-import matplotlib.pyplot as plt
-import matplotlib
-import numpy as np
-import numpy.typing as npt
-from matplotlib.lines import Line2D
 from cartopy.feature import LAND, COASTLINE, RIVERS, LAKES
 from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
-from netCDF4 import Dataset
-from mpl_toolkits.axes_grid1 import make_axes_locatable
 from copy import deepcopy
+from matplotlib.colorbar import Colorbar
+from matplotlib.lines import Line2D
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+from netCDF4 import Dataset
+import cartopy.crs as ccrs
+import matplotlib
+import matplotlib.pyplot as plt
+import numpy as np
+import numpy.typing as npt
 
 from teds.lib.libNumTools import get_isrf
 from teds.gm import vincenty
@@ -33,22 +34,22 @@ def geo_panel(ax: matplotlib.axes.Axes,
               data: npt.NDArray[np.float64],
               lon_lat_bbox: tuple[float, float, float, float],
               panel_title: str,
-              colbar: matplotlib.colorbar,
+              colbar: bool,
               cbar_title: str = '',
               valmax: np.float64 | None = None,
               valmin: np.float64 | None = None) -> (
-                  tuple[matplotlib.axes.Axes, matplotlib.colorbar]
+                  tuple[matplotlib.axes.Axes, Colorbar]
                   | tuple[matplotlib.axes.Axes,
                           matplotlib.collections.QuadMesh]):
 
     project = ccrs.PlateCarree()
-    ax.set_extent(lon_lat_bbox)
+    ax.set_extent(lon_lat_bbox)  # type: ignore
     ax.set_title(panel_title)
-    ax.add_feature(LAND)
-    ax.add_feature(COASTLINE)
-    ax.add_feature(RIVERS)
-    ax.add_feature(LAKES)
-    gl = ax.gridlines(draw_labels=True)
+    ax.add_feature(LAND)  # type: ignore
+    ax.add_feature(COASTLINE)  # type: ignore
+    ax.add_feature(RIVERS)  # type: ignore
+    ax.add_feature(LAKES)  # type: ignore
+    gl = ax.gridlines(draw_labels=True)  # type: ignore
     gl.top_labels = False
     gl.right_labels = False
     gl.xformatter = LONGITUDE_FORMATTER
@@ -64,7 +65,7 @@ def geo_panel(ax: matplotlib.axes.Axes,
         vvmax = valmax
 
     mesh = ax.pcolormesh(lon, lat, data, alpha=0.9, transform=project,
-                         cmap='cividis', vmax=vvmax, vmin=vvmin)
+                         cmap='cividis', vmax=float(vvmax), vmin=float(vvmin))
     if colbar:
         cbar = plt.colorbar(mesh,
                             ax=ax,
@@ -72,9 +73,9 @@ def geo_panel(ax: matplotlib.axes.Axes,
                             fraction=0.04,
                             pad=0.10)
         cbar.set_label(cbar_title)
-        return (ax, cbar)
+        return ax, cbar
     else:
-        return (ax, mesh)
+        return ax, mesh
 
 
 def pam_gm_Tango_Carbon(filen: str,
@@ -103,19 +104,19 @@ def pam_gm_Tango_Carbon(filen: str,
                                        central_point[0],
                                        central_point[1])},)
 
-        ax.set_extent(lon_lat_bbox)
-        ax.add_feature(LAND)
-        ax.add_feature(COASTLINE)
-        ax.add_feature(RIVERS)
-        ax.add_feature(LAKES)
+        ax.set_extent(lon_lat_bbox)  # type: ignore
+        ax.add_feature(LAND)  # type: ignore
+        ax.add_feature(COASTLINE)  # type: ignore
+        ax.add_feature(RIVERS)  # type: ignore
+        ax.add_feature(LAKES)  # type: ignore
         ax.set_title(station_name + " target")
 
-        gl = ax.gridlines(draw_labels=True)
+        gl = ax.gridlines(draw_labels=True)  # type: ignore
         gl.top_labels = False
         gl.right_labels = False
         gl.xformatter = LONGITUDE_FORMATTER
         gl.yformatter = LATITUDE_FORMATTER
-        gls = ax.gridlines(draw_labels=True)
+        gls = ax.gridlines(draw_labels=True)  # type: ignore
         gls.top_labels = False   # suppress top labels
         gls.right_labels = False  # suppress right labels
 
@@ -322,14 +323,13 @@ def pam_sgm_rad(filen: str,
                           sgmrad_data['radiance'][:, :, idxw],
                           lon_lat_bbox,
                           f"{sgmrad_data['wavelength'][idxw]:.2f}" + ' nm',
-                          colbar=False,
-                          )
+                          colbar=False)
 
     divider = make_axes_locatable(ax1)
     ax2 = divider.new_horizontal(size="5%", pad=0.1, axes_class=plt.Axes)
 
     fig.add_axes(ax2)
-    plt.colorbar(mesh, cax=ax2)
+    plt.colorbar(mesh, cax=ax2)  # type: ignore
 
     ax3 = divider.new_horizontal(size="100%", pad=1, axes_class=plt.Axes)
     fig.add_axes(ax3)
@@ -560,7 +560,7 @@ def pam_l1b(filen_l1b: str,
         # the histogram of the data
         plt.figure(figsize=(10, 6))
         n, bins, patches = plt.hist(err,
-                                    bins=bindef,
+                                    bins=list(bindef),
                                     alpha=0.5,
                                     label=label_txt,
                                     color='blue')
@@ -732,16 +732,6 @@ def pam_l2(filen: str,
                              valmin=XCO2min)
 
         ax = axs[1]
-        # ax, cbar = geo_panel(ax,
-        #                      sgmgps_data['longitude'],
-        #                      sgmgps_data['latitude'],
-        #                      sgmgps_data['XCO2'],
-        #                      lon_lat_bbox,
-        #                      'SGM-GEO XCO2',
-        #                      True,
-        #                      'XCO2 [ppm]',
-        #                      valmax=XCO2max,
-        #                      valmin=XCO2min)
 
         ax, cbar = geo_panel(
             ax,

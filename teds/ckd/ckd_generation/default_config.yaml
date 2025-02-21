@@ -1,0 +1,58 @@
+# Input for Tango Carbon CKD generator with default/example values
+
+# Detector and swath dimensions
+n_detector_rows: 512
+n_detector_cols: 640
+n_act: 500
+
+# Input CKD will be interpolated to this temperature. Only applies to
+# variables for which data at different temperatures is available.
+temperature: 15.0
+
+# CKD data for dark offset and current
+dark:
+  ckd_in: OWL640S_low-gain_ckd.nc
+
+# CKD data for read noise and gain
+noise:
+  ckd_in: OWL640S_low-gain_ckd.nc
+
+# CKD data for PRNU and quantum efficiency
+prnu:
+  ckd_in: OWL640S_low-gain_ckd.nc
+
+# CKD data for detector mapping and line-of-sight vectors
+swath:
+  # Row and column distances, in um from the detector center, from
+  # spot measurements.
+  spot_row_distance_file: row_distances.dat
+  spot_col_distance_file: col_distances.dat
+  # ACT angles (deg) at which spot measurements were simulated
+  spot_act_angles: [-1.7146, -1.1409, -0.56762, 0.00584267,
+                    0.57931, 1.1526, 1.7262]
+  # Wavelengths (nm) at which spot measurements were simulated
+  spot_wavelengths: [1590.0, 1610.0, 1630.0, 1650.0, 1675.0]
+  # Target ACT angle range. Each value corresponds to the ACT angle of
+  # a L1B spectrum. Used together with n_act as input to Numpy
+  # linspace for generating the angles.
+  target_act_angles: [-1.72, 1.72]  # deg
+  # Intermediate wavelength grid detector mapping
+  n_intermediate_wavelengths: 1000
+  intermediate_wavelengths: [1582.1, 1679.2]  # nm
+  # Whether to use spot measurements as is, i.e. keystone included. If
+  # disabled then spot measurement data corresponding to the first ACT
+  # angle is copied to other ACT angles, i.e. keystone is effectively
+  # switched off.
+  enable_keystone: yes
+  # Similarly to keystone, if disabled, spot measurement data
+  # corresponding to the first wavelength is copied to other
+  # wavelengths, i.e. spectral smile is effectively switched off.
+  enable_smile: yes
+
+# Stray light kernels and related variables
+stray:
+  ckd_in: ckd_stray.nc
+
+io_files:
+  # Output CKD. This can be read by other TEDS modules like the IM.
+  ckd: ckd.nc

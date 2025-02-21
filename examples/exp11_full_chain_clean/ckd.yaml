@@ -1,33 +1,6 @@
 # Input for the CKD generator
 
-main:
-  ckd_out: ckd.nc
-  n_detector_rows: 512
-  n_detector_cols: 640
-  n_act: 500
-  # The input CKD will be interpolated to this temperature. Only
-  # applies to variables for which data at different temperatures is
-  # available.
-  temperature: 15.0
-
-dark:
-  ckd_in: OWL640S_low-gain_ckd.nc
-
-noise:
-  ckd_in: OWL640S_low-gain_ckd.nc
-
-prnu:
-  ckd_in: OWL640S_low-gain_ckd.nc
-
-swath:
-  # Spot measurement data
-  row_distance_file: spot_row_distances.dat
-  col_distance_file: spot_col_distances.dat
-  # Inputs to Numpy linspace for generating the L1B ACT and wavelengths
-  act_angles: [-1.72, 1.72]  # deg
-  n_intermediate_wavelength: 1000
-  intermediate_wavelength: [1582.1, 1679.2]  # nm
-
+# Most default values are okay so only updating one parameter
 stray:
   # NetCDF file containing 1 stray light kernel
   ckd_in: ckd_stray_1.nc

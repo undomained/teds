@@ -3,7 +3,7 @@
 """IO related operations."""
 from datetime import datetime
 from importlib.resources import files
-import importlib
+import importlib.metadata
 import os
 import subprocess
 import yaml

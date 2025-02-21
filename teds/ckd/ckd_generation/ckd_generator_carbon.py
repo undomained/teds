@@ -19,11 +19,13 @@ from scipy.interpolate import CubicSpline
 from scipy.interpolate import PchipInterpolator
 from scipy.interpolate import RBFInterpolator
 from scipy.interpolate import interpn
-from teds import log
 import pandas as pd
 import numpy as np
-import sys
-import yaml
+
+from teds import log
+from teds.lib.io import merge_config_with_default
+from teds.lib.io import print_heading
+from teds.lib.io import print_system_info
 
 
 def gen_header(conf: dict, nc_ckd: Dataset) -> None:
@@ -38,9 +40,9 @@ def gen_header(conf: dict, nc_ckd: Dataset) -> None:
 
     """
     # Basic detector dimensions
-    nc_ckd.createDimension('detector_row', conf['main']['n_detector_rows'])
-    nc_ckd.createDimension('detector_column', conf['main']['n_detector_cols'])
-    nc_ckd.createDimension('across_track_sample', conf['main']['n_act'])
+    nc_ckd.createDimension('detector_row', conf['n_detector_rows'])
+    nc_ckd.createDimension('detector_column', conf['n_detector_cols'])
+    nc_ckd.createDimension('across_track_sample', conf['n_act'])
     nc_ckd.createDimension('vector', 3)
 
     # Global attributes
@@ -71,7 +73,7 @@ def gen_dark(conf: dict, nc_ckd: Dataset) -> None:
     spline = PchipInterpolator(nc_ckd_in['temperature'][:],
                                np.nan_to_num(nc_ckd_in['offset'][:]),
                                0)
-    nc_var[:] = spline(conf['main']['temperature'])
+    nc_var[:] = spline(conf['temperature'])
     nc_ckd_in = Dataset(conf['dark']['ckd_in'])
     nc_var = nc_grp.createVariable(
         'current', 'f8', ('detector_row', 'detector_column'))
@@ -80,7 +82,7 @@ def gen_dark(conf: dict, nc_ckd: Dataset) -> None:
     spline = PchipInterpolator(nc_ckd_in['temperature'][:],
                                np.nan_to_num(nc_ckd_in['dark_current'][:]),
                                0)
-    nc_var[:] = spline(conf['main']['temperature'])
+    nc_var[:] = spline(conf['temperature'])
 
 
 def gen_noise(conf: dict, nc_ckd: Dataset) -> None:
@@ -103,7 +105,7 @@ def gen_noise(conf: dict, nc_ckd: Dataset) -> None:
     nc_var.units = 'counts electrons-1'
     nc_var[:] = (CubicSpline(nc_ckd_in['temperature'][:],
                              1 / nc_ckd_in['conversion_gain'][:])
-                 (conf['main']['temperature']))
+                 (conf['temperature']))
     nc_var = nc_grp.createVariable(
         'n', 'f8', ('detector_row', 'detector_column'))
     nc_var.long_name = 'read noise'
@@ -112,7 +114,7 @@ def gen_noise(conf: dict, nc_ckd: Dataset) -> None:
     spline = PchipInterpolator(nc_ckd_in['temperature'][:],
                                np.nan_to_num(nc_ckd_in['read_noise'][:]),
                                0)
-    nc_var[:] = spline(conf['main']['temperature'])
+    nc_var[:] = spline(conf['temperature'])
 
 
 def gen_nonlin(conf: dict, nc_ckd: Dataset) -> None:
@@ -151,39 +153,45 @@ def gen_swath_spectral(conf: dict, nc_ckd: Dataset) -> None:
 
     """
     # User defined number of ACT angles and their range
-    n_act = nc_ckd.dimensions['across_track_sample'].size
-    act_beg, act_end = conf['swath']['act_angles']
-    l1b_act_angles = np.linspace(act_beg, act_end, n_act)
+    act_beg, act_end = conf['swath']['target_act_angles']
+    l1b_act_angles = np.linspace(act_beg, act_end, conf['n_act'])
     # User defined range of intermediate interpolation wavelenegths
-    n_inter_wave = conf['swath']['n_intermediate_wavelength']
-    wave_beg, wave_end = conf['swath']['intermediate_wavelength']
+    n_inter_wave = conf['swath']['n_intermediate_wavelengths']
+    wave_beg, wave_end = conf['swath']['intermediate_wavelengths']
     intermediate_wavelengths = np.linspace(wave_beg, wave_end, n_inter_wave)
 
     # STEP 1 - Spot measurement data.
 
     # Spot across track angles, deg
-    spot_act = (
-        -1.7146, -1.1409, -0.56762, 0.00584267, 0.57931, 1.1526, 1.7262)
+    spot_act = np.asarray(conf['swath']['spot_act_angles'])
     # Spot wavelengths, nm
-    spot_wavelengths = (1590.0, 1610.0, 1630.0, 1650.0, 1675.0)
+    spot_wavelengths = np.asarray(conf['swath']['spot_wavelengths'])
     # Spot distances from the center detector row, mm
     row_distances = pd.read_csv(
-        open(conf['swath']['row_distance_file']), sep='\t', header=None)
+        open(conf['swath']['spot_row_distance_file']), sep='\t', header=None)
     # Spot distances from the center detector column, mm
     col_distances = pd.read_csv(
-        open(conf['swath']['col_distance_file']), sep='\t', header=None)
+        open(conf['swath']['spot_col_distance_file']), sep='\t', header=None)
     # Convert distances to fractional row and column indices of the pixels
     pixel_size = 0.015  # mm
     row_indices = np.asarray(row_distances) / pixel_size
     col_indices = np.asarray(col_distances) / pixel_size
+    if not conf['swath']['enable_keystone']:
+        log.info('  Switching off keystone')
+        for i_col in range(row_indices.shape[1]):
+            row_indices[:, i_col] = row_indices[:, 0]
+    if not conf['swath']['enable_smile']:
+        log.info('  Switching off spectral smile')
+        for i_row in range(col_indices.shape[0]):
+            col_indices[i_row, :] = col_indices[0, :]
     # Spot measurement data assumes a 512x640 detector. For any other
     # dimensions the generated pixel indices need to be scaled
     # appropriately.
-    row_indices *= conf['main']['n_detector_rows'] / 512
-    col_indices *= conf['main']['n_detector_cols'] / 640
+    row_indices *= conf['n_detector_rows'] / 512
+    col_indices *= conf['n_detector_cols'] / 640
     # Shift to the detector center
-    row_indices += conf['main']['n_detector_rows'] / 2
-    col_indices += conf['main']['n_detector_cols'] / 2
+    row_indices += conf['n_detector_rows'] / 2
+    col_indices += conf['n_detector_cols'] / 2
 
     # STEP 2 - ACT & wavelength mapping to pixels
 
@@ -197,21 +205,21 @@ def gen_swath_spectral(conf: dict, nc_ckd: Dataset) -> None:
     # values are repeated across ACT angles.
     spot_wavelengths_all = np.tile(spot_wavelengths, len(spot_act))
     # Regular detector grid
-    det_grid = np.mgrid[:conf['main']['n_detector_rows'],
-                        :conf['main']['n_detector_cols']].reshape(2, -1).T
+    det_grid = np.mgrid[:conf['n_detector_rows'],
+                        :conf['n_detector_cols']].reshape(2, -1).T
     # Interpolate spot measurement ACT angles to all pixels (to all
     # integer row and column indices).
     act_map = RBFInterpolator(
         spot_rows_cols,
         spot_act_all,
-        kernel='cubic')(det_grid).reshape(conf['main']['n_detector_rows'],
-                                          conf['main']['n_detector_cols'])
+        kernel='cubic')(det_grid).reshape(conf['n_detector_rows'],
+                                          conf['n_detector_cols'])
     # Similarly, interpolate spot measurement wavelengths to all pixels
     wavelength_map = RBFInterpolator(
         spot_rows_cols,
         spot_wavelengths_all,
-        kernel='cubic')(det_grid).reshape(conf['main']['n_detector_rows'],
-                                          conf['main']['n_detector_cols'])
+        kernel='cubic')(det_grid).reshape(conf['n_detector_rows'],
+                                          conf['n_detector_cols'])
 
     # STEP 3 - Row & column index mapping to L1B ACTs & wavelengths
 
@@ -220,11 +228,11 @@ def gen_swath_spectral(conf: dict, nc_ckd: Dataset) -> None:
     act_wavelength_map = np.column_stack((act_map.ravel(),
                                           wavelength_map.ravel()))
     # Row of each detector pixel
-    det_rows = np.repeat(np.arange(conf['main']['n_detector_rows']),
-                         conf['main']['n_detector_cols'])
+    det_rows = np.repeat(np.arange(conf['n_detector_rows']),
+                         conf['n_detector_cols'])
     # Column of each detector pixel
-    det_cols = np.tile(np.arange(conf['main']['n_detector_cols']),
-                       conf['main']['n_detector_rows'])
+    det_cols = np.tile(np.arange(conf['n_detector_cols']),
+                       conf['n_detector_rows'])
     # Grid of target L1B act angles and wavelengths
     l1b_grid = np.array(np.meshgrid(l1b_act_angles,
                                     intermediate_wavelengths,
@@ -258,26 +266,24 @@ def gen_swath_spectral(conf: dict, nc_ckd: Dataset) -> None:
                                      col_indices.ravel()))
     act_col_grid = np.array(np.meshgrid(
         l1b_act_angles,
-        np.arange(conf['main']['n_detector_cols']),
+        np.arange(conf['n_detector_cols']),
         indexing='ij')).reshape(2, -1).T
     act_to_row_map = RBFInterpolator(
         spot_act_cols,
         row_indices.ravel(),
         kernel='cubic')(act_col_grid).reshape(len(l1b_act_angles),
-                                              conf['main']['n_detector_cols'])
+                                              conf['n_detector_cols'])
     # Now that we know the row indices corresponding to all ACT
     # angles, interpolate wavelengths onto those row indices and
     # columns 0...640.
     target_row_col_grid = np.column_stack((
         act_to_row_map.ravel(),
-        np.tile(np.arange(conf['main']['n_detector_cols']),
-                len(l1b_act_angles))))
+        np.tile(np.arange(conf['n_detector_cols']), len(l1b_act_angles))))
     target_wavelength_map = RBFInterpolator(
         spot_rows_cols,
         spot_wavelengths_all,
-        kernel='cubic')(target_row_col_grid).reshape(
-            len(l1b_act_angles),
-            conf['main']['n_detector_cols'])
+        kernel='cubic')(target_row_col_grid).reshape(len(l1b_act_angles),
+                                                     conf['n_detector_cols'])
 
     # STEP 5 - Write results to CKD file
 
@@ -350,18 +356,14 @@ def gen_prnu(conf: dict, nc_ckd: Dataset) -> None:
 
     """
     nc_ckd_in = Dataset(conf['prnu']['ckd_in'])
-    # Number of wavelengths for quantum efficiency (QE)
-    n_waves = nc_ckd_in.dimensions['wavelength'].size
-    # Number of L1B spectra
-    n_act = nc_ckd.dimensions['across_track_sample'].size
     # QE is more difficult because it is provided per wavelength.
     # First step is to interpolate QE onto the target temperature.
-    qe = np.zeros(n_waves)
+    qe = np.zeros(nc_ckd_in.dimensions['wavelength'].size)
     temperatures_qe = nc_ckd_in['temperature_qe'][:]
-    for i in range(n_waves):
+    for i in range(len(qe)):
         spline = CubicSpline(temperatures_qe,
                              nc_ckd_in['quantum_efficiency'][:, i])
-        qe[i] = spline(conf['main']['temperature'])
+        qe[i] = spline(conf['temperature'])
     # Find the shortest CKD wavelength and pad the QE values so there
     # is always data at all wavelengths.
     ckd_wavelengths = nc_ckd['spectral/wavelength'][:]
@@ -375,13 +377,13 @@ def gen_prnu(conf: dict, nc_ckd: Dataset) -> None:
         qe = np.insert(qe, 0, next_qe)
     # Next interpolate QE onto the L1B spectra
     qe_spline = CubicSpline(qe_wavelengths, qe)
-    qe_spectra = np.zeros((n_act, conf['main']['n_detector_cols']))
-    for i_act in range(n_act):
+    qe_spectra = np.zeros((conf['n_act'], conf['n_detector_cols']))
+    for i_act in range(conf['n_act']):
         qe_spectra[i_act, :] = qe_spline(ckd_wavelengths[i_act, :])
     # At this point, we have a QE value for each L1B spectrum
     act_angles = nc_ckd['swath/act_angle'][:]
     act_wave_map_in = np.column_stack((
-        np.repeat(act_angles, conf['main']['n_detector_cols']),
+        np.repeat(act_angles, conf['n_detector_cols']),
         ckd_wavelengths.ravel()))
     act_map = nc_ckd['swath/act_map'][:]
     wave_map = nc_ckd['swath/wavelength_map'][:]
@@ -390,12 +392,11 @@ def gen_prnu(conf: dict, nc_ckd: Dataset) -> None:
         act_wave_map_in,
         qe_spectra.ravel(),
         kernel='cubic',
-        neighbors=49)(act_wave_map_out).reshape(
-            conf['main']['n_detector_rows'],
-            conf['main']['n_detector_cols'])
+        neighbors=49)(act_wave_map_out).reshape(conf['n_detector_rows'],
+                                                conf['n_detector_cols'])
     prnu_in = np.nan_to_num(nc_ckd_in['prnu'][:].astype('f8'))
     spline = PchipInterpolator(nc_ckd_in['temperature'][:], prnu_in, 0)
-    prnu = spline(conf['main']['temperature'])
+    prnu = spline(conf['temperature'])
     # Extrapolate over bad values near the detector edges
     margin = 2
     row_beg = margin
@@ -403,16 +404,15 @@ def gen_prnu(conf: dict, nc_ckd: Dataset) -> None:
     col_beg = margin
     col_end = prnu.shape[1] - margin
     prnu = prnu[row_beg:row_end, col_beg:col_end]
-    det_grid = np.mgrid[:conf['main']['n_detector_rows'],
-                        :conf['main']['n_detector_cols']].reshape(2, -1).T
-    prnu = interpn(
-        (np.arange(row_beg, row_end), np.arange(col_beg, col_end)),
-        prnu,
-        det_grid,
-        method='linear',
-        bounds_error=False,
-        fill_value=None).reshape((conf['main']['n_detector_rows'],
-                                  conf['main']['n_detector_cols']))
+    det_grid = np.mgrid[
+        :conf['n_detector_rows'], :conf['n_detector_cols']].reshape(2, -1).T
+    prnu = interpn((np.arange(row_beg, row_end), np.arange(col_beg, col_end)),
+                   prnu,
+                   det_grid,
+                   method='linear',
+                   bounds_error=False,
+                   fill_value=None).reshape((conf['n_detector_rows'],
+                                             conf['n_detector_cols']))
     # Combine PRNU and QE into one variable (for now)
     prnu = prnu * qe_map
     nc_grp = nc_ckd.createGroup('prnu')
@@ -519,12 +519,24 @@ def gen_pixel_mask(conf: dict, nc_ckd: Dataset) -> None:
     nc_var[:] = mask
 
 
-def gen_ckd(conf: dict) -> None:
-    print('##############################\n'
-          '# Tango Carbon CKD generator #\n'
-          '##############################')
+def gen_ckd(config_user: dict | None = None) -> None:
+    """Generate Tango Carbon CKD.
 
-    nc_ckd = Dataset(conf['main']['ckd_out'], 'w')
+    Parameters
+    ----------
+    config_user
+        Configuration dictionary directly from file, as given by the
+        user, to be expanded with default values for parameters not
+        specified by the user.
+
+    """
+    print_heading('Tango Carbon CKD generator', empty_line=False)
+    print_system_info()
+
+    conf = merge_config_with_default(config_user, 'teds.ckd.ckd_generation')
+    nc_ckd = Dataset(conf['io_files']['ckd'], 'w')
+
+    print_heading('Generating CKD')
 
     log.info('Generating dimensions and global attributes')
     gen_header(conf, nc_ckd)
@@ -554,12 +566,3 @@ def gen_ckd(conf: dict) -> None:
     gen_pixel_mask(conf, nc_ckd)
 
     nc_ckd.close()
-
-
-if __name__ == '__main__':
-    if len(sys.argv) < 2:
-        print('usage: ckd_generator.py [ckd.yaml]')
-        exit(0)
-
-    conf = yaml.safe_load(open(sys.argv[1]))
-    gen_ckd(conf)

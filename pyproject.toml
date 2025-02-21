@@ -108,7 +108,6 @@ module = [
     'teds.l2l4.ModuleRemoveBackground',
     'teds.l2l4.l2l4',
     'teds.siml1b.radiance_offset',
-    'teds.siml1b.siml1b',
     'teds.run_E2E',
 ]
 ignore_errors = true

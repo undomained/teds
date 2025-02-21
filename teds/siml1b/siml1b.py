@@ -126,7 +126,7 @@ def sim_output(filename: str, l1b_product: L1) -> None:
     writevariablefromname(nc_grp, 'radiance', _dims3, l1b_product.spectra)
 
     nc_var = nc_grp.createVariable(
-        'radiance_stdev', 'f8', _dims, fill_value=-32767.0)
+        'radiance_stdev', 'f8', _dims3, fill_value=-32767.0)
     nc_var.long_name = 'relative radiance noise (1-sigma)'
     nc_var.units = 'photons/(sr nm m2 s)'
     nc_var.valid_min = 0.0

@@ -4,6 +4,7 @@
 from numba import njit
 from scipy.interpolate import RegularGridInterpolator, griddata
 from tqdm import tqdm
+import math
 import numpy as np
 import scipy
 
@@ -52,7 +53,7 @@ def get_isrf_generalized_normal(parameter, wave_target, wave_input):
     isrf["isrf"] = np.zeros((nwave_target, nwave_input))
     fwhm = parameter['fwhm']
     bcoeff = parameter['bcoeff']
-    const = np.log(2)**bcoeff/(fwhm*np.math.gamma(1+bcoeff))
+    const = np.log(2)**bcoeff/(fwhm*math.gamma(1+bcoeff))
     istart = []
     iend = []
     for ii, wmeas in enumerate(wave_target):

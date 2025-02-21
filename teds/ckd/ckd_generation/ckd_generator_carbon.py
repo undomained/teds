@@ -532,6 +532,7 @@ def gen_ckd(config_user: dict | None = None) -> None:
     """
     print_heading('Tango Carbon CKD generator', empty_line=False)
     print_system_info()
+    print(flush=True)
 
     conf = merge_config_with_default(config_user, 'teds.ckd.ckd_generation')
     nc_ckd = Dataset(conf['io_files']['ckd'], 'w')

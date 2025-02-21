@@ -99,7 +99,7 @@ def print_heading(heading: str, empty_line: bool = True) -> None:
         print()
     print('#' * (len(heading) + 4))
     print(f'# {heading} #')
-    print('#' * (len(heading) + 4))
+    print('#' * (len(heading) + 4), flush=True)
 
 
 def get_git_commit_hash() -> str:
@@ -134,4 +134,4 @@ def print_system_info() -> None:
     host_system = subprocess.run(
         ['uname', '-sr'], shell=False, capture_output=True).stdout
     print('Host system             :',
-          host_system.decode('utf-8').split('\n')[0])
+          host_system.decode('utf-8').split('\n')[0], flush=True)

@@ -413,7 +413,7 @@ def geometry_module(config_user: dict | None = None) -> None:
     """
     print_heading('Tango geometry module', empty_line=False)
     print_system_info()
-    print()
+    print(flush=True)
 
     config = merge_config_with_default(config_user, 'teds.gm')
     check_config(config)

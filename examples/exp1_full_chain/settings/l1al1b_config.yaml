@@ -16,15 +16,14 @@ stray:
 swath:
   exact_drawing: False # default False
 
-# L1B data is not actually binned, only the noise estimate is scaled by sqrt of bin factor
 bin_spectra: 5
 
 # geolocation:
 #   enabled: no
 
 io:
-  ckd: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/ckd/ckd_ACT100_20250126.nc
-  binning_table: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/ckd/binning_table.nc
-  l1b: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/level1b/Tango_Carbon_l1b_exp1.0.nc
-  l1a: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/level1a/Tango_Carbon_l1a_exp1.0.nc
-  geometry: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/gm/Tango_Carbon_gm_exp1.0.nc
+  ckd: ../common/ckd.nc
+  binning_table: ../common/binning_table.nc
+  l1b: l1b.nc
+  l1a: l1a.nc
+  geometry: geometry.nc

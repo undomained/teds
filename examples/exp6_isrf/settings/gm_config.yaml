@@ -1,5 +1,5 @@
 io_files:
-  geometry: '/home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/gm/Tango_Carbon_gm_exp6.0.nc'
-  ckd: '/home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/ckd/ckd_ACT100_20250126.nc'
+  geometry: geometry.nc
+  ckd: ckd_100.nc
 
 profile: 'individual_spectra'

@@ -1,13 +1,13 @@
 profile: orbit
- 
-sensor: 
+
+sensor:
   dwell_time: 0.2124  # seconds, FMC=1
   start_time: 0.0     # minutes wrt orbit epoch
   end_time: 0.33     # minutes wrt orbit epoch
 
 io_files:
-  aocs_navigation: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/aocs/aocs_navigation_truth.nc
-  ckd: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/ckd/ckd_ACT100_20250126.nc
-  dem: /home/jochen/TANGO_E2ES/EndtoEndProject/data/dem/gebco_ocssw_v2020_uncompressed.nc
-  geometry: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/gm/geometry_aocs_true_exp12.nc
-  navigation: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/gm/navigation_exp12.nc
+  aocs_navigation: aocs_navigation_truth.nc
+  ckd: ../common/ckd.nc
+  dem: ../common/gebco_ocssw_v2020.nc
+  geometry: geometry_aocs_true.nc
+  navigation: navigation.nc

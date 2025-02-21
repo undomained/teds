@@ -1,9 +1,9 @@
 # Input and output file configuration
 io_files:
-  input_sgm: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/sgm/Tango_Carbon_sgm_atmosphere_exp1.0.nc  # Path to the input microhh file containing atmospheric data
-  input_sgm_ref: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/sgm/Tango_Carbon_sgm_atmosphere_ref_exp1.0.nc # Path to the input reference file containing geographical and atmospheric data
-  input_l2: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/level2/Tango_Carbon_l2_exp1.0.nc  # Path to the input reference file containing geographical and atmospheric data
-  output_l4: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/level4/Tango_Carbon_l4_exp1.0.nc  # Path to the output file where the simulated Level 4 data will be saved
+  input_sgm: sgm_atmosphere.nc
+  input_sgm_ref: sgm_atmosphere_ref.nc # Path to the input reference file containing geographical and atmospheric data
+  input_l2: l2.nc  # Path to the input reference file containing geographical and atmospheric data
+  output_l4: l4.nc  # Path to the output file where the simulated Level 4 data will be saved
 
 emission_estimation:
   method: ["microhh_fit"]

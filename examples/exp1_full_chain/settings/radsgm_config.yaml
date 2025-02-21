@@ -4,7 +4,7 @@ convolve_atm_input: True       #True means lbl spatial convolution of the model 
                                #False means spectral convolution with spatial sampling on model grid
 
 kernel_parameter:               #parameter to configure the 2D blurring of the scene
-    type:    '2D Gaussian'      #type pf kernel, current version has only one option  
+    type:    '2D Gaussian'      #type pf kernel, current version has only one option
     fwhm_x:   80                #FWHM in ACT direction
     fwhm_y:  300                #FWHM in flight direction
     size_factor: 2              #the size of the convolution kernel in units of fwhm
@@ -15,7 +15,7 @@ spec_lbl_settings:              #settings for line-by-line spectra
     wave_start: 1575            #nm
     wave_end:   1685            #nm
     dwave:      0.002           #nm
-    
+
 xsec_forced: False              #flag to force new cross section calculation
 
 atmosphere:
@@ -35,11 +35,11 @@ isrf_settings:
 selected_gases: ['co2','ch4','h2o']
 
 io_files:
-    input_gm: '/home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/gm/Tango_Carbon_gm_exp1.0.nc'
-    input_sun_reference: '/home/jochen/TANGO_E2ES/EndtoEndProject/data/solar_spectra/hybrid_reference_spectrum_c2021-03-04_with_unc.nc'
-    input_hapi: '/home/jochen/TANGO_E2ES/EndtoEndProject/data/harpi/'
-    input_afgl: '/home/jochen/TANGO_E2ES/EndtoEndProject/data/AFGL/prof.AFGL.US.std'
-    input_sgm_geo: '/home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/sgm/Tango_Carbon_sgm_atmosphere_exp1.0.nc'
-    output_rad: '/home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/sgm/Tango_Carbon_sgm_radiance_exp1.0.nc'
-    output_geo_ref: '/home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/sgm/Tango_Carbon_sgm_atmosphere_ref_exp1.0.nc'
-    dump_xsec: '/home/jochen/TANGO_E2ES/EndtoEndProject/data/tmp/Tango_Carbon_xsec_exp1.0.pkl'
+    input_gm: geometry.nc
+    input_sun_reference: ../common/solar_spectrum.nc
+    input_hapi: ../common/hapi/
+    input_afgl: ../common/prof.AFGL.US.std
+    input_sgm_geo: sgm_atmosphere.nc
+    output_rad: sgm_radiance.nc
+    output_geo_ref: sgm_atmosphere_ref.nc
+    dump_xsec: xsec.pkl

@@ -431,7 +431,6 @@ def pam_l1b(filen_l1b: str,
         wave_lbl = sgmrad['wavelength'][:].data
         wave = level1b['observation_data']['wavelength'][iact, :].data
         isrf_convolution = get_isrf(wave, wave_lbl, isrf_config)
-
         sgmrad_conv = isrf_convolution(rad_binned[ialt, iact, :])
 
         wave_min = wave_lbl.min()

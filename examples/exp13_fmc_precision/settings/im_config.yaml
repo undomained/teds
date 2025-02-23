@@ -1,0 +1,35 @@
+#cal_level: raw  # to switch off ACD
+swath:
+  exact_drawing: False # default no
+
+# for fmc = 5 we have enhanced the exposure time by a factor 5, exposure_time: 0.2304165 
+# for fmc = 3 we have enhanced the exposure time by a factor 5, exposure_time: 0.1382499 
+# for fmc = 2 we have enhanced the exposure time by a factor 5, exposure_time: 0.0921666 
+# for fmc = 1 we have enhanced the exposure time by a factor 5, exposure_time: 0.0460833 
+detector:
+  exposure_time: 0.2304165 
+  binning_table_id: 1
+  nr_coadditions: 3
+
+isrf:
+  # enabled: no
+  fwhm_gauss: 0.45
+
+# dark:
+
+noise:
+  enabled: no
+  seed: 10
+
+# prnu:
+#   enabled: no
+
+stray:
+   enabled: True
+
+io:
+  ckd: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/ckd/ckd_ACT500_20250126.nc
+  binning_table: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/ckd/binning_table.nc
+  sgm: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/sgm/Tango_Carbon_sgm_radiance_exp13.nc
+  l1a: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/level1a/Tango_Carbon_l1a_exp13.nc
+  geometry: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/gm/Tango_Carbon_gm_exp13.nc

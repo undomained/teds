@@ -1,0 +1,45 @@
+profile: 'orbit'
+
+convolve_atm_input: True       #True means lbl spatial convolution of the model atmosphere with SEDF
+                               #False means spectral convolution with spatial sampling on model grid
+
+kernel_parameter:               #parameter to configure the 2D blurring of the scene
+    type:    '2D Gaussian'      #type pf kernel, current version has only one option  
+    fwhm_x:   80                #FWHM in ACT direction
+    fwhm_y:  300                #FWHM in flight direction
+    size_factor: 2              #the size of the convolution kernel in units of fwhm
+
+binning_act: 1                  #ACT binning of the convolved atm data for reference output.
+
+spec_lbl_settings:              #settings for line-by-line spectra
+    wave_start: 1575            #nm
+    wave_end:   1685            #nm
+    dwave:      0.002           #nm
+    
+xsec_forced: False              #flag to force new cross section calculation
+
+atmosphere:
+    nlay: 30                    #number of atmospheric layers
+    dzlay: 1000                 #geometrical thickness of the layers [m]
+    psurf: 101300               #surface pressure [Pa]
+
+spec_conv_settings:             #spectra fit window for spectral convolution in case convolve_input = False
+    wavestart:   1587           #initial wavelength (indicator)
+    waveend:     1678           #final wavlength of measurement
+    dwave:       0.05           #nm
+
+isrf_settings:
+    type:       'Gaussian'      #type of ISRF, currently only Gaussian or generalized_normal
+    fwhm:       0.45            #fwhm  [nm]
+
+selected_gases: ['co2','ch4','h2o']
+
+io_files:
+    input_gm: '/home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/gm/Tango_Carbon_gm_exp7.0.nc'
+    input_sun_reference: '/home/jochen/TANGO_E2ES/EndtoEndProject/data/solar_spectra/hybrid_reference_spectrum_c2021-03-04_with_unc.nc'
+    input_hapi: '/home/jochen/TANGO_E2ES/EndtoEndProject/data/harpi/'
+    input_afgl: '/home/jochen/TANGO_E2ES/EndtoEndProject/data/AFGL/prof.AFGL.US.std'
+    input_sgm_geo: '/home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/sgm/Tango_Carbon_sgm_atmosphere_exp7.0.nc'
+    output_rad: '/home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/sgm/Tango_Carbon_sgm_radiance_exp7.0.nc'
+    output_geo_ref: '/home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/sgm/Tango_Carbon_sgm_atmosphere_ref_exp7.0.nc'
+    dump_xsec: '/home/jochen/TANGO_E2ES/EndtoEndProject/data/tmp/Tango_Carbon_xsec_exp7.0.pkl'

@@ -1,0 +1,30 @@
+profile: individual_spectra
+
+convolve_atm_input: False      #True means lbl spatial convolution of the model atmosphere with SEDF
+                               #False means spectral convolution with spatial sampling on model grid
+
+spec_lbl_settings:              #settings for line-by-line spectra
+    wave_start: 1575            #nm
+    wave_end:   1685            #nm
+    dwave:      0.002           #nm
+    
+xsec_forced: False              #flag to force new cross section calculation
+
+atmosphere:
+    nlay: 30                    #number of atmospheric layers
+    dzlay: 1000                 #geometrical thickness of the layers [m]
+    psurf: 101300               #surface pressure [Pa]
+
+selected_gases: ['co2','ch4','h2o']
+
+binning_act: 5
+
+io_files:
+    input_gm: '/home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/gm/Tango_Carbon_gm_exp13.nc'
+    input_sun_reference: '/home/jochen/TANGO_E2ES/EndtoEndProject/data/solar_spectra/hybrid_reference_spectrum_c2021-03-04_with_unc.nc'
+    input_hapi: '/home/jochen/TANGO_E2ES/EndtoEndProject/data/harpi/'
+    input_afgl: '/home/jochen/TANGO_E2ES/EndtoEndProject/data/AFGL/prof.AFGL.US.std'
+    input_sgm_geo: '/home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/sgm/Tango_Carbon_sgm_atmosphere_exp13.nc'
+    output_rad: '/home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/sgm/Tango_Carbon_sgm_radiance_exp13.nc'
+    output_geo_ref: '/home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/sgm/Tango_Carbon_sgm_atmosphere_ref_exp13.nc'
+    dump_xsec: '/home/jochen/TANGO_E2ES/EndtoEndProject/data/tmp/Tango_Carbon_xsec_exp13.pkl'

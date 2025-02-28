@@ -365,7 +365,8 @@ auto mapFromDetector(const CKD& ckd,
     l1_prod.spectra_noise.resize(l1_prod.n_alt * ckd.n_act
                                  * ckd.n_detector_cols);
 #pragma omp parallel for
-    for (size_t i_alt = 0; i_alt < l1_prod.n_alt; ++i_alt) {
+    for (size_t i_alt = 0; i_alt < static_cast<size_t>(l1_prod.n_alt);
+         ++i_alt) {
         for (int i_act {}; i_act < ckd.n_act; ++i_act) {
             for (int i_wave {}; i_wave < ckd.n_detector_cols; ++i_wave) {
                 const int row_dn { static_cast<int>(
@@ -382,7 +383,6 @@ auto mapFromDetector(const CKD& ckd,
                 l1_prod.spectra[idx] =
                   weight * l1_prod.signal[i_alt * ckd.npix + pix_dn]
                   + (1 - weight) * l1_prod.signal[i_alt * ckd.npix + pix_up];
-
                 const double a { weight
                                  * l1_prod.noise[i_alt * ckd.npix + pix_dn] };
                 const double b { (1 - weight)

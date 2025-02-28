@@ -2,7 +2,7 @@
 # the LICENSE file in the root directory of this project.
 
 # List of tests without the extension
-set(tests unit)
+set(tests unit integration)
 
 # Create test targets
 foreach(_test ${tests})

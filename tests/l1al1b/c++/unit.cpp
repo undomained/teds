@@ -15,7 +15,7 @@ TEST_CASE("unit tests")
     readCKD(std::string(FIXTURE_DIR), ckd);
 
     tango::L1 l1 {};
-    readL1(std::string(FIXTURE_DIR), l1);
+    readL1A(std::string(FIXTURE_DIR), l1);
 
     const tango::BinningTable binning_table {
         ckd.n_detector_rows, ckd.n_detector_cols, "", 0
@@ -56,14 +56,14 @@ TEST_CASE("unit tests")
         CHECK_THAT(absSum(l1.noise), WithinRel(4563.8899392562, 1e-6));
     }
 
-    SECTION("Stray light, 1 kernel")
+    SECTION("Stray light, 2 kernels")
     {
         tango::strayLight(ckd, binning_table, 3, l1);
         CHECK_THAT(absSum(l1.signal), WithinRel(9178760.4724600203, 1e-6));
         CHECK_THAT(absSum(l1.noise), WithinRel(3264.0, 1e-6));
     }
 
-    SECTION("Stray light, 2 kernels")
+    SECTION("Stray light, 1 kernel")
     {
         ckd.stray.n_kernels = 1;
         ckd.stray.kernel_rows.resize(ckd.stray.n_kernels);
@@ -72,8 +72,28 @@ TEST_CASE("unit tests")
         ckd.stray.kernel_fft_sizes.resize(ckd.stray.n_kernels);
         ckd.stray.weights.resize(ckd.stray.n_kernels);
         ckd.stray.edges.resize(ckd.stray.n_kernels * tango::box::n);
+        tango::removeBadValues(ckd, l1);
         tango::strayLight(ckd, binning_table, 3, l1);
-        CHECK_THAT(absSum(l1.signal), WithinRel(9178937.454984488, 1e-6));
+        CHECK_THAT(absSum(l1.signal), WithinRel(8058139.1881834455, 1e-6));
         CHECK_THAT(absSum(l1.noise), WithinRel(3264.0, 1e-6));
+    }
+
+    SECTION("Detector mapping")
+    {
+        tango::removeBadValues(ckd, l1);
+        tango::mapFromDetector(ckd, binning_table, 3, false, l1);
+        CHECK_THAT(absSum(l1.spectra), WithinRel(11177936.6464352, 1e-6));
+        CHECK_THAT(absSum(l1.spectra_noise), WithinRel(5000.0, 1e-6));
+    }
+
+    SECTION("Radiometric")
+    {
+        tango::removeBadValues(ckd, l1);
+        tango::mapFromDetector(ckd, binning_table, 3, false, l1);
+        tango::changeWavelengthGrid(ckd, l1);
+        tango::radiometric(ckd, true, l1);
+        CHECK_THAT(absSum(l1.spectra), WithinRel(6.5492100e20, 1e-6));
+        CHECK_THAT(absSum(l1.spectra_noise),
+                   WithinRel(2.9319996430469894e17, 1e-6));
     }
 }

@@ -29,7 +29,9 @@ public:
     // user input and the binning table ID. The latter is stored in an
     // L1A file and corresponds to a group name in the binning table
     // file. For example, ID 5 means use the binning table from group
-    // Table_5 of the binning table file.
+    // Table_5 of the binning table file. If not using a trivial
+    // binning table (ID > 1) then detector rows and columns are
+    // ignored.
     BinningTable(const int detector_n_rows,
                  const int detector_n_cols,
                  const std::string& binning_table,
@@ -49,7 +51,9 @@ public:
     {
         return static_cast<int>(count_table[idx]);
     }
-    // Bin an array and save result in data_binned
+    // Bin an array and save result in data_binned. If
+    // scale_by_bin_size then then binned array is divided by the
+    // count table (false for normal L1A product).
     auto bin(const std::vector<double>& data,
              std::vector<double>& data_binned,
              const bool scale_by_bin_size = true) const -> void;

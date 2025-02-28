@@ -134,9 +134,9 @@ target_compile_definitions(tango_l1b PRIVATE
   TANGO_LIBRARIES="${tango_l1b_library_paths}")
 
 # Define properties to be passed on to the instrument model
-define_property(TARGET PROPERTY TEDS_ALL_FLAGS)
-define_property(TARGET PROPERTY TEDS_ALL_LIBS)
-define_property(TARGET PROPERTY TEDS_COMMIT_HASH)
+define_property(TARGET PROPERTY TEDS_ALL_FLAGS BRIEF_DOCS "all flags")
+define_property(TARGET PROPERTY TEDS_ALL_LIBS BRIEF_DOCS "all libs")
+define_property(TARGET PROPERTY TEDS_COMMIT_HASH BRIEF_DOCS "commit hash")
 set_target_properties(tango_l1b PROPERTIES
   TEDS_ALL_FLAGS "${all_flags}"
   TEDS_ALL_LIBS "${lib_locs}"

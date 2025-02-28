@@ -95,8 +95,9 @@ CubicSpline::CubicSpline(const std::vector<double>& x_values,
 auto CubicSpline::lookupIdx(const double x) const -> int
 {
     return std::min(
-      std::max(
-        0, static_cast<int>((x - knots.front()) / range * (knots.size() - 1))),
+      std::max(0,
+               static_cast<int>((x - knots.front()) / range
+                                * (static_cast<int>(knots.size()) - 1))),
       static_cast<int>(knots.size() - 1));
 }
 

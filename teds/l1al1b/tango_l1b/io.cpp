@@ -262,7 +262,6 @@ auto readL1(const std::string& filename,
     } else {
         const auto n_act { nc.getDim("across_track_sample").getSize() };
         const auto n_wavelength { nc.getDim("wavelength").getSize() };
-        l1_prod.spectra.resize(n_alt * n_act * (in_memory ? n_wavelength : 0));
         l1_prod.wavelengths.resize(n_act, std::vector<double>(n_wavelength));
         if (l1_prod.level == ProcLevel::sgm) {
             std::vector<double> wavelengths(n_wavelength);
@@ -273,6 +272,7 @@ auto readL1(const std::string& filename,
                           l1_prod.wavelengths[i_act].begin());
             }
             if (in_memory) {
+                l1_prod.spectra.resize(n_alt * n_act * n_wavelength);
                 nc.getVar("radiance")
                   .getVar({ alt_beg, 0, 0 },
                           { n_alt, n_act, n_wavelength },
@@ -287,6 +287,7 @@ auto readL1(const std::string& filename,
                           wavelengths.begin() + (i_act + 1) * n_wavelength,
                           l1_prod.wavelengths[i_act].begin());
             }
+            l1_prod.spectra.resize(n_alt * n_act * n_wavelength);
             grp.getVar("radiance")
               .getVar({ alt_beg, 0, 0 },
                       { n_alt, n_act, n_wavelength },
@@ -573,7 +574,7 @@ auto writeL1(const std::string& filename,
     nc_var.putVar(geo.lon.data());
 
     nc_var = nc_grp.addVar("height", netCDF::ncDouble, geometry_shape);
-    nc_var.putAtt("long_name", "height at bin locations");
+    nc_var.putAtt("long_name", "height from sea level at bin locations");
     nc_var.putAtt("_FillValue", netCDF::ncDouble, fill::d);
     nc_var.putAtt("valid_min", netCDF::ncDouble, -1000.0);
     nc_var.putAtt("valid_max", netCDF::ncDouble, 10000.0);

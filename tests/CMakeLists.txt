@@ -29,7 +29,7 @@ if (INCLUDE_COVERAGE)
       COMMAND lcov --directory . --capture --output-file coverage.info
       COMMAND genhtml --ignore-errors inconsistent --demangle-cpp -o coverage coverage.info
       COMMAND cmake -E echo
-      "Open ${PROJECT_BINARY_DIR}/coverage/tango_l1b/index.html to see the detailed report"
+      "Open ${PROJECT_BINARY_DIR}/coverage/index.html and click on tango_im and tango_l1b entries to see the detailed reports"
       DEPENDS test)
   else()
     add_custom_target(coverage

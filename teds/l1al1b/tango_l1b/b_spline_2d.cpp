@@ -100,11 +100,17 @@ BSpline2D::BSpline2D(const int order,
     const std::vector<double>& YT { B_mat_c };
     // Compute P Y^T
     std::vector<double> PYT {};
-    dgemm('n', 'n', x_values_r.size(), x_values_c.size(), data_in, YT, PYT);
+    dgemm('n',
+          'n',
+          static_cast<int>(x_values_r.size()),
+          static_cast<int>(x_values_c.size()),
+          data_in,
+          YT,
+          PYT);
     // Compute control points from Q = X P Y^T
     dgemm('t',
           'n',
-          x_values_r.size(),
+          static_cast<int>(x_values_r.size()),
           b_spline_r.nStates(),
           XT,
           PYT,

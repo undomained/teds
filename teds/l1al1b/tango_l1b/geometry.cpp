@@ -145,7 +145,7 @@ auto cart2geo(const std::array<double, dims::vec>& xyz,
     lat = std::atan(Sn / Cc);
     height = (p * Cc + Sn_prev * Sn
               - earth::a * std::sqrt(ec * ec * Sn * Sn + Cc * Cc))
-             / (std::sqrt(Sn * Sn + Cc * Cc));
+             / std::sqrt(Sn * Sn + Cc * Cc);
     if (xyz[2] < 0.0) {
         lat = -lat;
     }

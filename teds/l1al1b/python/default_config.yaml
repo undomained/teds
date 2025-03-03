@@ -58,3 +58,5 @@ io:
   geometry: ""
   # L1B or a lower-level product
   l1b: ""
+  # Digital elevation model file for geolocation (optional)
+  dem: ""

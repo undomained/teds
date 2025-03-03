@@ -9,14 +9,15 @@ a file is readable/writable.
 """
 from datetime import datetime
 from datetime import timezone
-from pathlib import Path
-
 from netCDF4 import Dataset
+from pathlib import Path
+from pyquaternion import Quaternion
 import numpy as np
 import numpy.typing as npt
 import xarray as xr
 import yaml
 
+from .interpolate_navigation_data import interpolate_navigation_data
 from .types import BinningTable
 from .types import CKD
 from .types import CKDDark
@@ -29,7 +30,9 @@ from .types import CKDStray
 from .types import CKDSwath
 from .types import L1
 from .types import ProcLevel
+from teds.gm.io import nc_write_geometry
 from teds.gm.types import Geometry
+from teds.gm.types import Navigation
 from teds.lib.io import get_git_commit_hash
 
 
@@ -390,6 +393,18 @@ def read_l1(filename: str,
         l1_product.binning_table_id = grp['binning_table'][:]
         l1_product.coad_factor = grp['nr_coadditions'][:]
         l1_product.exposure_time = grp['exposure_time'][:]
+    if 'navigation_data' in nc.groups:
+        grp = nc['navigation_data']
+        n_times = grp.dimensions['time'].size
+        platform_navigation = Navigation.from_shape((n_times,))
+        platform_navigation.time = grp['time'][:].data
+        platform_navigation.orb_pos = grp['orb_pos'][:].data
+        for i_alt in range(n_times):
+            q = grp['att_quat'][i_alt, :].data
+            platform_navigation.att_quat[i_alt] = Quaternion(
+                q[3], *q[:3]).normalised
+        l1_product.navigation = interpolate_navigation_data(
+            platform_navigation, l1_product.navigation.time)
     # Reading of main variables done. Now perform a few sanity checks.
     if n_alt == 0:
         raise SystemExit(f"error: data slice [{alt_beg}:{alt_end}] is empty")

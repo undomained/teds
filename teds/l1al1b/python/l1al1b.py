@@ -24,6 +24,7 @@ import numpy as np
 
 from . import calibration as cal
 from .binning import bin_data
+from .geolocate import geolocate
 from .io import copy_geometry
 from .io import read_binning_table
 from .io import read_ckd
@@ -190,10 +191,16 @@ def run_l1al1b(config_user: dict | None = None) -> None:
     if step_needed(ProcLevel.l1b, l1_product.proc_level, cal_level):
         log.info('Radiometric')
         cal.radiometric(l1_product, ckd.radiometric.rad_corr)
-    copy_geometry(config['io']['l1a'],
-                  config['io']['geometry'],
-                  config['alt_beg'],
-                  l1_product)
+    if config['swath']['geolocation']:
+        log.info('Geolocation')
+        l1_product.geometry = geolocate(
+            l1_product, ckd.swath.line_of_sights, config['io']['dem'])
+    else:
+        log.info('Copying geometry from geometry file')
+        copy_geometry(config['io']['l1a'],
+                      config['io']['geometry'],
+                      config['alt_beg'],
+                      l1_product)
     if l1_product.proc_level >= ProcLevel.swath:
         cal.bin_l1b(l1_product, config['bin_spectra'])
     log.info('Writing output data')

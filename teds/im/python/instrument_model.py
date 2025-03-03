@@ -210,10 +210,14 @@ def run_instrument_model(config_user: dict | None = None) -> None:
             ProcLevel.dark_offset, l1_product.proc_level, cal_level):
         log.info('Dark offset')
         fw.dark_offset(l1_product, ckd.dark.offset)
+    if l1_product.signal.size > 0:
+        log.info('Detector image binning '
+                 f'({config["detector"]["binning_table_id"]}x1)')
+        fw.bin_detector_images(
+            l1_product, config['detector']['binning_table_id'], binning_table)
     if step_needed(ProcLevel.raw, l1_product.proc_level, cal_level):
-        log.info('Analog-to-digital conversion')
-        fw.coadding_and_binning(
-            l1_product, binning_table, config['detector']['nr_coadditions'])
+        log.info('Coadding and analog-to-digital conversion')
+        fw.coadd_and_adc(l1_product, config['detector']['nr_coadditions'])
 
     # Write output data
     log.info('Writing output data')

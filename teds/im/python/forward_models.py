@@ -324,10 +324,33 @@ def dark_offset(l1_product: L1, offset: npt.NDArray[np.float64]) -> None:
     l1_product.signal += offset
 
 
-def coadding_and_binning(l1_product: L1,
-                         binning_table: BinningTable,
-                         n_coadditions: int) -> None:
-    """Coadd over time and bin over the detector, both as sums.
+def bin_detector_images(l1_product: L1,
+                        binning_table_id: int,
+                        binning_table: BinningTable) -> None:
+    """Bin all detector images.
+
+    Parameters
+    ----------
+    l1_product
+        L1 product (signal and detector settings).
+    binning_table_id
+        Binning factor
+    binning_table
+        Bin index of each pixel in an unbinned frame and number of
+        pixels in each bin of a binned frame.
+
+    """
+    n_alt = l1_product.signal.shape[0]
+    binned_signals = np.zeros((n_alt, len(binning_table.count_table)))
+    for i_alt in range(l1_product.signal.shape[0]):
+        for idx, idx_binned in enumerate(binning_table.bin_indices.ravel()):
+            binned_signals[i_alt, idx_binned] += l1_product.signal[i_alt, idx]
+    l1_product.signal = binned_signals
+    l1_product.binning_table_id = binning_table_id
+
+
+def coadd_and_adc(l1_product: L1, n_coadditions: int) -> None:
+    """Coadd and convert detector images to integer format.
 
     Coaddition effectively makes exact copies of existing frames and
     sums them, i.e. if noise was added, that is exactly the same in
@@ -337,20 +360,11 @@ def coadding_and_binning(l1_product: L1,
     ----------
     l1_product
         L1 product (signal and detector settings).
-    binning_table
-        Bin index of each pixel in an unbinned frame and number of
-        pixels in each bin of a binned frame.
-    coad_factor
+    n_coadditions
         Coaddition factor.
 
     """
     l1_product.proc_level = ProcLevel.l1a
-    n_alt = l1_product.signal.shape[0]
-    binned_signals = np.zeros((n_alt, len(binning_table.count_table)))
-    for i_alt in range(l1_product.signal.shape[0]):
-        for idx, idx_binned in enumerate(binning_table.bin_indices.ravel()):
-            binned_signals[i_alt, idx_binned] += l1_product.signal[i_alt, idx]
-    l1_product.signal = binned_signals
     l1_product.coad_factor = n_coadditions
     l1_product.signal = l1_product.signal * l1_product.coad_factor
     # In reality, the noise realization is different in every read-out

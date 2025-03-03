@@ -146,23 +146,34 @@ def read_ckd(filename: str) -> CKD:
     kernel_fft_sizes = nc['stray/kernel_fft_sizes'][:].data
     kernels_fft = nc['stray/kernels_fft'][:].data
     ckd_kernels_fft: list[npt.NDArray[np.complex128]] = []
+    # Rearrange memory layout of kernel FFTs if packed
     for i_kernel in range(n_kernels):
         global_beg = 2 * sum(kernel_fft_sizes[0:i_kernel])
         global_end = global_beg + 2 * kernel_fft_sizes[i_kernel]
         kernel_fft = kernels_fft[global_beg:global_end]
-        fft_re_packed = np.reshape(
-            kernel_fft[::2],
-            (kernel_n_rows[i_kernel] // 2 + 1, kernel_n_cols[i_kernel]))
-        fft_im_packed = np.reshape(kernel_fft[1::2], fft_re_packed.shape)
-        fft_packed = fft_re_packed + 1j * fft_im_packed
-        fft_full = np.zeros((kernel_n_rows[i_kernel],
-                             kernel_n_cols[i_kernel]),
-                            dtype='complex128')
-        mid = kernel_n_rows[i_kernel] // 2 + 1
-        fft_full[:mid, :] = fft_packed
-        fft_full[mid::, 0] = np.conjugate(fft_packed[mid - 2:0:-1, 0])
-        fft_full[mid::, 1:] = np.conjugate(
-            fft_packed[mid - 2:0:-1, kernel_n_cols[i_kernel]:0:-1])
+        # If not packed
+        if kernel_fft_sizes[i_kernel] == (kernel_n_rows[i_kernel]
+                                          * kernel_n_cols[i_kernel]):
+            n_comp = 2
+            kernel_fft_shaped = kernel_fft.reshape(
+                n_comp, kernel_n_rows[i_kernel], kernel_n_cols[i_kernel])
+            re = kernel_fft_shaped[0, :, :]
+            im = kernel_fft_shaped[1, :, :]
+            fft_full = re + 1j * im
+        else:
+            fft_re_packed = np.reshape(
+                kernel_fft[::2],
+                (kernel_n_rows[i_kernel] // 2 + 1, kernel_n_cols[i_kernel]))
+            fft_im_packed = np.reshape(kernel_fft[1::2], fft_re_packed.shape)
+            fft_packed = fft_re_packed + 1j * fft_im_packed
+            fft_full = np.zeros((kernel_n_rows[i_kernel],
+                                 kernel_n_cols[i_kernel]),
+                                dtype='complex128')
+            mid = kernel_n_rows[i_kernel] // 2 + 1
+            fft_full[:mid, :] = fft_packed
+            fft_full[mid::, 0] = np.conjugate(fft_packed[mid - 2:0:-1, 0])
+            fft_full[mid::, 1:] = np.conjugate(
+                fft_packed[mid - 2:0:-1, kernel_n_cols[i_kernel]:0:-1])
         ckd_kernels_fft.append(fft_full)
     ckd_stray = CKDStray(ckd_kernels_fft,
                          nc['stray/eta'][:].data,
@@ -387,6 +398,7 @@ def read_l1(filename: str,
         grp = nc['image_attributes']
         l1_product.navigation = Navigation.from_shape((n_alt,))
         l1_product.navigation.time = grp['time'][alt_beg:alt_end].data
+        l1_product.time_units = grp['time'].units
         l1_product.tai_seconds = grp['tai_seconds'][alt_beg:alt_end].data
         l1_product.tai_subsec = (
             grp['tai_subsec'][alt_beg:alt_end].data / 65535.0)
@@ -477,31 +489,28 @@ def write_l1(filename: str,
         if l1_product.proc_level < ProcLevel.sgm:
             grp_data = out.createGroup('observation_data')
     if l1_product.proc_level < ProcLevel.l1b:
-        nc_geo = Dataset(config['io']['geometry'])
-        alt_beg = int(config['alt_beg'])
-        alt_end = alt_beg + dim_alt.size
         grp_attr = out.createGroup('image_attributes')
         var_timestamps = grp_attr.createVariable(
             'time', 'f8', (dim_alt,), fill_value=default_fill_value)
         var_timestamps.long_name = 'detector image time'
-        var_timestamps.units = nc_geo['time'].units
+        var_timestamps.units = l1_product.time_units
         var_timestamps.valid_min = 0.0
         var_timestamps.valid_max = 172800.0  # 2 x day
-        var_timestamps[:] = nc_geo['time'][alt_beg:alt_end]
+        var_timestamps[:] = l1_product.navigation.time
         var_tai_seconds = grp_attr.createVariable(
             'tai_seconds', 'u4', (dim_alt,), fill_value=0)
         var_tai_seconds.long_name = 'detector image TAI time (seconds)'
         var_tai_seconds.units = 'seconds since 1958-01-01 00:00:00 TAI'
         var_tai_seconds.valid_min = np.uint(1956528000)
         var_tai_seconds.valid_max = np.uint(2493072000)
-        var_tai_seconds[:] = nc_geo['tai_seconds'][alt_beg:alt_end]
+        var_tai_seconds[:] = l1_product.tai_seconds
         var_tai_subsec = grp_attr.createVariable(
             'tai_subsec', 'f8', (dim_alt,), fill_value=default_fill_value)
         var_tai_subsec.long_name = 'detector image TAI time (subseconds)'
         var_tai_subsec.units = '1/65536'
         var_tai_subsec.valid_min = 0
         var_tai_subsec.valid_max = 65535
-        var_tai_subsec[:] = nc_geo['tai_subsec'][alt_beg:alt_end]
+        var_tai_subsec[:] = l1_product.tai_subsec * 65535
         var_binning_table = grp_attr.createVariable('binning_table', 'i1')
         var_binning_table[:] = l1_product.binning_table_id
         var_binning_table.long_name = 'binning table ID'

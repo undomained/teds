@@ -179,6 +179,7 @@ class L1:
     solar_irradiance: npt.NDArray[np.float64]
 
     # Detector image attributes
+    time_units: str
     tai_seconds: npt.NDArray[np.uint]
     tai_subsec: npt.NDArray[np.float64]
     binning_table_id: int
@@ -200,6 +201,7 @@ class L1:
                    spectra=np.empty(0),
                    spectra_noise=np.empty(0),
                    solar_irradiance=np.empty(0),
+                   time_units='seconds since 2025-01-01',
                    tai_seconds=np.empty(0, dtype=np.uint),
                    tai_subsec=np.empty(0),
                    binning_table_id=0,

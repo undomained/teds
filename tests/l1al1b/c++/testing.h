@@ -5,6 +5,7 @@
 #include <tango_l1b/fourier.h>
 #include <tango_l1b/l1.h>
 
+#include <algorithm>
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include <filesystem>
@@ -394,11 +395,14 @@ auto writeSGM(const std::string& fixture_dir,
     // Generate LBL spectra
     std::vector<double> lbl_spectra(ckd.n_act * lbl_wavelengths.size());
     for (int i_act {}; i_act < ckd.n_act; ++i_act) {
-        const tango::CubicSpline spline {
-            ckd.wave.wavelengths[i_act],
-            { l1.spectra.begin() + i_act * ckd.n_detector_cols,
-              l1.spectra.begin() + (i_act + 1) * ckd.n_detector_cols }
+        std::vector<double> x_values { ckd.wave.wavelengths[i_act] };
+        std::vector<double> y_values {
+            l1.spectra.begin() + i_act * ckd.n_detector_cols,
+            l1.spectra.begin() + (i_act + 1) * ckd.n_detector_cols
         };
+        std::ranges::reverse(x_values);
+        std::ranges::reverse(y_values);
+        const tango::CubicSpline spline { x_values, y_values };
         for (int i {}; i < static_cast<int>(lbl_wavelengths.size()); ++i) {
             lbl_spectra[i_act * lbl_wavelengths.size() + i] =
               spline.eval(lbl_wavelengths[i]);

@@ -39,14 +39,14 @@ def test_stray_1(l1, binning_table, ckd_stray):
     ckd_stray.weights = ckd_stray.weights[:1, :]
     ckd_stray.edges = ckd_stray.edges[:1, :]
     cal.stray_light(l1, binning_table, ckd_stray, 3)
-    assert abs(l1.signal).sum() == approx(9178972.2404638)
+    assert abs(l1.signal).sum() == approx(9178937.4549845)
     assert abs(l1.noise).sum() == approx(3264.0)
 
 
 # Stray light with 2 kernels
 def test_stray_2(l1, binning_table, ckd_stray):
     cal.stray_light(l1, binning_table, ckd_stray, 3)
-    assert abs(l1.signal).sum() == approx(9178943.7249882)
+    assert abs(l1.signal).sum() == approx(9178760.4724600)
     assert abs(l1.noise).sum() == approx(3264.0)
 
 

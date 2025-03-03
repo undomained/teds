@@ -163,9 +163,15 @@ def gen_swath_spectral(conf: dict, nc_ckd: Dataset) -> None:
     # STEP 1 - Spot measurement data.
 
     # Spot across track angles, deg
-    spot_act = np.asarray(conf['swath']['spot_act_angles'])
+    spot_act = np.asarray(
+        pd.read_csv(open(conf['swath']['spot_act_angle_file']),
+                    sep='\t',
+                    header=None))[:, 0]
     # Spot wavelengths, nm
-    spot_wavelengths = np.asarray(conf['swath']['spot_wavelengths'])
+    spot_wavelengths = np.asarray(
+        pd.read_csv(open(conf['swath']['spot_wavelength_file']),
+                    sep='\t',
+                    header=None))[:, 0]
     # Spot distances from the center detector row, mm
     row_distances = pd.read_csv(
         open(conf['swath']['spot_row_distance_file']), sep='\t', header=None)

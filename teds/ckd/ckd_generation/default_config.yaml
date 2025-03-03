@@ -28,10 +28,9 @@ swath:
   spot_row_distance_file: row_distances.dat
   spot_col_distance_file: col_distances.dat
   # ACT angles (deg) at which spot measurements were simulated
-  spot_act_angles: [-1.7146, -1.1409, -0.56762, 0.00584267,
-                    0.57931, 1.1526, 1.7262]
+  spot_act_angle_file: spot_act_angles.txt
   # Wavelengths (nm) at which spot measurements were simulated
-  spot_wavelengths: [1590.0, 1610.0, 1630.0, 1650.0, 1675.0]
+  spot_wavelength_file: spot_wavelengths.txt
   # Target ACT angle range. Each value corresponds to the ACT angle of
   # a L1B spectrum. Used together with n_act as input to Numpy
   # linspace for generating the angles.

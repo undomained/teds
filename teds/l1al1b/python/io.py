@@ -382,9 +382,11 @@ def read_l1(filename: str,
         l1_product.solar_irradiance = nc['solar_irradiance'][:].data
     if 'image_attributes' in nc.groups:
         grp = nc['image_attributes']
-        l1_product.timestamps = grp['time'][alt_beg:alt_end]
-        l1_product.tai_seconds = grp['tai_seconds'][alt_beg:alt_end]
-        l1_product.tai_subsec = grp['tai_subsec'][alt_beg:alt_end]
+        l1_product.navigation = Navigation.from_shape((n_alt,))
+        l1_product.navigation.time = grp['time'][alt_beg:alt_end].data
+        l1_product.tai_seconds = grp['tai_seconds'][alt_beg:alt_end].data
+        l1_product.tai_subsec = (
+            grp['tai_subsec'][alt_beg:alt_end].data / 65535.0)
         l1_product.binning_table_id = grp['binning_table'][:]
         l1_product.coad_factor = grp['nr_coadditions'][:]
         l1_product.exposure_time = grp['exposure_time'][:]
@@ -472,7 +474,7 @@ def write_l1(filename: str,
         var_timestamps.valid_max = 172800.0  # 2 x day
         var_timestamps[:] = nc_geo['time'][alt_beg:alt_end]
         var_tai_seconds = grp_attr.createVariable(
-            'tai_seconds', 'f8', (dim_alt,), fill_value=default_fill_value)
+            'tai_seconds', 'u4', (dim_alt,), fill_value=0)
         var_tai_seconds.long_name = 'detector image TAI time (seconds)'
         var_tai_seconds.units = 'seconds since 1958-01-01 00:00:00 TAI'
         var_tai_seconds.valid_min = np.uint(1956528000)
@@ -574,74 +576,9 @@ def write_l1(filename: str,
         var_noise[:] = l1_product.spectra_noise
     if l1_product.geometry.lat.size > 0:
         grp_geo = out.createGroup('geolocation_data')
-        var_latitude = grp_geo.createVariable('latitude',
-                                              'f8',
-                                              (dim_alt, dim_act),
-                                              compression='zlib',
-                                              fill_value=default_fill_value)
-        var_latitude[:] = l1_product.geometry.lat
-        var_latitude.long_name = 'latitude at bin locations'
-        var_latitude.units = 'degrees_north'
-        var_latitude.valid_min = -90.0
-        var_latitude.valid_max = 90.0
-        var_longitude = grp_geo.createVariable('longitude',
-                                               'f8',
-                                               (dim_alt, dim_act),
-                                               compression='zlib',
-                                               fill_value=default_fill_value)
-        var_longitude[:] = l1_product.geometry.lon
-        var_longitude.long_name = 'longitude at bin locations'
-        var_longitude.units = 'degrees_east'
-        var_longitude.valid_min = -180.0
-        var_longitude.valid_max = 180.0
-        var_height = grp_geo.createVariable('height',
-                                            'f8',
-                                            (dim_alt, dim_act),
-                                            compression='zlib',
-                                            fill_value=default_fill_value)
-        var_height[:] = l1_product.geometry.height
-        var_height.long_name = 'height at bin locations'
-        var_height.units = 'm'
-        var_height.valid_min = -1000.0
-        var_height.valid_max = 10000.0
-        var_saa = grp_geo.createVariable('solar_azimuth',
-                                         'f8',
-                                         (dim_alt, dim_act),
-                                         compression='zlib',
-                                         fill_value=default_fill_value)
-        var_saa[:] = l1_product.geometry.saa
-        var_saa.long_name = 'solar azimuth angle at bin locations'
-        var_saa.units = 'degrees'
-        var_saa.valid_min = -180.0
-        var_saa.valid_max = 180.0
-        var_sza = grp_geo.createVariable('solar_zenith',
-                                         'f8',
-                                         (dim_alt, dim_act),
-                                         compression='zlib',
-                                         fill_value=default_fill_value)
-        var_sza[:] = l1_product.geometry.sza
-        var_sza.long_name = 'solar zenith angle at bin locations'
-        var_sza.units = 'degrees'
-        var_sza.valid_min = -90.0
-        var_sza.valid_max = 90.0
-        var_vaa = grp_geo.createVariable('sensor_azimuth',
-                                         'f8',
-                                         (dim_alt, dim_act),
-                                         compression='zlib',
-                                         fill_value=default_fill_value)
-        var_vaa[:] = l1_product.geometry.vaa
-        var_vaa.long_name = 'sensor azimuth angle at bin locations'
-        var_vaa.units = 'degrees'
-        var_vaa.valid_min = -180.0
-        var_vaa.valid_max = 180.0
-        var_vza = grp_geo.createVariable('sensor_zenith',
-                                         'f8',
-                                         (dim_alt, dim_act),
-                                         compression='zlib',
-                                         fill_value=default_fill_value)
-        var_vza[:] = l1_product.geometry.vza
-        var_vza.long_name = 'sensor zenith angle at bin locations'
-        var_vza.units = 'degrees'
-        var_vza.valid_min = -90.0
-        var_vza.valid_max = 90.0
+        # If doing geolocation but not calibrating up to L1B
+        if 'across_track_sample' not in out.dimensions:
+            dim_act = out.createDimension('across_track_sample',
+                                          l1_product.geometry.lat.shape[1])
+        nc_write_geometry(grp_geo, l1_product.geometry)
     out.close()

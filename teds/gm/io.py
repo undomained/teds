@@ -4,13 +4,17 @@
 from astropy import units
 from astropy.time import Time
 from netCDF4 import Dataset
+from netCDF4 import Group
 from pyquaternion import Quaternion
 import datetime
 import numpy as np
+import numpy.typing as npt
 
 from .types import Geometry
 from .types import Navigation
-from teds.l1al1b.python.types import L1
+# from teds.l1al1b.python.types import L1
+
+default_fill = -32767
 
 
 def write_navigation(filename: str,
@@ -28,7 +32,6 @@ def write_navigation(filename: str,
         Navigation data
 
     """
-    default_fill = -32767
     nc = Dataset(filename, 'w')
     nc.title = 'Tango Carbon E2ES navigation data'
     dim_time = nc.createDimension('time', len(navigation.time))
@@ -70,10 +73,122 @@ def write_navigation(filename: str,
     nc.close()
 
 
+def nc_write_lat(nc: Dataset | Group, data: npt.NDArray[np.float64]) -> None:
+    var = nc.createVariable('latitude',
+                            'f8',
+                            ('along_track_sample', 'across_track_sample'),
+                            fill_value=default_fill)
+    var.long_name = 'latitude at bin locations'
+    var.units = 'degrees'
+    var.valid_min = -90.0
+    var.valid_max = 90.0
+    var[:] = data
+
+
+def nc_write_lon(nc: Dataset | Group, data: npt.NDArray[np.float64]) -> None:
+    var = nc.createVariable('longitude',
+                            'f8',
+                            ('along_track_sample', 'across_track_sample'),
+                            fill_value=default_fill)
+    var.long_name = 'longitudes at bin locations'
+    var.units = 'degrees'
+    var.valid_min = -180.0
+    var.valid_max = 180.0
+    var[:] = data
+
+
+def nc_write_height(nc: Dataset | Group,
+                    data: npt.NDArray[np.float64]) -> None:
+    var = nc.createVariable('height',
+                            'f8',
+                            ('along_track_sample', 'across_track_sample'),
+                            fill_value=default_fill)
+    var.long_name = 'height from sea level at bin locations'
+    var.units = 'm'
+    var.valid_min = -1000.0
+    var.valid_max = 10000.0
+    var[:] = data
+
+
+def nc_write_vza(nc: Dataset | Group, data: npt.NDArray[np.float64]) -> None:
+    var = nc.createVariable('sensor_zenith',
+                            'f8',
+                            ('along_track_sample', 'across_track_sample'),
+                            fill_value=default_fill)
+    var.long_name = 'sensor zenith angle at bin locations'
+    var.units = 'degrees'
+    var.valid_min = -90.0
+    var.valid_max = 90.0
+    var[:] = data
+
+
+def nc_write_vaa(nc: Dataset | Group, data: npt.NDArray[np.float64]) -> None:
+    var = nc.createVariable('sensor_azimuth',
+                            'f8',
+                            ('along_track_sample', 'across_track_sample'),
+                            fill_value=default_fill)
+    var.long_name = 'sensor azimuth angle at bin locations'
+    var.units = 'degrees'
+    var.valid_min = -180.0
+    var.valid_max = 180.0
+    var[:] = data
+
+
+def nc_write_sza(nc: Dataset | Group, data: npt.NDArray[np.float64]) -> None:
+    var = nc.createVariable('solar_zenith',
+                            'f8',
+                            ('along_track_sample', 'across_track_sample'),
+                            fill_value=default_fill)
+    var.long_name = 'solar zenith angle at bin locations'
+    var.units = 'degrees'
+    var.valid_min = -90.0
+    var.valid_max = 90.0
+    var[:] = data
+
+
+def nc_write_saa(nc: Dataset | Group, data: npt.NDArray[np.float64]) -> None:
+    var = nc.createVariable('solar_azimuth',
+                            'f8',
+                            ('along_track_sample', 'across_track_sample'),
+                            fill_value=default_fill)
+    var.long_name = 'solar azimuth angle at bin locations'
+    var.units = 'degrees'
+    var.valid_min = -180.0
+    var.valid_max = 180.0
+    var[:] = data
+
+
+def nc_write_geometry(nc: Dataset | Group, geometry: Geometry) -> None:
+    """Write geometry to a NetCDF group.
+
+    This wraps the other nc_write_* functions and can be used if the
+    geometry is complete (all variables have content).
+
+    Parameters
+    ----------
+    nc
+        NetCDF group (Dataset if root group)
+    geometry:
+        Object representing latitudes, longitudes, and solar and
+        viewing geometries. All angles are in radians.
+
+    """
+    nc_write_lat(nc, np.rad2deg(geometry.lat))
+    nc_write_lon(nc, np.rad2deg(geometry.lon))
+    nc_write_height(nc, np.zeros(geometry.lat.shape))
+    nc_write_vza(nc, np.rad2deg(geometry.vza))
+    nc_write_vaa(nc, np.rad2deg(geometry.vaa))
+    nc_write_sza(nc, np.rad2deg(geometry.sza))
+    nc_write_saa(nc, np.rad2deg(geometry.saa))
+
+
 def write_geometry(filename: str,
                    geometry: Geometry,
+                   geometry_ext: Geometry,
                    orbit_start: datetime.datetime,
-                   l1: L1) -> None:
+                   timestamps: npt.NDArray[np.float64],
+                   tai_seconds: npt.NDArray[np.uint],
+                   tai_subsec: npt.NDArray[np.float64]) -> None:
     """Write viewing and solar geometries and image attributes to a file.
 
     Parameters
@@ -84,109 +199,64 @@ def write_geometry(filename: str,
         Geometry content to be written
     orbit_start
         Datetime of orbit start. Used to define the image time unit
-    l1
-        L1 product containing the image timestamps
+    timestamps
+        Detector image timestamps
+    tai_seconds
+        Number of TAI seconds since the beginning of epoch
+        corresponding to detector timestmps (integer part).
+    tai_subsec
+        Fractional part of TAI seconds since the beginning of epoch.
 
     """
-    default_fill = -32767
     nc = Dataset(filename, 'w')
     nc.title = 'Tango Carbon E2ES geometry'
     n_alt, n_act = geometry.lat.shape
     dim_alt = nc.createDimension('along_track_sample', n_alt)
-    dim_act = nc.createDimension('across_track_sample', n_act)
-    dim_time = nc.createDimension('time', len(l1.timestamps))
+    nc.createDimension('across_track_sample', n_act)
 
-    # Geometry
-    var = nc.createVariable(
-        'latitude', 'f8', (dim_alt, dim_act), fill_value=default_fill)
-    var.long_name = 'latitudes'
-    var.units = 'degrees'
-    var.valid_min = -90.0
-    var.valid_max = 90.0
-    var[:] = np.rad2deg(geometry.lat)
+    # Normal geometry
+    nc_write_geometry(nc, geometry)
 
-    var = nc.createVariable(
-        'longitude', 'f8', (dim_alt, dim_act), fill_value=default_fill)
-    var.long_name = 'longitudes'
-    var.units = 'degrees'
-    var.valid_min = -180.0
-    var.valid_max = 180.0
-    var[:] = np.rad2deg(geometry.lon)
-
-    var = nc.createVariable(
-        'height', 'f8', (dim_alt, dim_act), fill_value=default_fill)
-    var.long_name = 'height from sea level'
-    var.units = 'm'
-    var.valid_min = -1000.0
-    var.valid_max = 10000.0
-    var[:] = 0.0
-
-    var = nc.createVariable(
-        'sensor_zenith', 'f8', (dim_alt, dim_act), fill_value=default_fill)
-    var.long_name = 'sensor zenith angles'
-    var.units = 'degrees'
-    var.valid_min = -90.0
-    var.valid_max = 90.0
-    var[:] = np.rad2deg(geometry.vza)
-
-    var = nc.createVariable(
-        'sensor_azimuth', 'f8', (dim_alt, dim_act), fill_value=default_fill)
-    var.long_name = 'sensor azimuth angles'
-    var.units = 'degrees'
-    var.valid_min = -180.0
-    var.valid_max = 180.0
-    var[:] = np.rad2deg(geometry.vaa)
-
-    var = nc.createVariable(
-        'solar_zenith', 'f8', (dim_alt, dim_act), fill_value=default_fill)
-    var.long_name = 'solar zenith angles'
-    var.units = 'degrees'
-    var.valid_min = -90.0
-    var.valid_max = 90.0
-    var[:] = np.rad2deg(geometry.sza)
-
-    var = nc.createVariable(
-        'solar_azimuth', 'f8', (dim_alt, dim_act), fill_value=default_fill)
-    var.long_name = 'solar azimuth angles'
-    var.units = 'degrees'
-    var.valid_min = -180.0
-    var.valid_max = 180.0
-    var[:] = np.rad2deg(geometry.saa)
+    # Extended geometry (for SGM)
+    grp = nc.createGroup('extended')
+    grp.createDimension('along_track_sample', geometry_ext.lat.shape[0])
+    grp.createDimension('across_track_sample', geometry_ext.lat.shape[1])
+    nc_write_geometry(grp, geometry_ext)
 
     # Image attributes
-    var = nc.createVariable('tai_seconds', 'u4', dim_time, fill_value=0)
+    var = nc.createVariable('tai_seconds', 'u4', dim_alt, fill_value=0)
     var.long_name = 'detector image TAI time (seconds)'
     var.units = 'seconds since 1958-01-01 00:00:00 TAI'
     var.valid_min = np.uint(1956528000)
     var.valid_max = np.uint(2493072000)
-    var[:] = l1.tai_seconds
+    var[:] = tai_seconds
 
-    var = nc.createVariable('tai_subsec', 'u2', dim_time)
+    var = nc.createVariable('tai_subsec', 'u2', dim_alt)
     var.long_name = 'detector image TAI time (subseconds)'
     var.units = '1/65536 s'
     var.valid_min = np.ushort(0)
     var.valid_max = np.ushort(65535)
-    var[:] = (65535 * l1.tai_subsec).astype(np.ushort)
+    var[:] = (65535 * tai_subsec).astype(np.ushort)
 
-    var = nc.createVariable('time', 'f8', dim_time, fill_value=-32767)
+    var = nc.createVariable('time', 'f8', dim_alt, fill_value=-32767)
     var.long_name = 'detector image time'
     var.description = 'integration start time in seconds of day'
     var.units = f'seconds since {orbit_start.strftime("%Y-%m-%d")}'
     var.valid_min = 0.0
     var.valid_max = 172800.0  # 2 x day
-    var[:] = l1.timestamps
+    var[:] = timestamps
 
-    var = nc.createVariable('day', 'f8', dim_time, fill_value=-32767)
+    var = nc.createVariable('day', 'f8', dim_alt, fill_value=-32767)
     var.long_name = 'days since start of year'
     var.units = 's'
     var.valid_min = 0.0
     var.valid_max = 365.25
-    dates = Time('1958-01-01', scale='tai') + l1.tai_seconds * units.s
+    dates = Time('1958-01-01', scale='tai') + tai_seconds * units.s
     days = np.empty(len(dates))
     for i in range(len(days)):
         t = dates[i].datetime.timetuple()
         days[i] = (t.tm_yday + (t.tm_hour * 3600 + t.tm_min * 60 + t.tm_sec
-                                + l1.tai_subsec[i]) / 86400)
+                                + tai_subsec[i]) / 86400)
     var[:] = days
 
     nc.close()

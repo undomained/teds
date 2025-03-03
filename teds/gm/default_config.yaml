@@ -45,6 +45,21 @@ sensor:
   roll: 0.0
   yaw: 0.0
 
+# Settings for extending the geometry to outside the target box and
+# increasing the number of geolocation points by a multiple.
+extend_geometry:
+  # Number of grid points outside the target box in the ALT
+  # direction. This is in units of the original grid. The actual
+  # number of out-of-box points is margin_alt * density_alt.
+  margin_alt: 0
+  # Similarly, number of extended grid points in the ACT direction
+  margin_act: 0
+  # Density of extended grid cells in the ALT direction. Value of 2
+  # means the extended grid spacing is half of the normal grid.
+  density_alt: 1
+  # Density of extended grid cells in the ACT direction
+  density_act: 1
+
 io_files:
   # Navigation data from AOCSim
   aocs_navigation: ""

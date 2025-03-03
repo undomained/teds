@@ -22,6 +22,14 @@ class Navigation:
     # Satellite altitude, m
     altitude: npt.NDArray[np.float64]
 
+    @classmethod
+    def from_shape(cls, shape: tuple) -> Self:
+        """Initialize all geometry arrays with the same shape."""
+        return cls(np.zeros(shape),
+                   np.zeros(shape),
+                   np.zeros(shape, dtype=Quaternion),
+                   np.zeros(shape))
+
 
 @dataclass
 class Geometry:

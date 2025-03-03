@@ -130,7 +130,7 @@ def run_l1al1b(config_user: dict | None = None) -> None:
     ckd.prnu.prnu_qe = bin_data(binning_table, ckd.prnu.prnu_qe)
     # Processing steps
     print_heading('Retrieval')
-    # Output processing level
+    # Target calibration level
     cal_level = ProcLevel[config['cal_level'].lower()]
     if step_needed(ProcLevel.raw, l1_product.proc_level, cal_level):
         log.info('Coadding and binning')
@@ -161,7 +161,7 @@ def run_l1al1b(config_user: dict | None = None) -> None:
             ProcLevel.prnu, l1_product.proc_level, cal_level):
         log.info('PRNU')
         cal.prnu(l1_product, ckd.pixel_mask, ckd.prnu.prnu_qe)
-    if l1_product.signal.size > 0:
+    if cal_level >= ProcLevel.stray and l1_product.signal.size > 0:
         log.info('Smoothing over bad values')
         cal.remove_bad_values(
             ckd.n_detector_cols, ckd.pixel_mask, l1_product.signal)
@@ -182,7 +182,8 @@ def run_l1al1b(config_user: dict | None = None) -> None:
                               binning_table.count_table,
                               ckd.spectral.wavelengths,
                               config['swath']['exact_drawing'])
-    if l1_product.spectra.shape[2] != ckd.spectral.wavelengths.shape[1]:
+    if cal_level >= ProcLevel.swath and (
+            l1_product.spectra.shape[2] != ckd.spectral.wavelengths.shape[1]):
         log.info(
             'Interpolating from intermediate to main CKD wavelength grids')
         cal.change_wavelength_grid(l1_product, ckd.spectral.wavelengths)

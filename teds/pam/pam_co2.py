@@ -584,7 +584,6 @@ def pam_l1b_geo(filen1: str,
                             3,
                             figsize=(16, 5),
                             dpi=100,)
-#    fig.suptitle(station_name, fontsize=16)
 
     ax = axs[0]
     num_bins = 201

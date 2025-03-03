@@ -13,7 +13,7 @@ from astropy.time import TimeDelta
 from netCDF4 import Dataset
 from pathlib import Path
 from pyquaternion import Quaternion
-from scipy.interpolate import CubicSpline
+from scipy.interpolate import interpn
 import datetime
 import numpy as np
 import numpy.typing as npt
@@ -23,12 +23,13 @@ from .io import write_geometry
 from .io import write_navigation
 from .satellite import Satellite
 from .sensor import Sensor
+from .types import Geometry
 from .types import Navigation
 from teds import log
 from teds.l1al1b import geolocate
+from teds.l1al1b import interpolate_navigation_data
 from teds.l1al1b import solar_model
 from teds.l1al1b.python.io import read_ckd
-from teds.l1al1b.python.types import Geometry
 from teds.l1al1b.python.types import L1
 from teds.lib.io import merge_config_with_default
 from teds.lib.io import print_heading
@@ -145,7 +146,7 @@ def gen_image_timestamps(orbit_start: datetime.datetime,
     l1 = L1.from_empty()
     l1.tai_seconds = np.empty(n_time, dtype=np.uint32)
     l1.tai_subsec = np.empty(n_time)
-    l1.timestamps = np.empty(n_time, dtype=np.float64)
+    l1.navigation = Navigation.from_shape((n_time,))
     exposure_tai_start = (Time(orbit_start, scale='tai')
                           + datetime.timedelta(minutes=exposure_time_beg)
                           - Time('1958-01-01', scale='tai'))
@@ -159,7 +160,8 @@ def gen_image_timestamps(orbit_start: datetime.datetime,
         l1.tai_seconds[i] = np.uint(seconds)
         l1.tai_subsec[i] = np.float64((
             seconds - TimeDelta(val=l1.tai_seconds[i]*units.s)).to(units.s))
-        l1.timestamps[i] = np.float64((seconds - day_tai_start).to(units.s))
+        l1.navigation.time[i] = np.float64(
+            (seconds - day_tai_start).to(units.s))
     return l1
 
 
@@ -270,31 +272,6 @@ def convert_to_j2000(orbit_timestamps: npt.NDArray[np.datetime64],
         navigation.att_quat[i_pos] = q_ecef_j2000 * navigation.att_quat[i_pos]
 
 
-def interpolate_navigation_data(navigation: Navigation, l1: L1) -> None:
-    """Interpolate navigation data from orbit times to detector image
-    times.
-
-    """
-    n_alt = len(l1.timestamps)
-    l1.orb_pos = np.empty((n_alt, 3))
-    l1.att_quat = np.empty(n_alt, dtype=Quaternion)
-    # Interpolate orbit positions
-    for i_dir in range(3):
-        s = CubicSpline(navigation.time, navigation.orb_pos[:, i_dir])
-        l1.orb_pos[:, i_dir] = s(l1.timestamps)
-    # Interpolate quaternions
-    indices = np.searchsorted(
-        navigation.time.astype(np.float64), l1.timestamps)
-    for i_alt in range(n_alt):
-        idx_lo = indices[i_alt] - 1
-        idx_hi = indices[i_alt]
-        idx_delta = ((l1.timestamps[i_alt] - navigation.time[idx_lo])
-                     / (navigation.time[idx_hi] - navigation.time[idx_lo]))
-        q0 = navigation.att_quat[idx_lo]
-        q1 = navigation.att_quat[idx_hi]
-        l1.att_quat[i_alt] = Quaternion.slerp(q0, q1, amount=idx_delta)
-
-
 def sensor_simulation(
         config: dict,
         sat_pos: dict,
@@ -387,7 +364,8 @@ def get_orbit(
             # Convert orbit positions and quaternions from ECEF to
             # J2000. AOCS data is already in J2000.
             convert_to_j2000(orbit_timestamps, navigation)
-        interpolate_navigation_data(navigation, l1)
+        l1.navigation = interpolate_navigation_data(
+            navigation, l1.navigation.time)
         geometry = geolocate(
             l1, ckd.swath.line_of_sights, config['io_files']['dem'])
     else:
@@ -395,6 +373,67 @@ def get_orbit(
         geometry = sensor_simulation(
             config, sat_pos, orbit_timestamps, ckd.swath.line_of_sights)
     return navigation, geometry
+
+
+def extend_geometry(geometry: Geometry,
+                    margin_alt: int,
+                    margin_act: int,
+                    density_alt: int,
+                    density_act: int) -> Geometry:
+    """Extend geometry outside the target box.
+
+    Parameters
+    ----------
+    geometry
+        Input geometry. This is the same as in the L1B product.
+    margin_alt
+        Number of grid points, in units of the input grid, outside the
+        target box in the ALT direction. This applies separately to
+        both ends of the geometry, i.e. the total number of out-of-box
+        points is 2 * margin_alt.
+    margin_act
+        Similarly, number of added grid points in the ACT direction.
+    density_alt
+        Number of extended grid points as a multiple of the input grid
+        in the ALT direction.
+    density_act
+        Number of extended grid points as a multiple of the input grid
+        in the ACT direction.
+
+    Returns
+    -------
+        Extended and densified geometry
+
+    """
+    n_rows, n_cols = geometry.lat.shape
+    alt_in = np.arange(0, n_rows, 1.0)
+    act_in = np.arange(0, n_cols, 1.0)
+    grid_out = np.meshgrid(
+        np.arange(-margin_alt, n_rows + margin_alt, 1.0 / density_alt),
+        np.arange(-margin_act, n_cols + margin_act, 1.0 / density_act),
+        indexing='ij')
+
+    def interp(data: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
+        """Interpolate to a target (dense) grid."""
+        return interpn((alt_in, act_in),
+                       data,
+                       grid_out,
+                       method='linear',
+                       bounds_error=False,
+                       fill_value=None)
+
+    def interp_angles(data: npt.NDArray[np.float64]) -> (
+            npt.NDArray[np.float64]):
+        """For angles, need to interpolate sin and cos separately."""
+        return np.arctan2(interp(np.sin(data)), interp(np.cos(data)))
+
+    return Geometry(interp(geometry.lat),
+                    interp_angles(geometry.lon),
+                    interp(geometry.height),
+                    interp(geometry.sza),
+                    interp_angles(geometry.saa),
+                    interp(geometry.vza),
+                    interp_angles(geometry.vaa))
 
 
 def geometry_module(config_user: dict | None = None) -> None:
@@ -445,9 +484,21 @@ def geometry_module(config_user: dict | None = None) -> None:
         log.error(f'unknown profile: {config["profile"]}')
         exit(1)
 
+    # Extended geometry may be used in the SGM
+    geometry_ext = extend_geometry(geometry,
+                                   config['extend_geometry']['margin_alt'],
+                                   config['extend_geometry']['margin_act'],
+                                   config['extend_geometry']['density_alt'],
+                                   config['extend_geometry']['density_act'])
+
     # Write output data
-    write_geometry(
-        config['io_files']['geometry'], geometry, config['orbit']['epoch'], l1)
+    write_geometry(config['io_files']['geometry'],
+                   geometry,
+                   geometry_ext,
+                   config['orbit']['epoch'],
+                   l1.navigation.time,
+                   l1.tai_seconds,
+                   l1.tai_subsec,)
     if config['profile'] == 'orbit' and not config['use_python_geolocation']:
         write_navigation(config['io_files']['navigation'],
                          config['orbit']['epoch'],

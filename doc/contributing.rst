@@ -286,7 +286,7 @@ That said, here is a small selection of rules we want to draw the contributor's 
 * Use camel case for function and class names and underscores otherwise.
 * When writing comments follow the rules of English grammar. Start all comments, if possible, with capitalization. If the comment is one or more whole sentences use normal punctuation. However, if the comment is a single sentence that fits into one line, do not end with a period. Do not end non-sentences with a period.
 * Use spaces in argument lists and with most binary operations.
-* Always use signed integers - ideally the default ``int`` - over unsigned ones unless there is a compelling reason to do otherwise like if you read or write a NetCDF4 variable that is defined to be unsigned. When using integer types other than the default one, use fixed-width ones. For example, if you need to represent a value larger than 2^31, prefer the 64-bit type ``int64_t``.
+* Always use signed integers - ideally the default ``int`` - over unsigned ones unless there is a compelling reason to do otherwise like if you read or write a NetCDF4 variable that is defined to be unsigned. When using integer types other than the default one, use fixed-width ones. For example, if you need to represent a value larger than 2^31, prefer the 64-bit type ``int64_t``. As a rule of thumb, use unsigned for addresses and signed integers for computation.
 
 Most of those rules are already covered by the aforementioned code linters. For further tips on the best practices of C++ coding, here is an excellent source: https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines
 

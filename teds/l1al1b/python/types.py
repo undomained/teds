@@ -5,11 +5,11 @@ from dataclasses import dataclass
 from enum import IntEnum
 from enum import auto
 from typing import Self
-
 import numpy as np
 import numpy.typing as npt
 
 from teds.gm.types import Geometry
+from teds.gm.types import Navigation
 
 
 # Process ladder, an ordered list of possible states of data. Data
@@ -178,16 +178,17 @@ class L1:
     spectra_noise: npt.NDArray[np.float64]
     solar_irradiance: npt.NDArray[np.float64]
 
-    # Detector and other settings
-    timestamps: npt.NDArray[np.float64]
+    # Detector image attributes
     tai_seconds: npt.NDArray[np.uint]
     tai_subsec: npt.NDArray[np.float64]
     binning_table_id: int
     coad_factor: int
     exposure_time: float
 
-    orb_pos: npt.NDArray[np.float64]
-    att_quat: npt.NDArray[np.float64]
+    # Navigation data interpolated to detector timestamps
+    navigation: Navigation
+
+    # Geolocation result from navigation data
     geometry: Geometry
 
     @classmethod
@@ -199,12 +200,10 @@ class L1:
                    spectra=np.empty(0),
                    spectra_noise=np.empty(0),
                    solar_irradiance=np.empty(0),
-                   timestamps=np.empty(0),
                    tai_seconds=np.empty(0, dtype=np.uint),
                    tai_subsec=np.empty(0),
                    binning_table_id=0,
                    coad_factor=1,
                    exposure_time=0.0,
-                   orb_pos=np.empty(0),
-                   att_quat=np.empty(0),
+                   navigation=Navigation.from_shape((0,)),
                    geometry=Geometry.from_shape((0,)))

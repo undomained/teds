@@ -344,12 +344,6 @@ def Carbon_radiation_scene_generation(config: dict) -> None:
                            config["selected_gases"], 
                            config["binning_act"],)
 
-        #fig, (ax0, ax1) = plt.subplots(2, 1)
-        #im1 = ax0.pcolormesh(gm_org.ypos,gm_org.xpos,gm_org.vza)
-        #fig.colorbar(im1, ax=ax0)
-        #im2 = ax0.pcolormesh(gm_data.ypos,gm_data.xpos,gm_data,vza)
-        #fig.colorbar(im2, ax=ax1)
-
     # Independently from config['convolve_atm_input'], we have atmospheric data and geometry given on the same grid.
     # for the dataset atm, albedo, gm_data, we perform the RT simulation
 

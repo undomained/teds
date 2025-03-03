@@ -17,13 +17,13 @@ def vincenty(lat1: npt.NDArray[np.float64],
     Parameters
     ----------
     lat1
-        Latitude of source point
+        Latitude of source point (radians)
     lat2
-        Latitude of destination point
+        Latitude of destination point (radians)
     lon1
-        Longitude of source point
+        Longitude of source point (radians)
     lon2
-        Longitude of destination point
+        Longitude of destination point (radians)
 
     Returns
     -------

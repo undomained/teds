@@ -45,6 +45,8 @@ TEST_CASE("integration tests")
     empty_config << "processing_version: test\n";
     empty_config.close();
     tango::SettingsIM settings { config_filename };
+    settings.detector.exposure_time = 0.01724385;
+    settings.detector.nr_coadditions = 2;
     settings.isrf.in_memory = true;
     settings.io.ckd = ckd_filename;
     settings.io.sgm = sgm_filename;

@@ -48,8 +48,8 @@ spec_settings:
   dwave:       0.002 # nm
 
 isrf_settings:
-  type: Gaussian
   fwhm: 0.45
+  shape: 2.0
 
 surface:
   # wavelengths at which the surface albedo is specified in the output

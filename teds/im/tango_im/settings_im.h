@@ -204,35 +204,35 @@ public:
 
     struct
     {
-        Setting<std::string> ckd { { "io", "ckd" }, {}, "CKD file path" };
+        Setting<std::string> ckd { { "io_files", "ckd" }, {}, "CKD file path" };
         Setting<std::string> binning_table {
-            { "io", "binning_table" },
+            { "io_files", "binning_table" },
             {},
             "Path to a NetCDF file containing binning tables and count arrays\n"
             "Which ones to use is determined by the L1A file variable\n"
             "/image_attributes/binning_table"
         };
         Setting<std::string> sgm {
-            { "io", "sgm" },
+            { "io_files", "sgm" },
             {},
             "Radiation scene from the scene generation module (SGM input).\n"
             "One can also use an L1B or a lower level product. The instrument\n"
             "then skips some of the first processin steps."
         };
         Setting<std::string> l1a {
-            { "io", "l1a" },
+            { "io_files", "l1a" },
             {},
             "L1A product (output). If cal_level was set to anything other\n"
             "than l1a then this is actually not an L1A but a higher level\n"
             "product."
         };
-        Setting<std::string> geometry { { "io", "geometry" },
+        Setting<std::string> geometry { { "io_files", "geometry" },
                                         {},
                                         "geometry file (input)" };
-        Setting<std::string> navigation { { "io", "navigation" },
+        Setting<std::string> navigation { { "io_files", "navigation" },
                                           {},
                                           "navigation data (input)" };
-    } io;
+    } io_files;
 
     SettingsIM() = default;
     SettingsIM(const std::string& yaml_file) : Settings { yaml_file } {}

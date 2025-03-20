@@ -13,8 +13,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import numpy.typing as npt
 
-from teds.lib.libNumTools import get_isrf
 from teds.gm import vincenty
+from teds.lib.convolution import KernelGauss
 
 lat_lon_bb = {}  # (lon_low, lon_high, lat_low, lat_high)
 lat_lon_bb['Matimba'] = (27.4, 27.8, -23.85, -23.5)
@@ -227,10 +227,10 @@ def pam_sgm_gps(filen: str,
     if 'albedo' in plt_options:
 
         key_list = list(sgmgps_data.variables.keys())
-        S2_bands = [band for band in key_list if 'B' in band]
+        S2_bands = [band for band in key_list if '_b' in band]
         if ((plt_options not in S2_bands)):
             raise Exception('plt_options not well chosen. For albedo, use an '
-                            f'imput from the list{S2_bands}')
+                            f'input from the list{S2_bands}')
 
         fig, ax = plt.subplots(1,
                                1,
@@ -250,13 +250,13 @@ def pam_sgm_gps(filen: str,
                              '$A_s$ [1]'
                              )
 
-    if 'X' in plt_options:
+    if 'x' in plt_options:
         key_list = list(sgmgps_data.variables.keys())
-        Xgases = [Xgas for Xgas in key_list if 'X' in Xgas]
+        Xgases = [Xgas for Xgas in key_list if 'x' in Xgas]
 
         if (plt_options not in Xgases):
             raise Exception('plt_options not well chosen. For gases use an '
-                            'imput from the list', Xgases)
+                            'input from the list', Xgases)
 
         fig, ax = plt.subplots(1, 1, figsize=(14, 10), dpi=100,
                                subplot_kw={'projection': ccrs.Orthographic(
@@ -430,8 +430,8 @@ def pam_l1b(filen_l1b: str,
         # define isrf function
         wave_lbl = sgmrad['wavelength'][:].data
         wave = level1b['observation_data']['wavelength'][iact, :].data
-        isrf_convolution = get_isrf(wave, wave_lbl, isrf_config)
-        sgmrad_conv = isrf_convolution(rad_binned[ialt, iact, :])
+        isrf = KernelGauss(wave_lbl, wave, isrf_config['fwhm'])
+        sgmrad_conv = isrf.convolve(rad_binned[ialt, iact, :])
 
         wave_min = wave_lbl.min()
         wave_max = wave_lbl.max()
@@ -515,10 +515,10 @@ def pam_l1b(filen_l1b: str,
             # define isrf function
             wave_lbl = sgmrad['wavelength'][:].data
             wave = level1b['observation_data']['wavelength'][iact, :].data
-            isrf_convolution = get_isrf(wave, wave_lbl, isrf_config)
+            isrf = KernelGauss(wave_lbl, wave, isrf_config['fwhm'])
 
             for ialt in range(nalt):
-                sgmrad_conv[ialt, iact, :] = isrf_convolution(
+                sgmrad_conv[ialt, iact, :] = isrf.convolve(
                     rad_binned[ialt, iact, :])
 
         error = (

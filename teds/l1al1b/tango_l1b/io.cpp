@@ -99,8 +99,7 @@ auto printSystemInfo(const std::string& project_version,
     spdlog::get("plain")->info("Date and timezone       : {}", getDate());
     spdlog::get("plain")->info(
       "Contacts                : raullaasner@gmail.com\n"
-      "                          bitbucket.org/sron_earth/teds/issues "
-      "(request permission)");
+      "                          bitbucket.org/sron_earth/teds/issues");
     spdlog::get("plain")->info("Host system             : {}",
                                cmake_host_system);
     spdlog::get("plain")->info("Executable location     : {}", executable);
@@ -263,7 +262,8 @@ auto readL1(const std::string& filename,
         const auto n_act { nc.getDim("across_track_sample").getSize() };
         const auto n_wavelength { nc.getDim("wavelength").getSize() };
         l1_prod.wavelengths.resize(n_act, std::vector<double>(n_wavelength));
-        if (l1_prod.level == ProcLevel::sgm) {
+        if (l1_prod.level == ProcLevel::sgm
+            || nc.getGroup("observation_data").isNull()) {
             std::vector<double> wavelengths(n_wavelength);
             nc.getVar("wavelength").getVar(wavelengths.data());
             for (size_t i_act {}; i_act < n_act; ++i_act) {
@@ -403,7 +403,7 @@ auto writeL1(const std::string& filename,
     if (l1_prod.level < ProcLevel::l1b) {
         // Image timestamps come from the geometry file
         const netCDF::NcFile nc_geo {
-            YAML::Load(config)["io"]["geometry"].as<std::string>(),
+            YAML::Load(config)["io_files"]["geometry"].as<std::string>(),
             netCDF::NcFile::read
         };
         std::string time_units {};

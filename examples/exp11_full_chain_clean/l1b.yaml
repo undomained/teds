@@ -25,7 +25,7 @@ swath:
   b_spline_order: 5
   # geolocation: no
 
-io:
+io_files:
   ckd: ckd.nc
   binning_table: binning_table.nc
   dem: gebco_ocssw_v2020.nc

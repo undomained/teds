@@ -3,6 +3,6 @@
 '''Functions for using SGM.'''
 
 from teds.sgm.s2 import download_albedo  # noqa: F401
-from teds.sgm.sgm_Carbon_radscene import (  # noqa: F401
-    Carbon_radiation_scene_generation)
-from teds.sgm.sgm_geoscene import geoscene_generation  # noqa: F401
+from teds.sgm.carbon_radscene import (  # noqa: F401
+    carbon_radiation_scene_generation)
+from teds.sgm.geoscene import geoscene_generation  # noqa: F401

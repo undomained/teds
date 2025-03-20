@@ -128,8 +128,7 @@ def print_system_info() -> None:
     # Datetime and contacts
     print('Date and timezone       :', datetime.now().strftime('%Y %B %d %a'))
     print('Contacts                : raullaasner@gmail.com')
-    print('                          '
-          'bitbucket.org/sron_earth/teds/issues (request permission)')
+    print('                          bitbucket.org/sron_earth/teds/issues')
     # Platform
     host_system = subprocess.run(
         ['uname', '-sr'], shell=False, capture_output=True).stdout

@@ -36,7 +36,7 @@ import yaml
 from teds.ckd import gen_ckd
 from teds.gm.gm import geometry_module
 from teds.sgm import geoscene_generation
-from teds.sgm import Carbon_radiation_scene_generation
+from teds.sgm import carbon_radiation_scene_generation
 from teds.sgm.s2 import download_albedo
 from teds.im import run_instrument_model
 from teds.l1al1b import run_l1al1b
@@ -46,7 +46,7 @@ gen_ckd(yaml.safe_load(open('ckd.yaml')))
 geometry_module(yaml.safe_load(open('gm.yaml')))
 download_albedo(yaml.safe_load(open('sgm.yaml')))
 geoscene_generation(yaml.safe_load(open('sgm.yaml')))
-Carbon_radiation_scene_generation(yaml.safe_load(open('sgm.yaml')))
+carbon_radiation_scene_generation(yaml.safe_load(open('sgm.yaml')))
 run_instrument_model(yaml.safe_load(open('im.yaml')))
 run_l1al1b(yaml.safe_load(open('l1b.yaml')))
 # run(['tango_im.x', 'im.yaml'])  # Assuming the executable is in PATH

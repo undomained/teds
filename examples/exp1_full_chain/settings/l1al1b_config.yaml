@@ -21,7 +21,7 @@ bin_spectra: 5
 # geolocation:
 #   enabled: no
 
-io:
+io_files:
   ckd: ../common/ckd.nc
   binning_table: ../common/binning_table.nc
   l1b: l1b.nc

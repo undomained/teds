@@ -32,23 +32,23 @@ auto SettingsL1B::scanKeys() -> void
 
     scan(rad.enabled);
 
-    scan(io.ckd);
-    scan(io.binning_table);
-    scan(io.l1a);
-    scan(io.l1b);
-    scan(io.dem);
-    scan(io.geometry);
+    scan(io_files.ckd);
+    scan(io_files.binning_table);
+    scan(io_files.l1a);
+    scan(io_files.l1b);
+    scan(io_files.dem);
+    scan(io_files.geometry);
 }
 
 auto SettingsL1B::checkParameters() -> void
 {
     // These files must always be present
-    checkPresenceOfFile(io.ckd, true);
-    checkPresenceOfFile(io.binning_table, true);
-    checkPresenceOfFile(io.l1a, true);
-    checkPresenceOfFile(io.geometry, !swath.geolocation);
+    checkPresenceOfFile(io_files.ckd, true);
+    checkPresenceOfFile(io_files.binning_table, true);
+    checkPresenceOfFile(io_files.l1a, true);
+    checkPresenceOfFile(io_files.geometry, !swath.geolocation);
 
-    checkFileWritable(io.l1b);
+    checkFileWritable(io_files.l1b);
 
     noise.artificial_scaling = 1 / std::sqrt(static_cast<double>(bin_spectra));
     if (swath.exact_drawing) {

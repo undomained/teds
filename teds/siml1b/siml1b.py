@@ -10,25 +10,14 @@ from tqdm import tqdm
 import math
 import netCDF4 as nc
 import numpy as np
-import numpy.typing as npt
 
-from ..lib import libNumTools
 from ..lib.libWrite import writevariablefromname
-from teds.gm.types import Geometry
+from teds.gm.io import nc_write_geometry
+from teds.gm.io import read_geometry
 from teds.l1al1b.python.calibration import bin_l1b
 from teds.l1al1b.python.types import L1
-
-
-def sparse_isrf_convolution(
-        isrf: npt.NDArray[np.float64],
-        mask: npt.NDArray[np.bool_],
-        spectrum: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
-    nwav = isrf[:, 0].size
-    spectrum_conv = np.empty(nwav)
-    for iwav in range(nwav):
-        idx = mask[iwav, :]
-        spectrum_conv[iwav] = isrf[iwav, idx].dot(spectrum[idx])
-    return spectrum_conv
+from teds.lib.convolution import KernelGauss
+from teds.lib.io import print_heading
 
 
 def get_sgm_rad_data(filename: str, ialt: int) -> dict:
@@ -41,82 +30,20 @@ def get_sgm_rad_data(filename: str, ialt: int) -> dict:
     return sgm_data
 
 
-def get_gm_data(filename: str) -> Geometry:
-    nc_geo = nc.Dataset(filename)
-    return Geometry(nc_geo['latitude'][:].data,
-                    nc_geo['longitude'][:].data,
-                    np.zeros(nc_geo['latitude'][:].shape),
-                    nc_geo['solar_zenith'][:].data,
-                    nc_geo['solar_azimuth'][:].data,
-                    nc_geo['sensor_zenith'][:].data,
-                    nc_geo['sensor_azimuth'][:].data)
-
-
 def sim_output(filename: str, l1b_product: L1) -> None:
     output = nc.Dataset(filename, mode='w')
     output.title = 'Tango Carbon level 1B data'
 
-    nalt, nact, nwav = l1b_product.spectra.shape
-    output.createDimension('wavelength', nwav)
-    output.createDimension('across_track_sample', nact)
-    output.createDimension('along_track_sample', nalt)
-
-    nc_grp = output.createGroup('geolocation_data')
-    _dims = ('along_track_sample', 'across_track_sample')
-
-    nc_var = nc_grp.createVariable(
-        'latitude', 'f4', _dims, fill_value=-32767.0)
-    nc_var.long_name = 'latitude at bin locations'
-    nc_var.valid_min = -90.0
-    nc_var.valid_max = 90.0
-    nc_var.units = 'degrees_north'
-    nc_var[:] = l1b_product.geometry.lat
-
-    nc_var = nc_grp.createVariable(
-        'longitude', 'f4', _dims, fill_value=-32767.0)
-    nc_var.long_name = 'longitude at bin locations'
-    nc_var.valid_min = -180.0
-    nc_var.valid_max = 180.0
-    nc_var.units = 'degrees_east'
-    nc_var[:] = l1b_product.geometry.lon
-
-    nc_var = nc_grp.createVariable(
-        'solar_zenith', 'f4', _dims, fill_value=-32767.0)
-    nc_var.long_name = 'solar zenith angle at bin locations'
-    nc_var.valid_min = -90.0
-    nc_var.valid_max = 90.0
-    nc_var.units = 'degrees'
-    nc_var[:] = l1b_product.geometry.sza
-
-    nc_var = nc_grp.createVariable(
-        'solar_azimuth', 'f4', _dims, fill_value=-32767.0)
-    nc_var.long_name = 'solar azimuth angle at bin locations'
-    nc_var.valid_min = -180.0
-    nc_var.valid_max = 180.0
-    nc_var.units = 'degrees'
-    nc_var[:] = l1b_product.geometry.saa
-
-    nc_var = nc_grp.createVariable(
-        'sensor_zenith', 'f4', _dims, fill_value=-32767.0)
-    nc_var.long_name = 'sensor zenith angle at bin locations'
-    nc_var.valid_min = -90.0
-    nc_var.valid_max = 90.0
-    nc_var.units = 'degrees'
-    nc_var[:] = l1b_product.geometry.vza
-
-    nc_var = nc_grp.createVariable(
-        'sensor_azimuth', 'f4', _dims, fill_value=-32767.0)
-    nc_var.long_name = 'sensor azimuth angle at bin locations'
-    nc_var.valid_min = -180.0
-    nc_var.valid_max = 180.0
-    nc_var.units = 'degrees'
-    nc_var[:] = l1b_product.geometry.vaa
+    n_alt, n_act, n_wav = l1b_product.spectra.shape
+    output.createDimension('wavelength', n_wav)
+    output.createDimension('across_track_sample', n_act)
+    output.createDimension('along_track_sample', n_alt)
 
     nc_grp = output.createGroup('observation_data')
     _dims = ('across_track_sample', 'wavelength')
 
-    l1b_wave = np.zeros((nact, nwav))
-    for iact in range(nact):
+    l1b_wave = np.zeros((n_act, n_wav))
+    for iact in range(n_act):
         l1b_wave[iact, :] = l1b_product.wavelengths[0, :]
     writevariablefromname(
         nc_grp, 'wavelength', _dims, l1b_product.wavelengths[0, :])
@@ -133,6 +60,10 @@ def sim_output(filename: str, l1b_product: L1) -> None:
     nc_var.valid_max = 1e24
     nc_var[:] = l1b_product.spectra_noise
 
+    nc_write_geometry(output.createGroup('geolocation_data'),
+                      l1b_product.geometry,
+                      False)
+
     output.close()
 
 
@@ -142,7 +73,7 @@ def simplified_instrument_model_and_l1b_processor(config: dict) -> None:
     l1b_product.wavelengths = np.arange(config['spec_settings']['wave_start'],
                                         config['spec_settings']['wave_end'],
                                         config['spec_settings']['dwave'])  # nm
-    l1b_product.geometry = get_gm_data(config['io_files']['input_gm'])
+    l1b_product.geometry = read_geometry(config['io_files']['input_sgm'])
 
     # basic dimensions
     nwav = l1b_product.wavelengths.size
@@ -158,8 +89,10 @@ def simplified_instrument_model_and_l1b_processor(config: dict) -> None:
     wave = l1b_product.wavelengths
 
     # define isrf function
-    isrf_convolution = libNumTools.get_isrf(
-        wave, wave_lbl, config['isrf_settings'])
+    isrf = KernelGauss(wave_lbl.data,
+                       wave,
+                       config['isrf_settings']['fwhm'],
+                       config['isrf_settings']['shape'])
 
     for ialt in tqdm(range(nalt)):
 
@@ -169,7 +102,7 @@ def simplified_instrument_model_and_l1b_processor(config: dict) -> None:
         for iact in range(nact):
             spectrum_lbl = np.array(sgm_data['radiance line-by-line'][iact, :])
             # isrf convolution
-            ymeas[ialt, iact, :] = isrf_convolution(spectrum_lbl)
+            ymeas[ialt, iact, :] = isrf.convolve(spectrum_lbl)
 
     # Noise model based on SNR = a I / (sqrt (aI +b )) ; a[(e- m2 sr s
     # nm) / phot], and [b] = e-.
@@ -205,5 +138,4 @@ def simplified_instrument_model_and_l1b_processor(config: dict) -> None:
 
     sim_output(config['io_files']['output_l1b'], l1b_product)
 
-    print('=>siml1b calculation finished successfully')
-    return
+    print_heading('Success')

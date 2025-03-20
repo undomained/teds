@@ -1,7 +1,10 @@
 profile: individual_spectra
 
-convolve_atm_input: False      #True means lbl spatial convolution of the model atmosphere with SEDF
-                               #False means spectral convolution with spatial sampling on model grid
+sedf:
+  enabled: no
+
+isrf:
+  enabled: yes
 
 spec_lbl_settings:              #settings for line-by-line spectra
     wave_start: 1575            #nm
@@ -11,20 +14,20 @@ spec_lbl_settings:              #settings for line-by-line spectra
 xsec_forced: False              #flag to force new cross section calculation
 
 atmosphere:
-    nlay: 30                    #number of atmospheric layers
-    dzlay: 1000                 #geometrical thickness of the layers [m]
-    psurf: 101300               #surface pressure [Pa]
+  n_layers: 30
+  layer_thickness: 1000
+  surface_pressure: 101300
 
-selected_gases: ['co2','ch4','h2o']
+afgl_gases: ['co2','ch4','h2o']
 
 binning_act: 1
 
 io_files:
-    input_gm: geometry.nc
-    input_sun_reference: ../common/solar_spectrum.nc
-    input_hapi: ../common/hapi/
-    input_afgl: ../common/prof.AFGL.US.std
-    input_sgm_geo: sgm_atmosphere.nc
-    output_rad: sgm_radiance.nc
-    output_geo_ref: sgm_atmosphere_ref.nc
-    dump_xsec: xsec.pkl
+  geometry: geometry.nc
+  sun_reference: ../common/solar_spectrum.nc
+  hapi: ../common/hapi/
+  afgl: ../common/prof.AFGL.US.std
+  atmosphere: sgm_atmosphere.nc
+  radiance: sgm_radiance.nc
+  atmosphere_ref: sgm_atmosphere_ref.nc
+  dump_xsec: xsec.pkl

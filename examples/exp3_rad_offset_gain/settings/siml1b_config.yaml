@@ -11,8 +11,8 @@ spec_settings:                                     #settings for spectral grid o
 #    bcoeff:     0.45                               #only for generalized_normal, bcoeff=1/2 means Gaussian
 
 isrf_settings:
-    type:       'Gaussian'                         #type of ISRF, currently only Gaussian or generalized_normal
     fwhm:       0.45                               #fwhm  [nm]
+    shape: 2.0
     
 snr_model:                                         #SNR instrument model a nd b coefficients
     a_snr:      1.54E-12                           #[e- m2 sr s nm/phot.]

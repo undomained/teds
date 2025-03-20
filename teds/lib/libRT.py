@@ -133,7 +133,6 @@ def transmission(sun_lbl, optics, surface, mu0, muv, deriv=False):
 
     # Number of wavelengths and layers
     nwave = optics.prop['taua'][:, 0].size
-    nlay = optics.prop['taua'][0, :].size
 
     # Total vertical optical thickness per layer (Delta tau_k) [nwave,nlay]
     tauk = optics.prop['taua']
@@ -147,7 +146,9 @@ def transmission(sun_lbl, optics, surface, mu0, muv, deriv=False):
     rad_trans = sun_lbl*fact*surface.alb*exptot
 
     if deriv:
-        dev_tau = -mueff*rad_trans  # this is the derivative with resoect to tautot and tauk because d tautot /dtauk = 1
+        # This is the derivative with respect to tautot and tauk
+        # because d_tautot / d_tauk = 1.
+        dev_tau = -mueff*rad_trans
         dev_alb = fact*exptot*sun_lbl
         return rad_trans, dev_tau, dev_alb
     else:
@@ -236,7 +237,7 @@ class molecular_data:
         # returns:   
         #            xsdb[id][path]: dictionary with paths to HITRAN parameter files
         """
-        # check whether input is in range
+        # Check whether input is in range
         while True:
             if len(hp_ids) > 0:
                 break
@@ -263,6 +264,7 @@ class molecular_data:
 
 ###########################################################
 
+
 class optic_abs_prop:
     """
     # The optic_ssc_prop class collects methods to
@@ -280,7 +282,7 @@ class optic_abs_prop:
         """
         # init class
         #
-        # arguments: 
+        # arguments:
         #            prop: dictionary of contributing phenomena
         #            prop[wave]: array of wavelengths [wavelength] [nm]
         #            prop[zlay]: array of vertical height layers, midpoints [nlay] [m]
@@ -293,10 +295,10 @@ class optic_abs_prop:
         """
         # Calculates molecular absorption cross sections
         #
-        # arguments: 
+        # arguments:
         #            molec_data: molec_data object
         #            atm_data: atmosphere_data object
-        # returns:   
+        # returns:
         #            prop['molec_XX']: dictionary with optical properties with XXXX HITRAN identifier code
         #            prop['molec_XX']['xsec']: absorption cross sections [wavelength, nlay] [cm2]
         """
@@ -314,44 +316,50 @@ class optic_abs_prop:
             self.prop[name]['species'] = species
             # Check whether absorber type is in the atmospheric data structure
 
-            if species not in atm_data.__dict__.keys():
-                print("WARNING! optic_prop.cal_molec: absorber type not in atmospheric data.", id, species)
-            else:
-                # Loop over all atmospheric layers
-                for ki in tqdm(range(len(atm_data.zlay))):
-                    pi = atm_data.play[ki]
-                    Ti = atm_data.tlay[ki]
-                    # Calculate absorption cross section for layer
-                    nu, xs = absorptionCoefficient_Voigt(SourceTables=molec_data.xsdb[id]['name'], Environment={
-                                                            'p': pi/PSTD, 'T': Ti}, WavenumberStep=nu_samp)
-                    dim_nu = nu.size
-                    nu_ext = np.insert(nu, 0, nu[0]-nu_samp)
-                    nu_ext = np.append(nu_ext, nu[dim_nu-1]+nu_samp)
-                    xs_ext = np.insert(xs, 0, 0.)
-                    xs_ext = np.append(xs_ext, 0.)
-                    # Interpolate on wavelength grid provided on input
-                    self.prop[name]['xsec'][:, ki] = np.interp(self.wave, np.flip(1E7/nu_ext), np.flip(xs_ext))
+            # Loop over all atmospheric layers
+            for ki in tqdm(range(len(atm_data.zlay))):
+                pi = atm_data.play[ki]
+                Ti = atm_data.tlay[ki]
+                # Calculate absorption cross section for layer
+                nu, xs = absorptionCoefficient_Voigt(
+                    SourceTables=molec_data.xsdb[id]['name'],
+                    Environment={'p': pi/PSTD, 'T': Ti},
+                    WavenumberStep=nu_samp)
+                dim_nu = nu.size
+                nu_ext = np.insert(nu, 0, nu[0]-nu_samp)
+                nu_ext = np.append(nu_ext, nu[dim_nu-1]+nu_samp)
+                xs_ext = np.insert(xs, 0, 0.)
+                xs_ext = np.append(xs_ext, 0.)
+                # Interpolate on wavelength grid provided on input
+                self.prop[name]['xsec'][:, ki] = np.interp(
+                    self.wave, np.flip(1E7/nu_ext), np.flip(xs_ext))
 
     def set_opt_depth_species(self, atm, species):
-        """
-        # calaculates absorption optical depth from the various species and combines those as specified
-        #
-        # arguments:
-        #            atmospheric input and species to be combined to total optical depth
-        # returns:   
-        #            prop[taua]: total absorption optical thickness array [wavelength, nlay] [-]
+        """Calculate absorption optical depth from the various species
+        and combines those as specified.
+
+        prop[taua] is total absorption optical thickness array
+        [wavelength, nlay] [-].
+
+        Parameters
+        ----------
+        atm
+            atmospheric input and species to be combined to total optical depth
+
         """
         nlay = self.zlay.size
         nwave = self.wave.size
 
-        conv = 1.E-4  # cross sections are given in cm^2, atmospheric densities in m^2
-                                  
+        # Cross sections are given in cm^2, atmospheric densities in
+        # m^2
+        conv = 1.E-4
+
         for name in self.prop.keys():
-            if(name[0:5] == 'molec'):
+            if name[0:5] == 'molec':
                 spec = self.prop[name]['species']
-                self.prop[name]['taualt'] = self.prop[name]['xsec'] * (atm.__getattribute__(spec)*conv)
-    
+                self.prop[name]['taualt'] = self.prop[name]['xsec'] * (
+                    atm.__getattribute__(spec) * conv)
+
         self.prop['taua'] = np.zeros((nwave, nlay))
         for name in species:
             self.prop['taua'] = self.prop['taua'] + self.prop[name]['taualt']
-            self.prop[name]['tau_molec'] = np.zeros((nwave, nlay))

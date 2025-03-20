@@ -27,7 +27,7 @@ noise:
 stray:
    enabled: True
 
-io:
+io_files:
   ckd: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/ckd/ckd_ACT500_20250126.nc
   binning_table: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/ckd/binning_table.nc
   sgm: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/sgm/Tango_Carbon_sgm_radiance_exp7.1.nc

@@ -35,7 +35,7 @@ isrf:
 swath:
   b_spline_order: 5
 
-io:
+io_files:
   ckd: ckd.nc
   binning_table: binning_table.nc
   sgm: sgm_radiance.nc

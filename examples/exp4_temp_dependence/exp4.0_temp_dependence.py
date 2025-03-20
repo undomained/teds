@@ -44,35 +44,35 @@ path_L1AL1B    = path_project  + 'end_to_end/teds/L1AL1B/'
 
 locations = Emptyclass()
 locations.__setattr__('gm', {})
-locations.gm['output']        = path_interface + 'gm/Tango_Carbon_gm_exp4.0.nc'
+locations.gm['geometry']        = path_interface + 'gm/Tango_Carbon_gm_exp4.0.nc'
 
 locations.__setattr__('sgm', {})
-locations.sgm['gm_input']     = path_interface + 'gm/Tango_Carbon_gm_exp4.0.nc'
-locations.sgm['S2_dump']      = path_tmp + 'Tango_Carbon_S2_exp4.0.npy'
-locations.sgm['afgl_input']   = path_afgl + 'prof.AFGL.US.std'
-locations.sgm['meteo_dump']   = path_tmp + 'Tango_Carbon_meteo_exp4.0.pkl'
+locations.sgm['geometry']     = path_interface + 'gm/Tango_Carbon_gm_exp4.0.nc'
+locations.sgm['s2_albedo']      = path_tmp + 'Tango_Carbon_S2_exp4.0.npy'
+locations.sgm['afgl']   = path_afgl + 'prof.AFGL.US.std'
+locations.sgm['meteo']   = path_tmp + 'Tango_Carbon_meteo_exp4.0.pkl'
 locations.sgm['xsec_dump']    = path_tmp + 'Tango_Carbon_xsec_exp4.0.pkl'
 locations.sgm['sun_reference']= path_sol_spec + 'hybrid_reference_spectrum_c2021-03-04_with_unc.nc'
-locations.sgm['rad_output']   = path_interface + 'sgm/Tango_Carbon_sgm_radiance_exp4.0.nc'
-locations.sgm['geo_output']   = path_interface + 'sgm/Tango_Carbon_sgm_atmosphere_exp4.0.nc'
-locations.sgm['hapi_path']    = paths.project  + paths.data_harpi
+locations.sgm['radiance']   = path_interface + 'sgm/Tango_Carbon_sgm_radiance_exp4.0.nc'
+locations.sgm['atmosphere']   = path_interface + 'sgm/Tango_Carbon_sgm_atmosphere_exp4.0.nc'
+locations.sgm['hapi']    = paths.project  + paths.data_harpi
 
 locations.__setattr__('im', {})
-locations.im['ckd_input']     = path_interface + 'ckd/OWL640S_low-gain_radiation_ckd_dose0.0_21kernel.nc'
-locations.im['rad_input']     = path_interface + 'sgm/Tango_Carbon_sgm_radiance_exp4.0.nc'
+locations.im['ckd']     = path_interface + 'ckd/OWL640S_low-gain_radiation_ckd_dose0.0_21kernel.nc'
+locations.im['sgm']     = path_interface + 'sgm/Tango_Carbon_sgm_radiance_exp4.0.nc'
 locations.im['binning_table'] = path_interface + 'ckd/binning_table.nc'
 locations.im['ckd_expo_time'] = path_interface + 'ckd/optimal_exposure.txt'
 locations.im['ckd_coadding']  = path_interface + 'ckd/optimal_coadding.txt'
 locations.im['IM_path']       = path_IM
-locations.im['output']        = path_interface + 'level1a/Tango_Carbon_l1a_exp4.0.nc'
-locations.im['gm_input']      = path_interface + 'gm/Tango_Carbon_gm_exp4.0.nc'
+locations.im['l1a']        = path_interface + 'level1a/Tango_Carbon_l1a_exp4.0.nc'
+locations.im['geometry']      = path_interface + 'gm/Tango_Carbon_gm_exp4.0.nc'
 
 locations.__setattr__('l1al1b', {})
-locations.l1al1b['ckd_input'] = path_interface + 'ckd/OWL640S_low-gain_radiation_ckd_dose0.0_21kernel.nc'
+locations.l1al1b['ckd'] = path_interface + 'ckd/OWL640S_low-gain_radiation_ckd_dose0.0_21kernel.nc'
 locations.l1al1b['binning_table'] = path_interface +'ckd/binning_table.nc'
-locations.l1al1b['l1a_input'] = path_interface + 'level1a/Tango_Carbon_l1a_exp4.0.nc'
-locations.l1al1b['l1b_output']= path_interface + 'level1b/Tango_Carbon_l1b_exp4.0.nc'
-locations.l1al1b['gm_input']  = path_interface + 'gm/Tango_Carbon_gm_exp4.0.nc'
+locations.l1al1b['l1a'] = path_interface + 'level1a/Tango_Carbon_l1a_exp4.0.nc'
+locations.l1al1b['l1b']= path_interface + 'level1b/Tango_Carbon_l1b_exp4.0.nc'
+locations.l1al1b['geometry']  = path_interface + 'gm/Tango_Carbon_gm_exp4.0.nc'
 locations.l1al1b['L1AL1B_path']   = path_L1AL1B
 
 locations.__setattr__('siml1b', {})
@@ -159,7 +159,7 @@ if __name__ == "__main__":
             im_config['settings']['bin_id']= 5
             im_config['settings']['sw_stray']= 0
             im_config['settings']['sw_dark']= 0
-            locations.im['ckd_input']  = path_interface + \
+            locations.im['ckd']  = path_interface + \
                 'ckd/ckd_temperature_dependence/' +\
                 'OWL640S_low_gain_21kernel_temp_'+f"{target_temperature:05.2f}" + \
                     '_scale_' + f"{scale:04.1f}" + ".nc"
@@ -173,7 +173,7 @@ if __name__ == "__main__":
             l1al1b_config= yaml.safe_load(open('./settings/l1al1b_config.yaml'))
             l1al1b_config['settings']['van_cittert_steps']= 0
             l1al1b_config['settings']['sw_dark']= 0
-            locations.l1al1b['ckd_input'] = path_interface + \
+            locations.l1al1b['ckd'] = path_interface + \
                 'ckd/ckd_temperature_dependence/' +\
                 'OWL640S_low_gain_21kernel_temp_'+f"{target_temperature:05.2f}" + \
                     '_scale_' + f"{scale:04.1f}" +  ".nc"

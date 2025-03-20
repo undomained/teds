@@ -1,12 +1,4 @@
-# Instructions for building a container for testing
-# or experimenting with the Tango end-to-end simulator. The main 
-
-
-# This container sets up the environment by installing many scientific
-# libraries that SPEXone depends on. That said, it doesn't have to
-# limited to SPEXone. The list can easily be extended by editing
-# spack.yaml, which lists packages installed by the Spack package
-# manager.
+# Image for testing or experimenting with TEDS.
 
 FROM ubuntu:24.04 AS builder-ubuntu
 

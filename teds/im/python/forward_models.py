@@ -72,7 +72,7 @@ def apply_isrf(l1_product: L1,
         # monotonically increasing or decreasing (checked while
         # reading). Extrapolated values are close to zero assuming no
         # bad values in the spectra.
-        kernel = convolution.Kernel(
+        kernel = convolution.KernelGauss(
             l1_product.wavelengths, wavelengths_out, fwhm, shape)
         # If the spectra are not in memory then read them one by one
         # for the convolution.

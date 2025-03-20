@@ -1,8 +1,9 @@
 profile: individual_spectra
 
 atmosphere:
-    nlay: 30                    #number of atmospheric layers
-    dzlay: 1000                 #geometrical thickness of the layers [m]
+  n_layers: 30
+  layer_thickness: 1000
+  surface_pressure: 101300
 
 scale_gas:                  #only relevant for AFGL profiles
     xco2: 410.              #ppm
@@ -10,6 +11,6 @@ scale_gas:                  #only relevant for AFGL profiles
     xh2o: 10000.            #ppm
 
 io_files:
-    input_gm: geometry.nc
-    input_afgl: ../common/prof.AFGL.US.std
-    output_geo: sgm_atmosphere.nc
+  geometry: geometry.nc
+  afgl: ../common/prof.AFGL.US.std
+  atmosphere: sgm_atmosphere.nc

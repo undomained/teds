@@ -5,10 +5,9 @@
 #==============================================================================
 
 import numpy as np
-import sys
 
 from .libRT import nonscat_fwd_model
-from .libSURF import surface_prop
+from .surface import Surface
 
 
 def lsq_fit(ymeas, Kmat, Sy):
@@ -82,7 +81,7 @@ def Gauss_Newton_iteration(retrieval_init, atm, optics, measurement, max_iter, c
     convergence = False
     Chi_sqrt = []
 
-    surface = surface_prop(retrieval_init['wavelength lbl'])
+    surface = Surface(retrieval_init['wavelength lbl'])
 
     convergence = False
     runtime_cum = {}

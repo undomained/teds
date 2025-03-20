@@ -29,7 +29,7 @@ prnu:
 stray:
   enabled: no
 
-io:
+io_files:
   ckd: ../common/ckd.nc
   binning_table: ../common/binning_table.nc
   sgm: sgm_radiance.nc

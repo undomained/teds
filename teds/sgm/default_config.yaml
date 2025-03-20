@@ -1,0 +1,102 @@
+# List of valid parameters for the scene generation module (SGM)
+
+# Whether to use the Python implementation of radiative transfer. If
+# no the C++ version is used which may run much faster. The latter has
+# OpenMP support so make sure to set OMP_NUM_THREADS (default is 1
+# thread).
+use_python_radiative_transfer: yes
+
+# Parameter to configure 2D blurring of scene
+sedf:
+  # Whether to convolve atmosphere (albedo and all gases) with the SEDF
+  enabled: yes
+  fwhm_x: 81
+  fwhm_y: 300
+  shape_x: 2.0
+  shape_y: 2.0
+
+isrf:
+  # Whether to convolve the line-by-line spectra with the ISRF
+  enabled: no
+  fwhm: 0.456
+  shape: 2.0
+
+atmosphere:
+  # Number of atmospheric layers
+  n_layers: 30
+  # Geometrical thickness of the layers, m
+  layer_thickness: 1000
+  # Surface pressure, Pa
+  surface_pressure: 101300
+
+# Sentinel 2 specific keywords. Only used when downloading S2 granules
+# and creating a new albedo file. If the albedo file already exists
+# ([io_files][s2_albedo] below) this section is ignored.
+sentinel2:
+  # Which S2 bands to include
+  band_label: ['B02', 'B03', 'B11']
+  # Filter range of granules by dates. Use a large range in order not
+  # to restrict the selection.
+  date_range: [1900-01-01, 3000-01-01]
+
+# Scale gas columns from AFGL profile to these values
+scale_gas:
+  xco2: 410.0  # ppm
+  xch4: 1800.0  # ppb
+  xh2o: 10000.0  # ppm
+
+# Scene specification if GM was run with individual spectra
+scene_spec:
+  # Albedo values for each ACT point (there is only one ALT position)
+  albedo: []
+
+# The first and last (inclusive) along-track positions to be include
+# in processing.
+alt_beg: 0
+alt_end: null
+
+# Bin the reference atmosphere data along and across track. This is
+# useful in comparison with L2 results.
+bin_alt: 1
+bin_act: 1
+
+# Settings for line-by-line spectra
+spec_lbl_settings:
+  wave_start: 1577.0 # nm
+  wave_end: 1682.0 # nm
+  dwave: 0.002 # nm
+
+# Configure use of AFGL background
+afgl_gases: [co2, h2o, ch4]
+
+sentinel2:
+  in_memory: no
+  band_label: ['B02', 'B03', 'B11']
+  date_range: [1900-01-01, 3000-01-01]
+  albedo_file: sentinel2.nc
+
+# Force new cross section calculation
+xsec_forced: no
+
+io_files:
+  # CKD stores the target wavelengths. Only required is ISRF
+  # convolution is enabled.
+  ckd: ""
+  geometry: ""
+  # AFGL model atmosphere file
+  afgl: ""
+  # Sentinel 2 albedo file
+  s2_albedo: ""
+  hapi: ""
+  # Solar spectrum file
+  sun_reference: ""
+  # Atmosphere data with plume and background gas columns
+  atmosphere: ""
+  # Line-by-line spectra
+  radiance: ""
+  # Reference atmosphere
+  atmosphere_ref: ""
+  dump_xsec: ""
+  # Files with meteorological (MicroHH) data. If empty then only the
+  # AFGL standard atmosphere is used.
+  meteo: []

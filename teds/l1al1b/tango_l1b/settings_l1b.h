@@ -142,34 +142,34 @@ public:
 
     struct
     {
-        Setting<std::string> ckd { { "io", "ckd" }, {}, "CKD file path" };
+        Setting<std::string> ckd { { "io_files", "ckd" }, {}, "CKD file path" };
         Setting<std::string> binning_table {
-            { "io", "binning_table" },
+            { "io_files", "binning_table" },
             {},
             "Path to a NetCDF file containing binning tables and count arrays\n"
             "Which ones to use is determined by the L1A file\n"
             "/image_attributes/binning_table"
         };
         Setting<std::string> l1a {
-            { "io", "l1a" },
+            { "io_files", "l1a" },
             {},
             "L1A product (input). If cal_level, while running the instrument\n"
             "model, was set to anything other than l1a then this is actually\n"
             "not an L1A but a higher level product."
         };
         Setting<std::string> l1b {
-            { "io", "l1b" },
+            { "io_files", "l1b" },
             {},
             "L1B product (output). If cal_level is set to anything other than\n"
             "l1b then this is not an L1B but a lower level product."
         };
-        Setting<std::string> dem { { "io", "dem" },
+        Setting<std::string> dem { { "io_files", "dem" },
                                    {},
                                    "digital elevation model" };
-        Setting<std::string> geometry { { "io", "geometry" },
+        Setting<std::string> geometry { { "io_files", "geometry" },
                                         {},
                                         "geometry file (input)" };
-    } io;
+    } io_files;
 
     SettingsL1B() = default;
     SettingsL1B(const std::string& yaml_file) : Settings { yaml_file } {}

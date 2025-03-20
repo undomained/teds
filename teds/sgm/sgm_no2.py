@@ -22,7 +22,7 @@ import logging
 from itertools import repeat
 import tqdm
 
-from lib import libATM, libSGM, libRT_no2, libNumTools, constants
+from lib import atmosphere, libSGM, libRT_no2, libNumTools, constants
 from lib.libWrite import writevariablefromname
 
 
@@ -678,6 +678,135 @@ def sgm_output_atm_cams(config, atm, albedo, gm_data, microhh_data):
     return
 
 
+def getconvolutionparams(kernel_settings, dx, dy):
+    """Convolution parameters.
+
+    Parameters
+    ----------
+    kernel_settings : Dict
+        Parameters needed for convolution.
+    dx : Float
+        Spacing in x.
+    dy : Float
+        Spacing in y.
+    """
+    conv_settings = {}
+    if (kernel_settings['type'] == '2D Gaussian'):
+        fwhm_x = kernel_settings['fwhm_x']
+        fwhm_y = kernel_settings['fwhm_y']
+        fsize = kernel_settings['size_factor']
+        conv_settings['type'] = kernel_settings['type']
+        conv_settings['1D kernel extension'] = np.intp(
+            fsize*np.max([fwhm_x, fwhm_y])/np.min([dx, dy]))
+        # convert all kernel parameter in units of sampling distance
+        conv_settings['fwhm x'] = float(fwhm_x)/dx
+        conv_settings['fwhm y'] = float(fwhm_y)/dy
+    return conv_settings
+
+
+def get_atmosphericdata(s2_lat, s2_lon,  meteo_settings, kernel_settings):
+    """Get meterological data.
+
+    Read meterological data, convolve and interpolate it givel lat-lon.
+
+    Parameters
+    ----------
+    s2_lat : Array (m,n)
+        Input Latitude
+    s2_lon : Array (m,n)
+        Input longitude
+    meteo_settings : Dict
+        Dict containing meteo data settings
+    kernel_settings : Dict
+        Kernel settings for convolution
+
+    """
+    # read data
+    # data is already in molceules/m^2
+    print('Getting meteo data ...')
+    data = readmeteodata(meteo_settings["path_data"], meteo_settings['gases'], meteo_settings["filesuffix"])
+    print('                     ...done')
+
+    # create a new class to have meteo data
+    dim_alt, dim_act = s2_lat.shape
+    meteo_data = Emptyclass()
+    meteo_data.__setattr__('lat', s2_lat)
+    meteo_data.__setattr__('lon', s2_lon)
+    meteo_data.__setattr__('zlay', data.z)
+    meteo_data.__setattr__('zlev', data.znodes)
+    meteo_data.__setattr__("dx", data.dx)
+    meteo_data.__setattr__("dy", data.dy)
+    # Add emission and source to meteo data
+    for gas in meteo_settings['gases']:
+        meteo_data.__setattr__(gas+"_emission_in_kgps", data.__getattribute__(gas+"_emission_in_kgps"))
+        meteo_data.__setattr__(gas+"_source", data.__getattribute__(gas+"_source"))
+    # convolution of co2 field and interpolation to S2 grid
+    conv_settings = getconvolutionparams(kernel_settings, data.dx, data.dy)
+    for gas in meteo_settings['gases']:
+        concgas = data.__getattribute__(gas)
+        conv_gas = np.zeros_like(concgas)
+
+        for iz in range(data.z.size):
+            conv_gas[iz, :, :] = convolution_2d(concgas[iz, :, :], conv_settings)
+        data.__setattr__("conv_"+gas, conv_gas)
+
+    # Interpolate data to a given lat-lon grid
+    print('Interpolating data to S2 mesh...')
+    # interpolate for all given gases
+    for gas in meteo_settings['gases']:
+        interpdata = np.zeros([dim_alt, dim_act, data.z.size])
+        conv_data = data.__getattribute__("conv_"+gas)
+
+        dxdy = np.column_stack((data.lat.ravel(), data.lon.ravel()))
+        for iz in tqdm(range(data.z.size)):
+            interpdata[:, :, iz] = griddata(dxdy, conv_data[iz, :,:].ravel(), (s2_lat, s2_lon), fill_value=0.0)
+        meteo_data.__setattr__(gas, interpdata)
+    print('                     ...done')
+
+    return meteo_data
+
+
+def combine_meteo_standard_atm(meteodata, atm_std, gases, suffix=""):
+    nalt, nact = meteodata.lat.shape
+    # index of standard atmosphere that corresp
+    print('Combining microHH and AFGL model aonds to TOA of microHH')
+    idx = (np.abs(atm_std.zlev - np.max(meteodata.zlev))).argmin()
+
+    if (atm_std.zlev[idx] != np.max(meteodata.zlev)):
+        sys.exit('vertical grids are not aligned in combine_microHH_standard_atm')
+    #    zlev_tmp = np.concatenate()
+    zmeteo = meteodata.zlay
+    zatm = atm_std.zlay
+    nlay = zatm.size
+
+    # define a mask for vertical integration of microHH data
+    ztop = atm_std.zlev[idx: nlay]
+    zbot = atm_std.zlev[idx+1: nlay+1]
+
+    midx = {}
+    for ilay in range(ztop.size):
+        midx[ilay] = np.where((zmeteo < ztop[ilay]) & (zmeteo >= zbot[ilay]))
+
+    # integrate microHH and use it to replace the lowest four values of atm_std
+    atm = np.ndarray((nalt, nact), np.object_)
+
+    # for NO we assume no contribution above upper model boundary of microHH
+    for ialt in tqdm(range(nalt)):
+        for iact in range(nact):
+
+            atm[ialt, iact] = deepcopy(atm_std)
+            if "NO" in gases:
+                atm[ialt, iact].__setattr__('NO', np.zeros(nlay))
+            if "NO2" in gases:
+                atm[ialt, iact].__setattr__('NO2', np.zeros(nlay))
+
+            for gas in gases:
+                tmp = atm[ialt, iact].__getattribute__(gas.upper())
+                meteo = meteodata.__getattribute__(gas+suffix)
+                for ilay in range(ztop.size):
+                    tmp[idx+ilay] += np.sum(meteo[ialt, iact, midx[ilay]])
+
+    return atm
 
 
 def scene_generation_module_nitro(logging, config):
@@ -721,7 +850,7 @@ def scene_generation_module_nitro(logging, config):
         if ((not os.path.exists(config['atm']['microHH']['dump'])) or config['atm']['microHH']['forced']):
             logging.info(f"Loading microHH data: {config['atm']['microHH']['path_data']}")
 
-            microhh_data = libATM.get_atmosphericdata(gm_data['lat'], gm_data['lon'], config['atm']['microHH'],
+            microhh_data = get_atmosphericdata(gm_data['lat'], gm_data['lon'], config['atm']['microHH'],
                                                    config['kernel_parameter'])
             # Dump microHH dictionary into temporary pkl file
             pickle.dump(microhh_data.__dict__, open(config['atm']['microHH']['dump'], 'wb'))
@@ -746,11 +875,11 @@ def scene_generation_module_nitro(logging, config):
             nlay = config['atm']['afgl']['nlay']  # number of layers
             dzlay = config['atm']['afgl']['dzlay']
             # we assume the same standard atm for all pixels of the granule
-            atm = libATM.get_AFGL_atm_homogenous_distribution(config['atm']['afgl']['path'], nlay, dzlay)
+            atm = atmosphere.get_AFGL_atm_homogenous_distribution(config['atm']['afgl']['path'], nlay, dzlay)
             
             if config['atm']['microHH']['use']:
                 #combine the microHH data with standard atm afgl, regridding microHH to std atm layers
-                atm = libATM.combine_meteo_standard_atm(microhh_data, atm, config['atm']['microHH']['gases'])
+                atm = combine_meteo_standard_atm(microhh_data, atm, config['atm']['microHH']['gases'])
             else:
                 atm = np.full((nalt,nact), atm, dtype=object)
 

@@ -1,15 +1,16 @@
 profile: individual_spectra
 
 atmosphere:
-    nlay: 30                    #number of atmospheric layers
-    dzlay: 1000                 #geometrical thickness of the layers [m]
-                
-scale_gas:                  #only relevant for AFGL profiles 
+  n_layers: 30
+  layer_thickness: 1000
+  surface_pressure: 101300
+
+scale_gas:                  #only relevant for AFGL profiles
     xco2: 410.              #ppm
     xch4: 1800.             #ppb
     xh2o: 10000.            #ppm
 
 io_files:
-    input_gm: '/home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/gm/Tango_Carbon_gm_exp5.0.nc'
-    input_afgl: '/home/jochen/TANGO_E2ES/EndtoEndProject/data/AFGL/prof.AFGL.US.std'
-    output_geo: '/home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/sgm/Tango_Carbon_sgm_atmosphere_exp5.0.nc'
+  geometry: '/home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/gm/Tango_Carbon_gm_exp5.0.nc'
+  afgl: '/home/jochen/TANGO_E2ES/EndtoEndProject/data/AFGL/prof.AFGL.US.std'
+  atmosphere: '/home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/sgm/Tango_Carbon_sgm_atmosphere_exp5.0.nc'

@@ -47,7 +47,7 @@ swath:
 bin_spectra: 1
 
 # Input/output file paths
-io:
+io_files:
   # Calibration key data (CKD)
   ckd: ""
   # Binning table

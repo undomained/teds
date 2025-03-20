@@ -58,7 +58,7 @@ def level2_to_level4_processor(config: dict) -> dict:
             #     ...
 
             else:
-                log.warn(f"Method {method} is not implemented yet.")
+                log.warning(f"Method {method} is not implemented yet.")
                 continue
 
         # Add the results of this method to the overall l4_product

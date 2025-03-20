@@ -40,10 +40,10 @@ TEST_CASE("integration tests")
     empty_config << "processing_version: test\n";
     empty_config.close();
     tango::SettingsL1B settings { config_filename };
-    settings.io.ckd = ckd_filename;
-    settings.io.l1a = l1a_filename;
-    settings.io.l1b = l1b_filename;
-    settings.io.binning_table = binningtable_filename;
+    settings.io_files.ckd = ckd_filename;
+    settings.io_files.l1a = l1a_filename;
+    settings.io_files.l1b = l1b_filename;
+    settings.io_files.binning_table = binningtable_filename;
     settings.init();
 
     // Run all tests

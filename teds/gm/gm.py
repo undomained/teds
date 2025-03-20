@@ -41,8 +41,8 @@ def check_config(config: dict) -> None:
 
     Parameters
     ----------
-    config_file
-        Path of YAML configuration file.
+    config
+        Configuration parameters.
 
     """
     if config['profile'] not in ('individual_spectra', 'orbit'):
@@ -54,7 +54,7 @@ def check_config(config: dict) -> None:
         exit(1)
 
 
-def get_individual_spectra(config: dict) -> Geometry:
+def get_individual_spectra(config: dict, l1: L1) -> Geometry:
     """Generate GM output for individual spectra.
 
     First check consistencies of 'individual_spectra' input. Here we
@@ -65,31 +65,38 @@ def get_individual_spectra(config: dict) -> Geometry:
     ----------
     config
         Configuration dictionary
+    l1
+        L1 instance with timestamps. The timestamp arrays need to be
+        resized for output.
 
     Returns
     -------
         Viewing and solar geometries.
 
     """
-    nalt = 1
-    nact = len(config['scene_spec']['sza'])
-    log.info(f'Generating geometry for {nact} across track locations')
+    n_alt = 1
+    n_act = len(config['scene_spec']['sza'])
+    log.info(f'Generating geometry for {n_act} across track locations')
     # Check_input
     for view in ('sza', 'saa', 'vza', 'vaa'):
-        if nact != len(config['scene_spec'][view]):
-            log.error(f"input error in gm for {view} nact ({nact}) not equal "
-                      f"to {view} length ({len(config['scene_spec'][view])}).")
+        if n_act != len(config['scene_spec'][view]):
+            log.error(
+                f"input error in gm for {view} n_act ({n_act}) not equal "
+                f"to {view} length ({len(config['scene_spec'][view])}).")
             exit(1)
     # Here we use the 2-dimensional data structure in an artificial way
-    geometry = Geometry.from_shape((nalt, nact))
+    geometry = Geometry.from_shape((n_alt, n_act))
     # Give lon_grid and lat_grid some values such that subsequent
     # modules do not crash.
     geometry.lon[0, :] = np.deg2rad(10)
-    geometry.lat[0, :] = np.deg2rad(50 + 0.0025 * np.arange(nact))
+    geometry.lat[0, :] = np.deg2rad(50 + 0.0025 * np.arange(n_act))
     geometry.sza[0, :] = np.deg2rad(config['scene_spec']['sza'])
     geometry.saa[0, :] = np.deg2rad(config['scene_spec']['saa'])
     geometry.vza[0, :] = np.deg2rad(config['scene_spec']['vza'])
     geometry.vaa[0, :] = np.deg2rad(config['scene_spec']['vaa'])
+    l1.navigation.time = l1.navigation.time[:n_alt]
+    l1.tai_seconds = l1.tai_seconds[:n_alt]
+    l1.tai_subsec = l1.tai_subsec[:n_alt]
     return geometry
 
 
@@ -477,7 +484,12 @@ def geometry_module(config_user: dict | None = None) -> None:
                               config['sensor']['dwell_time'])
 
     if config['profile'] == 'individual_spectra':
-        geometry = get_individual_spectra(config)
+        geometry = get_individual_spectra(config, l1)
+        # Overwrite these settings. Extended geometry does not apply here.
+        config['extend_geometry']['margin_alt'] = 0
+        config['extend_geometry']['margin_act'] = 0
+        config['extend_geometry']['density_alt'] = 1
+        config['extend_geometry']['density_act'] = 1
     elif config['profile'] == 'orbit':
         navigation, geometry = get_orbit(config, l1, aocs_navigation)
     else:
@@ -492,6 +504,7 @@ def geometry_module(config_user: dict | None = None) -> None:
                                    config['extend_geometry']['density_act'])
 
     # Write output data
+    log.info('Writing output')
     write_geometry(config['io_files']['geometry'],
                    geometry,
                    geometry_ext,

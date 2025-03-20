@@ -2,9 +2,8 @@
 # the LICENSE file in the root directory of this project.
 """Types used by GM."""
 from dataclasses import dataclass
-from typing import Self
-
 from pyquaternion import Quaternion
+from typing import Self
 import numpy as np
 import numpy.typing as npt
 

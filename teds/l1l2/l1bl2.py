@@ -4,25 +4,35 @@
 #     the LICENSE file in the root directory of this project.
 # ==============================================================================
 
-import datetime
-import random
-import string
+from dataclasses import dataclass
 import os
 import sys
 import numpy as np
+import numpy.typing as npt
 import pickle as pkl
 from tqdm import tqdm
 from copy import deepcopy
 import netCDF4 as nc
-import torch
 import yaml
 
-from teds.lib import libNumTools
-from teds.lib import libRT
-from teds.lib import libATM
 from teds.lib import libINV
+from teds.lib import libRT
+from teds.lib.convolution import KernelGauss
 from teds.lib.libWrite import writevariablefromname
-from teds.lib import libRTorCH4_rt as rt
+from teds.sgm import atmosphere
+
+
+@dataclass
+class AtmosphereSimple:
+    """Minimal Atmosphere class."""
+    zlay: npt.NDArray[np.float64]
+    play: npt.NDArray[np.float64]
+    tlay: npt.NDArray[np.float64]
+    CO2: npt.NDArray[np.float64]
+    CH4: npt.NDArray[np.float64]
+    H2O: npt.NDArray[np.float64]
+    air: npt.NDArray[np.float64]
+
 
 class Emptyclass:
     """Empty class. Data container."""
@@ -55,15 +65,15 @@ def get_sgm_atm(filen_sgm_atm):
     data = nc.Dataset(filen_sgm_atm, mode='r')
     atm_sgm = {}
     surf_sgm = {}
-    surf_sgm['albedo'] = deepcopy(data['albedo'][:])
+    surf_sgm['albedo'] = deepcopy(data['albedo_b11'][:])
     atm_sgm['zlay'] = deepcopy(data['zlay'][:])
     atm_sgm['zlev'] = deepcopy(data['zlev'][:])
     atm_sgm['dcol_co2'] = deepcopy(data['dcol_co2'][:])
     atm_sgm['dcol_ch4'] = deepcopy(data['dcol_ch4'][:])
     atm_sgm['dcol_h2o'] = deepcopy(data['dcol_h2o'][:])
-    atm_sgm['col_co2'] = deepcopy(data['XCO2'][:])
-    atm_sgm['col_ch4'] = deepcopy(data['XCH4'][:])
-    atm_sgm['col_h2o'] = deepcopy(data['XH2O'][:])
+    atm_sgm['col_co2'] = deepcopy(data['xco2'][:])
+    atm_sgm['col_ch4'] = deepcopy(data['xch4'][:])
+    atm_sgm['col_h2o'] = deepcopy(data['xh2o'][:])
     if 'col_air' in data.variables:
         atm_sgm['col_air'] = deepcopy(data['col_air'][:])
     data.close()
@@ -121,10 +131,20 @@ def level2_output(filename, l2product, retrieval_init, l1bproduct, settings):
     _ = writevariablefromname(grp_diag,  'process_flag',    _dims, l2_proc_flag)
     # convergence
     _ = writevariablefromname(grp_diag,  'convergence',     _dims, l2_conv)
-    # latitude
-    _ = writevariablefromname(output_l2, 'latitude',        _dims, l1bproduct['latitude'][:, :nact])
-    # longitude
-    _ = writevariablefromname(output_l2, 'longitude',       _dims, l1bproduct['longitude'][:, :nact])
+
+    var = output_l2.createVariable('latitude', 'f8', _dims)
+    var[:] = l1bproduct['latitude']
+    var.long_name = 'latitude at bin locations'
+    var.units = 'degrees_north'
+    var.valid_min = -90.0
+    var.valid_max = 90.0
+    var = output_l2.createVariable('longitude', 'f8', _dims)
+    var[:] = l1bproduct['longitude']
+    var.long_name = 'longitude at bin locations'
+    var.units = 'degrees_east'
+    var.valid_min = -180.0
+    var.valid_max = 180.0
+
     # maxiterations
     _ = writevariablefromname(grp_diag,  'maxiterations',   _dims, l2_numb_iter)
     # chi2
@@ -281,15 +301,16 @@ def level1b_to_level2_processor(config, sw_diag_output = False):
     zlay = (np.arange(nlay-1, -1, -1)+0.5)*dzlay  # altitude of layer midpoint
     zlev = np.arange(nlev-1, -1, -1)*dzlay  # altitude of layer interfaces = levels
 
-    # model atmosphere
-
-    atm = libATM.atmosphere_data(zlay, zlev, psurf)
-    atm.get_data_AFGL(config['io_files']['input_afgl'])
-
-    # XCO2 = np.sum(atm.CO2)/np.sum(atm.air)
-    # XCH4 = np.sum(atm.CH4)/np.sum(atm.air)
-    # XH2O = np.sum(atm.H2O)/np.sum(atm.air)
-    # print(XCO2*1.E6, XCH4*1.E9, XH2O*1E6)
+    # Model atmosphere
+    atm_full = atmosphere.Atmosphere.from_file(
+        zlay, zlev, psurf, config['io_files']['input_afgl'])
+    atm = AtmosphereSimple(atm_full.zlay,
+                           atm_full.play,
+                           atm_full.tlay,
+                           atm_full.get_gas('CO2').concentration,
+                           atm_full.get_gas('CH4').concentration,
+                           atm_full.get_gas('H2O').concentration,
+                           atm_full.air)
 
     sun = libRT.read_sun_spectrum_TSIS1HSRS(config['io_files']['input_sun_reference'])
     sun_lbl = libRT.interpolate_sun(sun, wave_lbl)
@@ -336,11 +357,6 @@ def level1b_to_level2_processor(config, sw_diag_output = False):
     xch4_model = 1.8E-6
     xco2_model = 410.E-6
 
-    XCO2 = np.zeros(nact)
-    XCO2_true_smoothed = np.zeros(nact)
-    XCO2_true = np.zeros(nact)
-    XCO2_prec = np.zeros(nact)
-
     l2product = np.ndarray((nalt, nact), np.object_)
     measurement = np.ndarray((nalt, nact), np.object_)
 
@@ -381,8 +397,11 @@ def level1b_to_level2_processor(config, sw_diag_output = False):
                 wave_meas = wavelength[istart:iend+1]  # nm
                 
                 # define isrf function
-    
-                isrf_convolution = libNumTools.get_isrf(wave_meas, wave_lbl, config['isrf_settings'])
+                isrf_convolution = KernelGauss(
+                    wave_lbl,
+                    wave_meas,
+                    config['isrf_settings']['fwhm'],
+                    config['isrf_settings']['shape']).convolve
     
                 atm_ret = deepcopy(atm)  # to initialize each retrieval with the same atmosphere
     

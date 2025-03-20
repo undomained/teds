@@ -41,8 +41,8 @@ def check_config(config: dict) -> None:
 
     Parameters
     ----------
-    config_file
-        Path of YAML configuration file.
+    config
+        Configuration parameters.
 
     """
     # If swath.exact_drawing is true then do not bin the detector
@@ -57,10 +57,10 @@ def check_config(config: dict) -> None:
     else:
         config['noise']['artificial_scaling'] = 1
     for key in ('sgm', 'ckd'):
-        input_file = Path(config['io'][key])
+        input_file = Path(config['io_files'][key])
         if not input_file.is_file():
             raise SystemExit(f"ERROR: {input_file} not found")
-    proc_level = read_proc_level(config['io']['sgm'])
+    proc_level = read_proc_level(config['io_files']['sgm'])
     log.info(f"Processing from {proc_level} to {config['cal_level']}")
 
 
@@ -133,12 +133,13 @@ def run_instrument_model(config_user: dict | None = None) -> None:
     # settings given by the user.
     config = merge_config_with_default(config_user, 'teds.im.python')
     check_config(config)
-    ckd = read_ckd(config['io']['ckd'])
+    ckd = read_ckd(config['io_files']['ckd'])
     log.info('Reading input data')
-    l1_product: L1 = read_l1(config['io']['sgm'],
+    l1_product: L1 = read_l1(config['io_files']['sgm'],
                              config['alt_beg'],
                              config['alt_end'],
-                             config['isrf']['in_memory'])
+                             config['isrf']['in_memory'],
+                             config['io_files']['geometry'])
     set_l1_meta(config, l1_product)
     if len(l1_product.spectra.shape) >= 2 and (
             l1_product.spectra.shape[1] != len(ckd.swath.act_angles)):
@@ -147,7 +148,7 @@ def run_instrument_model(config_user: dict | None = None) -> None:
             f'whereas the CKD expects {len(ckd.swath.act_angles)}')
         exit(1)
     # Read binning table corresponding to input data
-    binning_table = read_binning_table(config['io']['binning_table'],
+    binning_table = read_binning_table(config['io_files']['binning_table'],
                                        config['detector']['binning_table_id'],
                                        ckd.n_detector_rows,
                                        ckd.n_detector_cols)
@@ -162,7 +163,7 @@ def run_instrument_model(config_user: dict | None = None) -> None:
                       config['isrf']['enabled'],
                       config['isrf']['fwhm_gauss'],
                       config['isrf']['shape'],
-                      config['io']['sgm'],
+                      config['io_files']['sgm'],
                       config['alt_beg'])
     if config['l1b']['enabled'] and step_needed(
             ProcLevel.l1b, l1_product.proc_level, cal_level):
@@ -220,10 +221,11 @@ def run_instrument_model(config_user: dict | None = None) -> None:
         fw.coadd_and_adc(l1_product, config['detector']['nr_coadditions'])
 
     # Write output data
-    log.info('Writing output data')
-    write_l1(config['io']['l1a'], config, l1_product)
-    if config['io']['navigation']:
-        copy_navigation_data(config['io']['navigation'], config['io']['l1a'])
+    log.info('Writing output')
+    write_l1(config['io_files']['l1a'], config, l1_product)
+    if config['io_files']['navigation']:
+        copy_navigation_data(config['io_files']['navigation'],
+                             config['io_files']['l1a'])
 
     # If this is shown then the simulation ran successfully
     print_heading('Success')

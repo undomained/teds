@@ -40,15 +40,14 @@ locations.__setattr__('gm', {})
 locations.gm['output']        = path_interface + 'gm/Tango_Carbon_gm_exp2.0.nc'
 
 locations.__setattr__('sgm', {})
-locations.sgm['gm_input']     = path_interface + 'gm/Tango_Carbon_gm_exp2.0.nc'
-locations.sgm['S2_dump']      = path_tmp + 'Tango_Carbon_S2_exp2.0.npy'
-locations.sgm['afgl_input']   = path_afgl + 'prof.AFGL.US.std'
-locations.sgm['meteo_dump']   = path_tmp + 'Tango_Carbon_meteo_exp2.0.pkl'
+locations.sgm['geometry']     = path_interface + 'gm/Tango_Carbon_gm_exp2.0.nc'
+locations.sgm['s2_albedo']      = path_tmp + 'Tango_Carbon_S2_exp2.0.npy'
+locations.sgm['afgl']   = path_afgl + 'prof.AFGL.US.std'
 locations.sgm['xsec_dump']    = path_tmp + 'Tango_Carbon_xsec_exp2.0.pkl'
 locations.sgm['sun_reference']= path_sol_spec + 'hybrid_reference_spectrum_c2021-03-04_with_unc.nc'
-locations.sgm['rad_output']   = path_interface + 'sgm/Tango_Carbon_sgm_radiance_exp2.0.nc'
-locations.sgm['geo_output']   = path_interface + 'sgm/Tango_Carbon_sgm_atmosphere_exp2.0.nc'
-locations.sgm['hapi_path']    = paths.project  + paths.data_harpi
+locations.sgm['radiance']   = path_interface + 'sgm/Tango_Carbon_sgm_radiance_exp2.0.nc'
+locations.sgm['atmosphere']   = path_interface + 'sgm/Tango_Carbon_sgm_atmosphere_exp2.0.nc'
+locations.sgm['hapi']    = paths.project  + paths.data_harpi
 
 locations.__setattr__('siml1b', {})
 locations.siml1b['sgm_input']  = path_interface + 'sgm/Tango_Carbon_sgm_radiance_exp2.0.nc'

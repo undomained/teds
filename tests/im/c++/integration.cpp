@@ -49,12 +49,12 @@ TEST_CASE("integration tests")
     settings.detector.nr_coadditions = 2;
     settings.isrf.in_memory = true;
     settings.isrf.fwhm_gauss = 0.5;
-    settings.io.ckd = ckd_filename;
-    settings.io.sgm = sgm_filename;
-    settings.io.l1a = l1a_filename;
-    settings.io.geometry = geometry_filename;
-    settings.io.navigation = navigation_filename;
-    settings.io.binning_table = binningtable_filename;
+    settings.io_files.ckd = ckd_filename;
+    settings.io_files.sgm = sgm_filename;
+    settings.io_files.l1a = l1a_filename;
+    settings.io_files.geometry = geometry_filename;
+    settings.io_files.navigation = navigation_filename;
+    settings.io_files.binning_table = binningtable_filename;
     settings.init();
 
     // Run all tests

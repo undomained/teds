@@ -12,7 +12,6 @@ from rioxarray.merge import merge_arrays
 from shapely import Point
 from shapely import Polygon
 from tqdm import tqdm
-from typing import List
 from typing import cast
 from xarray import DataArray
 import datetime
@@ -286,7 +285,7 @@ def download_albedo_for_coords(
     return albedos
 
 
-def read_albedo(filename: str) -> List[DataArray]:
+def read_albedo(filename: str) -> list[DataArray]:
     """Read a list of Sentinel 2 albedos from a NetCDF file."""
     nc = Dataset(filename)
     albedos = []
@@ -303,6 +302,11 @@ def read_albedo(filename: str) -> List[DataArray]:
             albedo.rio.write_crs(nc.crs, inplace=True)
         else:
             albedo.rio.write_crs(nc[group].crs, inplace=True)
+        # Replace nan with closest non-nan value
+        mask = np.isnan(albedo.values)
+        idx = np.where(~mask, np.arange(mask.shape[1]), 0)
+        np.maximum.accumulate(idx, axis=1, out=idx)
+        albedo.values[mask] = albedo.values[np.nonzero(mask)[0], idx[mask]]
         albedos.append(albedo)
     return albedos
 

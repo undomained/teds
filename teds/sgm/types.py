@@ -1,0 +1,82 @@
+# This source code is licensed under the 3-clause BSD license found in
+# the LICENSE file in the root directory of this project.
+"""Types used by SGM."""
+from dataclasses import dataclass
+from netCDF4 import Dataset
+from teds import log
+from typing import Self
+import numpy as np
+import numpy.typing as npt
+
+
+@dataclass
+class Gas:
+    """Concentration and other attributes of a greenhouse gas"""
+    name: str
+    source: npt.NDArray[np.float64] | None
+    emission_in_kgps: float | None
+    concentration: npt.NDArray[np.float64]  # (x, y, z)
+
+
+@dataclass
+class Meteo:
+    """Class to hold meteorological data for one of more gases"""
+    crs: str
+    dx: float
+    dy: float
+    dz: float
+    x: npt.NDArray[np.float64]
+    y: npt.NDArray[np.float64]
+    z: npt.NDArray[np.float64]
+    lat: npt.NDArray[np.float64]
+    lon: npt.NDArray[np.float64]
+    znodes: npt.NDArray[np.float64]
+    gases: list[Gas]
+
+    @classmethod
+    def from_empty(cls) -> Self:
+        return cls('',
+                   0,
+                   0,
+                   0,
+                   np.empty(0),
+                   np.empty(0),
+                   np.empty(0),
+                   np.empty(0),
+                   np.empty(0),
+                   np.empty(0),
+                   [])
+
+    @classmethod
+    def from_files(cls, filenames: list[str]) -> Self:
+        """Initialize from one or more plume files."""
+        gases = []
+        # Grid needs to be read only once
+        read_grid = True
+        for filename in filenames:
+            nc = Dataset(filename)
+            gas_name = list(filter(
+                lambda x: x not in
+                ('time', 'z', 'x', 'y', 'longitude', 'latitude', 'znodes'),
+                nc.variables.keys()))[0]
+            if read_grid:
+                dz, dy, dx = nc[gas_name].gridspacing_in_m
+                x, y, z = nc['x'][:].data, nc['y'][:].data, nc['z'][:].data
+                znodes = nc['znodes'][:].data
+                lat = nc['latitude'][:].data
+                lon = nc['longitude'][:].data
+                read_grid = False
+            # Input data is in the order (t, z, y, x)
+            concentration = np.swapaxes(nc[gas_name][0].data, 0, 2)
+            gases.append(Gas(gas_name,
+                             nc[gas_name].source,
+                             nc[gas_name].emission_in_kgps,
+                             concentration))
+        return cls('', dx, dy, dz, x, y, z, lat, lon, znodes, gases)
+
+    def get_gas(self, name: str) -> Gas:
+        res = list(filter(lambda x: x.name == name, self.gases))
+        if not res:
+            log.error(f'object does not contain {name}')
+            exit(1)
+        return res[0]

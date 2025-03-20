@@ -1,12 +1,9 @@
-profile: orbit
-
 atmosphere:
-    nlay: 30                    #number of atmospheric layers
-    dzlay: 1000                 #geometrical thickness of the layers [m]
+  n_layers: 30
+  layer_thickness: 1000
+  surface_pressure: 101300
 
-afgl:                           #configure use of AFGL background
-    afgl_only: False            #true means homogenous AFGL background only
-    gases: ["co2", "h2o", "ch4"]
+afgl_gases: [co2, h2o, ch4]
 
 scale_gas:                  #only relevant for AFGL profiles
     xco2: 410.              #ppm
@@ -15,8 +12,9 @@ scale_gas:                  #only relevant for AFGL profiles
 
 sentinel2:
     band_label: ['B02', 'B03', 'B11']   # use e.g. https://en.wikipedia.org/wiki/Sentinel-2 for band defintion
+    date_range: [1900-01-01, 3000-01-01]
 
 io_files:
-    input_gm: geometry.nc
-    input_afgl: ../common/prof.AFGL.US.std
-    output_geo: sgm_atmosphere.nc
+    geometry: geometry.nc
+    afgl: ../common/prof.AFGL.US.std
+    atmosphere: sgm_atmosphere.nc

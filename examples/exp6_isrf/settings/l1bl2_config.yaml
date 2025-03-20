@@ -51,8 +51,8 @@ spec_settings:              #spectra fit window
 #     bcoeff:     0.2                                #only for generalized_normal, bcoeff=1/2 means Gaussian
     
 isrf_settings:
-    type:       'Gaussian'                         #type of ISRF, currently only Gaussian or generalized_normal
-    fwhm:       0.45                               #fwhm  [nm]
+    fwhm: 0.45
+    shape: 2.0
 
 surface:
     wave_alb: [1600, 1650]  #wavelengths at which the surface albedo is specified in the output

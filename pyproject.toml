@@ -5,7 +5,7 @@ build-backend = 'setuptools.build_meta'
 [project]
 name = 'teds'
 version = '0.0.1'
-requires-python = ">= 3.11, < 3.13"
+requires-python = ">= 3.11"
 dependencies = [
     'netCDF4',
     'h5py',
@@ -24,7 +24,6 @@ dependencies = [
     'tables',
     'pyproj',
     'Glymur == 0.13.2',
-    'torch == 2.4',
     'pyquaternion == 0.9.9',
     'piccolo_theme == 0.22',
     'flake8 == 7.1.1',
@@ -69,26 +68,19 @@ ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
 module = [
-    'teds.lib.constants',
     'teds.lib.hapi',
     'teds.lib.libRT',
-    'teds.lib.libSURF',
-    'teds.lib.paths',
     'teds.lib.data_netcdf.*',
     'teds.lib.libINV',
     'teds.lib.libAMF',
-    'teds.lib.libATM',
     'teds.lib.libDOAS',
-    'teds.lib.libMeteo',
     'teds.lib.libNumTools',
     'teds.lib.libRT_no2',
-    'teds.lib.libSGM',
     'teds.lib.libWrite',
     'teds.lib.lib_utils',
     'teds.lib.remotap_preproc.*',
     'teds.sgm.sgm_no2',
-    'teds.sgm.sgm_Carbon_radscene',
-    'teds.sgm.sgm_geoscene',
+    'teds.sgm.sgm_geoscene_to_remotap',
     'teds.im.create_im_configuration_file_nitro',
     'teds.ckd.ckd_generation.ckd_generator_nitro',
     'teds.ckd.ckd_generation.generator_class',

@@ -23,12 +23,16 @@ from teds.l1al1b.types import CKDSpectral
 from teds.l1al1b.types import CKDStray
 from teds.l1al1b.types import CKDSwath
 from teds.l1al1b.types import L1
+from teds.sgm.atmosphere import Atmosphere
 
 _cur_dir = Path(__file__).parent
 _fix_dir = _cur_dir / 'common'
 
 
-# Fixtures used by the instrument model and L1A-L1B processor
+##################################################################
+# Fixtures for instrument model (IM) and L1A-L1B processor (L1B) #
+##################################################################
+
 @pytest.fixture
 def binning_table(scop='session'):
     signal = np.loadtxt(_fix_dir / 'detector_image.txt', 'i4')
@@ -460,3 +464,23 @@ def sgm_file(tmp_path, sgm, scope='session'):
         ('along_track_sample', 'across_track_sample', 'wavelength'))
     var[:] = sgm.spectra
     return filepath
+
+
+##############################################
+# Fixtures for scene generation module (SGM) #
+##############################################
+
+@pytest.fixture
+def atmosphere_path(scope='session'):
+    return _fix_dir / 'prof.AFGL.US.std'
+
+
+@pytest.fixture
+def atmosphere(scope='session'):
+    nlay = 20
+    dzlay = 1000
+    psurf = 101300
+    nlev = nlay + 1
+    zlay = (np.arange(nlay - 1, -1, -1) + 0.5) * dzlay
+    zlev = np.arange(nlev - 1, -1, -1) * dzlay
+    return Atmosphere(zlay, zlev, psurf, _fix_dir / 'prof.AFGL.US.std')

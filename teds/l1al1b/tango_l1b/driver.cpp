@@ -29,21 +29,21 @@ auto driver(const SettingsL1B& settings,
                     TANGO_CXX_COMPILER,
                     TANGO_CXX_COMPILER_FLAGS,
                     TANGO_LIBRARIES,
-                    settings.io.binning_table);
+                    settings.io_files.binning_table);
 
     // Read in the CKD
     printHeading("Reading CKD and input data");
-    CKD ckd(settings.io.ckd);
+    CKD ckd(settings.io_files.ckd);
 
     // Initialize L1 products by reading all L1A data (everything is
     // stored in memory).
     L1 l1_prod {};
-    readL1(settings.io.l1a, settings.alt_beg, settings.alt_end, l1_prod);
+    readL1(settings.io_files.l1a, settings.alt_beg, settings.alt_end, l1_prod);
 
     // Initialize the binning table and bin the CKD
     const BinningTable binning_table { ckd.n_detector_rows,
                                        ckd.n_detector_cols,
-                                       settings.io.binning_table,
+                                       settings.io_files.binning_table,
                                        static_cast<int>(
                                          l1_prod.binning_table_id) };
     ckd.bin(binning_table);
@@ -129,7 +129,7 @@ auto driver(const SettingsL1B& settings,
     }
     if (settings.swath.geolocation) {
         spdlog::info("Geolocation");
-        geolocate(settings.io.dem,
+        geolocate(settings.io_files.dem,
                   ckd.swath.los,
                   l1_prod.tai_seconds,
                   l1_prod.tai_subsec,
@@ -138,15 +138,17 @@ auto driver(const SettingsL1B& settings,
                   l1_prod.geo);
     } else {
         spdlog::info("Copying geometry from geometry file");
-        copyGeometry(
-          settings.io.l1a, settings.io.geometry, settings.alt_beg, l1_prod);
+        copyGeometry(settings.io_files.l1a,
+                     settings.io_files.geometry,
+                     settings.alt_beg,
+                     l1_prod);
     }
     // Bin L1B spectra and geometry
     if (l1_prod.level >= ProcLevel::swath) {
         binL1B(settings.bin_spectra, l1_prod);
     }
 
-    writeL1(settings.io.l1b, settings.getConfig(), l1_prod, argc, argv);
+    writeL1(settings.io_files.l1b, settings.getConfig(), l1_prod, argc, argv);
 
     timer.stop();
     spdlog::info("Total time: {:8.3f} s", timer.time());

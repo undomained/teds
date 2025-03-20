@@ -12,7 +12,7 @@ from teds.l1al1b.io import read_l1
 def test_full_chain_no_binning(
         l1a_file, ckd_file, binningtable_file, tmp_path):
     config = {
-        'io': {
+        'io_files': {
             'binning_table': binningtable_file,
             'l1a': l1a_file,
             'ckd': ckd_file,
@@ -29,7 +29,7 @@ def test_full_chain_no_binning(
 def test_full_chain_l1a_binning(
         l1a_file, ckd_file, binningtable_file, tmp_path):
     config = {
-        'io': {
+        'io_files': {
             'binning_table': binningtable_file,
             'l1a': l1a_file,
             'ckd': ckd_file,
@@ -46,7 +46,7 @@ def test_full_chain_l1b_binning(
         l1a_file, ckd_file, binningtable_file, tmp_path):
     config = {
         'bin_spectra': 5,
-        'io': {
+        'io_files': {
             'binning_table': binningtable_file,
             'l1a': l1a_file,
             'ckd': ckd_file,
@@ -65,7 +65,7 @@ def test_full_chain_exact_mapping(
         'swath': {
             'exact_drawing': True,
         },
-        'io': {
+        'io_files': {
             'binning_table': binningtable_file,
             'l1a': l1a_file,
             'ckd': ckd_file,
@@ -82,7 +82,7 @@ def test_geolocation(
         l1a_file, ckd_file, binningtable_file, tmp_path):
     config = {
         'cal_level': 'raw',
-        'io': {
+        'io_files': {
             'binning_table': binningtable_file,
             'l1a': l1a_file,
             'ckd': ckd_file,

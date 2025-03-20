@@ -68,7 +68,7 @@ l1b:
   enabled: yes
 
 # Input/output file paths
-io:
+io_files:
   # Calibration key data (CKD)
   ckd: ""
   # Binning table

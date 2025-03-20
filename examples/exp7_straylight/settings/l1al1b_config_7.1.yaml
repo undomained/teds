@@ -18,7 +18,7 @@ swath:
 
 bin_spectra: 5
 
-io:
+io_files:
   ckd: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/ckd/ckd_ACT500_20250126.nc
   binning_table: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/ckd/binning_table.nc
   l1b: /home/jochen/TANGO_E2ES/EndtoEndProject/data/interface_data/level1b/Tango_Carbon_l1b_exp7.1.nc

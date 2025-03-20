@@ -17,7 +17,7 @@ def test_full_chain(ckd_file, binningtable_file, sgm_file, tmp_path):
             'in_memory': True,
             'fwhm_gauss': 0.5,
         },
-        'io': {
+        'io_files': {
             'ckd': ckd_file,
             'binning_table': binningtable_file,
             'sgm': sgm_file,
@@ -41,7 +41,7 @@ def test_full_chain_no_adc_binning(
             'enabled': False,
             'in_memory': True,
         },
-        'io': {
+        'io_files': {
             'ckd': ckd_file,
             'binning_table': binningtable_file,
             'sgm': sgm_file,
@@ -69,7 +69,7 @@ def test_full_chain_exact_drawing(
         'swath': {
             'exact_drawing': True,
         },
-        'io': {
+        'io_files': {
             'sgm': sgm_file,
             'ckd': ckd_file,
             'binning_table': binningtable_file,
@@ -93,7 +93,7 @@ def test_full_chain_binning_4(
             'enabled': False,
             'in_memory': True,
         },
-        'io': {
+        'io_files': {
             'sgm': sgm_file,
             'ckd': ckd_file,
             'binning_table': binningtable_file,
@@ -108,7 +108,7 @@ def test_full_chain_binning_4(
 def test_full_chain_binning_4_no_adc(
         ckd_file, binningtable_file, sgm_file, tmp_path):
     config = {
-        # 'cal_level': 'raw',
+        'cal_level': 'raw',
         'detector': {
             'exposure_time': 0.01724385,
             'nr_coadditions': 10,
@@ -118,7 +118,7 @@ def test_full_chain_binning_4_no_adc(
             'enabled': False,
             'in_memory': True,
         },
-        'io': {
+        'io_files': {
             'ckd': ckd_file,
             'sgm': sgm_file,
             'binning_table': binningtable_file,
@@ -127,4 +127,4 @@ def test_full_chain_binning_4_no_adc(
     }
     run_instrument_model(config)
     l1 = read_l1(tmp_path / 'tango_l1a.nc', 0, None, True)
-    assert abs(l1.signal).sum() == approx(82371824.0)
+    assert abs(l1.signal).sum() == approx(8236740.085948976)

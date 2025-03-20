@@ -18,6 +18,7 @@ Input files are:
 - (optionally) netCDF geometry data io.geometry
 
 """
+from netCDF4 import Dataset
 from pathlib import Path
 import math
 import numpy as np
@@ -45,7 +46,7 @@ def check_config(config: dict) -> None:
     Parameters
     ----------
     config
-        Configuration dictionary
+        Configuration parameters.
 
     """
     # If swath.exact_drawing is true then do not bin the L1B data but
@@ -57,10 +58,15 @@ def check_config(config: dict) -> None:
     if config['swath']['exact_drawing']:
         config['bin_spectra'] = 1
     for key in ('l1a', 'ckd'):
-        input_file = Path(config['io'][key])
+        input_file = Path(config['io_files'][key])
         if not input_file.is_file():
             raise SystemExit(f"ERROR: {input_file} not found")
-    proc_level = read_proc_level(config['io']['l1a'])
+    nc_l1a = Dataset(config['io_files']['l1a'])
+    if 'navigation_data' not in nc_l1a.groups and (
+            config['swath']['geolocation']):
+        log.warning('no navigation data in L1A file, disabling geolocation')
+        config['swath']['geolocation'] = False
+    proc_level = read_proc_level(config['io_files']['l1a'])
     log.info(f"Processing from {proc_level} to {config['cal_level']}")
 
 
@@ -111,13 +117,13 @@ def run_l1al1b(config_user: dict | None = None) -> None:
     # settings given by the user.
     config = merge_config_with_default(config_user, 'teds.l1al1b.python')
     check_config(config)
-    ckd = read_ckd(config['io']['ckd'])
+    ckd = read_ckd(config['io_files']['ckd'])
     log.info('Reading input data')
     l1_product: L1 = read_l1(
-        config['io']['l1a'], config['alt_beg'], config['alt_end'])
+        config['io_files']['l1a'], config['alt_beg'], config['alt_end'])
 
     # Read binning table corresponding to input data
-    binning_table = read_binning_table(config['io']['binning_table'],
+    binning_table = read_binning_table(config['io_files']['binning_table'],
                                        l1_product.binning_table_id,
                                        ckd.n_detector_rows,
                                        ckd.n_detector_cols)
@@ -194,17 +200,17 @@ def run_l1al1b(config_user: dict | None = None) -> None:
     if config['swath']['geolocation']:
         log.info('Geolocation')
         l1_product.geometry = geolocate(
-            l1_product, ckd.swath.line_of_sights, config['io']['dem'])
+            l1_product, ckd.swath.line_of_sights, config['io_files']['dem'])
     else:
         log.info('Copying geometry from geometry file')
-        copy_geometry(config['io']['l1a'],
-                      config['io']['geometry'],
+        copy_geometry(config['io_files']['l1a'],
+                      config['io_files']['geometry'],
                       config['alt_beg'],
                       l1_product)
     if l1_product.proc_level >= ProcLevel.swath:
         cal.bin_l1b(l1_product, config['bin_spectra'])
-    log.info('Writing output data')
-    write_l1(config['io']['l1b'], config, l1_product)
+    log.info('Writing output')
+    write_l1(config['io_files']['l1b'], config, l1_product)
 
     # If this is shown then the simulation ran successfully
     print_heading('Success')

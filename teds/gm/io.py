@@ -12,7 +12,6 @@ import numpy.typing as npt
 
 from .types import Geometry
 from .types import Navigation
-# from teds.l1al1b.python.types import L1
 
 default_fill = -32767
 
@@ -158,7 +157,9 @@ def nc_write_saa(nc: Dataset | Group, data: npt.NDArray[np.float64]) -> None:
     var[:] = data
 
 
-def nc_write_geometry(nc: Dataset | Group, geometry: Geometry) -> None:
+def nc_write_geometry(nc: Dataset | Group,
+                      geometry: Geometry,
+                      convert_rad2deg: bool = True) -> None:
     """Write geometry to a NetCDF group.
 
     This wraps the other nc_write_* functions and can be used if the
@@ -168,18 +169,28 @@ def nc_write_geometry(nc: Dataset | Group, geometry: Geometry) -> None:
     ----------
     nc
         NetCDF group (Dataset if root group)
-    geometry:
+    geometry
         Object representing latitudes, longitudes, and solar and
         viewing geometries. All angles are in radians.
+    convert_rad2deg
+        Whether to convert to degrees
 
     """
-    nc_write_lat(nc, np.rad2deg(geometry.lat))
-    nc_write_lon(nc, np.rad2deg(geometry.lon))
+    if convert_rad2deg:
+        nc_write_lat(nc, np.rad2deg(geometry.lat))
+        nc_write_lon(nc, np.rad2deg(geometry.lon))
+        nc_write_vza(nc, np.rad2deg(geometry.vza))
+        nc_write_vaa(nc, np.rad2deg(geometry.vaa))
+        nc_write_sza(nc, np.rad2deg(geometry.sza))
+        nc_write_saa(nc, np.rad2deg(geometry.saa))
+    else:
+        nc_write_lat(nc, geometry.lat)
+        nc_write_lon(nc, geometry.lon)
+        nc_write_vza(nc, geometry.vza)
+        nc_write_vaa(nc, geometry.vaa)
+        nc_write_sza(nc, geometry.sza)
+        nc_write_saa(nc, geometry.saa)
     nc_write_height(nc, np.zeros(geometry.lat.shape))
-    nc_write_vza(nc, np.rad2deg(geometry.vza))
-    nc_write_vaa(nc, np.rad2deg(geometry.vaa))
-    nc_write_sza(nc, np.rad2deg(geometry.sza))
-    nc_write_saa(nc, np.rad2deg(geometry.saa))
 
 
 def write_geometry(filename: str,
@@ -274,7 +285,7 @@ def read_navigation(filename: str) -> Navigation:
                       nc['altitude'][:].data)
 
 
-def read_geometry(filename: str) -> Geometry:
+def read_geometry(filename: str, group: str | None = None) -> Geometry:
     """Read geometry (viewing and solar) from NetCDF file.
 
     If geolocation_data group is present in the file (e.g. in L1B
@@ -285,6 +296,9 @@ def read_geometry(filename: str) -> Geometry:
     ----------
     filename
         Path to a file containing geometry
+    group
+        If present, read from this NetCDF group. Default is the root
+        group.
 
     Returns
     -------
@@ -292,7 +306,9 @@ def read_geometry(filename: str) -> Geometry:
 
     """
     nc = Dataset(filename)
-    if 'geolocation_data' in nc.groups:
+    if group:
+        grp = nc[group]
+    elif 'geolocation_data' in nc.groups:
         grp = nc['geolocation_data']
     else:
         grp = nc

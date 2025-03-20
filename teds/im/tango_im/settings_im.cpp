@@ -46,23 +46,23 @@ auto SettingsIM::scanKeys() -> void
 
     scan(rad.enabled);
 
-    scan(io.ckd);
-    scan(io.binning_table);
-    scan(io.l1a);
-    scan(io.sgm);
-    scan(io.geometry);
-    scan(io.navigation);
+    scan(io_files.ckd);
+    scan(io_files.binning_table);
+    scan(io_files.l1a);
+    scan(io_files.sgm);
+    scan(io_files.geometry);
+    scan(io_files.navigation);
 }
 
 auto SettingsIM::checkParameters() -> void
 {
     // These files must always be present
-    checkPresenceOfFile(io.ckd, true);
-    checkPresenceOfFile(io.binning_table, true);
-    checkPresenceOfFile(io.sgm, true);
-    checkPresenceOfFile(io.geometry, true);
+    checkPresenceOfFile(io_files.ckd, true);
+    checkPresenceOfFile(io_files.binning_table, true);
+    checkPresenceOfFile(io_files.sgm, true);
+    checkPresenceOfFile(io_files.geometry, true);
 
-    checkFileWritable(io.l1a);
+    checkFileWritable(io_files.l1a);
 
     if (swath.exact_drawing) {
         noise.artificial_scaling =

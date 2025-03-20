@@ -29,18 +29,18 @@ auto driver(const SettingsIM& settings,
                     TANGO_CXX_COMPILER,
                     TANGO_CXX_COMPILER_FLAGS,
                     TANGO_LIBRARIES,
-                    settings.io.binning_table);
+                    settings.io_files.binning_table);
 
     // Read in the CKD
     printHeading("Reading CKD and input data");
-    const CKD ckd { settings.io.ckd };
+    const CKD ckd { settings.io_files.ckd };
     // For undoing nonlinearity calibration we need the inverse of the
     // nonlinearity spline from the CKD.
     const LinearSpline nonlin_spline { ckd.nonlin.spline.invert() };
 
     // Read and initialize data
     L1 l1_prod {};
-    readL1(settings.io.sgm,
+    readL1(settings.io_files.sgm,
            settings.alt_beg,
            settings.alt_end,
            l1_prod,
@@ -59,7 +59,7 @@ auto driver(const SettingsIM& settings,
                   settings.isrf.enabled,
                   settings.isrf.fwhm_gauss,
                   settings.isrf.shape,
-                  settings.io.sgm,
+                  settings.io_files.sgm,
                   l1_prod);
     }
     // Radiometric
@@ -141,7 +141,7 @@ auto driver(const SettingsIM& settings,
                      static_cast<int>(settings.detector.binning_table_id));
         binDetectorImages(ckd.n_detector_rows,
                           ckd.n_detector_cols,
-                          settings.io.binning_table,
+                          settings.io_files.binning_table,
                           settings.detector.binning_table_id,
                           settings.cal_level > ProcLevel::l1a,
                           l1_prod);
@@ -153,10 +153,10 @@ auto driver(const SettingsIM& settings,
         digitalToAnalog(settings.detector.nr_coadditions, l1_prod);
     }
 
-    writeL1(settings.io.l1a, settings.getConfig(), l1_prod, argc, argv);
+    writeL1(settings.io_files.l1a, settings.getConfig(), l1_prod, argc, argv);
 
-    if (!settings.io.navigation.empty()) {
-        copyNavigationData(settings.io.navigation, settings.io.l1a);
+    if (!settings.io_files.navigation.empty()) {
+        copyNavigationData(settings.io_files.navigation, settings.io_files.l1a);
     }
 
     timer.stop();

@@ -30,6 +30,7 @@ from .types import CKDStray
 from .types import CKDSwath
 from .types import L1
 from .types import ProcLevel
+from teds import log
 from teds.gm.io import nc_write_geometry
 from teds.gm.types import Geometry
 from teds.gm.types import Navigation
@@ -334,12 +335,14 @@ def copy_navigation_data(navigation_filename: str, l1a_filename: str) -> None:
     for name, var in nc_nav.variables.items():
         grp.createVariable(name, var.datatype, var.dimensions)
         grp[name].setncatts(var.__dict__)
+        grp[name][:] = var[:].data
 
 
 def read_l1(filename: str,
             alt_beg: int,
             alt_end: int | None,
-            spectra_in_memory: bool = True) -> L1:
+            spectra_in_memory: bool = True,
+            geometry_filename: str = '') -> L1:
     """Read a level 1 file.
 
     Read a list of L1 products from a NetCDF file. The input data
@@ -358,6 +361,8 @@ def read_l1(filename: str,
         Whether to load all spectra into memory. This will run faster
         but might be too memory intensive if the input file has SGM
         line-by-line radiances.
+    geometry_filename
+        This is where the image timestamps are read.
 
     Returns
     -------
@@ -405,6 +410,17 @@ def read_l1(filename: str,
         l1_product.binning_table_id = grp['binning_table'][:]
         l1_product.coad_factor = grp['nr_coadditions'][:]
         l1_product.exposure_time = grp['exposure_time'][:]
+    elif geometry_filename:
+        nc_geo = Dataset(geometry_filename)
+        l1_product.navigation = Navigation.from_shape((n_alt,))
+        l1_product.navigation.time = nc_geo['time'][alt_beg:alt_end].data
+        l1_product.time_units = nc_geo['time'].units
+        l1_product.tai_seconds = nc_geo['tai_seconds'][alt_beg:alt_end].data
+        l1_product.tai_subsec = (
+            nc_geo['tai_subsec'][alt_beg:alt_end].data / 65535.0)
+    else:
+        log.warning('L1 product has no image timestamps because no geometry '
+                    'file given')
     if 'navigation_data' in nc.groups:
         grp = nc['navigation_data']
         n_times = grp.dimensions['time'].size

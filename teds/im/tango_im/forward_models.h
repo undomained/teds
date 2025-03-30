@@ -41,15 +41,20 @@ auto applyISRF(const CKD& ckd,
                const std::string& sgm_filename,
                L1& l1_prod) -> void;
 
+// Convolve each radiance spectrum with a tabulated ISRF corresponding
+// to heterogenous slit illumination.
+auto applyHeteroISRF(const CKD& ckd,
+                     const bool enabled,
+                     const std::string& sgm_filename,
+                     L1& l1_prod) -> void;
+
 // Undo radiometric calibration
 auto radiometric(const CKD& ckd, const bool enabled, L1& l1_prod) -> void;
 
 // Map spectra to the detector. After this spectra will be deallocated
-// and we work with the detector image. The exact algorithm draws each
-// spectrum to the detector using the "up" and "down" pixels.
+// and we work with the detector image.
 auto mapToDetector(const CKD& ckd,
                    const int b_spline_order,
-                   const bool exact_drawing,
                    L1& l1_prod) -> void;
 
 // Add stray light to the image
@@ -72,7 +77,6 @@ auto noise(const CKD& ckd,
            const bool enabled,
            const int seed,
            const int n_coadditions,
-           const double artificial_scaling,
            L1& l1_prod) -> void;
 
 // Add dark offset to the image

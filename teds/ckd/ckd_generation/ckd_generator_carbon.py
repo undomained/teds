@@ -15,178 +15,115 @@ Usage:
 
 """
 from netCDF4 import Dataset
+from pathlib import Path
 from scipy.interpolate import CubicSpline
 from scipy.interpolate import PchipInterpolator
 from scipy.interpolate import RBFInterpolator
 from scipy.interpolate import interpn
 import pandas as pd
 import numpy as np
+import numpy.typing as npt
 
 from teds import log
 from teds.lib.io import merge_config_with_default
 from teds.lib.io import print_heading
 from teds.lib.io import print_system_info
+import teds.l1al1b.python.types as tp
 
 
-def gen_header(conf: dict, nc_ckd: Dataset) -> None:
-    """Generate basic CKD dimensions and global attributes.
+def check_config(config: dict) -> None:
+    """Check consistency of some of the configuration settings.
+
+    Parameters
+    ----------
+    config
+        Configuration parameters.
+
+    """
+    ckd_file = Path(config['io_files']['ckd'])
+    if not ckd_file.is_file():
+        raise SystemExit(f"ERROR: {ckd_file} not found")
+
+
+def gen_dark(conf: dict) -> tp.CKDDark:
+    """Generate detector dark CKD.
 
     Parameters
     ----------
     conf
         settings read from the YAML file
-    nc_ckd
-        NetCDF file to save the result to
+
+    Returns
+    -------
+        CKD containing dark offset and current.
 
     """
-    # Basic detector dimensions
-    nc_ckd.createDimension('detector_row', conf['n_detector_rows'])
-    nc_ckd.createDimension('detector_column', conf['n_detector_cols'])
-    nc_ckd.createDimension('across_track_sample', conf['n_act'])
-    nc_ckd.createDimension('vector', 3)
-
-    # Global attributes
-    nc_ckd.title = "Tango Carbon calibration key data"
-    nc_ckd.Conventions = "CF-1.11"
-    nc_ckd.institution = "SRON Netherlands Institute for Space Research"
-    nc_ckd.project = "Tango"
-    nc_ckd.creator_name = "SRON/Earth Science"
+    nc = Dataset(conf['io_files']['detector'])
+    spline = PchipInterpolator(
+        nc['temperature'][:], np.nan_to_num(nc['offset'][:]), 0)
+    offset = spline(conf['temperature'])
+    spline = PchipInterpolator(
+        nc['temperature'][:], np.nan_to_num(nc['dark_current'][:]), 0)
+    current = spline(conf['temperature'])
+    return tp.CKDDark(offset, current)
 
 
-def gen_dark(conf: dict, nc_ckd: Dataset) -> None:
-    """Generate detector dark CKD and save into a NetCDF file.
-
-    Parameters
-    ----------
-    conf
-        settings read from the YAML file
-    nc_ckd
-        NetCDF file to save the result to
-
-    """
-    nc_grp = nc_ckd.createGroup('dark')
-    nc_ckd_in = Dataset(conf['dark']['ckd_in'])
-    nc_var = nc_grp.createVariable(
-        'offset', 'f8', ('detector_row', 'detector_column'))
-    nc_var.long_name = 'detector offset'
-    nc_var.units = 'counts'
-    spline = PchipInterpolator(nc_ckd_in['temperature'][:],
-                               np.nan_to_num(nc_ckd_in['offset'][:]),
-                               0)
-    nc_var[:] = spline(conf['temperature'])
-    nc_ckd_in = Dataset(conf['dark']['ckd_in'])
-    nc_var = nc_grp.createVariable(
-        'current', 'f8', ('detector_row', 'detector_column'))
-    nc_var.long_name = 'detector dark current'
-    nc_var.units = 'counts s-1'
-    spline = PchipInterpolator(nc_ckd_in['temperature'][:],
-                               np.nan_to_num(nc_ckd_in['dark_current'][:]),
-                               0)
-    nc_var[:] = spline(conf['temperature'])
+def gen_noise(conf: dict) -> tp.CKDNoise:
+    """Generate detector noise CKD."""
+    nc = Dataset(conf['io_files']['detector'])
+    spline = CubicSpline(nc['temperature'][:], 1 / nc['conversion_gain'][:])
+    gain = spline(conf['temperature'])
+    spline = PchipInterpolator(
+        nc['temperature'][:], np.nan_to_num(nc['read_noise'][:]), 0)
+    read_noise = spline(conf['temperature'])
+    return tp.CKDNoise(gain, read_noise)
 
 
-def gen_noise(conf: dict, nc_ckd: Dataset) -> None:
-    """Generate detector noise CKD and save into a NetCDF file.
-
-    Parameters
-    ----------
-    conf
-        settings read from the YAML file
-    nc_ckd
-        NetCDF file to save the result to
-
-    """
-    nc_grp = nc_ckd.createGroup('noise')
-    nc_ckd_in = Dataset(conf['dark']['ckd_in'])
-    nc_var = nc_grp.createVariable(
-        'g', 'f8', ('detector_row', 'detector_column'))
-    nc_var.long_name = 'noise conversion gain'
-    nc_var.description = 'noise model: sigma = sqrt(g*signal + n^2)'
-    nc_var.units = 'counts electrons-1'
-    nc_var[:] = (CubicSpline(nc_ckd_in['temperature'][:],
-                             1 / nc_ckd_in['conversion_gain'][:])
-                 (conf['temperature']))
-    nc_var = nc_grp.createVariable(
-        'n', 'f8', ('detector_row', 'detector_column'))
-    nc_var.long_name = 'read noise'
-    nc_var.description = 'noise model: sigma = sqrt(g*signal + n^2)'
-    nc_var.units = 'counts^2 electrons-1'
-    spline = PchipInterpolator(nc_ckd_in['temperature'][:],
-                               np.nan_to_num(nc_ckd_in['read_noise'][:]),
-                               0)
-    nc_var[:] = spline(conf['temperature'])
-
-
-def gen_nonlin(conf: dict, nc_ckd: Dataset) -> None:
-    """Generate detector nonlinearity CKD and save into a NetCDF file.
-
-    Parameters
-    ----------
-    conf
-        settings read from the YAML file
-    nc_ckd
-        NetCDF file to save the result to
-
-    """
-    nc_grp = nc_ckd.createGroup('nonlinearity')
+def gen_nonlin(conf: dict) -> tp.CKDNonlin:
+    """Generate detector nonlinearity CKD."""
+    # Dummy implementation for now
     n_knots = 100
-    nc_grp.createDimension('knots', n_knots)
-    nc_var = nc_grp.createVariable('knots', 'f8', 'knots')
-    nc_var.long_name = 'spline knots of the measured signal'
-    nc_var.units = 'counts'
-    nc_var[:] = np.linspace(-1000, 10000, n_knots)
-    nc_var = nc_grp.createVariable('y', 'f8', 'knots')
-    nc_var.long_name = 'spline values of the measured signal'
-    nc_var.units = 'counts'
-    nc_var[:] = np.linspace(-1000, 10000, n_knots)
+    observed = np.linspace(-1000, 10000, n_knots)
+    expected = np.linspace(-1000, 10000, n_knots)
+    return tp.CKDNonlin(observed, expected)
 
 
-def gen_swath_spectral(conf: dict, nc_ckd: Dataset) -> None:
-    """Generate swath and spectral CKD and save into a NetCDF file.
+def gen_spectral(conf: dict) -> tp.CKDSpectral:
+    """Generate L1B wavelength grid."""
+    wavelengths = np.linspace(
+        conf['wavelength_min'], conf['wavelength_max'], conf['n_wavelengths'])
+    return tp.CKDSpectral(wavelengths)
 
-    Parameters
-    ----------
-    conf
-        settings read from the YAML file
-    nc_ckd
-        NetCDF file to save the result to
 
-    """
-    # User defined number of ACT angles and their range
-    act_beg, act_end = conf['swath']['target_act_angles']
-    l1b_act_angles = np.linspace(act_beg, act_end, conf['n_act'])
-    # User defined range of intermediate interpolation wavelenegths
-    n_inter_wave = conf['swath']['n_intermediate_wavelengths']
-    wave_beg, wave_end = conf['swath']['intermediate_wavelengths']
-    intermediate_wavelengths = np.linspace(wave_beg, wave_end, n_inter_wave)
+def gen_swath(conf: dict, ckd_spectral: tp.CKDSpectral) -> tp.CKDSwath:
+    """Generate swath CKD."""
+    l1b_act_angles = np.linspace(conf['l1b_act_angle_min'],
+                                 conf['l1b_act_angle_max'],
+                                 conf['n_l1b_act_angles'])
 
     # STEP 1 - Spot measurement data.
 
     # Spot across track angles, deg
-    spot_act = np.asarray(
-        pd.read_csv(open(conf['swath']['spot_act_angle_file']),
-                    sep='\t',
-                    header=None))[:, 0]
+    spot_act = np.asarray(pd.read_csv(
+        open(conf['spot_act_angle_file']), sep='\t', header=None))[:, 0]
     # Spot wavelengths, nm
-    spot_wavelengths = np.asarray(
-        pd.read_csv(open(conf['swath']['spot_wavelength_file']),
-                    sep='\t',
-                    header=None))[:, 0]
+    spot_wavelengths = np.asarray(pd.read_csv(
+        open(conf['spot_wavelength_file']), sep='\t', header=None))[:, 0]
     # Spot distances from the center detector row, mm
     row_distances = pd.read_csv(
-        open(conf['swath']['spot_row_distance_file']), sep='\t', header=None)
+        open(conf['spot_row_distance_file']), sep='\t', header=None)
     # Spot distances from the center detector column, mm
     col_distances = pd.read_csv(
-        open(conf['swath']['spot_col_distance_file']), sep='\t', header=None)
+        open(conf['spot_col_distance_file']), sep='\t', header=None)
     # Convert distances to fractional row and column indices of the pixels
     pixel_size = 0.015  # mm
     row_indices = np.asarray(row_distances) / pixel_size
     col_indices = np.asarray(col_distances) / pixel_size
-    if not conf['swath']['enable_keystone']:
+    if not conf['enable_keystone']:
         log.info('  Switching off keystone')
         for i_col in range(row_indices.shape[1]):
             row_indices[:, i_col] = row_indices[:, 0]
-    if not conf['swath']['enable_smile']:
+    if not conf['enable_smile']:
         log.info('  Switching off spectral smile')
         for i_row in range(col_indices.shape[0]):
             col_indices[i_row, :] = col_indices[0, :]
@@ -241,7 +178,7 @@ def gen_swath_spectral(conf: dict, nc_ckd: Dataset) -> None:
                        conf['n_detector_rows'])
     # Grid of target L1B act angles and wavelengths
     l1b_grid = np.array(np.meshgrid(l1b_act_angles,
-                                    intermediate_wavelengths,
+                                    ckd_spectral.wavelengths,
                                     indexing='ij')).reshape(2, -1).T
     # Row index of each L1B spectrum
     log.info('  Generating row index of each L1B spectrum')
@@ -250,7 +187,8 @@ def gen_swath_spectral(conf: dict, nc_ckd: Dataset) -> None:
         det_rows,
         kernel='cubic',
         neighbors=49)(l1b_grid).reshape(len(l1b_act_angles),
-                                        len(intermediate_wavelengths))
+                                        len(ckd_spectral.wavelengths))
+
     # Column index of each L1B spectrum
     log.info('  Generating column index of each L1B spectrum')
     col_map = RBFInterpolator(
@@ -258,123 +196,39 @@ def gen_swath_spectral(conf: dict, nc_ckd: Dataset) -> None:
         det_cols,
         kernel='cubic',
         neighbors=49)(l1b_grid).reshape(len(l1b_act_angles),
-                                        len(intermediate_wavelengths))
+                                        len(ckd_spectral.wavelengths))
 
-    # STEP 4 - Generate wavelengths for each spectrum and detector
-    #          column (spectral CKD).
-
-    # In order to determine the L1B wavelength grids, first generate
-    # the mapping of row index vs ACT angle and detector
-    # column. Interpolate from the spot ACT/column grid to the target
-    # ACT/column grid where the target ACT angles are given by user
-    # and the target column grid is from 0...640.
-    spot_act_cols = np.column_stack((spot_act_all.ravel(),
-                                     col_indices.ravel()))
-    act_col_grid = np.array(np.meshgrid(
-        l1b_act_angles,
-        np.arange(conf['n_detector_cols']),
-        indexing='ij')).reshape(2, -1).T
-    act_to_row_map = RBFInterpolator(
-        spot_act_cols,
-        row_indices.ravel(),
-        kernel='cubic')(act_col_grid).reshape(len(l1b_act_angles),
-                                              conf['n_detector_cols'])
-    # Now that we know the row indices corresponding to all ACT
-    # angles, interpolate wavelengths onto those row indices and
-    # columns 0...640.
-    target_row_col_grid = np.column_stack((
-        act_to_row_map.ravel(),
-        np.tile(np.arange(conf['n_detector_cols']), len(l1b_act_angles))))
-    target_wavelength_map = RBFInterpolator(
-        spot_rows_cols,
-        spot_wavelengths_all,
-        kernel='cubic')(target_row_col_grid).reshape(len(l1b_act_angles),
-                                                     conf['n_detector_cols'])
-
-    # STEP 5 - Write results to CKD file
-
-    # Write swath group
-    nc_grp = nc_ckd.createGroup('swath')
-    dim_wavelength = nc_grp.createDimension('wavelength',
-                                            len(intermediate_wavelengths))
-
-    nc_var = nc_grp.createVariable('wavelength', 'f8', (dim_wavelength,))
-    nc_var.long_name = 'intermediate wavelengths after ISRF convolution'
-    nc_var.units = 'nm'
-    nc_var[:] = intermediate_wavelengths
-
-    nc_var = nc_grp.createVariable('act_angle', 'f8', ('across_track_sample',))
-    nc_var.long_name = 'across track angles'
-    nc_var.units = 'deg'
-    nc_var[:] = l1b_act_angles
-
-    nc_var = nc_grp.createVariable(
-        'act_map', 'f8', ('detector_row', 'detector_column'))
-    nc_var.long_name = 'ACT angle of each detector pixel'
-    nc_var.units = 'deg'
-    nc_var[:] = act_map
-
-    nc_var = nc_grp.createVariable(
-        'wavelength_map', 'f8', ('detector_row', 'detector_column'))
-    nc_var.long_name = 'wavelength of each detector pixel'
-    nc_var.units = 'nm'
-    nc_var[:] = wavelength_map
-
-    nc_var = nc_grp.createVariable(
-        'row_map', 'f8', ('across_track_sample', dim_wavelength))
-    nc_var.long_name = 'row index of each L1B spectral element'
-    nc_var.units = '1'
-    nc_var[:] = row_map
-
-    nc_var = nc_grp.createVariable(
-        'col_map', 'f8', ('across_track_sample', dim_wavelength))
-    nc_var.long_name = 'column index of each L1B spectral element'
-    nc_var.units = '1'
-    nc_var[:] = col_map
-
-    nc_var = nc_grp.createVariable(
-        'line_of_sight', 'f8', ('across_track_sample', 'vector'))
-    nc_var.long_name = 'line of sight vector of each L1B spectrum'
-    nc_var.units = '1'
+    # Line-of-sight vectors
     l1b_act_angles_rad = np.deg2rad(l1b_act_angles)
-    nc_var[:] = np.stack((np.zeros(len(l1b_act_angles_rad)),
-                          np.sin(l1b_act_angles_rad),
-                          np.cos(l1b_act_angles_rad)), 1)
+    los = np.stack((np.zeros(len(l1b_act_angles_rad)),
+                    np.sin(l1b_act_angles_rad),
+                    np.cos(l1b_act_angles_rad)), 1)
 
-    # Write spectral group
-    nc_grp = nc_ckd.createGroup('spectral')
-    nc_var = nc_grp.createVariable(
-        'wavelength', 'f8', ('across_track_sample', 'detector_column'))
-    nc_var.long_name = 'wavelengths of L1B spectra'
-    nc_var.units = 'nm'
-    nc_var[:] = target_wavelength_map
+    return tp.CKDSwath(l1b_act_angles,
+                       act_map,
+                       wavelength_map,
+                       row_map,
+                       col_map,
+                       los)
 
 
-def gen_prnu(conf: dict, nc_ckd: Dataset) -> None:
-    """Generate PRNU x QE CKD and save into a NetCDF file.
-
-    Parameters
-    ----------
-    conf
-        settings read from the YAML file
-    nc_ckd
-        NetCDF file to save the result to
-
-    """
-    nc_ckd_in = Dataset(conf['prnu']['ckd_in'])
+def gen_prnu(conf: dict,
+             ckd_swath: tp.CKDSwath,
+             ckd_spectral: tp.CKDSpectral) -> tp.CKDPRNU:
+    """Generate PRNU x QE CKD."""
+    nc = Dataset(conf['io_files']['detector'])
     # QE is more difficult because it is provided per wavelength.
     # First step is to interpolate QE onto the target temperature.
-    qe = np.zeros(nc_ckd_in.dimensions['wavelength'].size)
-    temperatures_qe = nc_ckd_in['temperature_qe'][:]
+    qe = np.zeros(nc.dimensions['wavelength'].size)
+    temperatures_qe = nc['temperature_qe'][:]
     for i in range(len(qe)):
         spline = CubicSpline(temperatures_qe,
-                             nc_ckd_in['quantum_efficiency'][:, i])
+                             nc['quantum_efficiency'][:, i])
         qe[i] = spline(conf['temperature'])
     # Find the shortest CKD wavelength and pad the QE values so there
     # is always data at all wavelengths.
-    ckd_wavelengths = nc_ckd['spectral/wavelength'][:]
-    min_ckd_wavelength = ckd_wavelengths.min() - 1.0  # Margin for safety
-    qe_wavelengths = nc_ckd_in['wavelength'][:].data
+    min_ckd_wavelength = ckd_spectral.wavelengths.min() - 1.0  # for safety
+    qe_wavelengths = nc['wavelength'][:].data
     qe_wavelength_step = qe_wavelengths[1] - qe_wavelengths[0]
     while qe_wavelengths[0] > min_ckd_wavelength:
         next_wavelength = qe_wavelengths[0] - qe_wavelength_step
@@ -383,25 +237,23 @@ def gen_prnu(conf: dict, nc_ckd: Dataset) -> None:
         qe = np.insert(qe, 0, next_qe)
     # Next interpolate QE onto the L1B spectra
     qe_spline = CubicSpline(qe_wavelengths, qe)
-    qe_spectra = np.zeros((conf['n_act'], conf['n_detector_cols']))
-    for i_act in range(conf['n_act']):
-        qe_spectra[i_act, :] = qe_spline(ckd_wavelengths[i_act, :])
+    qe_spectra = np.zeros((len(ckd_swath.act_angles),
+                           len(ckd_spectral.wavelengths)))
+    qe_spectrum = qe_spline(ckd_spectral.wavelengths)
+    qe_spectra = np.tile(qe_spectrum,
+                         qe_spectra.shape[0]).reshape(qe_spectra.shape)
     # At this point, we have a QE value for each L1B spectrum
-    act_angles = nc_ckd['swath/act_angle'][:]
-    act_wave_map_in = np.column_stack((
-        np.repeat(act_angles, conf['n_detector_cols']),
-        ckd_wavelengths.ravel()))
-    act_map = nc_ckd['swath/act_map'][:]
-    wave_map = nc_ckd['swath/wavelength_map'][:]
-    act_wave_map_out = np.column_stack((act_map.ravel(), wave_map.ravel()))
-    qe_map = RBFInterpolator(
-        act_wave_map_in,
-        qe_spectra.ravel(),
-        kernel='cubic',
-        neighbors=49)(act_wave_map_out).reshape(conf['n_detector_rows'],
-                                                conf['n_detector_cols'])
-    prnu_in = np.nan_to_num(nc_ckd_in['prnu'][:].astype('f8'))
-    spline = PchipInterpolator(nc_ckd_in['temperature'][:], prnu_in, 0)
+    act_wave_map_out = np.column_stack((ckd_swath.act_map.ravel(),
+                                        ckd_swath.wavelength_map.ravel()))
+    qe_map = interpn(
+            (ckd_swath.act_angles, ckd_spectral.wavelengths),
+            qe_spectra,
+            act_wave_map_out,
+            method='cubic',
+            bounds_error=False,
+            fill_value=None).reshape(ckd_swath.act_map.shape)
+    prnu_in = np.nan_to_num(nc['prnu'][:].astype('f8'))
+    spline = PchipInterpolator(nc['temperature'][:], prnu_in, 0)
     prnu = spline(conf['temperature'])
     # Extrapolate over bad values near the detector edges
     margin = 2
@@ -421,108 +273,196 @@ def gen_prnu(conf: dict, nc_ckd: Dataset) -> None:
                                              conf['n_detector_cols']))
     # Combine PRNU and QE into one variable (for now)
     prnu = prnu * qe_map
-    nc_grp = nc_ckd.createGroup('prnu')
-    nc_var = nc_grp.createVariable(
-        'prnu', 'f8', ('detector_row', 'detector_column'))
-    nc_var.long_name = (
+    return tp.CKDPRNU(prnu)
+
+
+def gen_radiometric(conf: dict,
+                    ckd_swath: tp.CKDSwath,
+                    ckd_spectral: tp.CKDSpectral) -> tp.CKDRadiometric:
+    """Generate radiometric CKD."""
+    rad_corr = np.empty((len(ckd_swath.act_angles),
+                         len(ckd_spectral.wavelengths)))
+    rad_corr[:] = 4222381848451.05
+    return tp.CKDRadiometric(rad_corr)
+
+
+def gen_pixel_mask(conf: dict,
+                   ckd_dark: tp.CKDDark,
+                   ckd_prnu: tp.CKDPRNU) -> npt.NDArray[np.bool_]:
+    """Generate detector bad pixel mask."""
+    mask = np.logical_or(abs(ckd_dark.current) > 1e4,
+                         abs(ckd_dark.offset) > 600.0)
+    mask = np.logical_or(mask, ckd_prnu.prnu_qe < 1e-3)
+    return mask
+
+
+def write_ckd(filename: str, ckd: tp.CKD, ckd_stray_file: str) -> None:
+    """Write CKD contents to NetCDF file.
+
+    Parameters
+    ----------
+    filename
+        NetCDF file nam
+    ckd
+        CKD
+    ckd_stray_file
+        Stray light CKD is read and copied straight from a
+        file. Converting the contents into a CKDStray object and back
+        would be too much work.
+
+    """
+    nc = Dataset(filename, 'w')
+    # Global attributes
+    nc.title = "Tango Carbon calibration key data"
+    nc.Conventions = "CF-1.11"
+    nc.institution = "SRON Netherlands Institute for Space Research"
+    nc.project = "Tango"
+    nc.creator_name = "SRON/Earth Science"
+
+    # Basic detector dimensions
+    n_rows, n_cols = ckd.dark.offset.shape
+    nc.createDimension('detector_row', n_rows)
+    nc.createDimension('detector_column', n_cols)
+    nc.createDimension('across_track_sample', len(ckd.swath.act_angles))
+    nc.createDimension('wavelength', len(ckd.spectral.wavelengths))
+    nc.createDimension('vector', 3)
+
+    var = nc.createVariable('pixel_mask',
+                            'b',
+                            ('detector_row', 'detector_column'),
+                            fill_value=np.int8(-128))
+    var.long_name = 'detector pixel mask'
+    var.valid_range = (np.int8(0), np.int8(1))
+    var.flag_values = (np.int8(0), np.int8(1))
+    var.flag_meanings = 'good bad'
+    var[:] = ckd.pixel_mask
+
+    # Dark
+    grp = nc.createGroup('dark')
+    var = grp.createVariable(
+        'offset', 'f8', ('detector_row', 'detector_column'))
+    var.long_name = 'detector offset'
+    var.units = 'counts'
+    var[:] = ckd.dark.offset
+    var = grp.createVariable(
+        'current', 'f8', ('detector_row', 'detector_column'))
+    var.long_name = 'detector dark current'
+    var.units = 'counts s-1'
+    var[:] = ckd.dark.current
+
+    # Noise
+    grp = nc.createGroup('noise')
+    var = grp.createVariable('g', 'f8', ('detector_row', 'detector_column'))
+    var.long_name = 'noise conversion gain'
+    var.description = 'noise model: sigma = sqrt(g*signal + n^2)'
+    var.units = 'counts electrons-1'
+    var[:] = ckd.noise.conversion_gain
+    var = grp.createVariable('n', 'f8', ('detector_row', 'detector_column'))
+    var.long_name = 'read noise'
+    var.description = 'noise model: sigma = sqrt(g*signal + n^2)'
+    var.units = 'counts^2 electrons-1'
+    var[:] = ckd.noise.read_noise
+
+    # Nonlinearity
+    grp = nc.createGroup('nonlinearity')
+    grp.createDimension('knots', len(ckd.nonlin.observed))
+    var = grp.createVariable('observed', 'f8', 'knots')
+    var.long_name = 'observed signal (spline knots)'
+    var.units = 'counts'
+    var[:] = ckd.nonlin.observed
+    var = grp.createVariable('expected', 'f8', 'knots')
+    var.long_name = 'expected (linear) signal (spline values)'
+    var.units = 'counts'
+    var[:] = ckd.nonlin.expected
+
+    # PRNU
+    grp = nc.createGroup('prnu')
+    var = grp.createVariable('prnu', 'f8', ('detector_row', 'detector_column'))
+    var.long_name = (
         'product of photoresponse non-uniformity and quantum efficiency')
-    nc_var.units = '1'
-    nc_var[:] = prnu
+    var.units = '1'
+    var[:] = ckd.prnu.prnu_qe
 
-
-def gen_stray(conf: dict, nc_ckd: Dataset) -> None:
-    """Generate stray light CKD and save into a NetCDF file.
-
-    Parameters
-    ----------
-    conf
-        settings read from the YAML file
-    nc_ckd
-        NetCDF file to save the result to
-
-    """
-    nc_grp = nc_ckd.createGroup('stray')
-    nc_ckd_in = Dataset(conf['stray']['ckd_in'])['stray']
-
-    nc_grp.createDimension('kernel', nc_ckd_in.dimensions['kernel'].size)
-    nc_grp.createDimension('kernels_fft_size',
-                           nc_ckd_in.dimensions['kernels_fft_size'].size)
-    nc_grp.createDimension('edges_of_box', 4)
-
-    nc_var = nc_grp.createVariable('kernel_rows', 'i4', 'kernel')
-    nc_var.long_name = 'number of rows in each kernel'
-    nc_var[:] = nc_ckd_in['kernel_rows'][:]
-
-    nc_var = nc_grp.createVariable('kernel_cols', 'i4', 'kernel')
-    nc_var.long_name = 'number of cols in each kernel'
-    nc_var[:] = nc_ckd_in['kernel_cols'][:]
-
-    nc_var = nc_grp.createVariable('kernel_fft_sizes', 'i4', 'kernel')
-    nc_var.long_name = 'sizes of kernel FFTs'
-    nc_var.units = '16 bytes'
-    nc_var[:] = nc_ckd_in['kernel_fft_sizes'][:]
-
-    nc_var = nc_grp.createVariable('kernels_fft', 'f8', 'kernels_fft_size')
-    nc_var.long_name = 'Fourier transforms of the kernels'
-    nc_var[:] = nc_ckd_in['kernels_fft'][:]
-
-    nc_var = nc_grp.createVariable(
+    # Stray
+    grp = nc.createGroup('stray')
+    nc_in = Dataset(ckd_stray_file)
+    grp.createDimension('kernel', nc_in['stray'].dimensions['kernel'].size)
+    grp.createDimension('kernels_fft_size',
+                        nc_in['stray'].dimensions['kernels_fft_size'].size)
+    grp.createDimension('edges_of_box', 4)
+    var = grp.createVariable('kernel_rows', 'i4', 'kernel')
+    var.long_name = 'number of rows in each kernel'
+    var[:] = nc_in['stray']['kernel_rows'][:].data
+    var = grp.createVariable('kernel_cols', 'i4', 'kernel')
+    var.long_name = 'number of cols in each kernel'
+    var[:] = nc_in['stray']['kernel_cols'][:].data
+    var = grp.createVariable('kernel_fft_sizes', 'i4', 'kernel')
+    var.long_name = 'sizes of kernel FFTs'
+    var.units = '16 bytes'
+    var[:] = nc_in['stray']['kernel_fft_sizes'][:].data
+    var = grp.createVariable('kernels_fft', 'f8', 'kernels_fft_size')
+    var.long_name = 'Fourier transforms of the kernels'
+    var[:] = nc_in['stray']['kernels_fft'][:].data
+    var = grp.createVariable(
         'eta', 'f8', ('detector_row', 'detector_column'))
-    nc_var.long_name = 'internal scattering factor'
-    nc_var[:] = nc_ckd_in['eta'][:]
-
-    nc_var = nc_grp.createVariable(
+    var.long_name = 'internal scattering factor'
+    var[:] = nc_in['stray']['eta'][:].data
+    var = grp.createVariable(
         'weights', 'f8', ('kernel', 'detector_row', 'detector_column'))
-    nc_var.long_name = 'kernel weights'
-    nc_var[:] = nc_ckd_in['weights'][:]
-
-    nc_var = nc_grp.createVariable(
+    var.long_name = 'kernel weights'
+    var[:] = nc_in['stray']['weights'][:].data
+    var = grp.createVariable(
         'edges', 'i4', ('kernel', 'edges_of_box'))
-    nc_var.long_name = 'distances of subimage edges from the detector edges'
-    nc_var[:] = nc_ckd_in['edges'][:]
+    var.long_name = 'distances of subimage edges from the detector edges'
+    var[:] = nc_in['stray']['edges'][:].data
 
+    # Swath
+    grp = nc.createGroup('swath')
+    var = grp.createVariable('act_angle', 'f8', 'across_track_sample')
+    var.long_name = 'across track angles'
+    var.units = 'deg'
+    var[:] = ckd.swath.act_angles
+    var = grp.createVariable(
+        'act_map', 'f8', ('detector_row', 'detector_column'))
+    var.long_name = 'ACT angle of each detector pixel'
+    var.units = 'deg'
+    var[:] = ckd.swath.act_map
+    var = grp.createVariable(
+        'wavelength_map', 'f8', ('detector_row', 'detector_column'))
+    var.long_name = 'wavelength of each detector pixel'
+    var.units = 'nm'
+    var[:] = ckd.swath.wavelength_map
+    var = grp.createVariable(
+        'row_map', 'f8', ('across_track_sample', 'wavelength'))
+    var.long_name = 'row index of each L1B spectral element'
+    var.units = '1'
+    var[:] = ckd.swath.row_map
+    var = grp.createVariable(
+        'col_map', 'f8', ('across_track_sample', 'wavelength'))
+    var.long_name = 'column index of each L1B spectral element'
+    var.units = '1'
+    var[:] = ckd.swath.col_map
+    var = grp.createVariable(
+        'line_of_sight', 'f8', ('across_track_sample', 'vector'))
+    var.long_name = 'line of sight vector of each L1B spectrum'
+    var.units = '1'
+    var[:] = ckd.swath.line_of_sights
 
-def gen_radiometric(conf: dict, nc_ckd: Dataset) -> None:
-    """Generate radiometric CKD and save into a NetCDF file.
+    # Spectral
+    grp = nc.createGroup('spectral')
+    var = grp.createVariable('wavelength', 'f8', 'wavelength')
+    var.long_name = 'wavelengths of L1B spectra'
+    var.units = 'nm'
+    var[:] = ckd.spectral.wavelengths
 
-    Parameters
-    ----------
-    conf
-        settings read from the YAML file
-    nc_ckd
-        NetCDF file to save the result to
+    # Radiometric
+    grp = nc.createGroup('radiometric')
+    var = grp.createVariable(
+        'radiometric', 'f8', ('across_track_sample', 'wavelength'))
+    var.long_name = 'radiometric calibration constant'
+    var[:] = ckd.radiometric.rad_corr
 
-    """
-    nc_grp = nc_ckd.createGroup('radiometric')
-    nc_var = nc_grp.createVariable(
-        'radiometric', 'f8', ('across_track_sample', 'detector_column'))
-    nc_var.long_name = 'radiometric calibration constant'
-    nc_var[:] = 4222381848451.05
-
-
-def gen_pixel_mask(conf: dict, nc_ckd: Dataset) -> None:
-    """Generate detector bad pixel mask and save into a NetCDF file.
-
-    Parameters
-    ----------
-    conf
-        settings read from the YAML file
-    nc_ckd
-        NetCDF file to save the result to
-
-    """
-    nc_var = nc_ckd.createVariable('pixel_mask',
-                                   'b',
-                                   ('detector_row', 'detector_column'),
-                                   fill_value=np.int8(-128))
-    nc_var.long_name = 'detector pixel mask'
-    nc_var.valid_range = (np.int8(0), np.int8(1))
-    nc_var.flag_values = (np.int8(0), np.int8(1))
-    nc_var.flag_meanings = 'good bad'
-    mask = np.logical_or(abs(nc_ckd['dark/current'][:]) > 1e4,
-                         abs(nc_ckd['dark/offset'][:]) > 600.0)
-    mask = np.logical_or(mask, nc_ckd['prnu/prnu'][:] < 1e-3)
-    nc_var[:] = mask
+    nc.close()
 
 
 def gen_ckd(config_user: dict | None = None) -> None:
@@ -541,35 +481,52 @@ def gen_ckd(config_user: dict | None = None) -> None:
     print(flush=True)
 
     conf = merge_config_with_default(config_user, 'teds.ckd.ckd_generation')
-    nc_ckd = Dataset(conf['io_files']['ckd'], 'w')
+    check_config(conf)
 
     print_heading('Generating CKD')
 
-    log.info('Generating dimensions and global attributes')
-    gen_header(conf, nc_ckd)
-
     log.info('Generating dark offset and current')
-    gen_dark(conf, nc_ckd)
+    ckd_dark = gen_dark(conf)
 
     log.info('Generating noise CKD')
-    gen_noise(conf, nc_ckd)
+    ckd_noise = gen_noise(conf)
 
     log.info('Generating nonlinearity CKD')
-    gen_nonlin(conf, nc_ckd)
+    ckd_nonlin = gen_nonlin(conf)
 
-    log.info('Generating swath and spectral CKD')
-    gen_swath_spectral(conf, nc_ckd)
+    log.info('Generating spectral CKD')
+    ckd_spectral = gen_spectral(conf)
+
+    log.info('Generating swath CKD')
+    ckd_swath = gen_swath(conf, ckd_spectral)
 
     log.info('Generating PRNU and quantum efficiency CKD')
-    gen_prnu(conf, nc_ckd)
-
-    log.info('Generating stray light CKD')
-    gen_stray(conf, nc_ckd)
+    ckd_prnu = gen_prnu(conf, ckd_swath, ckd_spectral)
 
     log.info('Generating radiometric CKD')
-    gen_radiometric(conf, nc_ckd)
+    ckd_radiometric = gen_radiometric(conf, ckd_swath, ckd_spectral)
 
     log.info('Generating detector bad pixel mask')
-    gen_pixel_mask(conf, nc_ckd)
+    mask = gen_pixel_mask(conf, ckd_dark, ckd_prnu)
 
-    nc_ckd.close()
+    ckd_stray_dummy = tp.CKDStray([np.zeros((), dtype=np.complex128)],
+                                  np.zeros(()),
+                                  np.zeros(()),
+                                  np.zeros((), dtype=np.int32))
+
+    ckd = tp.CKD(ckd_dark.offset.shape[0],
+                 ckd_dark.offset.shape[1],
+                 mask,
+                 ckd_dark,
+                 ckd_noise,
+                 ckd_nonlin,
+                 ckd_prnu,
+                 ckd_stray_dummy,
+                 ckd_swath,
+                 ckd_spectral,
+                 ckd_radiometric)
+
+    log.info('Writing output')
+    write_ckd(conf['io_files']['ckd'], ckd, conf['io_files']['stray'])
+
+    print_heading('Success')

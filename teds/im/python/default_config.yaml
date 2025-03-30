@@ -55,13 +55,6 @@ stray:
   # Whether to add stray light to detector images
   enabled: yes
 
-swath:
-  # Whether to use the "exact" drawing algorithm. In principle, it
-  # doesn't have any interpolation error but it yields an unphysical
-  # detector image and does not work with a large number of ACT
-  # angles.
-  exact_drawing: no
-
 l1b:
   # Whether to convolve the line-by-line spectra with the ISRF. If
   # yes, the result is a level 1B product.

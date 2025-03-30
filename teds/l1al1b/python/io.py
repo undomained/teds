@@ -130,8 +130,8 @@ def read_ckd(filename: str) -> CKD:
     )
     # Nonlinearity
     ckd_nonlin = CKDNonlin(
-        expected=nc['nonlinearity/y'][:].data,  # counts
-        observed=nc['nonlinearity/knots'][:].data  # counts
+        observed=nc['nonlinearity/observed'][:].data,  # counts
+        expected=nc['nonlinearity/expected'][:].data  # counts
     )
     if (
             not (np.diff(ckd_nonlin.expected) > 0).all()
@@ -182,7 +182,6 @@ def read_ckd(filename: str) -> CKD:
                          nc['stray/edges'][:].data)
     # Swath
     ckd_swath = CKDSwath(nc['swath/act_angle'][:].data,
-                         nc['swath/wavelength'][:].data,
                          nc['swath/act_map'][:].data,
                          nc['swath/wavelength_map'][:].data,
                          nc['swath/row_map'][:].data,
@@ -191,8 +190,6 @@ def read_ckd(filename: str) -> CKD:
     # Smile (spectral distortion) description:
     # wavelength at each detector pixel
     ckd_spectral = CKDSpectral(nc['spectral/wavelength'][:].data)  # nm
-    if ckd_spectral.wavelengths[0, 0] > ckd_spectral.wavelengths[0, 1]:
-        ckd_spectral.wavelengths = np.flip(ckd_spectral.wavelengths, axis=-1)
     # Radiometric, nm-1 sr-1 m-2 e count-1
     ckd_radiometric = CKDRadiometric(nc['radiometric/radiometric'][:].data)
     return CKD(
@@ -496,8 +493,8 @@ def write_l1(filename: str,
             'along_track_sample', l1_product.signal.shape[0])
         dim_bins = out.createDimension('bin', l1_product.signal.shape[1])
     else:
-        dim_alt = out.createDimension(
-            'along_track_sample', l1_product.spectra.shape[0])
+        dim_alt = out.createDimension('along_track_sample',
+                                      l1_product.spectra.shape[0])
         dim_act = out.createDimension('across_track_sample',
                                       l1_product.spectra.shape[1])
         dim_waves = out.createDimension('wavelength',
@@ -578,7 +575,7 @@ def write_l1(filename: str,
         var_noise[:] = l1_product.noise
     else:
         var_waves = grp_data.createVariable('wavelength', 'f8',
-                                            (dim_act, dim_waves),
+                                            dim_waves,
                                             compression='zlib',
                                             fill_value=default_fill_value)
         var_waves.long_name = 'wavelength'

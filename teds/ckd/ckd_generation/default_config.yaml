@@ -3,55 +3,48 @@
 # Detector and swath dimensions
 n_detector_rows: 512
 n_detector_cols: 640
-n_act: 500
 
 # Input CKD will be interpolated to this temperature. Only applies to
 # variables for which data at different temperatures is available.
 temperature: 15.0
 
-# CKD data for dark offset and current
-dark:
-  ckd_in: OWL640S_low-gain_ckd.nc
+# L1B wavelength grid. Like ACT angles this can be set by the
+# user. The optimal range and spacing should probably come from an L2
+# analysis.
+n_wavelengths: 1000
+wavelength_min: 1582.1 # nm
+wavelength_max: 1679.2 # nm
 
-# CKD data for read noise and gain
-noise:
-  ckd_in: OWL640S_low-gain_ckd.nc
+# Target L1B ACT angles (one per L1B spectrum). These can be freely
+# chosen by user but should make sense based on the instrument's
+# spatial resolution.
+n_l1b_act_angles: 1500
+l1b_act_angle_min: -1.72 # deg
+l1b_act_angle_max: 1.72 # deg
 
-# CKD data for PRNU and quantum efficiency
-prnu:
-  ckd_in: OWL640S_low-gain_ckd.nc
+# Row and column distances, in um from the detector center, from spot
+# measurements.
+spot_row_distance_file: row_distances.dat
+spot_col_distance_file: col_distances.dat
+# ACT angles (deg) at which spot measurements were simulated
+spot_act_angle_file: spot_act_angles.txt
+# Wavelengths (nm) at which spot measurements were simulated
+spot_wavelength_file: spot_wavelengths.txt
 
-# CKD data for detector mapping and line-of-sight vectors
-swath:
-  # Row and column distances, in um from the detector center, from
-  # spot measurements.
-  spot_row_distance_file: row_distances.dat
-  spot_col_distance_file: col_distances.dat
-  # ACT angles (deg) at which spot measurements were simulated
-  spot_act_angle_file: spot_act_angles.txt
-  # Wavelengths (nm) at which spot measurements were simulated
-  spot_wavelength_file: spot_wavelengths.txt
-  # Target ACT angle range. Each value corresponds to the ACT angle of
-  # a L1B spectrum. Used together with n_act as input to Numpy
-  # linspace for generating the angles.
-  target_act_angles: [-1.72, 1.72]  # deg
-  # Intermediate wavelength grid detector mapping
-  n_intermediate_wavelengths: 1000
-  intermediate_wavelengths: [1582.1, 1679.2]  # nm
-  # Whether to use spot measurements as is, i.e. keystone included. If
-  # disabled then spot measurement data corresponding to the first ACT
-  # angle is copied to other ACT angles, i.e. keystone is effectively
-  # switched off.
-  enable_keystone: yes
-  # Similarly to keystone, if disabled, spot measurement data
-  # corresponding to the first wavelength is copied to other
-  # wavelengths, i.e. spectral smile is effectively switched off.
-  enable_smile: yes
-
-# Stray light kernels and related variables
-stray:
-  ckd_in: ckd_stray.nc
+# Whether to use spot measurements as is, i.e. keystone included. If
+# disabled then spot measurement data corresponding to the first ACT
+# angle is copied to other ACT angles, i.e. keystone is effectively
+# switched off.
+enable_keystone: yes
+# Similarly to keystone, if disabled, spot measurement data
+# corresponding to the first wavelength is copied to other
+# wavelengths, i.e. spectral smile is effectively switched off.
+enable_smile: yes
 
 io_files:
+  # Raw CKD data for dark offset, current, read noise, gain, PRNU and QE
+  detector: OWL640S_low-gain_ckd.nc
+  # Stray light kernels and related variables
+  stray: ckd_stray.nc
   # Output CKD. This can be read by other TEDS modules like the IM.
   ckd: ckd.nc

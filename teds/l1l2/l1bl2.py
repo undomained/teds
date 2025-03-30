@@ -391,9 +391,9 @@ def level1b_to_level2_processor(config, sw_diag_output = False):
                 retrieval_init['surface pressure']  = np.zeros([nalt,nact])+1013.  #these are dummy values for the time being
                 retrieval_init['surface elevation'] = np.zeros([nalt,nact])
 
-                wavelength = l1b['wavelength'][iact, mask[ialt,iact, :]].data
-                istart = np.argmin(np.abs(wavelength - wave_start))
-                iend = np.argmin(np.abs(wavelength - wave_end))
+                wavelength = l1b['wavelength'][mask[ialt, iact, :]].data
+                istart = np.searchsorted(wavelength, wave_start)
+                iend = np.searchsorted(wavelength, wave_end)
                 wave_meas = wavelength[istart:iend+1]  # nm
                 
                 # define isrf function
@@ -456,13 +456,6 @@ def level1b_to_level2_processor(config, sw_diag_output = False):
             l2product[ialt, iact]['spec_shift']   = 0.  #dummies for the time beeing
             l2product[ialt, iact]['spec_squeeze'] = 0.
 
-            # XCO2[iact] = l2product[ialt, iact]['XCO2 proxy']*1.E6
-            # XCO2_prec[iact] = l2product[ialt, iact]['XCO2 proxy precision']*1.E6
-            # XCO2_true_smoothed[iact] = np.dot(l2product[ialt, iact]['XCO2 col avg kernel'],
-            #                                   atm_sgm['dcol_co2'][ialt, iact, :])/np.sum(atm.air)*1.E6
-            # XCO2_true[iact] = np.sum(atm_sgm['dcol_co2'][ialt, iact, :])/np.sum(atm.air)*1.E6
-
-            
     # output to netcdf file
     level2_output(config['io_files']['output_l2'], l2product, retrieval_init, l1b, config['retrieval_init'])
 

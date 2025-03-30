@@ -42,7 +42,6 @@ auto SettingsIM::scanKeys() -> void
     scan(stray.enabled);
 
     scan(swath.b_spline_order);
-    scan(swath.exact_drawing);
 
     scan(rad.enabled);
 
@@ -63,12 +62,6 @@ auto SettingsIM::checkParameters() -> void
     checkPresenceOfFile(io_files.geometry, true);
 
     checkFileWritable(io_files.l1a);
-
-    if (swath.exact_drawing) {
-        noise.artificial_scaling =
-          1.0 / std::sqrt(static_cast<double>(detector.binning_table_id));
-        detector.binning_table_id = 1;
-    }
 }
 
 } // namespace tango

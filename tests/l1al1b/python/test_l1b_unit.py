@@ -12,7 +12,7 @@ def test_dark_offset(l1, ckd_dark):
 
 
 def test_noise(l1, binning_table, ckd_dark, ckd_noise):
-    cal.noise(l1, binning_table.count_table, ckd_noise, ckd_dark.current, 1.0)
+    cal.noise(l1, binning_table.count_table, ckd_noise, ckd_dark.current)
     assert abs(l1.noise).sum() == approx(1054444.9909459)
 
 
@@ -50,29 +50,16 @@ def test_stray_2(l1, binning_table, ckd_stray):
     assert abs(l1.noise).sum() == approx(3264.0)
 
 
-def test_swath_baseline_mapping(l1, binning_table, ckd_swath, ckd_spectral):
-    cal.map_from_detector(l1,
-                          ckd_swath,
-                          binning_table.count_table,
-                          ckd_spectral.wavelengths,
-                          False)
+def test_swath_detector_mapping(l1, binning_table, ckd_swath, ckd_spectral):
+    cal.map_from_detector(
+        l1, ckd_swath, binning_table.count_table, ckd_spectral.wavelengths)
     assert abs(l1.spectra).sum() == approx(14858166.2984863)
     assert abs(l1.spectra_noise).sum() == approx(5000.0)
-
-
-def test_swath_exact_mapping(l1, binning_table, ckd_swath, ckd_spectral):
-    cal.map_from_detector(l1,
-                          ckd_swath,
-                          binning_table.count_table,
-                          ckd_spectral.wavelengths,
-                          True)
-    assert abs(l1.spectra).sum() == approx(8136262.5185032)
-    assert abs(l1.spectra_noise).sum() == approx(2936.414486)
 
 
 def test_radiometric(l1, ckd_radiometric):
     l1.spectra /= 1e12
     l1.spectra_noise /= 1e12
     cal.radiometric(l1, ckd_radiometric.rad_corr)
-    assert abs(l1.spectra).sum() == approx(2.6684607e+22)
-    assert abs(l1.spectra_noise).sum() == approx(1.0147225e+20)
+    assert abs(l1.spectra).sum() == approx(3.9742488e+22)
+    assert abs(l1.spectra_noise).sum() == approx(3.7990369e+20)

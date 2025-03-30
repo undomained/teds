@@ -259,19 +259,13 @@ auto readL1(const std::string& filename,
             var.getVar({ alt_beg, 0 }, { n_alt, n_bins }, l1_prod.noise.data());
         }
     } else {
-        const auto n_act { nc.getDim("across_track_sample").getSize() };
+        const size_t n_act { nc.getDim("across_track_sample").getSize() };
+        l1_prod.n_act = static_cast<int>(n_act);
         const auto n_wavelength { nc.getDim("wavelength").getSize() };
-        l1_prod.wavelengths.resize(n_act, std::vector<double>(n_wavelength));
-        if (l1_prod.level == ProcLevel::sgm
-            || nc.getGroup("observation_data").isNull()) {
-            std::vector<double> wavelengths(n_wavelength);
-            nc.getVar("wavelength").getVar(wavelengths.data());
-            for (size_t i_act {}; i_act < n_act; ++i_act) {
-                std::copy(wavelengths.begin(),
-                          wavelengths.begin() + n_wavelength,
-                          l1_prod.wavelengths[i_act].begin());
-            }
-            if (in_memory) {
+        l1_prod.wavelengths.resize(n_wavelength);
+        if (const auto grp { nc.getGroup("observation_data") }; grp.isNull()) {
+            if (in_memory || l1_prod.level < ProcLevel::sgm) {
+                nc.getVar("wavelength").getVar(l1_prod.wavelengths.data());
                 l1_prod.spectra.resize(n_alt * n_act * n_wavelength);
                 nc.getVar("radiance")
                   .getVar({ alt_beg, 0, 0 },
@@ -279,14 +273,7 @@ auto readL1(const std::string& filename,
                           l1_prod.spectra.data());
             }
         } else {
-            const auto grp { nc.getGroup("observation_data") };
-            std::vector<double> wavelengths(n_act * n_wavelength);
-            grp.getVar("wavelength").getVar(wavelengths.data());
-            for (size_t i_act {}; i_act < n_act; ++i_act) {
-                std::copy(wavelengths.begin() + i_act * n_wavelength,
-                          wavelengths.begin() + (i_act + 1) * n_wavelength,
-                          l1_prod.wavelengths[i_act].begin());
-            }
+            grp.getVar("wavelength").getVar(l1_prod.wavelengths.data());
             l1_prod.spectra.resize(n_alt * n_act * n_wavelength);
             grp.getVar("radiance")
               .getVar({ alt_beg, 0, 0 },
@@ -499,25 +486,18 @@ auto writeL1(const std::string& filename,
     } else {
         auto nc_grp { nc.addGroup("observation_data") };
 
-        const auto n_act { l1_prod.wavelengths.size() };
-        const auto n_wavelength { l1_prod.wavelengths.front().size() };
+        const auto n_act { static_cast<size_t>(l1_prod.n_act) };
+        const auto n_wavelength { l1_prod.wavelengths.size() };
         const auto nc_act { nc.addDim("across_track_sample", n_act) };
         const auto nc_wavelength { nc.addDim("wavelength", n_wavelength) };
 
-        nc_var = nc_grp.addVar(
-          "wavelength", netCDF::ncDouble, { nc_act, nc_wavelength });
+        nc_var = nc_grp.addVar("wavelength", netCDF::ncDouble, nc_wavelength);
         nc_var.putAtt("long_name", "wavelength");
         nc_var.putAtt("_FillValue", netCDF::ncDouble, fill::d);
-        nc_var.putAtt("valid_min", netCDF::ncDouble, 0.0);
-        nc_var.putAtt("valid_max", netCDF::ncDouble, 2000.0);
+        nc_var.putAtt("valid_min", netCDF::ncDouble, 1550.0);
+        nc_var.putAtt("valid_max", netCDF::ncDouble, 1700.0);
         nc_var.putAtt("units", "nm");
-        std::vector<double> buf(n_act * n_wavelength);
-        for (size_t i {}; i < n_act; ++i) {
-            for (size_t j {}; j < n_wavelength; ++j) {
-                buf[i * n_wavelength + j] = l1_prod.wavelengths[i][j];
-            }
-        }
-        nc_var.putVar(buf.data());
+        nc_var.putVar(l1_prod.wavelengths.data());
 
         nc_var = nc_grp.addVar(
           "radiance", netCDF::ncDouble, { nc_alt, nc_act, nc_wavelength });
@@ -526,6 +506,9 @@ auto writeL1(const std::string& filename,
         nc_var.putAtt("units", "nm-1 s-1 sr-1 m-2");
         nc_var.putAtt("valid_min", netCDF::ncDouble, 0.0);
         nc_var.putAtt("valid_max", netCDF::ncDouble, 1e20);
+        std::vector<size_t> chunksize { 1, n_act, n_wavelength };
+        nc_var.setCompression(true, true, compression_level);
+        nc_var.setChunking(netCDF::NcVar::nc_CHUNKED, chunksize);
         nc_var.putVar(l1_prod.spectra.data());
 
         if (!l1_prod.spectra_noise.empty()) {
@@ -538,6 +521,8 @@ auto writeL1(const std::string& filename,
             nc_var.putAtt("units", "nm-1 s-1 sr-1 m-2");
             nc_var.putAtt("valid_min", netCDF::ncDouble, 0.0);
             nc_var.putAtt("valid_max", netCDF::ncDouble, 1e20);
+            nc_var.setCompression(true, true, compression_level);
+            nc_var.setChunking(netCDF::NcVar::nc_CHUNKED, chunksize);
             nc_var.putVar(l1_prod.spectra_noise.data());
         }
     }

@@ -95,9 +95,6 @@ class KernelGauss:
             _lim = i_limits[i_row, :]
             conv[i_row] = np.dot(kernel[i_row, _lim[0]:_lim[1]],
                                  array[_lim[0]:_lim[1]])
-            # conv[i_row] = np.dot(
-            #     kernel[i_row, i_limits[i_row, 0]:i_limits[i_row, 1]],
-            #     array[i_limits[i_row, 0]:i_limits[i_row, 1]])
         return conv
 
     def convolve(self,

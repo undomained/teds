@@ -34,11 +34,6 @@ stray:
   van_cittert_steps: 3
 
 swath:
-  # Whether to use the "exact" drawing algorithm. In principle, it
-  # doesn't have any interpolation error but it yields an unphysical
-  # detector image and does not work with a large number of ACT
-  # angles.
-  exact_drawing: no
   # Whether to include geolocation. If not then geometry is copied
   # from the geometry file produced by the GM.
   geolocation: yes

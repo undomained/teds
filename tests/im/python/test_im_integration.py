@@ -26,7 +26,7 @@ def test_full_chain(ckd_file, binningtable_file, sgm_file, tmp_path):
     }
     run_instrument_model(config)
     l1 = read_l1(tmp_path / 'tango_l1a.nc', 0, None, True)
-    assert abs(l1.signal).sum() == approx(82386986.0)
+    assert abs(l1.signal).sum() == approx(82176538.0)
 
 
 def test_full_chain_no_adc_binning(
@@ -50,35 +50,7 @@ def test_full_chain_no_adc_binning(
     }
     run_instrument_model(config)
     l1 = read_l1(tmp_path / 'tango_l1a.nc', 0, None, True)
-    assert abs(l1.signal).sum() == approx(8238286.4908721)
-
-
-def test_full_chain_exact_drawing(
-        ckd_file, binningtable_file, sgm_file, tmp_path):
-    config = {
-        'cal_level': 'raw',
-        'detector': {
-            'exposure_time': 0.01724385,
-            'nr_coadditions': 10,
-            'binning_table_id': 1,
-        },
-        'isrf': {
-            'enabled': False,
-            'in_memory': True,
-        },
-        'swath': {
-            'exact_drawing': True,
-        },
-        'io_files': {
-            'sgm': sgm_file,
-            'ckd': ckd_file,
-            'binning_table': binningtable_file,
-            'l1a': tmp_path / 'tango_l1a.nc',
-        },
-    }
-    run_instrument_model(config)
-    l1 = read_l1(tmp_path / 'tango_l1a.nc', 0, None, True)
-    assert abs(l1.signal).sum() == approx(28508076.4154292)
+    assert abs(l1.signal).sum() == approx(8217417.1351802)
 
 
 def test_full_chain_binning_4(
@@ -102,7 +74,7 @@ def test_full_chain_binning_4(
     }
     run_instrument_model(config)
     l1 = read_l1(tmp_path / 'tango_l1a.nc', 0, None, True)
-    assert abs(l1.signal).sum() == approx(82371824.0)
+    assert abs(l1.signal).sum() == approx(82167568.0)
 
 
 def test_full_chain_binning_4_no_adc(
@@ -127,4 +99,4 @@ def test_full_chain_binning_4_no_adc(
     }
     run_instrument_model(config)
     l1 = read_l1(tmp_path / 'tango_l1a.nc', 0, None, True)
-    assert abs(l1.signal).sum() == approx(8236740.085948976)
+    assert abs(l1.signal).sum() == approx(8216287.8303390)

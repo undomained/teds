@@ -31,7 +31,7 @@ TEST_CASE("unit tests")
 
     SECTION("Noise")
     {
-        tango::noise(ckd, true, binning_table, 1.0, l1);
+        tango::noise(ckd, true, binning_table, l1);
         CHECK_THAT(absSum(l1.signal), WithinRel(8261203.0, 1e-6));
         CHECK_THAT(absSum(l1.noise), WithinRel(24981.7265996802, 1e-6));
     }
@@ -81,7 +81,7 @@ TEST_CASE("unit tests")
     SECTION("Detector mapping")
     {
         tango::removeBadValues(ckd, l1);
-        tango::mapFromDetector(ckd, binning_table, 3, false, l1);
+        tango::mapFromDetector(ckd, binning_table, 3, l1);
         CHECK_THAT(absSum(l1.spectra), WithinRel(11177936.6464352, 1e-6));
         CHECK_THAT(absSum(l1.spectra_noise), WithinRel(5000.0, 1e-6));
     }
@@ -89,11 +89,9 @@ TEST_CASE("unit tests")
     SECTION("Radiometric")
     {
         tango::removeBadValues(ckd, l1);
-        tango::mapFromDetector(ckd, binning_table, 3, false, l1);
-        tango::changeWavelengthGrid(ckd, l1);
+        tango::mapFromDetector(ckd, binning_table, 3, l1);
         tango::radiometric(ckd, true, l1);
-        CHECK_THAT(absSum(l1.spectra), WithinRel(6.5492100e20, 1e-6));
-        CHECK_THAT(absSum(l1.spectra_noise),
-                   WithinRel(2.9319996430469894e17, 1e-6));
+        CHECK_THAT(absSum(l1.spectra), WithinRel(1.0241783e21, 1e-6));
+        CHECK_THAT(absSum(l1.spectra_noise), WithinRel(4.5812494e17, 1e-6));
     }
 }

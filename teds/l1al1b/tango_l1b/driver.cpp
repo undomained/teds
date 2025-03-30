@@ -68,11 +68,7 @@ auto driver(const SettingsL1B& settings,
     if (l1_prod.level < ProcLevel::noise
         && settings.cal_level >= ProcLevel::noise) {
         spdlog::info("Noise");
-        noise(ckd,
-              settings.noise.enabled,
-              binning_table,
-              settings.noise.artificial_scaling,
-              l1_prod);
+        noise(ckd, settings.noise.enabled, binning_table, l1_prod);
     }
     // Dark current
     if (l1_prod.level < ProcLevel::dark_current
@@ -107,19 +103,8 @@ auto driver(const SettingsL1B& settings,
     if (l1_prod.level < ProcLevel::swath
         && settings.cal_level >= ProcLevel::swath) {
         spdlog::info("Detector mapping");
-        mapFromDetector(ckd,
-                        binning_table,
-                        settings.swath.b_spline_order,
-                        settings.swath.exact_drawing,
-                        l1_prod);
-    }
-    // Interpolate from intermediate to the main CKD wavelength
-    // grids if necessary.
-    if (!l1_prod.spectra.empty()
-        && l1_prod.spectra.size() / l1_prod.n_alt / ckd.n_act
-             != ckd.wave.wavelengths.front().size()) {
-        spdlog::info("Updating wavelength grids");
-        changeWavelengthGrid(ckd, l1_prod);
+        mapFromDetector(
+          ckd, binning_table, settings.swath.b_spline_order, l1_prod);
     }
     // Radiometric
     if (l1_prod.level < ProcLevel::l1b

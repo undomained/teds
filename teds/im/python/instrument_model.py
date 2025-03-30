@@ -19,7 +19,6 @@ Input files are:
 
 """
 from pathlib import Path
-import math
 
 from . import forward_models as fw
 from teds import log
@@ -45,17 +44,6 @@ def check_config(config: dict) -> None:
         Configuration parameters.
 
     """
-    # If swath.exact_drawing is true then do not bin the detector
-    # image but instead artifically scale noise. Binning table ID is
-    # always set to 1 in that case. The value is determined by binning
-    # and the detector mapping algorithm choice and is not a user
-    # parameter.
-    if config['swath']['exact_drawing']:
-        config['noise']['artificial_scaling'] = 1 / math.sqrt(
-            config['detector']['binning_table_id'])
-        config['detector']['binning_table_id'] = 1
-    else:
-        config['noise']['artificial_scaling'] = 1
     for key in ('sgm', 'ckd'):
         input_file = Path(config['io_files'][key])
         if not input_file.is_file():
@@ -159,7 +147,7 @@ def run_instrument_model(config_user: dict | None = None) -> None:
     if step_needed(ProcLevel.sgm, l1_product.proc_level, cal_level):
         log.info('ISRF convolution')
         fw.apply_isrf(l1_product,
-                      ckd.swath.wavelengths,
+                      ckd.spectral.wavelengths,
                       config['isrf']['enabled'],
                       config['isrf']['fwhm_gauss'],
                       config['isrf']['shape'],
@@ -171,10 +159,7 @@ def run_instrument_model(config_user: dict | None = None) -> None:
         fw.radiometric(l1_product, ckd.radiometric.rad_corr)
     if step_needed(ProcLevel.swath, l1_product.proc_level, cal_level):
         log.info('Detector mapping')
-        fw.map_to_detector(l1_product,
-                           ckd.swath,
-                           ckd.spectral.wavelengths,
-                           config['swath']['exact_drawing'])
+        fw.map_to_detector(l1_product, ckd.swath, ckd.spectral.wavelengths)
     if config['stray']['enabled'] and step_needed(
             ProcLevel.stray, l1_product.proc_level, cal_level):
         log.info('Stray light')
@@ -205,7 +190,6 @@ def run_instrument_model(config_user: dict | None = None) -> None:
                  ckd.noise,
                  ckd.dark.current,
                  n_coadditions,
-                 config['noise']['artificial_scaling'],
                  config['noise']['seed'])
     if config['dark']['enabled'] and step_needed(
             ProcLevel.dark_offset, l1_product.proc_level, cal_level):

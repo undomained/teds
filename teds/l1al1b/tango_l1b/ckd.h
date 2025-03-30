@@ -36,6 +36,8 @@ public:
     int npix_binned {};
     // Number of L1B spectra (spatial samples across track)
     int n_act {};
+    // Number of L1B wavelengths
+    int n_wavelengths {};
 
     // Bad pixel mask
     std::vector<bool> pixel_mask {};
@@ -100,8 +102,6 @@ public:
     {
         // Across track angles
         std::vector<double> act_angles {};
-        // Intermediate wavelengths after ISRF convolution
-        std::vector<double> wavelengths {};
         // ACT angle of each detector pixel
         std::vector<double> act_map {};
         // Wavelength of each detector pixel
@@ -114,14 +114,13 @@ public:
         // Dimensions: (n_act, 3)
         std::vector<double> los {};
     } swath;
-    auto genFovIndices(const double spectrum_width) -> void;
 
     // Spectral
     struct
     {
         // Wavelengths assigned to each detector column of each L1B spectrum.
-        // Dimensions: (n_act, n_detector_cols).
-        std::vector<std::vector<double>> wavelengths {};
+        // Dimensions: (n_act, n_wavelengths).
+        std::vector<double> wavelengths {};
     } wave;
 
     // Radiometric

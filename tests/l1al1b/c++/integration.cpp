@@ -53,10 +53,9 @@ TEST_CASE("integration tests")
         // Run the simulator and read the L1B product from temporary space
         tango::driver(settings);
         tango::readL1(l1b_filename, 0, std::optional<size_t> {}, l1, true);
-        CHECK_THAT(absSum(flatten2D(l1.wavelengths)),
-                   WithinRel(5220516.0211424, 1e-6));
-        CHECK_THAT(absSum(l1.spectra), WithinRel(1.0746193e21, 1e-6));
-        CHECK_THAT(absSum(l1.spectra_noise), WithinRel(4.4664394e18, 1e-6));
+        CHECK_THAT(absSum(l1.wavelengths), WithinRel(163065.0, 1e-6));
+        CHECK_THAT(absSum(l1.spectra), WithinRel(1.1228954e21, 1e-6));
+        CHECK_THAT(absSum(l1.spectra_noise), WithinRel(4.5107790e18, 1e-6));
     }
 
     SECTION("Full chain, L1A binning 2")
@@ -72,10 +71,9 @@ TEST_CASE("integration tests")
         writeL1A(fixture_dir, l1a_filename, l1);
         tango::driver(settings);
         tango::readL1(l1b_filename, 0, std::optional<size_t> {}, l1, true);
-        CHECK_THAT(absSum(flatten2D(l1.wavelengths)),
-                   WithinRel(5220516.0211424, 1e-6));
-        CHECK_THAT(absSum(l1.spectra), WithinRel(1.0852862e21, 1e-6));
-        CHECK_THAT(absSum(l1.spectra_noise), WithinRel(3.1915396e18, 1e-6));
+        CHECK_THAT(absSum(l1.wavelengths), WithinRel(163065.0, 1e-6));
+        CHECK_THAT(absSum(l1.spectra), WithinRel(1.1287256e21, 1e-6));
+        CHECK_THAT(absSum(l1.spectra_noise), WithinRel(3.1991014e18, 1e-6));
     }
 
     SECTION("Full chain, L1B binning 5")
@@ -83,21 +81,9 @@ TEST_CASE("integration tests")
         settings.bin_spectra = 5;
         tango::driver(settings);
         tango::readL1(l1b_filename, 0, std::optional<size_t> {}, l1, true);
-        CHECK_THAT(absSum(flatten2D(l1.wavelengths)),
-                   WithinRel(1044103.2042285, 1e-6));
-        CHECK_THAT(absSum(l1.spectra), WithinRel(2.1492386e20, 1e-6));
-        CHECK_THAT(absSum(l1.spectra_noise), WithinRel(8.9328787e17, 1e-6));
-    }
-
-    SECTION("Full chain, exact mapping")
-    {
-        settings.swath.exact_drawing = true;
-        tango::driver(settings);
-        tango::readL1(l1b_filename, 0, std::optional<size_t> {}, l1, true);
-        CHECK_THAT(absSum(flatten2D(l1.wavelengths)),
-                   WithinRel(5220516.0211424, 1e-6));
-        CHECK_THAT(absSum(l1.spectra), WithinRel(1.0791422e21, 1e-6));
-        CHECK_THAT(absSum(l1.spectra_noise), WithinRel(4.1237624e18, 1e-6));
+        CHECK_THAT(absSum(l1.wavelengths), WithinRel(163065.0, 1e-6));
+        CHECK_THAT(absSum(l1.spectra), WithinRel(2.2439481e20, 1e-6));
+        CHECK_THAT(absSum(l1.spectra_noise), WithinRel(4.0342468e17, 1e-6));
     }
 
     SECTION("Geolocation")
@@ -112,9 +98,8 @@ TEST_CASE("integration tests")
         tango::readL1(l1b_filename, 0, std::optional<size_t> {}, l1, true);
         tango::Geometry geo {};
         readGeo(l1b_filename, geo);
-        CHECK_THAT(absSum(flatten2D(l1.wavelengths)),
-                   WithinRel(5220516.0211424, 1e-6));
-        CHECK_THAT(absSum(l1.spectra), WithinRel(8.7344179e20, 1e-6));
+        CHECK_THAT(absSum(l1.wavelengths), WithinRel(163065.0, 1e-6));
+        CHECK_THAT(absSum(l1.spectra), WithinRel(9.0256472e20, 1e-6));
         CHECK_THAT(absSum(l1.spectra_noise), WithinRel(7.8356179e17, 1e-6));
         CHECK_THAT(absSum(geo.lat), WithinRel(2590.0187939, 1e-6));
         CHECK_THAT(absSum(geo.lon), WithinRel(722.7365457, 1e-6));

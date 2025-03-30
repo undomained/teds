@@ -272,7 +272,7 @@ def carbon_radiation_scene_generation(config_user: dict) -> None:
         # Line-by-line simulations with subsquently ISRF convolution
         # (line-by-line spectra not kept in memory).
         ckd = read_ckd(config['io_files']['ckd'])
-        rad_output.wavelengths = ckd.swath.wavelengths
+        rad_output.wavelengths = ckd.spectral.wavelengths
         kernel = KernelGauss(wave_lbl,
                              rad_output.wavelengths,
                              config['isrf']['fwhm'],

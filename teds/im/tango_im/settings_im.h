@@ -134,12 +134,6 @@ public:
             0,
             "random number generator seed if applying noise",
         };
-        // If swath.exact_drawing is true then do not bin the detector
-        // image but instead artifically scale noise. Binning table ID
-        // is always set to 1 in that case. The value is determined by
-        // binning and the detector mapping algorithm choice and is
-        // not a user parameter.
-        double artificial_scaling { 1.0 };
     } noise;
 
     struct
@@ -182,14 +176,6 @@ public:
             { "swath", "b_spline_order" },
             5,
             "order of 2D b-spline used for mapping spectra to the detector"
-        };
-        Setting<bool> exact_drawing {
-            { "swath", "exact_drawing" },
-            false,
-            "Whether to use the 'exact' drawing algorithm. In principle, it\n"
-            "doesn't have any interpolation error but it yields an\n"
-            "unphysical detector image and does not work with a large number\n"
-            "of ACT angles."
         };
     } swath;
 

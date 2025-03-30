@@ -27,7 +27,6 @@ auto SettingsL1B::scanKeys() -> void
     scan(stray.van_cittert_steps);
 
     scan(swath.b_spline_order);
-    scan(swath.exact_drawing);
     scan(swath.geolocation);
 
     scan(rad.enabled);
@@ -49,11 +48,6 @@ auto SettingsL1B::checkParameters() -> void
     checkPresenceOfFile(io_files.geometry, !swath.geolocation);
 
     checkFileWritable(io_files.l1b);
-
-    noise.artificial_scaling = 1 / std::sqrt(static_cast<double>(bin_spectra));
-    if (swath.exact_drawing) {
-        bin_spectra = 1;
-    }
 }
 
 } // namespace tango

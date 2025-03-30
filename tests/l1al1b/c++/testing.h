@@ -151,8 +151,6 @@ auto readCKD(const std::string& fixture_dir, tango::CKD& ckd) -> void
     // Detector mapping
     readArrayFromTxt(fixture_dir + "/ckd_swath_act_angle.txt",
                      ckd.swath.act_angles);
-    readArrayFromTxt(fixture_dir + "/ckd_swath_wavelength.txt",
-                     ckd.swath.wavelengths);
     readArrayFromTxt(fixture_dir + "/ckd_swath_act_map.txt", ckd.swath.act_map);
     readArrayFromTxt(fixture_dir + "/ckd_swath_wavelength_map.txt",
                      ckd.swath.wavelength_map);
@@ -161,7 +159,8 @@ auto readCKD(const std::string& fixture_dir, tango::CKD& ckd) -> void
     readArrayFromTxt(fixture_dir + "/ckd_swath_los.txt", ckd.swath.los);
     ckd.n_act = static_cast<int>(ckd.swath.act_angles.size());
     // Spectral
-    read2DArrayFromTxt(fixture_dir + "/ckd_spectral.txt", ckd.wave.wavelengths);
+    readArrayFromTxt(fixture_dir + "/ckd_spectral.txt", ckd.wave.wavelengths);
+    ckd.n_wavelengths = static_cast<int>(ckd.wave.wavelengths.size());
     // Radiometric
     read2DArrayFromTxt(fixture_dir + "/ckd_radiometric.txt", ckd.rad.rad);
 }
@@ -173,7 +172,7 @@ auto readL1A(const std::string& fixture_dir, tango::L1& l1) -> void
     l1.exposure_time = 0.0460833;
     readArrayFromTxt(fixture_dir + "/detector_image.txt", l1.signal);
     l1.noise.assign(l1.signal.size(), 1.0);
-    read2DArrayFromTxt(fixture_dir + "/l1b_wavelengths.txt", l1.wavelengths);
+    readArrayFromTxt(fixture_dir + "/ckd_spectral.txt", l1.wavelengths);
     readArrayFromTxt(fixture_dir + "/l1b_radiance.txt", l1.spectra);
     readArrayFromTxt(fixture_dir + "/l1b_radiance_stdev.txt", l1.spectra_noise);
 }
@@ -213,6 +212,7 @@ auto writeCKD(const std::string& fixture_dir,
     const auto nc_n_rows { nc.addDim("detector_row", ckd.n_detector_rows) };
     const auto nc_n_cols { nc.addDim("detector_column", ckd.n_detector_cols) };
     const auto nc_n_act { nc.addDim("across_track_sample", ckd.n_act) };
+    const auto nc_n_waves { nc.addDim("wavelength", ckd.n_wavelengths) };
     const auto nc_vector { nc.addDim("vector", 3) };
     const std::vector<netCDF::NcDim> nc_detector_shape { nc_n_rows, nc_n_cols };
     netCDF::NcGroup nc_grp {};
@@ -245,8 +245,10 @@ auto writeCKD(const std::string& fixture_dir,
     readNonlinCKD(fixture_dir, x_values, y_values);
     nc_grp = nc.addGroup("nonlinearity");
     const auto nc_knots { nc_grp.addDim("knots", x_values.size()) };
-    nc_grp.addVar("knots", netCDF::ncDouble, nc_knots).putVar(x_values.data());
-    nc_grp.addVar("y", netCDF::ncDouble, nc_knots).putVar(y_values.data());
+    nc_grp.addVar("observed", netCDF::ncDouble, nc_knots)
+      .putVar(x_values.data());
+    nc_grp.addVar("expected", netCDF::ncDouble, nc_knots)
+      .putVar(y_values.data());
     // PRNU CKD
     nc.addGroup("prnu")
       .addVar("prnu", netCDF::ncDouble, nc_detector_shape)
@@ -291,27 +293,22 @@ auto writeCKD(const std::string& fixture_dir,
       .putVar(ckd.stray.edges.data());
     // Swath CKD
     nc_grp = nc.addGroup("swath");
-    const auto nc_swath_n_waves { nc_grp.addDim("wavelength",
-                                                ckd.swath.wavelengths.size()) };
-    nc_grp.addVar("wavelength", netCDF::ncDouble, nc_swath_n_waves)
-      .putVar(ckd.swath.wavelengths.data());
     nc_grp.addVar("act_angle", netCDF::ncDouble, nc_n_act)
       .putVar(ckd.swath.act_angles.data());
     nc_grp.addVar("act_map", netCDF::ncDouble, nc_detector_shape)
       .putVar(ckd.swath.act_map.data());
     nc_grp.addVar("wavelength_map", netCDF::ncDouble, nc_detector_shape)
       .putVar(ckd.swath.wavelength_map.data());
-    nc_grp.addVar("row_map", netCDF::ncDouble, { nc_n_act, nc_swath_n_waves })
+    nc_grp.addVar("row_map", netCDF::ncDouble, { nc_n_act, nc_n_waves })
       .putVar(ckd.swath.row_map.data());
-    nc_grp.addVar("col_map", netCDF::ncDouble, { nc_n_act, nc_swath_n_waves })
+    nc_grp.addVar("col_map", netCDF::ncDouble, { nc_n_act, nc_n_waves })
       .putVar(ckd.swath.col_map.data());
     nc_grp.addVar("line_of_sight", netCDF::ncDouble, { nc_n_act, nc_vector })
       .putVar(ckd.swath.los.data());
     // Spectral CKD
-    const auto wavelengths { flatten2D(ckd.wave.wavelengths) };
     nc.addGroup("spectral")
-      .addVar("wavelength", netCDF::ncDouble, { nc_n_act, nc_n_cols })
-      .putVar(wavelengths.data());
+      .addVar("wavelength", netCDF::ncDouble, nc_n_waves)
+      .putVar(ckd.wave.wavelengths.data());
     // Radiometric CKD
     const auto rad { flatten2D(ckd.rad.rad) };
     nc.addGroup("radiometric")
@@ -378,15 +375,15 @@ auto writeSGM(const std::string& fixture_dir,
     // intermediate wavelength grid.
     constexpr int lbl_wave_multiplier { 3 };
     const auto nc_n_waves { nc.addDim(
-      "wavelength", lbl_wave_multiplier * ckd.swath.wavelengths.size()) };
+      "wavelength", lbl_wave_multiplier * ckd.wave.wavelengths.size()) };
     const auto nc_n_alt { nc.addDim("along_track_sample", l1.n_alt) };
     const auto nc_n_act { nc.addDim("across_track_sample", ckd.n_act) };
     nc.putAtt("product_type", "SGM");
     // Generate LBL grid
     std::vector<double> lbl_wavelengths(nc_n_waves.getSize());
     for (int i {}; i < static_cast<int>(lbl_wavelengths.size()); ++i) {
-        const double& wave_0 { ckd.swath.wavelengths.front() };
-        const double& wave_n { ckd.swath.wavelengths.back() };
+        const double& wave_0 { ckd.wave.wavelengths.front() };
+        const double& wave_n { ckd.wave.wavelengths.back() };
         constexpr double margin { 1.0 };
         lbl_wavelengths[i] =
           wave_0 - margin
@@ -395,7 +392,7 @@ auto writeSGM(const std::string& fixture_dir,
     // Generate LBL spectra
     std::vector<double> lbl_spectra(ckd.n_act * lbl_wavelengths.size());
     for (int i_act {}; i_act < ckd.n_act; ++i_act) {
-        std::vector<double> x_values { ckd.wave.wavelengths[i_act] };
+        std::vector<double> x_values { ckd.wave.wavelengths };
         std::vector<double> y_values {
             l1.spectra.begin() + i_act * ckd.n_detector_cols,
             l1.spectra.begin() + (i_act + 1) * ckd.n_detector_cols

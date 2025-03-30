@@ -30,7 +30,6 @@ auto darkOffset(const CKD& ckd, const bool enabled, L1& l1_prod) -> void;
 auto noise(const CKD& ckd,
            const bool enabled,
            const BinningTable& binning_table,
-           const double artificial_scaling,
            L1& l1_prod) -> void;
 
 // Remove dark current. This is split from dark offset because noise
@@ -54,20 +53,11 @@ auto strayLight(const CKD& ckd,
                 const int n_van_cittert,
                 L1& l1_prod) -> void;
 
-// Extract a set of spectra from one detector image. For exact_drawing
-// option, see the mapping algorithm comments in IM.
+// Extract a set of spectra from one detector image
 auto mapFromDetector(const CKD& ckd,
                      const BinningTable& binning_table,
                      const int b_spline_order,
-                     const bool exact_drawing,
                      L1& l1_prod) -> void;
-
-// Mapping from the detector yields spectra on the intermediate
-// wavelengths grid. Spectra need to be interpolated onto the CKD
-// wavelength grids. This function is separate from mapFromDetector
-// because the latter might not always run depending on the input data
-// level.
-auto changeWavelengthGrid(const CKD& ckd, L1& l1_prod) -> void;
 
 // Radiometrically calibrate
 auto radiometric(const CKD& ckd, const bool enabled, L1& l1_prod) -> void;

@@ -74,16 +74,13 @@ auto applyISRF(const CKD& ckd,
     // If this process is disabled then linearly interpolate the
     // line-by-line spectra onto the CKD wavelength grids. We cannot
     // simply return like the other processes.
-    const size_t n_waves_in { l1_prod.wavelengths.front().size() };
-    const int n_waves_out { static_cast<int>(ckd.swath.wavelengths.size()) };
+    const size_t n_waves_in { l1_prod.wavelengths.size() };
+    const int n_waves_out { static_cast<int>(ckd.wave.wavelengths.size()) };
     std::vector<double> spectra_out(l1_prod.n_alt * ckd.n_act * n_waves_out);
     if (enabled) {
         Eigen::SparseMatrix<double> isrf {};
-        genISRFKernel(fwhm_gauss,
-                      shape,
-                      l1_prod.wavelengths.front(),
-                      ckd.swath.wavelengths,
-                      isrf);
+        genISRFKernel(
+          fwhm_gauss, shape, l1_prod.wavelengths, ckd.wave.wavelengths, isrf);
         // If the spectra are not in memory then read them one by one
         // for the convolution.
         if (l1_prod.spectra.empty()) {
@@ -110,7 +107,7 @@ auto applyISRF(const CKD& ckd,
 #pragma omp parallel for
             for (size_t i_alt = 0; i_alt < static_cast<size_t>(l1_prod.n_alt);
                  ++i_alt) {
-                Eigen::VectorXd result(ckd.n_detector_cols);
+                Eigen::VectorXd result {};
                 for (int i_act {}; i_act < ckd.n_act; ++i_act) {
                     const size_t act_idx { i_alt * ckd.n_act + i_act };
                     result =
@@ -133,19 +130,16 @@ auto applyISRF(const CKD& ckd,
                     l1_prod.spectra.begin() + act_idx * n_waves_in,
                     l1_prod.spectra.begin() + (act_idx + 1) * n_waves_in
                 };
-                const LinearSpline spline { l1_prod.wavelengths[i_act],
-                                            spectrum };
+                const LinearSpline spline { l1_prod.wavelengths, spectrum };
                 for (int i {}; i < n_waves_out; ++i) {
                     spectra_out[act_idx * n_waves_out + i] =
-                      spline.eval(ckd.swath.wavelengths[i]);
+                      spline.eval(ckd.wave.wavelengths[i]);
                 }
             }
         }
     }
     l1_prod.spectra = std::move(spectra_out);
-    for (int i_act {}; i_act < ckd.n_act; ++i_act) {
-        l1_prod.wavelengths[i_act] = ckd.swath.wavelengths;
-    }
+    l1_prod.wavelengths = ckd.wave.wavelengths;
 }
 
 auto radiometric(const CKD& ckd, const bool enabled, L1& l1_prod) -> void
@@ -156,14 +150,12 @@ auto radiometric(const CKD& ckd, const bool enabled, L1& l1_prod) -> void
     }
     const double exposure_time_inv { 1.0 / l1_prod.exposure_time };
 #pragma omp parallel for
-    for (int i_alt = 0; i_alt < l1_prod.n_alt; ++i_alt) {
+    for (size_t i_alt = 0; i_alt < l1_prod.n_alt; ++i_alt) {
         for (int i_act {}; i_act < ckd.n_act; ++i_act) {
-            for (int i {}; i < static_cast<int>(ckd.swath.wavelengths.size());
-                 ++i) {
-                l1_prod.spectra[(i_alt * ckd.n_act + i_act)
-                                  * ckd.swath.wavelengths.size()
+            for (int i {}; i < ckd.n_wavelengths; ++i) {
+                l1_prod.spectra[(i_alt * ckd.n_act + i_act) * ckd.n_wavelengths
                                 + i] /=
-                  ckd.rad.rad[i_act][0] * exposure_time_inv;
+                  ckd.rad.rad[i_act][i] * exposure_time_inv;
             }
         }
     }
@@ -171,7 +163,6 @@ auto radiometric(const CKD& ckd, const bool enabled, L1& l1_prod) -> void
 
 auto mapToDetector(const CKD& ckd,
                    const int b_spline_order,
-                   const bool exact_drawing,
                    L1& l1_prod) -> void
 {
     l1_prod.level = ProcLevel::stray;
@@ -181,8 +172,8 @@ auto mapToDetector(const CKD& ckd,
         const BSpline2D bspline_2d {
             b_spline_order,
             ckd.swath.act_angles,
-            ckd.swath.wavelengths,
-            &l1_prod.spectra[i_alt * ckd.n_act * ckd.swath.wavelengths.size()]
+            ckd.wave.wavelengths,
+            &l1_prod.spectra[i_alt * ckd.n_act * ckd.wave.wavelengths.size()]
         };
         bspline_2d.eval(ckd.swath.act_map,
                         ckd.swath.wavelength_map,
@@ -190,69 +181,6 @@ auto mapToDetector(const CKD& ckd,
         for (int i {}; i < ckd.npix; ++i) {
             l1_prod.signal[i_alt * ckd.npix + i] =
               std::max(0.0, l1_prod.signal[i_alt * ckd.npix + i]);
-        }
-    }
-    if (!exact_drawing) {
-        l1_prod.spectra = std::vector<double> {};
-        return;
-    }
-    // When using the exact drawing algorithm, first regrid row_map
-    // and spectra from intermediate wavelengths to wavelengths
-    // corresponding to detector columns.
-    std::vector<double> row_map(ckd.n_act * ckd.n_detector_cols);
-    for (int i_act {}; i_act < ckd.n_act; ++i_act) {
-        const CubicSpline spline {
-            ckd.swath.wavelengths,
-            { ckd.swath.row_map.cbegin() + i_act * ckd.swath.wavelengths.size(),
-              ckd.swath.row_map.cbegin()
-                + (i_act + 1) * ckd.swath.wavelengths.size() }
-        };
-        for (int i {}; i < ckd.n_detector_cols; ++i) {
-            row_map[i_act * ckd.n_detector_cols + i] =
-              spline.eval(ckd.wave.wavelengths[i_act][i]);
-        }
-    }
-    l1_prod.signal.assign(l1_prod.n_alt * ckd.npix, 0.0);
-#pragma omp parallel for
-    for (int i_alt = 0; i_alt < l1_prod.n_alt; ++i_alt) {
-        std::vector<double> spectra(ckd.n_act * ckd.n_detector_cols);
-        for (int i_act {}; i_act < ckd.n_act; ++i_act) {
-            const CubicSpline spline {
-                ckd.swath.wavelengths,
-                { l1_prod.spectra.cbegin()
-                    + (i_alt * ckd.n_act + i_act)
-                        * ckd.swath.wavelengths.size(),
-                  l1_prod.spectra.cbegin()
-                    + (i_alt * ckd.n_act + i_act + 1)
-                        * ckd.swath.wavelengths.size() }
-            };
-            for (int i {}; i < ckd.n_detector_cols; ++i) {
-                spectra[i_act * ckd.n_detector_cols + i] =
-                  spline.eval(ckd.wave.wavelengths[i_act][i]);
-            }
-        }
-        for (int i_wave {}; i_wave < ckd.n_detector_cols; ++i_wave) {
-            for (int i_act {}; i_act < ckd.n_act; ++i_act) {
-                const int row_dn { static_cast<int>(
-                  row_map[i_act * ckd.n_detector_cols + i_wave]) };
-                const int row_up { row_dn + 1 };
-                const double weight {
-                    row_map[i_act * ckd.n_detector_cols + i_wave] - row_dn
-                };
-                const int pix_dn { row_dn * ckd.n_detector_cols + i_wave };
-                const int pix_up { row_up * ckd.n_detector_cols + i_wave };
-                const double& signal {
-                    spectra[i_act * ckd.n_detector_cols + ckd.n_detector_cols
-                            - 1 - i_wave]
-                };
-                if (std::abs(l1_prod.signal[i_alt * ckd.npix + pix_dn])
-                    < 1e-100) {
-                    l1_prod.signal[i_alt * ckd.npix + pix_dn] = signal;
-                }
-                l1_prod.signal[i_alt * ckd.npix + pix_up] =
-                  (signal - weight * l1_prod.signal[i_alt * ckd.npix + pix_dn])
-                  / (1.0 - weight);
-            }
         }
     }
     l1_prod.spectra = std::vector<double> {};
@@ -378,7 +306,6 @@ auto noise(const CKD& ckd,
            const bool enabled,
            const int seed,
            const int n_coadditions,
-           const double artificial_scaling,
            L1& l1_prod) -> void
 {
     l1_prod.level = ProcLevel::dark_offset;
@@ -390,12 +317,9 @@ auto noise(const CKD& ckd,
         static std::mt19937 gen { static_cast<unsigned long>(seed) };
         for (int i {}; i < ckd.npix; ++i) {
             const int idx { i_alt * ckd.npix + i };
-            const double noise_value {
-                artificial_scaling
-                * std::sqrt((ckd.noise.n2[i]
-                             + std::abs(l1_prod.signal[idx]) * ckd.noise.g[i])
-                            / n_coadditions)
-            };
+            const double noise_value { std::sqrt(
+              (ckd.noise.n2[i] + std::abs(l1_prod.signal[idx]) * ckd.noise.g[i])
+              / n_coadditions) };
             std::normal_distribution<> d { 0.0, noise_value };
             l1_prod.signal[idx] += d(gen);
         }

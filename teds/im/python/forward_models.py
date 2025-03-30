@@ -8,7 +8,6 @@ or anywhere in between.
 
 """
 from netCDF4 import Dataset
-from scipy.interpolate import CubicSpline
 from scipy.interpolate import interpn
 from tqdm import tqdm
 import numpy as np
@@ -122,8 +121,7 @@ def radiometric(l1_product: L1, rad_corr: npt.NDArray[np.float64]) -> None:
 
 def map_to_detector(l1_product: L1,
                     ckd: CKDSwath,
-                    wavelengths: npt.NDArray[np.float64],
-                    exact_drawing: bool) -> None:
+                    wavelengths: npt.NDArray[np.float64]) -> None:
     """Map spectra to detector.
 
     Spectra are mapped to infinitely thin curves on the detector (instead of
@@ -140,10 +138,6 @@ def map_to_detector(l1_product: L1,
     wavelengths
         Main CKD wavelength grids (not the intermediate grids). Only
         used if exact_drawing is true.
-    exact_drawing
-        Option to draw each spectrum to the detector using the "up"
-        and "down" pixels. Use this for experimenting but not in
-        production.
 
     """
     l1_product.proc_level = ProcLevel.stray
@@ -154,41 +148,12 @@ def map_to_detector(l1_product: L1,
                                           ckd.wavelength_map.ravel()))
     for i_alt in tqdm(range(n_alt)):
         l1_product.signal[i_alt, :] = interpn(
-            (ckd.act_angles, ckd.wavelengths),
+            (ckd.act_angles, wavelengths),
             l1_product.spectra[i_alt, :, :],
             act_wavelength_map,
             method='quintic',
             bounds_error=False,
             fill_value=None).reshape(n_rows * n_cols)
-    if not exact_drawing:
-        return
-    l1_product.signal[:] = 0
-    # When using the exact drawing algorithm, first regrid row_map and
-    # spectra from intermediate wavelengths to wavelengths
-    # corresponding to detector columns.
-    n_act = ckd.row_map.shape[0]
-    row_map = np.empty((n_act, n_cols))
-    for i_act in range(n_act):
-        row_map[i_act, :] = CubicSpline(
-            ckd.wavelengths, ckd.row_map[i_act, :])(wavelengths[i_act, :])
-    for i_alt in tqdm(range(n_alt)):
-        spectra = np.empty((n_act, n_cols))
-        signal = l1_product.signal[i_alt, :].reshape((n_rows, n_cols))
-        for i_act in range(n_act):
-            spectra[i_act, :] = CubicSpline(
-                ckd.wavelengths,
-                l1_product.spectra[i_alt, i_act, :])(wavelengths[i_act, :])
-        for i_act in range(n_act):
-            for i_wave in range(n_cols):
-                row_dn = int(row_map[i_act, i_wave])
-                row_up = row_dn + 1
-                weight = row_map[i_act, i_wave] - row_dn
-                if abs(signal[row_dn, i_wave]) < 1e-100:
-                    signal[row_dn, i_wave] = spectra[i_act,
-                                                     n_cols - 1 - i_wave]
-                signal[row_up, i_wave] = (
-                    spectra[i_act, n_cols - 1 - i_wave]
-                    - weight * signal[row_dn, i_wave]) / (1 - weight)
 
 
 def stray_light(l1_product: L1, ckd: CKDStray) -> None:
@@ -280,7 +245,6 @@ def noise(l1_product: L1,
           ckd: CKDNoise,
           dark_current: npt.NDArray[np.float64],
           n_coadditions: int,
-          artificial_scaling: float,
           seed: int) -> None:
     """Add random noise to signal.
 
@@ -304,7 +268,7 @@ def noise(l1_product: L1,
     # negative signal still increases the noise.
     variance = ((ckd.read_noise**2 + l1_product.signal / ckd.conversion_gain)
                 / n_coadditions)
-    std = artificial_scaling * np.sqrt(np.clip(variance, 0, None))
+    std = np.sqrt(np.clip(variance, 0, None))
     rng = np.random.default_rng(seed)
     l1_product.signal += rng.normal(0.0, std, l1_product.signal.shape)
 

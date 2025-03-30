@@ -57,7 +57,6 @@ auto darkOffset(const CKD& ckd, const bool enabled, L1& l1_prod) -> void
 auto noise(const CKD& ckd,
            const bool enabled,
            const BinningTable& binning_table,
-           const double artificial_scaling,
            L1& l1_prod) -> void
 {
     l1_prod.level = ProcLevel::noise;
@@ -75,8 +74,7 @@ auto noise(const CKD& ckd,
                                    + ckd.noise.n2[i] };
                 const double coad { l1_prod.noise[idx] };
                 l1_prod.noise[idx] =
-                  artificial_scaling
-                  * std::sqrt(var / (coad * binning_table.binSize(i)));
+                  std::sqrt(var / (coad * binning_table.binSize(i)));
             }
         }
     }
@@ -298,12 +296,12 @@ auto strayLight(const CKD& ckd,
 auto mapFromDetector(const CKD& ckd,
                      const BinningTable& binning_table,
                      const int b_spline_order,
-                     const bool exact_drawing,
                      L1& l1_prod) -> void
 {
     l1_prod.level = ProcLevel::swath;
+    l1_prod.n_act = ckd.n_act;
     // Size of spectra per ALT position
-    const size_t spec_size { ckd.n_act * ckd.swath.wavelengths.size() };
+    const size_t spec_size { ckd.n_act * ckd.wave.wavelengths.size() };
     l1_prod.spectra.assign(l1_prod.n_alt * spec_size, 0.0);
     l1_prod.spectra_noise.assign(l1_prod.n_alt * spec_size, 0.0);
     // Assume there is binning only across rows. From that determine
@@ -338,97 +336,8 @@ auto mapFromDetector(const CKD& ckd,
                               ckd.swath.col_map,
                               &l1_prod.spectra_noise[i_alt * spec_size]);
     }
-    if (!exact_drawing) {
-        l1_prod.signal = std::vector<double> {};
-        l1_prod.noise = std::vector<double> {};
-        l1_prod.wavelengths =
-          std::vector<std::vector<double>>(ckd.n_act, ckd.swath.wavelengths);
-        return;
-    }
-    // When using the exact drawing algorithm, first regrid row_map
-    // from intermediate wavelengths to wavelengths corresponding to
-    // detector columns.
-    std::vector<double> row_map(ckd.n_act * ckd.n_detector_cols);
-    for (int i_act {}; i_act < ckd.n_act; ++i_act) {
-        const CubicSpline spline {
-            ckd.swath.wavelengths,
-            { ckd.swath.row_map.cbegin() + i_act * ckd.swath.wavelengths.size(),
-              ckd.swath.row_map.cbegin()
-                + (i_act + 1) * ckd.swath.wavelengths.size() }
-        };
-        for (int i {}; i < ckd.n_detector_cols; ++i) {
-            row_map[i_act * ckd.n_detector_cols + i] =
-              spline.eval(ckd.wave.wavelengths[i_act][i]);
-        }
-    }
-    l1_prod.spectra.resize(l1_prod.n_alt * ckd.n_act * ckd.n_detector_cols);
-    l1_prod.spectra_noise.resize(l1_prod.n_alt * ckd.n_act
-                                 * ckd.n_detector_cols);
-#pragma omp parallel for
-    for (size_t i_alt = 0; i_alt < static_cast<size_t>(l1_prod.n_alt);
-         ++i_alt) {
-        for (int i_act {}; i_act < ckd.n_act; ++i_act) {
-            for (int i_wave {}; i_wave < ckd.n_detector_cols; ++i_wave) {
-                const int row_dn { static_cast<int>(
-                  row_map[i_act * ckd.n_detector_cols + i_wave]) };
-                const int row_up { row_dn + 1 };
-                const double weight {
-                    row_map[i_act * ckd.n_detector_cols + i_wave] - row_dn
-                };
-                const int pix_dn { row_dn * ckd.n_detector_cols + i_wave };
-                const int pix_up { row_up * ckd.n_detector_cols + i_wave };
-                const size_t idx { (i_alt * ckd.n_act + i_act)
-                                     * ckd.n_detector_cols
-                                   + ckd.n_detector_cols - 1 - i_wave };
-                l1_prod.spectra[idx] =
-                  weight * l1_prod.signal[i_alt * ckd.npix + pix_dn]
-                  + (1 - weight) * l1_prod.signal[i_alt * ckd.npix + pix_up];
-                const double a { weight
-                                 * l1_prod.noise[i_alt * ckd.npix + pix_dn] };
-                const double b { (1 - weight)
-                                 * l1_prod.noise[i_alt * ckd.npix + pix_up] };
-                l1_prod.spectra_noise[idx] = std::sqrt(a * a + b * b);
-            }
-        }
-    }
     l1_prod.signal = std::vector<double> {};
     l1_prod.noise = std::vector<double> {};
-    l1_prod.wavelengths = ckd.wave.wavelengths;
-}
-
-auto changeWavelengthGrid(const CKD& ckd, L1& l1_prod) -> void
-{
-    const int n_waves_in { static_cast<int>(ckd.swath.wavelengths.size()) };
-    std::vector<double> spectra_out(l1_prod.n_alt * ckd.n_act
-                                    * ckd.n_detector_cols);
-    std::vector<double> spectra_noise_out(spectra_out.size());
-#pragma omp parallel for
-    for (int i_alt = 0; i_alt < l1_prod.n_alt; ++i_alt) {
-        for (int i_act {}; i_act < ckd.n_act; ++i_act) {
-            const int idx_beg_in { (i_alt * ckd.n_act + i_act) * n_waves_in };
-            const int idx_beg_out { (i_alt * ckd.n_act + i_act)
-                                    * ckd.n_detector_cols };
-            const CubicSpline spline { ckd.swath.wavelengths,
-                                       { l1_prod.spectra.begin() + idx_beg_in,
-                                         l1_prod.spectra.begin() + idx_beg_in
-                                           + n_waves_in } };
-            for (int i {}; i < ckd.n_detector_cols; ++i) {
-                spectra_out[idx_beg_out + i] =
-                  spline.eval(ckd.wave.wavelengths[i_act][i]);
-            }
-            const CubicSpline spline_noise {
-                ckd.swath.wavelengths,
-                { l1_prod.spectra_noise.begin() + idx_beg_in,
-                  l1_prod.spectra_noise.begin() + idx_beg_in + n_waves_in }
-            };
-            for (int i {}; i < ckd.n_detector_cols; ++i) {
-                spectra_noise_out[idx_beg_out + i] =
-                  spline_noise.eval(ckd.wave.wavelengths[i_act][i]);
-            }
-        }
-    }
-    l1_prod.spectra = std::move(spectra_out);
-    l1_prod.spectra_noise = std::move(spectra_noise_out);
     l1_prod.wavelengths = ckd.wave.wavelengths;
 }
 
@@ -443,10 +352,9 @@ auto radiometric(const CKD& ckd, const bool enabled, L1& l1_prod) -> void
 #pragma omp parallel for
     for (int i_alt = 0; i_alt < l1_prod.n_alt; ++i_alt) {
         for (int i_act {}; i_act < ckd.n_act; ++i_act) {
-            for (int i {}; i < ckd.n_detector_cols; ++i) {
-                const int idx {
-                    (i_alt * ckd.n_act + i_act) * ckd.n_detector_cols + i
-                };
+            for (int i {}; i < ckd.n_wavelengths; ++i) {
+                const int idx { (i_alt * ckd.n_act + i_act) * ckd.n_wavelengths
+                                + i };
                 l1_prod.spectra[idx] *=
                   ckd.rad.rad[i_act][i] * exposure_time_inv;
                 l1_prod.spectra_noise[idx] *=
@@ -482,9 +390,12 @@ static auto binNDArray(const int bin,
 
 auto binL1B(const int bin, L1& l1_prod) -> void
 {
-    const int n_waves { static_cast<int>(l1_prod.wavelengths.front().size()) };
+    const int n_waves { static_cast<int>(l1_prod.wavelengths.size()) };
     binNDArray(bin, n_waves, l1_prod.spectra);
     binNDArray(bin, n_waves, l1_prod.spectra_noise);
+    for (double& val : l1_prod.spectra_noise) {
+        val /= std::sqrt(static_cast<double>(bin));
+    }
     binNDArray(bin, 1, l1_prod.geo.lat);
     binNDArray(bin, 1, l1_prod.geo.lon);
     binNDArray(bin, 1, l1_prod.geo.height);
@@ -492,20 +403,7 @@ auto binL1B(const int bin, L1& l1_prod) -> void
     binNDArray(bin, 1, l1_prod.geo.saa);
     binNDArray(bin, 1, l1_prod.geo.vza);
     binNDArray(bin, 1, l1_prod.geo.vaa);
-    // Wavelength array needs to be flattened first
-    std::vector<double> wavelengths_flat(l1_prod.wavelengths.size() * n_waves);
-    for (int i {}; i < static_cast<int>(l1_prod.wavelengths.size()); ++i) {
-        for (int j {}; j < n_waves; ++j) {
-            wavelengths_flat[i * n_waves + j] = l1_prod.wavelengths[i][j];
-        }
-    }
-    binNDArray(bin, n_waves, wavelengths_flat);
-    l1_prod.wavelengths.resize(l1_prod.wavelengths.size() / bin);
-    for (int i {}; i < static_cast<int>(l1_prod.wavelengths.size()); ++i) {
-        for (int j {}; j < n_waves; ++j) {
-            l1_prod.wavelengths[i][j] = wavelengths_flat[i * n_waves + j];
-        }
-    }
+    l1_prod.n_act /= bin;
 }
 
 } // namespace tango

@@ -37,6 +37,7 @@ CKD::CKD(const std::string& filename)
     n_detector_cols_binned = n_detector_cols;
     npix_binned = npix;
     n_act = static_cast<int>(nc.getDim("across_track_sample").getSize());
+    n_wavelengths = static_cast<int>(nc.getDim("wavelength").getSize());
     // Read the pixel mask which is possibly not yet in its final
     // state. It may be updated by one or more detector calibration
     // steps.
@@ -70,8 +71,8 @@ CKD::CKD(const std::string& filename)
     const auto n_knots { grp.getDim("knots").getSize() };
     std::vector<double> knots(n_knots);
     std::vector<double> y(n_knots);
-    grp.getVar("knots").getVar(knots.data());
-    grp.getVar("y").getVar(y.data());
+    grp.getVar("observed").getVar(knots.data());
+    grp.getVar("expected").getVar(y.data());
     nonlin.spline = { knots, y };
 
     spdlog::info("Reading dark CKD");
@@ -117,35 +118,27 @@ CKD::CKD(const std::string& filename)
 
     spdlog::info("Reading swath CKD");
     grp = nc.getGroup("swath");
-    const auto n_intermediate_waves { grp.getDim("wavelength").getSize() };
-    swath.wavelengths.resize(n_intermediate_waves);
-    grp.getVar("wavelength").getVar(swath.wavelengths.data());
     swath.act_angles.resize(n_act);
     grp.getVar("act_angle").getVar(swath.act_angles.data());
     swath.act_map.resize(npix);
     grp.getVar("act_map").getVar(swath.act_map.data());
     swath.wavelength_map.resize(npix);
     grp.getVar("wavelength_map").getVar(swath.wavelength_map.data());
-    swath.row_map.resize(n_act * n_intermediate_waves);
+    swath.row_map.resize(n_act * n_wavelengths);
     grp.getVar("row_map").getVar(swath.row_map.data());
-    swath.col_map.resize(n_act * n_intermediate_waves);
+    swath.col_map.resize(n_act * n_wavelengths);
     grp.getVar("col_map").getVar(swath.col_map.data());
     swath.los.resize(n_act * dims::vec);
     grp.getVar("line_of_sight").getVar(swath.los.data());
 
     spdlog::info("Reading spectral CKD");
     grp = nc.getGroup("spectral");
-    wave.wavelengths.resize(n_act, std::vector<double>(n_detector_cols));
-    getAndReshape(grp.getVar("wavelength"), wave.wavelengths);
-    if (wave.wavelengths.front()[1] < wave.wavelengths.front()[0]) {
-        for (auto& waves : wave.wavelengths) {
-            std::ranges::reverse(waves);
-        }
-    }
+    wave.wavelengths.resize(n_wavelengths);
+    grp.getVar("wavelength").getVar(wave.wavelengths.data());
 
     spdlog::info("Reading radiometric CKD");
     grp = nc.getGroup("radiometric");
-    rad.rad.resize(n_act, std::vector<double>(n_detector_cols));
+    rad.rad.resize(n_act, std::vector<double>(n_wavelengths));
     getAndReshape(grp.getVar("radiometric"), rad.rad);
 }
 

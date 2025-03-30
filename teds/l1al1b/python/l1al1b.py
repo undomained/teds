@@ -20,7 +20,6 @@ Input files are:
 """
 from netCDF4 import Dataset
 from pathlib import Path
-import math
 import numpy as np
 
 from . import calibration as cal
@@ -49,14 +48,6 @@ def check_config(config: dict) -> None:
         Configuration parameters.
 
     """
-    # If swath.exact_drawing is true then do not bin the L1B data but
-    # instead artifically scale noise. bin_spectra is always set to 1
-    # in that case. The value is determined by binning and the
-    # detector mapping algorithm choice and is not a user parameter.
-    config['noise']['artificial_scaling'] = (
-        1 / math.sqrt(config['bin_spectra']))
-    if config['swath']['exact_drawing']:
-        config['bin_spectra'] = 1
     for key in ('l1a', 'ckd'):
         input_file = Path(config['io_files'][key])
         if not input_file.is_file():
@@ -152,8 +143,7 @@ def run_l1al1b(config_user: dict | None = None) -> None:
             cal.noise(l1_product,
                       binning_table.count_table,
                       ckd.noise,
-                      ckd.dark.current,
-                      config['noise']['artificial_scaling'])
+                      ckd.dark.current)
         else:
             l1_product.noise = np.full_like(l1_product.signal, 1.0)
     if config['dark']['enabled'] and step_needed(
@@ -187,13 +177,7 @@ def run_l1al1b(config_user: dict | None = None) -> None:
         cal.map_from_detector(l1_product,
                               ckd.swath,
                               binning_table.count_table,
-                              ckd.spectral.wavelengths,
-                              config['swath']['exact_drawing'])
-    if cal_level >= ProcLevel.swath and (
-            l1_product.spectra.shape[2] != ckd.spectral.wavelengths.shape[1]):
-        log.info(
-            'Interpolating from intermediate to main CKD wavelength grids')
-        cal.change_wavelength_grid(l1_product, ckd.spectral.wavelengths)
+                              ckd.spectral.wavelengths)
     if step_needed(ProcLevel.l1b, l1_product.proc_level, cal_level):
         log.info('Radiometric')
         cal.radiometric(l1_product, ckd.radiometric.rad_corr)

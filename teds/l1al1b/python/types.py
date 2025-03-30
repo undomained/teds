@@ -73,10 +73,10 @@ class CKDNoise:
 @dataclass
 class CKDNonlin:
     """Signal nonlinearity CKD."""
-    # Expected, linear signal in counts
-    expected: npt.NDArray[np.float64]
     # Observed, nonlinear signal in counts
     observed: npt.NDArray[np.float64]
+    # Expected, linear signal in counts
+    expected: npt.NDArray[np.float64]
 
 
 @dataclass
@@ -107,8 +107,6 @@ class CKDSwath:
     """CKD related to the satellite swath."""
     # Across track angles
     act_angles: npt.NDArray[np.float64]
-    # Intermediate wavelengths after ISRF convolution
-    wavelengths: npt.NDArray[np.float64]
     # ACT angle of each detector pixel
     act_map: npt.NDArray[np.float64]
     # Wavelength of each detector pixel
@@ -124,8 +122,8 @@ class CKDSwath:
 @dataclass
 class CKDSpectral:
     """Spectral CKD."""
-    # Wavelengths assigned to each detector column of each L1B
-    # spectrum
+    # L1B wavelength grid, with uniform spacing. The same grid is
+    # assigned to all L1B spectra.
     wavelengths: npt.NDArray[np.float64]
 
 

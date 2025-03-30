@@ -22,6 +22,10 @@ struct L1
     // across-track positions is stored in the CKD and is not a user
     // parameter.
     int n_alt {};
+    // Current number of across-track positions. If there is binning
+    // across track this could differ from the across_track_sample
+    // dimension on the CKD.
+    int n_act {};
 
     // Science data
     // Detector signal for all along track (ALT) positions. Units
@@ -38,7 +42,7 @@ struct L1
     // Wavelength grid associated with spectra. Can change between
     // calibration steps. For instance, the SGM data has the
     // line-by-line grid but otherwise the grid is read from the CKD.
-    std::vector<std::vector<double>> wavelengths {};
+    std::vector<double> wavelengths {};
 
     // Navigation data
     // Orbit positions

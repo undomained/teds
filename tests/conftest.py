@@ -102,7 +102,6 @@ def ckd_stray(scope='session'):
 def ckd_swath(scope='session'):
     return CKDSwath(
         np.loadtxt(_fix_dir / 'ckd_swath_act_angle.txt', 'f8'),
-        np.loadtxt(_fix_dir / 'ckd_swath_wavelength.txt', 'f8'),
         np.loadtxt(_fix_dir / 'ckd_swath_act_map.txt', 'f8'),
         np.loadtxt(_fix_dir / 'ckd_swath_wavelength_map.txt', 'f8'),
         np.loadtxt(_fix_dir / 'ckd_swath_row_map.txt', 'f8'),
@@ -192,7 +191,7 @@ def l1(signal, scope='session'):
 
 
 @pytest.fixture
-def sgm(l1, ckd_spectral, ckd_swath, scope='session'):
+def sgm(l1, ckd_spectral, scope='session'):
     """Generate SGM line-by-line spectra."""
     n_alt, n_act, _ = l1.spectra.shape
     # Line-by-line (LBL) wavelength grid is based on the CKD
@@ -200,14 +199,14 @@ def sgm(l1, ckd_spectral, ckd_swath, scope='session'):
     lbl_wave_multiplier = 3
     margin = 1.0
     lbl_wavelengths = np.linspace(
-        ckd_swath.wavelengths[0] - margin,
-        ckd_swath.wavelengths[-1] + margin,
-        lbl_wave_multiplier*len(ckd_swath.wavelengths))
+        ckd_spectral.wavelengths[0] - margin,
+        ckd_spectral.wavelengths[-1] + margin,
+        lbl_wave_multiplier*len(ckd_spectral.wavelengths))
     lbl_spectra = np.empty((n_alt, n_act, len(lbl_wavelengths)))
     for i_alt in range(n_alt):
         for i_act in range(n_act):
-            spline = CubicSpline(ckd_spectral.wavelengths[i_act, ::-1],
-                                 l1.spectra[i_alt, i_act, ::-1])
+            spline = CubicSpline(ckd_spectral.wavelengths,
+                                 l1.spectra[i_alt, i_act, :])
             lbl_spectra[i_alt, i_act, :] = spline(lbl_wavelengths)
     l1.spectra = lbl_spectra
     l1.spectra_noise = np.ones(l1.spectra.shape)
@@ -344,6 +343,7 @@ def ckd_file(tmp_path, ckd, scope='session'):
     nc.createDimension('detector_row', ckd.n_detector_rows)
     nc.createDimension('detector_column', ckd.n_detector_cols)
     nc.createDimension('across_track_sample', len(ckd.swath.act_angles))
+    nc.createDimension('wavelength', len(ckd.spectral.wavelengths))
     nc.createDimension('vector', 3)
     detector_shape = (ckd.n_detector_rows, ckd.n_detector_cols)
     dim_detector_shape = ('detector_row', 'detector_column')
@@ -365,9 +365,9 @@ def ckd_file(tmp_path, ckd, scope='session'):
     # Nonlinearity CKD
     grp = nc.createGroup('nonlinearity')
     grp.createDimension('knots', len(ckd.nonlin.expected))
-    var = grp.createVariable('knots', 'f8', 'knots')
+    var = grp.createVariable('observed', 'f8', 'knots')
     var[:] = ckd.nonlin.observed
-    var = grp.createVariable('y', 'f8', 'knots')
+    var = grp.createVariable('expected', 'f8', 'knots')
     var[:] = ckd.nonlin.expected
     # PRNU CKD
     grp = nc.createGroup('prnu')
@@ -409,11 +409,8 @@ def ckd_file(tmp_path, ckd, scope='session'):
     var[:] = ckd.stray.edges
     # Swath CKD
     grp = nc.createGroup('swath')
-    grp.createDimension('wavelength', len(ckd.swath.wavelengths))
     var = grp.createVariable('act_angle', 'f8', 'across_track_sample')
     var[:] = ckd.swath.act_angles
-    var = grp.createVariable('wavelength', 'f8', 'wavelength')
-    var[:] = ckd.swath.wavelengths
     var = grp.createVariable('act_map', 'f8', dim_detector_shape)
     var[:] = ckd.swath.act_map
     var = grp.createVariable('wavelength_map', 'f8', dim_detector_shape)
@@ -429,13 +426,12 @@ def ckd_file(tmp_path, ckd, scope='session'):
     var[:] = ckd.swath.line_of_sights
     # Spectral CKD
     grp = nc.createGroup('spectral')
-    var = grp.createVariable(
-        'wavelength', 'f8', ('across_track_sample', 'detector_column'))
+    var = grp.createVariable('wavelength', 'f8', 'wavelength')
     var[:] = ckd.spectral.wavelengths
     # Radiometric CKD
     grp = nc.createGroup('radiometric')
     var = grp.createVariable(
-        'radiometric', 'f8', ('across_track_sample', 'detector_column'))
+        'radiometric', 'f8', ('across_track_sample', 'wavelength'))
     var[:] = ckd.radiometric.rad_corr
     return filepath
 

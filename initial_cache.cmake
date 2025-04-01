@@ -24,6 +24,6 @@ set(CMAKE_INSTALL_PREFIX /usr/local/tango CACHE STRING "")
 # If installed, point to where the dependencies are located. This is
 # not necessary if they are in a standard location installed by your
 # package manager.
-set(SPDLOG_PATH /usr/local/spdlog CACHE STRING "")
-set(YAML_CPP_PATH /usr/local/yaml-cpp CACHE STRING "")
-set(POCKETFFT_PATH /usr/local/pocketfft CACHE STRING "")
+#set(SPDLOG_PATH /usr/local/spdlog CACHE STRING "")
+#set(YAML_CPP_PATH /usr/local/yaml-cpp CACHE STRING "")
+#set(POCKETFFT_PATH /usr/local/pocketfft CACHE STRING "")

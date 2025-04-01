@@ -15,19 +15,25 @@ The TEDS package is written in Python and C++. All modules are available in Pyth
    L1B-L2 processor
    L2-L4 processor
 
-Installation of the Python modules means setting up a Python virtual environment using the pip package management system. The C++ code, once all the dependencies have been installed, needs to be compiled by the user which requires knowledge of the build system, described in this chapter.
+Installation of the Python modules means setting up a Python virtual environment using the pip package management system. The C++ code, on the other hand, needs to be compiled by the user after all the dependencies have been installed. This requires some knowledge of the build system as described in this chapter.
 
-TEDS has only been tested on Linux operating systems. MacOS and Windows are not officially supported although in principle all prerequisites (relevant libraries and compilers) also exist for those. In the following, we demonstrate how to run some of the commands on Ubuntu 24.04.
+TEDS has only been tested on Linux operating systems. MacOS and Windows are not officially supported although in principle all prerequisites (libraries and compilers) also exist for those. In the following, we demonstrate how to run some of the commands on Ubuntu 24.04.
 
 
 Python code
 -----------
 
-In order to ensure compatibility with the correct Python packages, it is important to work in a Python virtual environment. You can create a virtual environment with
+In order to ensure compatibility with the correct Python packages, it is important to work in a Python virtual environment. First install some prerequisites:
 
 .. code-block:: bash
 
-   python -m venv venv  # Last argument can be anything
+   sudo apt-get install python3.12-venv libpython3-dev libnetcdf-c++4-dev g++
+
+Some of these are required for building the C++ extensions of TEDS. Now you can create a virtual environment with
+
+.. code-block:: bash
+
+   python -m venv venv  # Correct command might be python3
 
 and activate it with
 
@@ -42,7 +48,7 @@ You will notice that the shell's prompt has changed to remind you that you are i
    pip install --upgrade pip
    pip install --editable .
 
-The second command installs all dependencies found in :file:`pyproject.toml` and creates an *editable* build of TEDS suitable for development. The third command installs additional development tools such as linters and documentation tools. The reason for the split is an when distributing the package, only the second command needs to be run without the :token:`--editable` flag. This leaves out everything not required for the end user.
+from the root source directory. The second command installs all dependencies found in :file:`pyproject.toml` and creates an *editable* build of TEDS suitable for development.
 
 If your working directory is the same as where the virtual environment is located, the TEDS package should automatically be found by Python scripts. If not, you might need to update your ``PYTHONPATH``.
 
@@ -77,7 +83,7 @@ You can install the first four with your Linux distribution's package manager. F
 
 .. code-block:: bash
 
-   sudo apt install libspdlog-dev libyaml-cpp-dev libnetcdf-c++-dev liblapack-dev libeigen3-dev
+   sudo apt install libspdlog-dev libyaml-cpp-dev libnetcdf-c++4-dev liblapack-dev libeigen3-dev
 
 A copy of pocketfft is hosted at Bitbucket. You can clone it with
 

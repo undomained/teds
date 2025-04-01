@@ -16,19 +16,17 @@ include_dirs = [numpy.get_include()]
 library_dirs = []
 compiler_flags = ['-O3', '-std=c++20', '-fopenmp']
 
-# Attempt to find the HDF5 library depending on which package manager is used
+# Attempt to find the NetCDF library depending on which package
+# manager is used
 try:
-    # Determine package name and location by searching for hdf5.h
-    res = subprocess.check_output(['dpkg', '-S', 'hdf5.h']).decode('utf-8')
-    package_name, hdf5_header = res.split()
-    package_name = package_name[:-1]
-    include_dirs.append(os.path.dirname(hdf5_header))
-    # Find which directory contains the HDF5 library
-    res = subprocess.check_output(['dpkg', '-L', package_name]).decode('utf-8')
-    for line in res.split():
-        if 'libhdf5.so' in line:
-            library_dirs.append(os.path.dirname(line))
-            break
+    # Determine package name and location by searching for 'netcdf'
+    res = subprocess.check_output(['dpkg', '-S', 'netcdf']).decode('utf-8')
+    netcdf_header = list(
+        filter(lambda x: x.endswith('/netcdf'), res.split()))[0]
+    netcdf_library = list(
+        filter(lambda x: x.endswith('/libnetcdf_c++4.so'), res.split()))[0]
+    include_dirs.append(os.path.dirname(netcdf_header))
+    library_dirs.append(os.path.dirname(netcdf_library))
 except FileNotFoundError or subprocess.CalledProcessError:
     pass
 
@@ -36,7 +34,7 @@ extension_geo = Extension('teds.l1al1b.python.geolocation',
                           sources,
                           include_dirs=include_dirs,
                           library_dirs=library_dirs,
-                          libraries=['hdf5'],
+                          libraries=['netcdf_c++4'],
                           extra_compile_args=compiler_flags,
                           extra_link_args=['-lgomp'],
                           py_limited_api=True)

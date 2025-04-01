@@ -8,9 +8,9 @@ This section provides an API for Python-based modules. Each section lists the ma
 Scene generation module (SGM)
 -----------------------------
 
-.. autofunction:: teds.sgm.download_sentinel2_albedo
+.. autofunction:: teds.sgm.s2.download_albedo
 .. autofunction:: teds.sgm.geoscene_generation
-.. autofunction:: teds.sgm.Carbon_radiation_scene_generation
+.. autofunction:: teds.sgm.carbon_radiation_scene_generation
 
 
 Instrument model
@@ -19,21 +19,21 @@ Instrument model
 Main entry point
 ^^^^^^^^^^^^^^^^
 
-.. autofunction:: teds.im.process_im
+.. autofunction:: teds.im.run_instrument_model
 
-Uncalibration steps
-^^^^^^^^^^^^^^^^^^^
+Forward model
+^^^^^^^^^^^^^^
 
-.. autofunction:: teds.im.python.uncalibration.change_wavelength_grid
-.. autofunction:: teds.im.python.uncalibration.convert_from_radiance
-.. autofunction:: teds.im.python.uncalibration.map_to_detector
-.. autofunction:: teds.im.python.uncalibration.stray_light
-.. autofunction:: teds.im.python.uncalibration.include_prnu
-.. autofunction:: teds.im.python.uncalibration.include_nonlinearity
-.. autofunction:: teds.im.python.uncalibration.include_dark_signal
-.. autofunction:: teds.im.python.uncalibration.include_noise
-.. autofunction:: teds.im.python.uncalibration.include_offset
-.. autofunction:: teds.im.python.uncalibration.include_coadding_and_binning
+.. autofunction:: teds.im.python.forward_models.apply_isrf
+.. autofunction:: teds.im.python.forward_models.radiometric
+.. autofunction:: teds.im.python.forward_models.map_to_detector
+.. autofunction:: teds.im.python.forward_models.stray_light
+.. autofunction:: teds.im.python.forward_models.prnu
+.. autofunction:: teds.im.python.forward_models.nonlinearity
+.. autofunction:: teds.im.python.forward_models.dark_current
+.. autofunction:: teds.im.python.forward_models.noise
+.. autofunction:: teds.im.python.forward_models.dark_offset
+.. autofunction:: teds.im.python.forward_models.coadd_and_adc
 
 
 Input/output
@@ -48,21 +48,21 @@ L1B processor
 Main entry point
 ^^^^^^^^^^^^^^^^
 
-.. autofunction:: teds.l1al1b.process_l1b
+.. autofunction:: teds.l1al1b.run_l1al1b
 
 
 Calibration steps
 ^^^^^^^^^^^^^^^^^
 
-.. autofunction:: teds.l1al1b.python.calibration.remove_coadding_and_binning
-.. autofunction:: teds.l1al1b.python.calibration.remove_offset
-.. autofunction:: teds.l1al1b.python.calibration.determine_noise
-.. autofunction:: teds.l1al1b.python.calibration.remove_dark_signal
-.. autofunction:: teds.l1al1b.python.calibration.remove_nonlinearity
-.. autofunction:: teds.l1al1b.python.calibration.remove_prnu
+.. autofunction:: teds.l1al1b.python.calibration.coadding_and_binning
+.. autofunction:: teds.l1al1b.python.calibration.dark_offset
+.. autofunction:: teds.l1al1b.python.calibration.noise
+.. autofunction:: teds.l1al1b.python.calibration.dark_current
+.. autofunction:: teds.l1al1b.python.calibration.nonlinearity
+.. autofunction:: teds.l1al1b.python.calibration.prnu
 .. autofunction:: teds.l1al1b.python.calibration.stray_light
 .. autofunction:: teds.l1al1b.python.calibration.map_from_detector
-.. autofunction:: teds.l1al1b.python.calibration.convert_to_radiance
+.. autofunction:: teds.l1al1b.python.calibration.radiometric
 
 Input/output
 ^^^^^^^^^^^^

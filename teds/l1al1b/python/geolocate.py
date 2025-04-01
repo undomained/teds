@@ -4,9 +4,26 @@
 import numpy as np
 import numpy.typing as npt
 
-from .geolocation import geolocate as c_geolocate
 from .types import Geometry
 from .types import L1
+
+try:
+    from .geolocation import geolocate as c_geolocate
+except ModuleNotFoundError:
+    def c_geolocate(dem_filename: str,
+                    los: npt.NDArray[np.float64],
+                    tai_seconds: npt.NDArray[np.uint],
+                    tai_subsec: npt.NDArray[np.float64],
+                    orb_pos: npt.NDArray[np.float64],
+                    att_quat: npt.NDArray[np.float64],
+                    lat: npt.NDArray[np.float64],
+                    lon: npt.NDArray[np.float64],
+                    height: npt.NDArray[np.float64],
+                    vza: npt.NDArray[np.float64],
+                    vaa: npt.NDArray[np.float64],
+                    sza: npt.NDArray[np.float64],
+                    saa: npt.NDArray[np.float64]) -> None:
+        pass
 
 
 def geolocate(

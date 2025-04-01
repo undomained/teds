@@ -4,6 +4,7 @@
 from datetime import datetime
 from importlib.resources import files
 import importlib.metadata
+import platform
 import os
 import subprocess
 import yaml
@@ -119,6 +120,8 @@ def print_system_info() -> None:
     options.
 
     """
+    if platform.system() == 'Windows':
+        return
     # Project version
     print('Version                 :', importlib.metadata.version('teds'))
     # Short git hash (only if .git found)

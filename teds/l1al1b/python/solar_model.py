@@ -5,8 +5,15 @@
 """
 from pyquaternion import Quaternion
 import numpy as np
+import numpy.typing as npt
 
-from .geolocation import solar_model as c_solar_model
+try:
+    from .geolocation import solar_model as c_solar_model
+except ModuleNotFoundError:
+    def c_solar_model(tai_seconds: np.uint,
+                      tai_second_fraction: np.float64,
+                      q_ecef_j2000: npt.NDArray[np.float64]) -> None:
+        pass
 
 
 def solar_model(tai_seconds: np.uint,

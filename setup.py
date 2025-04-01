@@ -4,7 +4,12 @@ from setuptools import Extension
 from setuptools import setup
 import numpy
 import os
+import platform
 import subprocess
+
+if platform.system() == 'Windows':
+    setup(ext_modules=[])
+    exit(0)
 
 sources = ['teds/l1al1b/tango_l1b/algorithm.cpp',
            'teds/l1al1b/tango_l1b/quaternion.cpp',

@@ -20,13 +20,28 @@ from teds.l1al1b.python.io import read_ckd
 from teds.l1al1b.python.types import L1
 from teds.l1al1b.python.types import ProcLevel
 from teds.lib import libRT
-from teds.lib.algorithms import cpp_rt_act
 from teds.lib.convolution import KernelGauss
 from teds.lib.convolution import KernelGauss2D
 from teds.lib.io import merge_config_with_default
 from teds.lib.io import print_heading
 from teds.lib.io import print_system_info
 from teds.lib.surface import Surface
+
+try:
+    from teds.lib.algorithms import cpp_rt_act
+except ModuleNotFoundError:
+    def cpp_rt_act(co2_concentration: npt.NDArray[np.float64],
+                   ch4_concentration: npt.NDArray[np.float64],
+                   h2o_concentration: npt.NDArray[np.float64],
+                   co2_xsec: npt.NDArray[np.float64],
+                   ch4_xsec: npt.NDArray[np.float64],
+                   h2o_xsec: npt.NDArray[np.float64],
+                   albedo: npt.NDArray[np.float64],
+                   mu_sza: npt.NDArray[np.float64],
+                   mu_vza: npt.NDArray[np.float64],
+                   sun: npt.NDArray[np.float64],
+                   rad: npt.NDArray[np.float64]) -> None:
+        pass
 
 
 @dataclass

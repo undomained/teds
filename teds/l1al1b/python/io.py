@@ -14,6 +14,7 @@ from pathlib import Path
 from pyquaternion import Quaternion
 import numpy as np
 import numpy.typing as npt
+import platform
 import xarray as xr
 import yaml
 
@@ -463,7 +464,8 @@ def write_l1(filename: str,
     out.processing_version = config['processing_version']
     out.product_name = Path(filename).name
     out.date_created = datetime.now(timezone.utc).isoformat(timespec='seconds')
-    out.git_commit = get_git_commit_hash()
+    if not platform.system() == 'Windows':
+        out.git_commit = get_git_commit_hash()
     # out.history = ""
     # In C++ code for 'title', config['project'] is fixed to
     # 'Tango' and config['instrument'] is fixed to 'Carbon'

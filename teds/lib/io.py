@@ -3,13 +3,34 @@
 """IO related operations."""
 from datetime import datetime
 from importlib.resources import files
+from pathlib import Path
 import importlib.metadata
 import platform
 import os
 import subprocess
+import sys
 import yaml
 
 from teds import log
+
+
+def check_file_presence(file_path: str, label: str) -> None:
+    """Check if a file exists.
+
+    Parameters
+    ----------
+    file_path
+        Full or relative path
+    label
+        Label to include in the error message. Otherwise, if the file
+        path is empty then the file-not-found error is not very
+        useful.
+
+    """
+    input_file = Path(file_path)
+    if not input_file.is_file():
+        log.error(f'{label} ({file_path}) file not found')
+        sys.exit(1)
 
 
 def merge_dicts(config_full: dict, config_updates: dict) -> None:
@@ -69,7 +90,7 @@ def merge_config_with_default(config: dict | None, teds_module: str) -> dict:
         print(open(default_config_path).read())
         log.info(f'Stopping because the module {teds_module} was called '
                  'without an input file')
-        exit(0)
+        sys.exit(0)
     assert isinstance(config, dict)
     config_full: dict = yaml.safe_load(open(default_config_path))
     merge_dicts(config_full, config)

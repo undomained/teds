@@ -22,6 +22,7 @@ from teds.l1al1b.python.types import ProcLevel
 from teds.lib import libRT
 from teds.lib.convolution import KernelGauss
 from teds.lib.convolution import KernelGauss2D
+from teds.lib.io import check_file_presence
 from teds.lib.io import merge_config_with_default
 from teds.lib.io import print_heading
 from teds.lib.io import print_system_info
@@ -61,11 +62,10 @@ def check_config(config: dict) -> None:
         Path of YAML configuration file.
 
     """
-    for entry in ('geometry', 'atmosphere'):
-        filename = config['io_files'][entry]
-        if not Path(filename).is_file():
-            log.error(f'[io_files][{entry}] ({filename}) not found')
-            exit(1)
+    check_file_presence(config['io_files']['geometry'], 'geometry')
+    check_file_presence(config['io_files']['atmosphere'], 'atmosphere')
+    if config['isrf']['enabled'] and config['isrf']['tabulated']:
+        check_file_presence(config['io_files']['isrf'], 'ISRF')
     if config['alt_end']:
         config['alt_end'] += 1
 

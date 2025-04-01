@@ -15,7 +15,6 @@ Usage:
 
 """
 from netCDF4 import Dataset
-from pathlib import Path
 from scipy.interpolate import CubicSpline
 from scipy.interpolate import PchipInterpolator
 from scipy.interpolate import RBFInterpolator
@@ -29,20 +28,6 @@ from teds.lib.io import merge_config_with_default
 from teds.lib.io import print_heading
 from teds.lib.io import print_system_info
 import teds.l1al1b.python.types as tp
-
-
-def check_config(config: dict) -> None:
-    """Check consistency of some of the configuration settings.
-
-    Parameters
-    ----------
-    config
-        Configuration parameters.
-
-    """
-    ckd_file = Path(config['io_files']['ckd'])
-    if not ckd_file.is_file():
-        raise SystemExit(f"ERROR: {ckd_file} not found")
 
 
 def gen_dark(conf: dict) -> tp.CKDDark:
@@ -481,7 +466,6 @@ def gen_ckd(config_user: dict | None = None) -> None:
     print(flush=True)
 
     conf = merge_config_with_default(config_user, 'teds.ckd.ckd_generation')
-    check_config(conf)
 
     print_heading('Generating CKD')
 

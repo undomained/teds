@@ -18,8 +18,6 @@ Input files are:
 - (optionally) netCDF geometry data io.geometry
 
 """
-from pathlib import Path
-
 from . import forward_models as fw
 from teds import log
 from teds.l1al1b.python.io import copy_navigation_data
@@ -30,6 +28,8 @@ from teds.l1al1b.python.io import read_proc_level
 from teds.l1al1b.python.io import write_l1
 from teds.l1al1b.python.types import L1
 from teds.l1al1b.python.types import ProcLevel
+from teds.lib.convolution import KernelGauss
+from teds.lib.io import check_file_presence
 from teds.lib.io import merge_config_with_default
 from teds.lib.io import print_heading
 from teds.lib.io import print_system_info
@@ -44,10 +44,10 @@ def check_config(config: dict) -> None:
         Configuration parameters.
 
     """
-    for key in ('sgm', 'ckd'):
-        input_file = Path(config['io_files'][key])
-        if not input_file.is_file():
-            raise SystemExit(f"ERROR: {input_file} not found")
+    check_file_presence(config['io_files']['sgm'], 'SGM')
+    check_file_presence(config['io_files']['ckd'], 'CKD')
+    if config['isrf']['tabulated']:
+        check_file_presence(config['io_files']['isrf'], 'ISRF')
     proc_level = read_proc_level(config['io_files']['sgm'])
     log.info(f"Processing from {proc_level} to {config['cal_level']}")
 

@@ -264,8 +264,8 @@ auto readL1(const std::string& filename,
         const auto n_wavelength { nc.getDim("wavelength").getSize() };
         l1_prod.wavelengths.resize(n_wavelength);
         if (const auto grp { nc.getGroup("observation_data") }; grp.isNull()) {
+            nc.getVar("wavelength").getVar(l1_prod.wavelengths.data());
             if (in_memory || l1_prod.level < ProcLevel::sgm) {
-                nc.getVar("wavelength").getVar(l1_prod.wavelengths.data());
                 l1_prod.spectra.resize(n_alt * n_act * n_wavelength);
                 nc.getVar("radiance")
                   .getVar({ alt_beg, 0, 0 },

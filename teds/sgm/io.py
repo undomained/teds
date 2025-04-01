@@ -163,7 +163,28 @@ def write_atmosphere_ref(filename: str,
                          geometry: Geometry,
                          bin_alt: int,
                          bin_act: int) -> None:
-    """Write geophysical (binned) reference scene data to output."""
+    """Bin and write geophysical reference scene data to output.
+
+    Data is binned before saving to file. Binning factors should be
+    chosen such that the final dimensions makes sense for L2
+    comparison.
+
+    Parameters
+    ----------
+    filename
+        Reference atmosphere file name
+    atm
+        Atmosphere
+    albedo
+        Albedo
+    geometry
+        Extended geometry
+    bin_alt
+        Bin data in ALT dimension before saving to file
+    bin_act
+        Bin data in ACT dimension before saving to file
+
+    """
     n_alt, n_act, n_lay = atm.get_gas('co2').concentration.shape
     n_alt_binned = int(n_alt // bin_alt)
     n_act_binned = int(n_act // bin_act)

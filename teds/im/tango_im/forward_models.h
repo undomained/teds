@@ -27,26 +27,22 @@ namespace tango {
 
 class BinningTable;
 class CKD;
+class ISRF;
 class L1;
 class LinearSpline;
 
-// Convolve each radiance spectrum with the ISRF. This significantly
-// reduces data dimensions. The SGM file and starting ALT position are
-// only used if the spectra are already not in memory. In that case
-// they are read one by one for the convolution.
+// Convolve each radiance spectrum with tabulated or analytical
+// ISRF. For tabulated, the ISRF can correspond to homogeneous or
+// heterogeneous scene illumination. The SGM file and starting ALT
+// position are only used if the spectra are already not in memory. In
+// that case they are read one by one for the convolution.
 auto applyISRF(const CKD& ckd,
                const bool enabled,
+               const ISRF& isrf,
                const double fwhm_gauss,
                const double shape,
                const std::string& sgm_filename,
                L1& l1_prod) -> void;
-
-// Convolve each radiance spectrum with a tabulated ISRF corresponding
-// to heterogenous slit illumination.
-auto applyHeteroISRF(const CKD& ckd,
-                     const bool enabled,
-                     const std::string& sgm_filename,
-                     L1& l1_prod) -> void;
 
 // Undo radiometric calibration
 auto radiometric(const CKD& ckd, const bool enabled, L1& l1_prod) -> void;

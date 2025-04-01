@@ -28,7 +28,7 @@ from teds.l1al1b.python.io import read_proc_level
 from teds.l1al1b.python.io import write_l1
 from teds.l1al1b.python.types import L1
 from teds.l1al1b.python.types import ProcLevel
-from teds.lib.convolution import KernelGauss
+from teds.lib.convolution import Kernel
 from teds.lib.io import check_file_presence
 from teds.lib.io import merge_config_with_default
 from teds.lib.io import print_heading
@@ -135,6 +135,16 @@ def run_instrument_model(config_user: dict | None = None) -> None:
             f'L1 product has {l1_product.spectra.shape[1]} ACT positions '
             f'whereas the CKD expects {len(ckd.swath.act_angles)}')
         exit(1)
+    # Read or construct the ISRF
+    if config['isrf']['tabulated']:
+        isrf = Kernel.from_file(config['io_files']['isrf'],
+                                l1_product.wavelengths,
+                                ckd.spectral.wavelengths)
+    else:
+        isrf = Kernel.from_gauss(l1_product.wavelengths,
+                                 ckd.spectral.wavelengths,
+                                 config['isrf']['fwhm'],
+                                 config['isrf']['shape'])
     # Read binning table corresponding to input data
     binning_table = read_binning_table(config['io_files']['binning_table'],
                                        config['detector']['binning_table_id'],
@@ -147,10 +157,8 @@ def run_instrument_model(config_user: dict | None = None) -> None:
     if step_needed(ProcLevel.sgm, l1_product.proc_level, cal_level):
         log.info('ISRF convolution')
         fw.apply_isrf(l1_product,
-                      ckd.spectral.wavelengths,
+                      isrf,
                       config['isrf']['enabled'],
-                      config['isrf']['fwhm_gauss'],
-                      config['isrf']['shape'],
                       config['io_files']['sgm'],
                       config['alt_beg'])
     if config['l1b']['enabled'] and step_needed(

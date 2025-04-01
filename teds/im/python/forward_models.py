@@ -19,16 +19,14 @@ from teds.l1al1b.python.types import CKDNoise
 from teds.l1al1b.python.types import CKDNonlin
 from teds.l1al1b.python.types import CKDStray
 from teds.l1al1b.python.types import CKDSwath
-from teds.l1al1b.python.types import ProcLevel
 from teds.l1al1b.python.types import L1
-from teds.lib import convolution
+from teds.l1al1b.python.types import ProcLevel
+from teds.lib.convolution import Kernel
 
 
 def apply_isrf(l1_product: L1,
-               wavelengths_out: npt.NDArray[np.float64],
+               isrf: Kernel,
                convolve: bool,
-               fwhm: float,
-               shape: float,
                sgm_filename: str,
                alt_beg: int) -> None:
     """Convolve spectra with the ISRF.
@@ -44,15 +42,10 @@ def apply_isrf(l1_product: L1,
     ----------
     l1_product
         L1 product (signal and detector settings).
-    wavelengths_out
-        New wavelength grid [nm].
+    isrf
+        Convolution kernel
     convolve
         Convolve with ISRF (True) or only interpolate (False)
-    fwhm
-        Full width at half-maximum [nm] of ISRF.
-    shape
-        ISRF shape parameter. Value 2 for Gauss (default), towards 1
-        for stronger wings and large values for a more blocky shape.
     sgm_filename
         SGM radiance filename. Only required if the spectra are not in
         memory. Then read them one by one for ISRF convolution.
@@ -65,14 +58,8 @@ def apply_isrf(l1_product: L1,
     l1_product.proc_level = ProcLevel.l1b
     n_alt = l1_product.spectra.shape[0]
     n_act = l1_product.spectra.shape[1]
-    conv = np.empty((n_alt, n_act, len(wavelengths_out)))
+    conv = np.empty((n_alt, n_act, len(isrf.wavelengths_out)))
     if convolve:
-        # Convolve spectra with ISRF assuming wavelengths_in is
-        # monotonically increasing or decreasing (checked while
-        # reading). Extrapolated values are close to zero assuming no
-        # bad values in the spectra.
-        kernel = convolution.KernelGauss(
-            l1_product.wavelengths, wavelengths_out, fwhm, shape)
         # If the spectra are not in memory then read them one by one
         # for the convolution.
         in_memory = l1_product.spectra.shape[-1] > 0
@@ -81,21 +68,21 @@ def apply_isrf(l1_product: L1,
         for i_alt in tqdm(range(n_alt), unit=' ALT'):
             for i_act in range(n_act):
                 if in_memory:
-                    conv[i_alt, i_act, :] = kernel.convolve(
+                    conv[i_alt, i_act, :] = isrf.convolve(
                         l1_product.spectra[i_alt, i_act, :])
                 else:
-                    conv[i_alt, i_act, :] = kernel.convolve(
+                    conv[i_alt, i_act, :] = isrf.convolve(
                         nc['radiance'][alt_beg + i_alt, i_act, :].data)
         l1_product.spectra = conv
     else:
         for i_alt in tqdm(range(n_alt), unit=' ALT'):
             for i_act in range(n_act):
                 conv[i_alt, i_act, :] = np.interp(
-                    wavelengths_out,
+                    isrf.wavelengths_out,
                     l1_product.wavelengths,
                     l1_product.spectra[i_alt, i_act, :])
     l1_product.spectra = conv
-    l1_product.wavelengths = np.tile(wavelengths_out, n_act).reshape(n_act, -1)
+    l1_product.wavelengths = isrf.wavelengths_out
 
 
 def radiometric(l1_product: L1, rad_corr: npt.NDArray[np.float64]) -> None:

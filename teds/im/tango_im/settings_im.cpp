@@ -26,7 +26,8 @@ auto SettingsIM::scanKeys() -> void
     scan(optimal_coadd.f_sat);
 
     scan(isrf.enabled);
-    scan(isrf.fwhm_gauss);
+    scan(isrf.tabulated);
+    scan(isrf.fwhm);
     scan(isrf.shape);
     scan(isrf.in_memory);
 
@@ -45,6 +46,7 @@ auto SettingsIM::scanKeys() -> void
 
     scan(rad.enabled);
 
+    scan(io_files.isrf);
     scan(io_files.ckd);
     scan(io_files.binning_table);
     scan(io_files.l1a);
@@ -60,6 +62,7 @@ auto SettingsIM::checkParameters() -> void
     checkPresenceOfFile(io_files.binning_table, true);
     checkPresenceOfFile(io_files.sgm, true);
     checkPresenceOfFile(io_files.geometry, true);
+    checkPresenceOfFile(io_files.isrf, isrf.tabulated);
 
     checkFileWritable(io_files.l1a);
 }

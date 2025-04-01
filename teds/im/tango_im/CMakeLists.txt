@@ -5,6 +5,7 @@ target_sources(tango_im PRIVATE
   driver.cpp
   settings_im.cpp
   forward_models.cpp
+  isrf.cpp
 )
 
 target_sources(tango_im.x PRIVATE main.cpp)

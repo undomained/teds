@@ -97,8 +97,14 @@ public:
             "linearly interpolate from the line-by-line onto the CKD\n"
             "wavelength grid.",
         };
-        Setting<double> fwhm_gauss {
-            { "isrf", "fwhm_gauss" },
+        Setting<bool> tabulated {
+            { "isrf", "tabulated" },
+            true,
+            "whether to use the tabulated ISRF from [io_files][isrf] or\n"
+            "generate it from the generalized Gaussian parameters"
+        };
+        Setting<double> fwhm {
+            { "isrf", "fwhm" },
             0.1,
             "the ISRF FWHM used for convolving the line-by-line spectra",
         };
@@ -190,6 +196,9 @@ public:
 
     struct
     {
+        Setting<std::string> isrf { { "io_files", "isrf" },
+                                    {},
+                                    "tabulated isrf file path" };
         Setting<std::string> ckd { { "io_files", "ckd" }, {}, "CKD file path" };
         Setting<std::string> binning_table {
             { "io_files", "binning_table" },

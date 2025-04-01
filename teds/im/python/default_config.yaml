@@ -25,8 +25,11 @@ detector:
 # CKD wavelength grid (no).
 isrf:
   enabled: yes
+  # Whether to use the tabulated ISRF from [io_files][isrf] or
+  # generate it from the generalized Gaussian parameters.
+  tabulated: yes
   # FWHM of ISRF, not necessarily a Gauss here
-  fwhm_gauss: 0.45
+  fwhm: 0.45
   # ISRF shape parameter. Default is a Gauss.
   shape: 2
   # Whether to load all spectra into memory before the
@@ -62,6 +65,8 @@ l1b:
 
 # Input/output file paths
 io_files:
+  # ISRF
+  isrf: ""
   # Calibration key data (CKD)
   ckd: ""
   # Binning table

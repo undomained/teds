@@ -18,6 +18,9 @@ sedf:
 isrf:
   # Whether to convolve the line-by-line spectra with the ISRF
   enabled: no
+  # Whether to use the tabulated ISRF from [io_files][isrf] or
+  # generate it from the generalized Gaussian parameters.
+  tabulated: yes
   fwhm: 0.456
   shape: 2.0
 
@@ -79,6 +82,8 @@ sentinel2:
 xsec_forced: no
 
 io_files:
+  # ISRF
+  isrf: ""
   # CKD stores the target wavelengths. Only required is ISRF
   # convolution is enabled.
   ckd: ""

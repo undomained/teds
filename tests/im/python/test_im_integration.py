@@ -14,6 +14,7 @@ def test_full_chain(ckd_file, binningtable_file, sgm_file, tmp_path):
             'nr_coadditions': 10,
         },
         'isrf': {
+            'tabulated': False,
             'in_memory': True,
             'fwhm_gauss': 0.5,
         },
@@ -26,7 +27,7 @@ def test_full_chain(ckd_file, binningtable_file, sgm_file, tmp_path):
     }
     run_instrument_model(config)
     l1 = read_l1(tmp_path / 'tango_l1a.nc', 0, None, True)
-    assert abs(l1.signal).sum() == approx(82176538.0)
+    assert abs(l1.signal).sum() == approx(82176772.0)
 
 
 def test_full_chain_no_adc_binning(
@@ -39,6 +40,7 @@ def test_full_chain_no_adc_binning(
         },
         'isrf': {
             'enabled': False,
+            'tabulated': False,
             'in_memory': True,
         },
         'io_files': {
@@ -63,6 +65,7 @@ def test_full_chain_binning_4(
         },
         'isrf': {
             'enabled': False,
+            'tabulated': False,
             'in_memory': True,
         },
         'io_files': {
@@ -88,6 +91,7 @@ def test_full_chain_binning_4_no_adc(
         },
         'isrf': {
             'enabled': False,
+            'tabulated': False,
             'in_memory': True,
         },
         'io_files': {

@@ -47,8 +47,9 @@ TEST_CASE("integration tests")
     tango::SettingsIM settings { config_filename };
     settings.detector.exposure_time = 0.01724385;
     settings.detector.nr_coadditions = 2;
+    settings.isrf.tabulated = false;
     settings.isrf.in_memory = true;
-    settings.isrf.fwhm_gauss = 0.5;
+    settings.isrf.fwhm = 0.5;
     settings.io_files.ckd = ckd_filename;
     settings.io_files.sgm = sgm_filename;
     settings.io_files.l1a = l1a_filename;

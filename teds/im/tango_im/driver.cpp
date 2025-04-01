@@ -4,6 +4,7 @@
 #include "driver.h"
 
 #include "forward_models.h"
+#include "isrf.h"
 #include "settings_im.h"
 
 #include <netcdf>
@@ -47,6 +48,20 @@ auto driver(const SettingsIM& settings,
            settings.isrf.in_memory);
     l1_prod.exposure_time = settings.detector.exposure_time;
 
+    // Read or construct the ISRF
+    ISRF isrf {};
+    if (settings.isrf.tabulated) {
+        spdlog::info("Reading ISRF from file");
+        isrf.fromFile(
+          settings.io_files.isrf, l1_prod.wavelengths, ckd.wave.wavelengths);
+    } else {
+        spdlog::info("Generating ISRF from generalized Gaussian parameters");
+        isrf.fromGauss(l1_prod.wavelengths,
+                       ckd.wave.wavelengths,
+                       settings.isrf.fwhm,
+                       settings.isrf.shape);
+    }
+
     // Run the forward model
     printHeading("Forward model");
     Timer timer {};
@@ -57,7 +72,8 @@ auto driver(const SettingsIM& settings,
         spdlog::info("ISRF convolution");
         applyISRF(ckd,
                   settings.isrf.enabled,
-                  settings.isrf.fwhm_gauss,
+                  isrf,
+                  settings.isrf.fwhm,
                   settings.isrf.shape,
                   settings.io_files.sgm,
                   l1_prod);

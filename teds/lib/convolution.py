@@ -1,11 +1,192 @@
 # This source code is licensed under the 3-clause BSD license found in
 # the LICENSE file in the root directory of this project.
 """Functions related to numerical convolution."""
+from netCDF4 import Dataset
+from scipy.interpolate import CubicSpline
 from scipy.signal import convolve
+from typing import Self
 import math
 import numba
 import numpy as np
 import numpy.typing as npt
+
+
+class Kernel:
+    """Class for convolutions with a kernel.
+
+    The init and other functions below refer to an ISRF and wavelength
+    grids because that is a typical use case for convolutions. But
+    this class can also be used with other types of information (in
+    general, some input/output grids and kernel data). The
+    ISRF/wavelength terminology is easier to follow.
+
+    Input and output grids are assumed to be uniform.
+
+    """
+    def __init__(self,
+                 wavelength_diffs: npt.NDArray[np.float64],
+                 isrf: npt.NDArray[np.float64],
+                 wavelengths_in: npt.NDArray[np.float64],
+                 wavelengths_out: npt.NDArray[np.float64],
+                 wave_cutoff: float = 0.7) -> None:
+        """Precompute kernel values that will be used for convolution.
+
+        Parameters
+        ----------
+        wavelength_diffs
+            Wavelengths at which the ISRF (kernel) data is given
+            (centered around 0)
+        isrf
+            ISRF data corresponding to wavelength_diffs. Can be
+            different from input/output grids used for convolution.
+        wavelengths_in
+            Wavelength grid of unconvolved data
+        wavelengths_out
+            Wavelength grid of convolved data
+        wave_cutoff
+            Extent of the ISRF, in nm. If the kernel is (well)
+            localized then a small value of this parameter can be used
+            to reduced computational cost. The dimension needs to be
+            the same as wavelength_diffs so not necessarily nm.
+
+        """
+        # Convolution wavelength range
+        self.wavelengths_in = wavelengths_in
+        self.wavelengths_out = wavelengths_out
+        self.wave_step = self.wavelengths_in[1] - self.wavelengths_in[0]
+        # This many values of the kernel need to be precomputed and
+        # stored. Outside the range the kernel is 0.
+        self.n_vals_half = int(wave_cutoff // self.wave_step)
+        self.n_vals = 2 * self.n_vals_half - 1
+        # Interpolate input data onto the wavelength range that is
+        # relevant for convolution.
+        isrf_spline = CubicSpline(wavelength_diffs, isrf)
+        self.isrf_values = isrf_spline(-self.n_vals_half * self.wave_step
+                                       + range(self.n_vals) * self.wave_step)
+        self.isrf_values = self.isrf_values / self.isrf_values.sum()
+
+    @classmethod
+    def from_file(cls,
+                  filename: str,
+                  wavelengths_in: npt.NDArray[np.float64],
+                  wavelengths_out: npt.NDArray[np.float64]) -> Self:
+        """Read ISRF from file."""
+        nc = Dataset(filename)
+        return cls(nc['wavelength'][:].data,
+                   nc['isrf'][:].data,
+                   wavelengths_in,
+                   wavelengths_out)
+
+    @classmethod
+    def from_gauss(cls,
+                   wavelengths_in: npt.NDArray[np.float64],
+                   wavelengths_out: npt.NDArray[np.float64],
+                   fwhm: float,
+                   shape: float = 2.0,
+                   wave_cutoff: float = 0.7) -> Self:
+        """Generate kernel from generalized Gaussian parameters.
+
+        The generalized Gaussian analytical form is used to construct
+        the wavelength range and the ISRF values which are then passed
+        to the normal constructor. It's basically a convenience
+        function to generate the ISRF data. Otherwise, this class
+        works the same as with tabulated data.
+
+        Parameters
+        ----------
+        wavelengths_in
+            Wavelength grid of unconvolved data
+        wavelengths_out
+            Wavelength grid of convolved data
+        fwhm
+            FWHM of the generalized Gaussian
+        shape
+            Shape parameter of the generalized Gaussian (2 means
+            normal Gaussian). Lower values lead to stronger wings and
+            larger values to a more blocky shape.
+        wave_cutoff
+            Kernel extent
+
+        Returns
+        -------
+            Instance of the kernel class
+
+        """
+        step = wavelengths_in[1] - wavelengths_in[0]
+        wavelength_diffs = np.arange(-wave_cutoff, wave_cutoff, step)
+        isrf = 2**(-(2 * np.abs(wavelength_diffs) / fwhm)**(shape))
+        return cls(wavelength_diffs, isrf, wavelengths_in, wavelengths_out)
+
+    @staticmethod
+    @numba.njit
+    def _convolve(wavelengths_in: npt.NDArray[np.float64],
+                  wavelengths_out: npt.NDArray[np.float64],
+                  wave_step: float,
+                  n_vals_half: npt.NDArray[np.float64],
+                  n_vals: int,
+                  isrf_values: npt.NDArray[np.float64],
+                  data: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
+        """Convolve array.
+
+        This needs to be static method to use Numba decorator. The
+        arguments are not actually variable by the calling function.
+
+        Parameters
+        ----------
+        wavelengths_in
+            Wavelengths of unconvolved data
+        wavelengths_out
+            Wavelengths of convolved data
+        wave_step
+            Step size of wavelengths_in
+        n_vals_half
+            Half the number of ISRF evaluations required for convolution
+        n_vals
+            Full number of ISRF evaluations required for convolution
+        isrf_values
+            ISRF values tabulated for n_vals elements in steps of wave_step
+        data
+            Data to be convolved
+
+        Returns
+        -------
+            Convolved array
+
+        """
+        conv = np.empty(len(wavelengths_out))
+        # Find index of first element in the unconvolved wavelength
+        # array corresponding to a target (convolved data)
+        # wavelength. Do this for all wavelengths at once.
+        first_in_wavelength = wavelengths_out - n_vals_half * wave_step
+        first_in_idx = np.searchsorted(wavelengths_in, first_in_wavelength)
+        for i_wave in range(len(wavelengths_out)):
+            idx_beg = first_in_idx[i_wave]
+            conv[i_wave] = np.dot(isrf_values, data[idx_beg:idx_beg+n_vals])
+        return conv
+
+    def convolve(self,
+                 data: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
+        """Convolve a data array with the kernel.
+
+        Parameter
+        ---------
+        data
+            Data to be convolved. The associated grid is
+            wavelengths_in as specified in the constructor and cannot
+            be changed anymore.
+
+        Returns
+        -------
+            Convolved array. The assocated grid is wavelengths_out.
+
+        """
+        return Kernel._convolve(self.wavelengths_in,
+                                self.wavelengths_out,
+                                self.wave_step,
+                                self.n_vals_half,
+                                self.n_vals,
+                                self.isrf_values,
+                                data)
 
 
 class KernelGauss:

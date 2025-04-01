@@ -3,6 +3,8 @@
 
 #include "forward_models.h"
 
+#include "isrf.h"
+
 #include <Eigen/Sparse>
 #include <algorithm>
 #include <netcdf>
@@ -17,54 +19,9 @@
 
 namespace tango {
 
-// Generate an ISRF kernel for convolving the radiances from the
-// line-by-line grid onto the intermediate grids from the CKD swath
-// section.
-static auto genISRFKernel(const double fwhm_gauss,
-                          const double shape,
-                          const std::vector<double>& lbl_wavelengths,
-                          const std::vector<double>& wavelengths,
-                          Eigen::SparseMatrix<double>& isrf) -> void
-{
-    isrf =
-      Eigen::SparseMatrix<double>(wavelengths.size(), lbl_wavelengths.size());
-    const bool do_gaussian { std::abs(shape - 2.0) < 1e-30 };
-    const double sigma { fwhm_gauss / (2.0 * std::sqrt(2.0 * std::log(2.0))) };
-    const double sigma_2inv { 1.0 / (2.0 * sigma * sigma) };
-    std::vector<Eigen::Triplet<double>> triplets {};
-    std::vector<double> row_sums(isrf.rows(), 0.0); // For normalization
-    for (int i_wave {}; i_wave < isrf.rows(); ++i_wave) {
-        for (int i_lbl {}; i_lbl < isrf.cols(); ++i_lbl) {
-            // Convolution result for this CKD wavelength
-            double conv { wavelengths[i_wave] - lbl_wavelengths[i_lbl] };
-            // Reduce the computational cost by considering the
-            // limited extent of the Gaussian.
-            constexpr double wave_rel_threshold { 1.5 };
-            if (std::abs(conv) > wave_rel_threshold * fwhm_gauss) {
-                continue;
-            }
-            if (do_gaussian) {
-                conv = std::exp(-(conv * conv * sigma_2inv));
-            } else {
-                conv = std::pow(
-                  2.0, -std::pow(2 * std::abs(conv) / fwhm_gauss, shape));
-            }
-            row_sums[i_wave] += conv;
-            triplets.push_back({ i_wave, i_lbl, conv });
-        }
-    }
-    isrf.setFromTriplets(triplets.begin(), triplets.end());
-    // Normalize
-    for (int k {}; k < isrf.outerSize(); ++k) {
-        for (Eigen::SparseMatrix<double>::InnerIterator it { isrf, k }; it;
-             ++it) {
-            it.valueRef() /= row_sums[it.row()];
-        }
-    }
-}
-
 auto applyISRF(const CKD& ckd,
                const bool enabled,
+               const ISRF& isrf,
                const double fwhm_gauss,
                const double shape,
                const std::string& sgm_filename,
@@ -78,45 +35,34 @@ auto applyISRF(const CKD& ckd,
     const int n_waves_out { static_cast<int>(ckd.wave.wavelengths.size()) };
     std::vector<double> spectra_out(l1_prod.n_alt * ckd.n_act * n_waves_out);
     if (enabled) {
-        Eigen::SparseMatrix<double> isrf {};
-        genISRFKernel(
-          fwhm_gauss, shape, l1_prod.wavelengths, ckd.wave.wavelengths, isrf);
         // If the spectra are not in memory then read them one by one
         // for the convolution.
         if (l1_prod.spectra.empty()) {
             const netCDF::NcFile nc { sgm_filename, netCDF::NcFile::read };
             const netCDF::NcVar nc_var { nc.getVar("radiance") };
-            for (size_t i_alt = 0; i_alt < static_cast<size_t>(l1_prod.n_alt);
+            std::vector<double> buf(ckd.n_act * n_waves_in);
+            const size_t n_act { static_cast<size_t>(ckd.n_act) };
+            for (size_t i_alt {}; i_alt < static_cast<size_t>(l1_prod.n_alt);
                  ++i_alt) {
-                Eigen::VectorXd result(ckd.n_detector_cols);
-                for (size_t i_act {}; i_act < static_cast<size_t>(ckd.n_act);
-                     ++i_act) {
+                nc_var.getVar(
+                  { i_alt, 0, 0 }, { 1, n_act, n_waves_in }, buf.data());
+#pragma omp parallel for
+                for (int i_act = 0; i_act < ckd.n_act; ++i_act) {
                     const size_t act_idx { i_alt * ckd.n_act + i_act };
-                    std::vector<double> buf(n_waves_in);
-                    nc_var.getVar(
-                      { i_alt, i_act, 0 }, { 1, 1, n_waves_in }, buf.data());
-                    result =
-                      isrf
-                      * Eigen::Map<Eigen::VectorXd>(buf.data(), n_waves_in);
-                    for (int i {}; i < n_waves_out; ++i) {
-                        spectra_out[act_idx * n_waves_out + i] = result[i];
-                    }
+                    isrf.convolve(act_idx,
+                                  &buf[i_act * n_waves_in],
+                                  &spectra_out[act_idx * n_waves_out]);
                 }
             }
         } else {
 #pragma omp parallel for
             for (size_t i_alt = 0; i_alt < static_cast<size_t>(l1_prod.n_alt);
                  ++i_alt) {
-                Eigen::VectorXd result {};
                 for (int i_act {}; i_act < ckd.n_act; ++i_act) {
                     const size_t act_idx { i_alt * ckd.n_act + i_act };
-                    result =
-                      isrf
-                      * Eigen::Map<Eigen::VectorXd>(
-                        &l1_prod.spectra[act_idx * n_waves_in], n_waves_in);
-                    for (int i {}; i < n_waves_out; ++i) {
-                        spectra_out[act_idx * n_waves_out + i] = result[i];
-                    }
+                    isrf.convolve(act_idx,
+                                  &l1_prod.spectra[act_idx * n_waves_in],
+                                  &spectra_out[act_idx * n_waves_out]);
                 }
             }
         }

@@ -17,6 +17,7 @@ import yaml
 
 from teds.lib import libINV
 from teds.lib import libRT
+from teds.lib.convolution import Kernel
 from teds.lib.convolution import KernelGauss
 from teds.lib.libWrite import writevariablefromname
 from teds.sgm import atmosphere
@@ -363,13 +364,18 @@ def level1b_to_level2_processor(config, sw_diag_output = False):
     # We introduce two types of ialt indices, ialt points to l1b data structure and ilat_l2 to l2 data structure.
     # Later is different to l1b structure because of option for image selection (sw_ALT_select).
 
+    # Define isrf function
+    dset = nc.Dataset('/home/raul/Projects/tango/data/isrf/isrf.nc')
+    wavelength_diffs = dset['wavelength'][:].data
+    isrf = dset['isrf'][:].data
+
     runtime_cum = {}
     runtime_cum['opt'] = 0.
     runtime_cum['rtm'] = 0.
     runtime_cum['conv'] = 0.
     runtime_cum['kern'] = 0.
 
-    for ialt, ialt in enumerate(tqdm(range(nalt))):
+    for ialt in tqdm(range(nalt)):
         for iact in range(nact):
             # number of 'good' pixels
             numb_spec_points = np.sum(mask[ialt,iact,:])/float(mask[ialt,iact,:].size)
@@ -395,18 +401,14 @@ def level1b_to_level2_processor(config, sw_diag_output = False):
                 istart = np.searchsorted(wavelength, wave_start)
                 iend = np.searchsorted(wavelength, wave_end)
                 wave_meas = wavelength[istart:iend+1]  # nm
-                
-                # define isrf function
-                isrf_convolution = KernelGauss(
-                    wave_lbl,
-                    wave_meas,
-                    config['isrf_settings']['fwhm'],
-                    config['isrf_settings']['shape']).convolve
-    
+
+                # Define isrf function
+                kernel = Kernel(wavelength_diffs, isrf, wave_lbl, wave_meas)
+                isrf_convolution = kernel.convolve
+
                 atm_ret = deepcopy(atm)  # to initialize each retrieval with the same atmosphere
-    
                 sun = isrf_convolution(sun_lbl)
-    
+
                 # Observation geometry
                 nwave = wave_meas.size
                 measurement[ialt, iact] = {}

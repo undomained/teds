@@ -89,7 +89,6 @@ module = [
     'teds.l1al1b.create_l1a1b_configuration_file_nitro',
     'teds.l1l2.l1bl2_no2',
     'teds.l1l2.l1bl2',
-    'teds.l1l2.l1l2_pyTorch',
     'teds.l2l4.ModuleCFM',
     'teds.l2l4.ModuleDataContainer',
     'teds.l2l4.ModuleLSQ',

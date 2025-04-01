@@ -1,8 +1,6 @@
 # This source code is licensed under the 3-clause BSD license found in
 # the LICENSE file in the root directory of this project.
 from dataclasses import dataclass
-from netCDF4 import Dataset
-from scipy.interpolate import CubicSpline
 from tqdm import tqdm
 from xarray import DataArray
 import numpy as np

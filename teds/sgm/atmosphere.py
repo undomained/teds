@@ -324,7 +324,7 @@ def get_atmospheric_data(gm_lat: npt.NDArray[np.float64],
                 target_grid,
                 method='cubic',
                 bounds_error=False,
-                fill_value=None).reshape(gm_x_rot.shape)
+                fill_value=0.0).reshape(gm_x_rot.shape)
         gas.concentration = gas_interp
     # Update MicroHH grid information
     meteo.crs = crs

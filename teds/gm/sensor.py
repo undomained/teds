@@ -273,7 +273,7 @@ class Sensor:
                          get_view_angles: bool = True,
                          get_solar_angles: bool = True) -> Geometry:
         # get ground points based on interpolation of computed points
-        n_times = int((dt_end - dt_start).total_seconds() / dt_interval) + 1
+        n_times = int((dt_end - dt_start).total_seconds() / dt_interval)
 
         # compute time axis as astropy object
         ap_ts = Time([dt_start + datetime.timedelta(seconds=sec)

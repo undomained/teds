@@ -55,23 +55,25 @@ class Meteo:
         read_grid = True
         for filename in filenames:
             nc = Dataset(filename)
-            gas_name = list(filter(
+            gas_names = list(filter(
                 lambda x: x not in
-                ('time', 'z', 'x', 'y', 'longitude', 'latitude', 'znodes'),
-                nc.variables.keys()))[0]
-            if read_grid:
-                dz, dy, dx = nc[gas_name].gridspacing_in_m
-                x, y, z = nc['x'][:].data, nc['y'][:].data, nc['z'][:].data
-                znodes = nc['znodes'][:].data
-                lat = nc['latitude'][:].data
-                lon = nc['longitude'][:].data
-                read_grid = False
-            # Input data is in the order (t, z, y, x)
-            concentration = np.swapaxes(nc[gas_name][0].data, 0, 2)
-            gases.append(Gas(gas_name,
-                             nc[gas_name].source,
-                             nc[gas_name].emission_in_kgps,
-                             concentration))
+                ('time', 'z', 'x', 'y', 'longitude', 'latitude', 'znodes',
+                 'U', 'V', 'W'),
+                nc.variables.keys()))
+            for gas_name in gas_names:
+                if read_grid:
+                    x, y, z = nc['x'][:].data, nc['y'][:].data, nc['z'][:].data
+                    dz, dy, dx = z[1] - z[0], y[1] - y[0], x[1] - x[0]
+                    znodes = nc['znodes'][:].data
+                    lat = nc['latitude'][:].data
+                    lon = nc['longitude'][:].data
+                    read_grid = False
+                # Input data is in the order (t, z, y, x)
+                concentration = np.swapaxes(nc[gas_name][0].data, 0, 2)
+                gases.append(Gas(gas_name,
+                                 nc[gas_name].source,
+                                 nc[gas_name].emission_in_kgps,
+                                 concentration))
         return cls('', dx, dy, dz, x, y, z, lat, lon, znodes, gases)
 
     def get_gas(self, name: str) -> Gas:

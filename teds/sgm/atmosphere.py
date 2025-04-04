@@ -366,7 +366,8 @@ def combine_meteo_standard_atm(meteo: Meteo,
         idx = len(atm.zlev) - np.searchsorted(
             atm.zlev[::-1], meteo.znodes[-1], side='right')
         if atm.zlev[idx] != np.max(meteo.znodes):
-            log.error('atm and MicroHH vertical grids not aligned')
+            log.error('Atmosphere and MicroHH vertical grids not aligned. '
+                      f'Set layer_thickness to a multiple of {meteo.dz}')
             exit(1)
         # Define a mask for vertical integration of MicroHH data
         ztop = atm.zlev[idx: n_lay]

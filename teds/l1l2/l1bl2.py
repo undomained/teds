@@ -18,7 +18,6 @@ import yaml
 from teds.lib import libINV
 from teds.lib import libRT
 from teds.lib.convolution import Kernel
-from teds.lib.convolution import KernelGauss
 from teds.lib.libWrite import writevariablefromname
 from teds.sgm import atmosphere
 
@@ -388,7 +387,7 @@ def level1b_to_level2_processor(config, sw_diag_output = False):
                     retrieval_init['trace gases']['CH4']['ref_profile'] = atm.CH4
                     retrieval_init['trace gases']['H2O']['ref_profile'] = atm.H2O
                 elif (config['retrieval_init']['sw_prof_init'] == 'sgm'):
-                    retrieval_init['trace gases']['CO2']['ref_profile'] = atm_sgm['dcol_co2'][ialt, iact, :]#*xco2_ref/xco2
+                    retrieval_init['trace gases']['CO2']['ref_profile'] = atm_sgm['dcol_co2'][ialt, iact, :]
                     retrieval_init['trace gases']['CH4']['ref_profile'] = atm_sgm['dcol_ch4'][ialt, iact, :]
                     retrieval_init['trace gases']['H2O']['ref_profile'] = atm_sgm['dcol_h2o'][ialt, iact, :]
                 else:
@@ -491,7 +490,3 @@ def level2_nan(retrieval_init, nlay):
     output['XH2O col avg kernel'] = np.zeros(nlay)
 
     return(output)
-    
-if __name__ == '__main__':
-    config = yaml.safe_load(open(sys.argv[1]))
-    level1b_to_level2_processor(config)

@@ -105,3 +105,7 @@ io_files:
   # Files with meteorological (MicroHH) data. If empty then only the
   # AFGL standard atmosphere is used.
   meteo: []
+  # U function for the heterogeneous ISRF. If present, the
+  # heterogeneous ISRF is generated and saved in the SGM radiance
+  # file.
+  isrf_U: ""

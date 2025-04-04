@@ -55,11 +55,23 @@ auto ISRF::fromFile(const std::string& filename,
     const netCDF::NcFile nc { filename, netCDF::NcFile::read };
     std::vector<double> wavelengths {};
     std::vector<double> isrf {};
-    const auto n_wavelengths { nc.getDim("wavelength").getSize() };
-    wavelengths.resize(n_wavelengths);
-    isrf.resize(n_wavelengths);
-    nc.getVar("wavelength").getVar(wavelengths.data());
-    nc.getVar("isrf").getVar(isrf.data());
+    if (const auto grp { nc.getGroup("isrf") }; grp.isNull()) {
+        spdlog::info("  Reading homogeneous ISRF");
+        const auto n_wavelengths { nc.getDim("wavelength").getSize() };
+        wavelengths.resize(n_wavelengths);
+        isrf.resize(n_wavelengths);
+        nc.getVar("wavelength").getVar(wavelengths.data());
+        nc.getVar("isrf").getVar(isrf.data());
+    } else {
+        spdlog::info("  Reading heterogenous ISRF");
+        const auto n_alt { nc.getDim("along_track_sample").getSize() };
+        const auto n_act { nc.getDim("across_track_sample").getSize() };
+        const auto n_wavelengths { grp.getDim("wavelength").getSize() };
+        wavelengths.resize(n_wavelengths);
+        isrf.resize(n_alt * n_act * n_wavelengths);
+        grp.getVar("wavelength").getVar(wavelengths.data());
+        grp.getVar("isrf").getVar(isrf.data());
+    }
     *this = ISRF(wavelengths, isrf, wavelengths_in, wavelengths_out);
 }
 

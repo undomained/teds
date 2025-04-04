@@ -22,8 +22,6 @@ namespace tango {
 auto applyISRF(const CKD& ckd,
                const bool enabled,
                const ISRF& isrf,
-               const double fwhm_gauss,
-               const double shape,
                const std::string& sgm_filename,
                L1& l1_prod) -> void
 {

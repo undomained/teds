@@ -9,7 +9,6 @@ namespace tango {
 
 auto SettingsIM::scanKeys() -> void
 {
-    scan(instrument);
     scan(processing_version);
     scan(cal_level);
     scan(alt_beg);

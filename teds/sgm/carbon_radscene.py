@@ -1,12 +1,15 @@
 # This source code is licensed under the 3-clause BSD license found in
 # the LICENSE file in the root directory of this project.
 from dataclasses import dataclass
+from netCDF4 import Dataset
+from scipy.interpolate import CubicSpline
 from tqdm import tqdm
 from xarray import DataArray
 import numpy as np
 import numpy.typing as npt
 import os
 import pickle
+import sys
 
 from .atmosphere import Atmosphere
 from .io import read_atmosphere_and_albedo
@@ -70,6 +73,10 @@ def check_config(config: dict) -> None:
         check_file_presence(config['io_files']['isrf'], 'ISRF')
     if config['alt_end']:
         config['alt_end'] += 1
+    if config['io_files']['isrf_U'] and not config['sedf']['enabled']:
+        log.error(f"If isrf_U ({config['io_files']['isrf_U']}) is present the "
+                  "SEDF must be enabled (set [sedf][enabled] to true)")
+        sys.exit(1)
 
 
 def gen_sedf(config: dict, geometry: Geometry) -> KernelGauss2D:
@@ -105,6 +112,30 @@ def gen_sedf(config: dict, geometry: Geometry) -> KernelGauss2D:
     dx_grid = config['fwhm_x'] / dx
     return KernelGauss2D(
         dx_grid, dy_grid, config['shape_x'], config['shape_y'])
+
+
+def build_hetero_isrf(U_filename: str,
+                      albedo: npt.NDArray[np.float64],
+                      bin_alt: int) -> DataArray:
+    nc_U = Dataset(U_filename)
+    U = nc_U['U'][::-1, :].data
+    wavelengths = nc_U['wavelength'][:].data
+    isrf = DataArray(np.empty(((albedo.shape[0]) // bin_alt,
+                               albedo.shape[1], len(wavelengths))),
+                     dims=('alt_bin', 'act_bin', 'wavelength'),
+                     coords={'wavelength': wavelengths})
+    for i_alt in tqdm(range(isrf.shape[0])):
+        for i_act in range(isrf.shape[1]):
+            albedo_alt_beg = i_alt * bin_alt
+            albedo_alt_end = albedo_alt_beg + bin_alt
+            albedo_slice = albedo[albedo_alt_beg:albedo_alt_end, i_act]
+            indices = np.arange(0, len(albedo_slice), 1.0)
+            indices_interp = np.linspace(
+                0, len(albedo_slice)-1, len(wavelengths))
+            albedo_interp = CubicSpline(indices, albedo_slice)(indices_interp)
+            isrf[i_alt, i_act, :] = (albedo_interp * U).sum(axis=0)
+            isrf[i_alt, i_act, :] /= isrf[i_alt, i_act, :].sum()
+    return isrf
 
 
 def reduce_alt_act_dimension(geometry: Geometry,
@@ -305,6 +336,14 @@ def carbon_radiation_scene_generation(config_user: dict) -> None:
     n_alt, n_act = geometry.lat.shape
     reduce_alt_act_dimension(
         geometry, albedo, atm, m_alt, n_alt-m_alt, m_act, n_act-m_act)
+
+    # Construct the heterogeneous ISRF if requested
+    hetero_isrf = DataArray()
+    if config['io_files']['isrf_U']:
+        log.info('Generating heterogeneous ISRF')
+        hetero_isrf = build_hetero_isrf(
+            config['io_files']['isrf_U'], albedo, bin_alt)
+
     # Also bin the data to normal geometry size
     atm, albedos, geometry = bin_alt_act(
         bin_alt, bin_act, atm, albedo, geometry)
@@ -441,6 +480,7 @@ def carbon_radiation_scene_generation(config_user: dict) -> None:
                     radiance_lbl[i_act, :])
 
     log.info('Writing output')
-    write_radiance(config['io_files']['radiance'], config, rad_output)
+    write_radiance(
+        config['io_files']['radiance'], config, rad_output, hetero_isrf)
 
     print_heading('Success')

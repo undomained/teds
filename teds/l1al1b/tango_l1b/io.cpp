@@ -222,9 +222,9 @@ auto readL1(const std::string& filename,
     spdlog::info("Input data calibration level: {}",
                  procLevelToString(l1_prod.level));
 
-    const size_t n_alt { alt_end.value_or(
-                           nc.getDim("along_track_sample").getSize() - 1)
-                         + 1 - alt_beg };
+    const size_t nc_n_alt { nc.getDim("along_track_sample").getSize() };
+    const size_t n_alt { std::min(alt_end.value_or(nc_n_alt - 1) + 1 - alt_beg,
+                                  nc_n_alt) };
     l1_prod.n_alt = static_cast<int>(n_alt);
     spdlog::info("Number of along-track bins: {}", n_alt);
 

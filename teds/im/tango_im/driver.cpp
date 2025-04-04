@@ -70,13 +70,8 @@ auto driver(const SettingsIM& settings,
     if (l1_prod.level == ProcLevel::sgm
         && settings.cal_level <= ProcLevel::sgm) {
         spdlog::info("ISRF convolution");
-        applyISRF(ckd,
-                  settings.isrf.enabled,
-                  isrf,
-                  settings.isrf.fwhm,
-                  settings.isrf.shape,
-                  settings.io_files.sgm,
-                  l1_prod);
+        applyISRF(
+          ckd, settings.isrf.enabled, isrf, settings.io_files.sgm, l1_prod);
     }
     // Radiometric
     if (l1_prod.level >= ProcLevel::l1b

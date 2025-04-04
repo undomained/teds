@@ -243,7 +243,8 @@ def write_atmosphere_ref(filename: str,
                      geometry_binned)
 
 
-def write_radiance(filename: str, config: dict, rad: L1) -> None:
+def write_radiance(
+        filename: str, config: dict, rad: L1, hetero_isrf: DataArray) -> None:
     """Write SGM radiances to NetCDF file."""
     default_fill = -32767
     n_alt, n_act, n_wav = rad.spectra.shape
@@ -289,6 +290,23 @@ def write_radiance(filename: str, config: dict, rad: L1) -> None:
     var[:] = rad.spectra
 
     nc_write_geometry(nc, rad.geometry, False)
+
+    if hetero_isrf.shape:
+        grp = nc.createGroup('isrf')
+        grp.description = ('ALT and ACT dependent ISRF due to inhomogeneous '
+                           'slit illumination')
+        grp.createDimension('wavelength', len(hetero_isrf.wavelength.data))
+        var = grp.createVariable('wavelength', 'f8', 'wavelength')
+        var.min_value = -100.0
+        var.max_value = 100.0
+        var.units = 'nm'
+        var[:] = hetero_isrf.wavelength.data
+        var = grp.createVariable('isrf', 'f8', ('along_track_sample',
+                                                'across_track_sample',
+                                                'wavelength'))
+        var.min_value = 0.0
+        var.max_value = 1.0
+        var[:] = hetero_isrf.data
 
     nc.close()
 

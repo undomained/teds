@@ -175,6 +175,7 @@ def reduce_alt_act_dimension(geometry: Geometry,
     for gas in atm.gases:
         gas.concentration = gas.concentration[
             alt_beg:alt_end, act_beg:act_end, ...]
+    atm.air = atm.air[alt_beg:alt_end, act_beg:act_end, ...]
 
 
 def get_geometry_margins_and_multipliers(
@@ -216,14 +217,17 @@ def get_geometry_margins_and_multipliers(
     return m_alt, m_act, bin_alt, bin_act
 
 
-def bin_alt_act(bin_alt: int,
-                bin_act: int,
-                atm: Atmosphere,
-                albedo: npt.NDArray[np.float64],
-                geometry: Geometry) -> tuple[Atmosphere,
-                                             list[DataArray],
-                                             Geometry]:
-    """Bin array in both ALT and ACT dimensions.
+def resample_alt_act(bin_alt: int,
+                     bin_act: int,
+                     atm: Atmosphere,
+                     albedo: npt.NDArray[np.float64],
+                     geometry: Geometry) -> tuple[Atmosphere,
+                                                  list[DataArray],
+                                                  Geometry]:
+    """Resample arrays in both ALT and ACT dimensions.
+
+    Because the data are already convolved we should not bin but
+    instead resample to a coarser grid.
 
     Parameters
     ----------
@@ -240,53 +244,38 @@ def bin_alt_act(bin_alt: int,
 
     """
     n_alt, n_act, n_lay = atm.get_gas('co2').concentration.shape
-    n_alt_binned = int(n_alt // bin_alt)
-    n_act_binned = int(n_act // bin_act)
-
-    def bin_data(arr: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
-        """Bin array in both ALT and ACT dimensions."""
-        shape = np.array(arr.shape, dtype=int)
-        shape[1] = n_act_binned
-        arr_binned_act = np.empty(shape)
-        for i in range(n_act_binned):
-            beg, end = i*bin_act, min(n_act, (i+1)*bin_act)
-            arr_binned_act[:, i, ...] = np.mean(arr[:, beg:end, ...], axis=1)
-        shape[0] = n_alt_binned
-        arr_binned = np.empty(shape)
-        for i in range(n_alt_binned):
-            beg, end = min(n_alt, i*bin_alt), (i+1)*bin_alt
-            arr_binned[i, ...] = np.mean(arr_binned_act[beg:end, ...], axis=0)
-        return arr_binned
+    n_alt_resamp = int(n_alt // bin_alt)
+    n_act_resamp = int(n_act // bin_act)
 
     # Geometry
-    geometry_binned = Geometry.from_shape((n_alt_binned, n_act_binned))
-    geometry_binned.lat[:] = bin_data(geometry.lat)
-    geometry_binned.lon[:] = bin_data(geometry.lon)
-    geometry_binned.height[:] = bin_data(geometry.height)
-    geometry_binned.sza[:] = bin_data(geometry.sza)
-    geometry_binned.saa[:] = bin_data(geometry.saa)
-    geometry_binned.vza[:] = bin_data(geometry.vza)
-    geometry_binned.vaa[:] = bin_data(geometry.vaa)
+    geometry_resamp = Geometry.from_shape((n_alt_resamp, n_act_resamp))
+    geometry_resamp.lat[:] = geometry.lat[::bin_alt, ::bin_act]
+    geometry_resamp.lon[:] = geometry.lon[::bin_alt, ::bin_act]
+    geometry_resamp.height[:] = geometry.height[::bin_alt, ::bin_act]
+    geometry_resamp.sza[:] = geometry.sza[::bin_alt, ::bin_act]
+    geometry_resamp.saa[:] = geometry.saa[::bin_alt, ::bin_act]
+    geometry_resamp.vza[:] = geometry.vza[::bin_alt, ::bin_act]
+    geometry_resamp.vaa[:] = geometry.vaa[::bin_alt, ::bin_act]
 
     # Atmosphere
-    atm_binned = Atmosphere.from_empty()
-    atm_binned.zlay = atm.zlay
-    atm_binned.zlev = atm.zlev
+    atm_resamp = Atmosphere.from_empty()
+    atm_resamp.zlay = atm.zlay
+    atm_resamp.zlev = atm.zlev
     for gas in atm.gases:
-        atm_binned.gases.append(Gas(gas.name,
+        atm_resamp.gases.append(Gas(gas.name,
                                     gas.source,
                                     gas.emission_in_kgps,
-                                    bin_data(gas.concentration)))
-    atm_binned.air = bin_data(atm.air)
+                                    gas.concentration[::bin_alt, ::bin_act]))
+    atm_resamp.air = atm.air[::bin_alt, ::bin_act]
 
     # Albedo
-    albedo_binned = DataArray(bin_data(albedo), dims=('y', 'x'))
-    albedo_binned.attrs['band_label'] = 'B11'
-    albedo_binned.attrs['central_wavelength'] = 1620
-    albedo_binned.attrs['bandwidth'] = '60'
-    albedo_binned.rio.write_crs('EPSG:4326', inplace=True)
-    albedos_binned = [albedo_binned]
-    return atm_binned, albedos_binned, geometry_binned
+    albedo_resamp = DataArray(albedo[::bin_alt, ::bin_act], dims=('y', 'x'))
+    albedo_resamp.attrs['band_label'] = 'B11'
+    albedo_resamp.attrs['central_wavelength'] = 1620
+    albedo_resamp.attrs['bandwidth'] = '60'
+    albedo_resamp.rio.write_crs('EPSG:4326', inplace=True)
+    albedos_resamp = [albedo_resamp]
+    return atm_resamp, albedos_resamp, geometry_resamp
 
 
 def carbon_radiation_scene_generation(config_user: dict) -> None:
@@ -329,6 +318,8 @@ def carbon_radiation_scene_generation(config_user: dict) -> None:
             for i_z in range(gas.concentration.shape[2]):
                 gas.concentration[:, :, i_z] = sedf.convolve(
                     gas.concentration[:, :, i_z])
+        for i_z in range(atm.air.shape[2]):
+            atm.air[:, :, i_z] = sedf.convolve(atm.air[:, :, i_z])
 
     # Regardless of whether that data was convolved, reduce geometry
     # to cover just the target area, i.e. the margins are not required
@@ -345,16 +336,16 @@ def carbon_radiation_scene_generation(config_user: dict) -> None:
             config['io_files']['isrf_U'], albedo, bin_alt)
 
     # Also bin the data to normal geometry size
-    atm, albedos, geometry = bin_alt_act(
+    atm, albedos, geometry = resample_alt_act(
         bin_alt, bin_act, atm, albedo, geometry)
-    albedo = albedos[0].data
+    albedo = 1.0 * albedos[0].data  # need a deep copy
 
     # Work with an ALT slice if requested by the user
     reduce_alt_act_dimension(
         geometry, albedo, atm, config['alt_beg'], config['alt_end'])
 
     log.info('Saving reference atmosphere (binned)')
-    atm_binned, albedos_binned, geometry_binned = bin_alt_act(
+    atm_binned, albedos_binned, geometry_binned = resample_alt_act(
         config['bin_alt'], config['bin_act'], atm, albedo, geometry)
     # Meteorological data (nothing to do here)
     meteo = Meteo.from_empty()

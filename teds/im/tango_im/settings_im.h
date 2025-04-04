@@ -40,6 +40,9 @@ public:
         "last along-track position to be processed (inclusive, counting\n"
         "starts at 0)",
     };
+    Setting<bool> compress { { "compress" },
+                             true,
+                             "whether to compress the L1A product" };
 
     struct
     {

@@ -89,6 +89,7 @@ auto readL1(const std::string& filename,
 auto writeL1(const std::string& filename,
              const std::string& config,
              const L1& l1_prod,
+             const bool compress,
              const int argc = 0,
              const char* const argv[] = nullptr) -> void;
 

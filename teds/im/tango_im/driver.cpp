@@ -160,7 +160,12 @@ auto driver(const SettingsIM& settings,
         digitalToAnalog(settings.detector.nr_coadditions, l1_prod);
     }
 
-    writeL1(settings.io_files.l1a, settings.getConfig(), l1_prod, argc, argv);
+    writeL1(settings.io_files.l1a,
+            settings.getConfig(),
+            l1_prod,
+            settings.compress,
+            argc,
+            argv);
 
     if (!settings.io_files.navigation.empty()) {
         copyNavigationData(settings.io_files.navigation, settings.io_files.l1a);

@@ -14,6 +14,7 @@ auto SettingsL1B::scanKeys() -> void
     scan(alt_beg);
     scan(alt_end);
     scan(bin_spectra);
+    scan(compress);
 
     scan(dark.enabled);
 

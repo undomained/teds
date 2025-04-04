@@ -13,6 +13,7 @@ auto SettingsIM::scanKeys() -> void
     scan(cal_level);
     scan(alt_beg);
     scan(alt_end);
+    scan(compress);
 
     scan(detector.binning_table_id);
     scan(detector.exposure_time);

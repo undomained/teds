@@ -332,6 +332,7 @@ auto readL1(const std::string& filename,
 auto writeL1(const std::string& filename,
              const std::string& config,
              const L1& l1_prod,
+             const bool compress,
              const int argc,
              const char* const argv[]) -> void
 {
@@ -461,9 +462,11 @@ auto writeL1(const std::string& filename,
             nc_var.putAtt("units", "counts");
             nc_var.putAtt("valid_min", netCDF::ncInt, 0);
             nc_var.putAtt("valid_max", netCDF::ncInt, 60000);
-            nc_var.setCompression(true, true, compression_level);
-            std::vector<size_t> chunksize { 1, n_bins };
-            nc_var.setChunking(netCDF::NcVar::nc_CHUNKED, chunksize);
+            if (compress) {
+                nc_var.setCompression(true, true, compression_level);
+                std::vector<size_t> chunksize { 1, n_bins };
+                nc_var.setChunking(netCDF::NcVar::nc_CHUNKED, chunksize);
+            }
             nc_var.putVar(l1_prod.signal.data());
         } else {
             nc_var = nc_grp.addVar(
@@ -507,8 +510,10 @@ auto writeL1(const std::string& filename,
         nc_var.putAtt("valid_min", netCDF::ncDouble, 0.0);
         nc_var.putAtt("valid_max", netCDF::ncDouble, 1e20);
         std::vector<size_t> chunksize { 1, n_act, n_wavelength };
-        nc_var.setCompression(true, true, compression_level);
-        nc_var.setChunking(netCDF::NcVar::nc_CHUNKED, chunksize);
+        if (compress) {
+            nc_var.setCompression(true, true, compression_level);
+            nc_var.setChunking(netCDF::NcVar::nc_CHUNKED, chunksize);
+        }
         nc_var.putVar(l1_prod.spectra.data());
 
         if (!l1_prod.spectra_noise.empty()) {
@@ -521,8 +526,10 @@ auto writeL1(const std::string& filename,
             nc_var.putAtt("units", "nm-1 s-1 sr-1 m-2");
             nc_var.putAtt("valid_min", netCDF::ncDouble, 0.0);
             nc_var.putAtt("valid_max", netCDF::ncDouble, 1e20);
-            nc_var.setCompression(true, true, compression_level);
-            nc_var.setChunking(netCDF::NcVar::nc_CHUNKED, chunksize);
+            if (compress) {
+                nc_var.setCompression(true, true, compression_level);
+                nc_var.setChunking(netCDF::NcVar::nc_CHUNKED, chunksize);
+            }
             nc_var.putVar(l1_prod.spectra_noise.data());
         }
     }

@@ -50,6 +50,9 @@ public:
         1,
         "reduce the number of L1B spectra by averaging over this many spectra"
     };
+    Setting<bool> compress { { "compress" },
+                             true,
+                             "whether to compress the L1B product" };
 
     struct
     {

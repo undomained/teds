@@ -133,7 +133,12 @@ auto driver(const SettingsL1B& settings,
         binL1B(settings.bin_spectra, l1_prod);
     }
 
-    writeL1(settings.io_files.l1b, settings.getConfig(), l1_prod, argc, argv);
+    writeL1(settings.io_files.l1b,
+            settings.getConfig(),
+            l1_prod,
+            settings.compress,
+            argc,
+            argv);
 
     timer.stop();
     spdlog::info("Total time: {:8.3f} s", timer.time());

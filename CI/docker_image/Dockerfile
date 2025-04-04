@@ -29,7 +29,7 @@ RUN export DEBCONF_NOWARNINGS=yes \
     wget \
     liblapack-dev \
     libeigen3-dev \
-    libhdf5-dev
+    libnetcdf-c++4-dev
 ENV LANGUAGE=en_US.UTF-8 LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
 
 FROM builder-ubuntu AS builder-science

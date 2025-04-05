@@ -210,7 +210,8 @@ class Atmosphere:
         return atm
 
     def get_gas(self, name: str) -> Gas:
-        res = list(filter(lambda x: x.name == name, self.gases))
+        res = list(filter(lambda x: x.name.lower() == name.lower(),
+                          self.gases))
         if not res:
             log.error(f'object does not contain {name}')
             exit(1)

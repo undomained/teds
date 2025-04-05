@@ -1,141 +1,83 @@
-#==============================================================================
-#   library with radiative transfer tools
-#   This source code is licensed under the 3-clause BSD license found in
-#   the LICENSE file in the root directory of this project.
-#==============================================================================
-
-import os
-import io
-import numpy as np
-import netCDF4 as nc
+# This source code is licensed under the 3-clause BSD license found in
+# the LICENSE file in the root directory of this project.
+"""Radiative transfer methods"""
 from contextlib import redirect_stdout
-from contextlib import nullcontext
-from time import sleep
+from dataclasses import dataclass
+from netCDF4 import Dataset
 from tqdm import tqdm
+import io
+import netCDF4 as nc
+import numpy as np
+import numpy.typing as npt
+import os
 import sys
 import time
 
 from .hapi import db_begin, fetch_by_ids, absorptionCoefficient_Voigt
-# import hapi as hp
-
-trap = io.StringIO()
-debug = 0
-###########################################################
-# Some global constants
-hplanck = 6.62607015E-34  # Planck's constant [Js]
-kboltzmann = 1.380649E-23  # Boltzmann's constant [J/K]
-clight = 2.99792458E8     # Speed of light [m/s]
-e0 = 1.6021766E-19      # Electron charge [C]
-g0 = 9.80665            # Standard gravity at ground [m/s2]
-NA = 6.02214076E23      # Avogadro number [#/mol]
-Rgas = 8.314462           # Universal gas constant [J/mol/K]
-XO2 = 0.2095             # Molecular oxygen mole fraction [-]
-XCH4 = 1.8E-6             # std CH4 volume mixing ratio 1800 ppb
-MDRYAIR = 28.9647E-3      # Molar mass dry air [kg/mol]
-MH2O = 18.01528E-3        # Molar mass water [kg/mol]
-MCO2 = 44.01E-3           # Molar mass CO2 [kg/mol]
-MCH4 = 16.04E-3           # Molar mass CH4 [kg/mol]
-LH2O = 2.5E6              # Latent heat of condensation for water [J/kg]
-PSTD = 101325             # Standard pressure [Pa]
-
-###########################################################
+from teds import log
+from teds.sgm.atmosphere import Atmosphere
+import teds.lib.constants as const
 
 
-def set_debuglevel(i):
-    global debug
-    debug = i
-    return
+def read_sun_spectrum_TSIS1HSRS(filename: str) -> tuple[
+        npt.NDArray[np.float64], npt.NDArray[np.float64]]:
+    """Read sun spectrum TSIS-1 HSRS.
 
-###########################################################
+    Downloaded from https://lasp.colorado.edu/lisird/data/tsis1_hsrs,
+    Coddington et al., GRL, 2021, https://doi.org/10.1029/2020GL091709
 
+    Parameters
+    ----------
+    filename
+        Path to solar spectrum
 
-def read_sun_spectrum_S5P(filename):
+    Returns
+    -------
+    out: dictionary with wavelength [nm], irradiance [W m-2 nm-1]
+
     """
-    # Read sun spectrum Sentinel-5 Precursor (S5P) format
-    #
-    # in: filepath to solar spectrum
-    # out: dictionary with wavelength [nm], irradiance [mW nm-1 m-2], irradiance [ph s-1 cm-2 nm-1]
-    """
-    # check whether input is in range
-    
-    if not os.path.exists(filename):
-        print("ERROR! read_spectrum_S5P: filename does not exist.")
-        sys.exit()
-    # Read data from file
-    raw = np.genfromtxt(filename, skip_header=42, unpack=True)
-
-    # Write sun spectrum in dictionary
-    sun = {}
-    sun['wl'] = raw[0, :]
-    sun['mWnmm2'] = raw[1, :]
-    sun['phscm2nm'] = raw[2, :]
-
-    return sun
-
-###########################################################
-
-
-def read_sun_spectrum_TSIS1HSRS(filename):
-    """
-    # Read sun spectrum TSIS-1 HSRS, downloaded from 
-    # https://lasp.colorado.edu/lisird/data/tsis1_hsrs, 
-    # Coddington et al., GRL, 2021, https://doi.org/10.1029/2020GL091709
-    # NETCDF format: 'pip install netCDF4'
-    #
-    # in: filepath to solar spectrum
-    # out: dictionary with wavelength [nm], irradiance [W m-2 nm-1]
-    """
-    # check whether input is in range
-    if not os.path.exists(filename):
-        print("ERROR! read_spectrum_TSIS1HSRS: filename does not exist.")
-        sys.exit(filename)
-
-    # Open netcdf file
     ds = nc.Dataset(filename)
-    # print(ds.variables)
-
-    # Write sun spectrum in dictionary
-    sun = {}
-    sun['Wm2nm'] = ds['SSI'][:]  # Solar spectral irradiance [W m-2 nm-1]
-    sun['wl'] = ds['Vacuum Wavelength'][:]  # Vacuum Wavelength [nm]
-    sun['phsm2nm'] = ds['SSI'][:]/(hplanck*clight)*sun['wl']*1E-9
-
-    ds.close
-
-    return sun
+    wavelengths = ds['Vacuum Wavelength'][:].data
+    return (wavelengths,
+            ds['SSI'][:] / (const.hplanck * const.clight) * wavelengths * 1e-9)
 
 
-def interpolate_sun(sun, wave_lbl):
-    spectra = sun['phsm2nm']  # photons/(cm2 nm)
-    wave_sun = sun['wl'][:]
-    sun_lbl = np.interp(wave_lbl, wave_sun, spectra)
-    # later the first guess of the albedo
-    return sun_lbl
+def transmission(sun_lbl: npt.NDArray[np.float64],
+                 optics,
+                 surface,
+                 mu0: float,
+                 muv: float,
+                 deriv: bool = False) -> npt.NDArray[np.float64]:
+    """Calculate transmission solution given geometry (mu0,muv) using
+    matrix algebra
 
-############################ß###############################
+    Parameters
+    ----------
+    sun_lbl
+        Solar irradiance spectrum
+    optics
+        optic_prop object
+    surface
+        surface_prop object
+    mu0
+        cosine of the solar zenith angle [-]
+    muv
+        cosine of the viewing zenith angle [-]
 
+    Returns
+    -------
+        Single scattering relative radiance [wavelength] [1/sr]
 
-def transmission(sun_lbl, optics, surface, mu0, muv, deriv=False):
     """
-    # Calculate transmission solution given
-    # geometry (mu0,muv) using matrix algebra
-    #
-    # arguments:
-    #            optics: optic_prop object
-    #            surface: surface_prop object
-    #            mu0: cosine of the solar zenith angle [-]
-    #            muv: cosine of the viewing zenith angle [-]
-    # returns:
-    #            rad_trans: single scattering relative radiance [wavelength] [1/sr]
-    """
-    if not(0. <= mu0 <= 1. and -1. <= muv <= 1.):
-        sys.exit("ERROR! transmission: input out of range.")
+    if not (0 <= mu0 <= 1 and -1 <= muv <= 1):
+        log.error('transmission: input out of range')
+        sys.exit(1)
 
     # Number of wavelengths and layers
-    nwave = optics.prop['taua'][:, 0].size
+    nwave = optics.taua[:, 0].size
 
     # Total vertical optical thickness per layer (Delta tau_k) [nwave,nlay]
-    tauk = optics.prop['taua']
+    tauk = optics.taua
     # total optical thickness per spectral bin [nwave]
     tautot = np.zeros([nwave])
     tautot[:] = np.sum(tauk, axis=1)
@@ -154,13 +96,11 @@ def transmission(sun_lbl, optics, surface, mu0, muv, deriv=False):
     else:
         return rad_trans
 
-############################################################
-
 
 def nonscat_fwd_model(isrf_convolution, sun_lbl,
                       atm,  optics, surface, mu0, muv, dev=None):
 
-    species = [spec for spec in dev if spec[0:5] == 'molec']
+    species = list(filter(lambda x: x in ('CO2', 'CH4', 'H2O'), dev))
 
     runtime = {}
     time1 = time.time()
@@ -170,13 +110,14 @@ def nonscat_fwd_model(isrf_convolution, sun_lbl,
     deriv = True
 
     time1 = time.time()
-    rad_lbl, dev_tau_lbl, dev_alb_lbl = transmission(sun_lbl, optics, surface, mu0, muv, deriv)
+    rad_lbl, dev_tau_lbl, dev_alb_lbl = transmission(
+        sun_lbl, optics, surface, mu0, muv, deriv)
     runtime['rtm'] = time.time()-time1
 
     time1 = time.time()
     fwd = {}
 
-    fwd['rad']  = isrf_convolution(rad_lbl)
+    fwd['rad'] = isrf_convolution(rad_lbl)
     fwd['rad_lbl'] = rad_lbl
     fwd['alb0'] = isrf_convolution(dev_alb_lbl)
     fwd['alb1'] = isrf_convolution(dev_alb_lbl*surface.spec)
@@ -184,146 +125,156 @@ def nonscat_fwd_model(isrf_convolution, sun_lbl,
     fwd['alb3'] = isrf_convolution(dev_alb_lbl*surface.spec**3)
 
     runtime['conv'] = time.time()-time1
-    
+
     time1 = time.time()
     nwave = fwd['rad'].size
-    nlay = optics.prop[species[0]]['taualt'][0, :].size
+    nlay = optics.get_prop(species[0]).tau_alt[0, :].size
 
     for spec in species:
-        # derivative with respect to a scaling of the total optical depth
-        fwd[spec] = isrf_convolution(np.sum(optics.prop[spec]['taualt'], axis=1)*dev_tau_lbl)
-        # derivative with respect to a scaling of the layer optical deoth
+        # Derivative with respect to a scaling of the total optical depth
+        fwd[spec] = isrf_convolution(
+            np.sum(optics.get_prop(spec).tau_alt, axis=1) * dev_tau_lbl)
+        # Derivative with respect to a scaling of the layer optical deoth
         fwd['layer_'+spec] = np.zeros((nwave, nlay))
-        for klay in range(optics.prop[spec]['taualt'][0, :].size):
-            fwd['layer_'+spec][:, klay] = isrf_convolution(optics.prop[spec]['taualt'][:, klay]*dev_tau_lbl)
+        for klay in range(optics.get_prop(spec).tau_alt[0, :].size):
+            fwd['layer_'+spec][:, klay] = isrf_convolution(
+                optics.get_prop(spec).tau_alt[:, klay] * dev_tau_lbl)
     runtime['kern'] = time.time()-time1
-    return fwd,runtime
-
-###########################################################
+    return fwd, runtime
 
 
-class molecular_data:
+class MolecularData:
+    """Methods for calculating the absorption cross sections of
+    molecular absorbers
+
     """
-    # The molecular_data class collects method for calculating
-    # the absorption cross sections of molecular absorbers
-    #
-    # CONTAINS
-    # method __init__(self,wave)
-    # method get_data_HITRAN(self,xsdbpath, hp_ids)
-    """
-    ###########################################################
+    def __init__(self,
+                 wave: npt.NDArray[np.float64],
+                 xsdbpath: str,
+                 hp_ids: list[tuple[str, int]]) -> None:
+        """Download line parameters from HITRAN web ressource via the
+         hapi tools.
 
-    def __init__(self, wave):
+        Populates paths to HITRAN parameter files
+
+        Parameters
+        ----------
+        wave
+            Wavelengths [nm]
+        xsdbpath
+            Path to location where to store the absorption data
+        hp_ids
+            list of isotopologue ids, format [(name1, id1),(name2,
+            id2) ...]  (see hp.gethelp(hp.ISO_ID))
+
         """
-        # init class
-        #
-        # arguments: 
-        #            wave: array of wavelengths [wavelength] [nm]
-        #            xsdb: dictionary with cross section data
-        """
-        self.xsdb = {}
         self.wave = wave
-
-    ###########################################################
-    def get_data_HITRAN(self, xsdbpath, hp_ids):
-        """
-        # Download line parameters from HITRAN web ressource via
-        # the hapi tools, needs hapy.py in the same directory
-        #
-        # arguments: 
-        #            xsdbpath: path to location where to store the absorption data
-        #            hp_ids: list of isotopologue ids, format [(name1, id1),(name2, id2) ...]
-        #                    (see hp.gethelp(hp.ISO_ID))
-        # returns:   
-        #            xsdb[id][path]: dictionary with paths to HITRAN parameter files
-        """
+        # Cross section data
+        self.xsdb = {}
         # Check whether input is in range
-        while True:
-            if len(hp_ids) > 0:
-                break
-            else:
-                print("ERROR! molecular_data.get_data_HITRAN: provide at least one species.")
-                sys.exit()
+        if len(hp_ids) == 0:
+            log.error('MolecularData.get_data_HITRAN: provide at least '
+                      'one species.')
+            sys.exit()
 
-        with redirect_stdout(trap) if debug < 2 else nullcontext():  # ignore output for debuglevel<2
+        with redirect_stdout(io.StringIO()):
             db_begin(xsdbpath)
 
         wv_start = self.wave[0]
         wv_stop = self.wave[-1]
-        # hp.gethelp(hp.ISO_ID)
         for id in hp_ids:
             key = '%2.2d' % id[1]
             self.xsdb[key] = {}
             self.xsdb[key]['species'] = id[0]
-            # write 1 file per isotopologue
-            self.xsdb[key]['name'] = 'ID%2.2d_WV%5.5d-%5.5d' % (id[1], wv_start, wv_stop)
+            # Write 1 file per isotopologue
+            self.xsdb[key]['name'] = (
+                'ID%2.2d_WV%5.5d-%5.5d' % (id[1], wv_start, wv_stop))
             # Check if data files are already inplace, if not: download
-            if (not os.path.exists(os.path.join(xsdbpath, self.xsdb[key]['name']+'.data')) and not os.path.exists(os.path.join(xsdbpath, self.xsdb[key]['name']+'.header'))):
-                # wavelength input is [nm], hapi requires wavenumbers [1/cm]
-                fetch_by_ids(self.xsdb[key]['name'], [id[1]], 1.E7/wv_stop, 1.E7/wv_start)
+            if (not os.path.exists(
+                    os.path.join(xsdbpath, self.xsdb[key]['name']+'.data'))
+                and not os.path.exists(
+                    os.path.join(xsdbpath, self.xsdb[key]['name']+'.header'))):
+                # Wavelength input is [nm], hapi requires wavenumbers [1/cm]
+                fetch_by_ids(self.xsdb[key]['name'],
+                             [id[1]],
+                             1e7 / wv_stop,
+                             1e7 / wv_start)
 
-###########################################################
+
+@dataclass
+class SpeciesProperties:
+    """Absorption properties pertaining to a given species."""
+    # Species name, e.g. CO2
+    name: str
+    # Absorption cross-section
+    xsec: npt.NDArray[np.float64]
+    # Optical thickness (xsec * rho where rho is concentration at some
+    # altitude). Depends on wavelength and altitude.
+    tau_alt: npt.NDArray[np.float64]
 
 
-class optic_abs_prop:
+class OpticAbsProp:
+    """Methods to calculate optical scattering and absorption
+    properties of single-scattering atmosphere.
+
     """
-    # The optic_ssc_prop class collects methods to
-    # calculate optical scattering and absorption
-    # properties of the single scattering atmosphere
-    #
-    # CONTAINS
-    # method __init__(self, wave, zlay)
-    # method cal_isoflat(self, atmosphere, taus_prior, taua_prior)
-    # method cal_rayleigh(self, rayleigh, atmosphere, mu0, muv, phi)
-    # method combine(self)
-    """
 
-    def __init__(self, wave, zlay):
-        """
-        # init class
-        #
-        # arguments:
-        #            prop: dictionary of contributing phenomena
-        #            prop[wave]: array of wavelengths [wavelength] [nm]
-        #            prop[zlay]: array of vertical height layers, midpoints [nlay] [m]
-        """
-        self.prop = {}
+    def __init__(self, wave:
+                 npt.NDArray[np.float64],
+                 zlay: npt.NDArray[np.float64]) -> None:
+        # Optical properties. One entry per species.
+        self.props: list[SpeciesProperties] = []
+        # Total optical thickness
+        self.taua = np.empty(())
+        # Wavelengths [nm]
         self.wave = wave
+        # Vertical height layers, midpoints [m]
         self.zlay = zlay
 
-    def cal_molec_xsec(self, molec_data, atm_data):
-        """
-        # Calculates molecular absorption cross sections
-        #
-        # arguments:
-        #            molec_data: molec_data object
-        #            atm_data: atmosphere_data object
-        # returns:
-        #            prop['molec_XX']: dictionary with optical properties with XXXX HITRAN identifier code
-        #            prop['molec_XX']['xsec']: absorption cross sections [wavelength, nlay] [cm2]
+    def get_prop(self, species: str) -> SpeciesProperties:
+        """Return x-section and optical thickness from species name."""
+        return list(filter(lambda x: x.name == species, self.props))[0]
+
+    def calc_molec_xsec(
+            self, molec_data: MolecularData, atm: Atmosphere) -> None:
+        """Calculate molecular absorption cross sections.
+
+        Populates
+        ---------
+        prop['molec_XX']
+            dictionary with optical properties with XXXX HITRAN
+            identifier code
+        prop['molec_XX']['xsec']
+            absorption cross sections [wavelength, nlay] [cm2]
+
+        Parameters
+        ----------
+        molec_data
+            molec_data object
+        atm_data
+            atmosphere_data object
+
         """
         nlay = self.zlay.size
         nwave = self.wave.size
         nu_samp = 0.005  # Wavenumber sampling [1/cm] of cross sections
         # Loop over all isotopologues, id = HITRAN global isotopologue ID
         for id in molec_data.xsdb.keys():
-            name = 'molec_'+id
             species = molec_data.xsdb[id]['species']
-            print(species)
-            # Write absorption optical depth [nwave,nlay] in dictionary / per isotopologue
-            self.prop[name] = {}
-            self.prop[name]['xsec'] = np.zeros((nwave, nlay))
-            self.prop[name]['species'] = species
+            log.info(f'Calculating absorption cross-section of {species}')
+            # Write absorption optical depth [nwave,nlay] in
+            # dictionary / per isotopologue
+            xsec = np.zeros((nwave, nlay))
             # Check whether absorber type is in the atmospheric data structure
 
             # Loop over all atmospheric layers
-            for ki in tqdm(range(len(atm_data.zlay))):
-                pi = atm_data.play[ki]
-                Ti = atm_data.tlay[ki]
+            for ki in tqdm(range(len(atm.zlay))):
+                pressure = atm.play[ki]
+                temp = atm.tlay[ki]
                 # Calculate absorption cross section for layer
                 nu, xs = absorptionCoefficient_Voigt(
                     SourceTables=molec_data.xsdb[id]['name'],
-                    Environment={'p': pi/PSTD, 'T': Ti},
+                    Environment={'p': pressure / const.PSTD, 'T': temp},
                     WavenumberStep=nu_samp)
                 dim_nu = nu.size
                 nu_ext = np.insert(nu, 0, nu[0]-nu_samp)
@@ -331,15 +282,14 @@ class optic_abs_prop:
                 xs_ext = np.insert(xs, 0, 0.)
                 xs_ext = np.append(xs_ext, 0.)
                 # Interpolate on wavelength grid provided on input
-                self.prop[name]['xsec'][:, ki] = np.interp(
-                    self.wave, np.flip(1E7/nu_ext), np.flip(xs_ext))
+                xsec[:, ki] = np.interp(
+                    self.wave, np.flip(1e7 / nu_ext), np.flip(xs_ext))
+            self.props.append(SpeciesProperties(species, xsec, np.empty(())))
 
-    def set_opt_depth_species(self, atm, species):
+    def set_opt_depth_species(
+            self, atm: Atmosphere, species_names: list[str]) -> None:
         """Calculate absorption optical depth from the various species
         and combines those as specified.
-
-        prop[taua] is total absorption optical thickness array
-        [wavelength, nlay] [-].
 
         Parameters
         ----------
@@ -352,14 +302,37 @@ class optic_abs_prop:
 
         # Cross sections are given in cm^2, atmospheric densities in
         # m^2
-        conv = 1.E-4
+        conv_f = 1e-4
 
-        for name in self.prop.keys():
-            if name[0:5] == 'molec':
-                spec = self.prop[name]['species']
-                self.prop[name]['taualt'] = self.prop[name]['xsec'] * (
-                    atm.__getattribute__(spec) * conv)
+        for name in species_names:
+            prop = self.get_prop(name)
+            prop.tau_alt = prop.xsec * atm.get_gas(name).concentration * conv_f
 
-        self.prop['taua'] = np.zeros((nwave, nlay))
-        for name in species:
-            self.prop['taua'] = self.prop['taua'] + self.prop[name]['taualt']
+        self.taua = np.zeros((nwave, nlay))
+        for name in species_names:
+            prop = self.get_prop(name)
+            self.taua = self.taua + prop.tau_alt
+
+    def xsec_to_file(self, filename: str) -> None:
+        """Save cross-section of each trace gas to NetCDF file."""
+        nc = Dataset(filename, 'w')
+        nc.title = 'Absorption cross-sections of L2 gases'
+        nc.description = 'Each group refers to one trace gas'
+        nc.createDimension('layer', len(self.zlay))
+        nc.createDimension('wavelength', len(self.wave))
+        for prop in self.props:
+            grp = nc.createGroup(prop.name)
+            var = grp.createVariable('xsec', 'f8', ('wavelength', 'layer'))
+            var.long_name = 'absorption cross-section'
+            var.units = 'm2'
+            var.min_value = 0.0
+            var.max_value = 1.0
+            var[:] = prop.xsec
+        nc.close()
+
+    def xsec_from_file(self, filename: str) -> None:
+        """Read cross-sections from NetCDF file."""
+        nc = Dataset(filename)
+        for species in nc.groups:
+            self.props.append(SpeciesProperties(
+                species, nc[species]['xsec'][:].data, np.empty(())))

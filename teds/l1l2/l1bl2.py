@@ -4,16 +4,13 @@
 #     the LICENSE file in the root directory of this project.
 # ==============================================================================
 
-from dataclasses import dataclass
 import os
 import sys
 import numpy as np
-import numpy.typing as npt
 import pickle as pkl
 from tqdm import tqdm
 from copy import deepcopy
 import netCDF4 as nc
-import yaml
 
 from teds.lib import libINV
 from teds.lib import libRT
@@ -22,22 +19,17 @@ from teds.lib.libWrite import writevariablefromname
 from teds.sgm import atmosphere
 
 
-@dataclass
-class AtmosphereSimple:
-    """Minimal Atmosphere class."""
-    zlay: npt.NDArray[np.float64]
-    play: npt.NDArray[np.float64]
-    tlay: npt.NDArray[np.float64]
-    CO2: npt.NDArray[np.float64]
-    CH4: npt.NDArray[np.float64]
-    H2O: npt.NDArray[np.float64]
-    air: npt.NDArray[np.float64]
+# def check_config(config: dict) -> None:
+#     """Check consistency of some of the configuration settings.
 
+#     Parameters
+#     ----------
+#     config
+#         Configuration parameters.
 
-class Emptyclass:
-    """Empty class. Data container."""
-    
-    pass
+#     """
+#     check_file_presence(config['io_files']['dump_xsec'], 'dump_xsec')
+
 
 def get_l1b(l1b_filename):
     # getting l1b data from file
@@ -273,7 +265,8 @@ def level2_diags_output(filename, l2product, measurement):
     _ = writevariablefromname(output_l2diag, "l2gainH2O", _dims, l2diag_gainH2O)
     output_l2diag.close()
 
-def level1b_to_level2_processor(config, sw_diag_output = False):
+
+def level1b_to_level2_processor(config):
     # get the l1b files
 
     print('level 1B to 2 proessor ...')
@@ -290,7 +283,8 @@ def level1b_to_level2_processor(config, sw_diag_output = False):
     wave_end = config['spec_settings']['waveend']
     wave_extend = config['spec_settings']['wave_extend']
     dwave_lbl = config['spec_settings']['dwave']
-    wave_lbl = np.arange(wave_start-wave_extend, wave_end+wave_extend, dwave_lbl)  # nm
+    wave_lbl = np.arange(
+        wave_start-wave_extend, wave_end+wave_extend, dwave_lbl)  # nm
 
     # Vertical layering
     nlay = config['atmosphere']['nlay']
@@ -304,38 +298,29 @@ def level1b_to_level2_processor(config, sw_diag_output = False):
     # Model atmosphere
     atm_full = atmosphere.Atmosphere.from_file(
         zlay, zlev, psurf, config['io_files']['input_afgl'])
-    atm = AtmosphereSimple(atm_full.zlay,
-                           atm_full.play,
-                           atm_full.tlay,
-                           atm_full.get_gas('CO2').concentration,
-                           atm_full.get_gas('CH4').concentration,
-                           atm_full.get_gas('H2O').concentration,
-                           atm_full.air)
 
-    sun = libRT.read_sun_spectrum_TSIS1HSRS(config['io_files']['input_sun_reference'])
-    sun_lbl = libRT.interpolate_sun(sun, wave_lbl)
+    sun_wavelengths, sun_spectrum = libRT.read_sun_spectrum_TSIS1HSRS(
+        config['io_files']['input_sun_reference'])
+    sun_lbl = np.interp(wave_lbl, sun_wavelengths, sun_spectrum)
 
     # Download molecular absorption parameter
-    iso_ids = [('CH4', 32), ('H2O', 1), ('CO2', 7)]  # see hapi manual  sec 6.6
-    molec = libRT.molecular_data(wave_lbl)
-    molec.get_data_HITRAN(config['io_files']['input_hapi'], iso_ids)
+    iso_ids = [('CH4', 32), ('H2O', 1), ('CO2', 7)]  # see hapi manual Sec 6.6
+    molec = libRT.MolecularData(
+        wave_lbl, config['io_files']['input_hapi'], iso_ids)
 
-    # Calculate optical properties
-    # If pickle file exists read from file
-    if ((not os.path.exists(config['io_files']['dump_xsec'])) or config['xsec_forced']):
-        # Init class with optics.prop dictionary
-        optics = libRT.optic_abs_prop(wave_lbl, zlay)
+    # Calculate optical properties.
+    optics = libRT.OpticAbsProp(wave_lbl, zlay)
+    # If a NetCDF dump file exists read from there instead
+    if (
+            not os.path.exists(config['io_files']['dump_xsec'])
+            or config['xsec_forced']):
         # Molecular absorption optical properties
-        optics.cal_molec_xsec(molec, atm)
-        # Dump optics.prop dictionary into temporary pkl file
-        pkl.dump(optics.prop, open(config['io_files']['dump_xsec'], 'wb'))
+        optics.calc_molec_xsec(molec, atm_full)
+        optics.xsec_to_file(config['io_files']['dump_xsec'])
     else:
-        # Init class with optics.prop dictionary
-        optics = libRT.optic_abs_prop(wave_lbl, zlay)
-        # Read optics.prop dictionary from pickle file
-        optics.prop = pkl.load(open(config['io_files']['dump_xsec'], 'rb'))
+        optics.xsec_from_file(config['io_files']['dump_xsec'])
 
-    optics.set_opt_depth_species(atm, ['molec_01', 'molec_32', 'molec_07'])
+    optics.set_opt_depth_species(atm_full, ['H2O', 'CH4', 'CO2'])
 
     # Initialization of the least squares fit
     retrieval_init = {}
@@ -360,14 +345,6 @@ def level1b_to_level2_processor(config, sw_diag_output = False):
     l2product = np.ndarray((nalt, nact), np.object_)
     measurement = np.ndarray((nalt, nact), np.object_)
 
-    # We introduce two types of ialt indices, ialt points to l1b data structure and ilat_l2 to l2 data structure.
-    # Later is different to l1b structure because of option for image selection (sw_ALT_select).
-
-    # Define isrf function
-    dset = nc.Dataset('/home/raul/Projects/tango/data/isrf/isrf.nc')
-    wavelength_diffs = dset['wavelength'][:].data
-    isrf = dset['isrf'][:].data
-
     runtime_cum = {}
     runtime_cum['opt'] = 0.
     runtime_cum['rtm'] = 0.
@@ -380,12 +357,10 @@ def level1b_to_level2_processor(config, sw_diag_output = False):
             numb_spec_points = np.sum(mask[ialt,iact,:])/float(mask[ialt,iact,:].size)
             if(numb_spec_points >=0.9):
                 # initialization of pixel retrieval
-                xco2_ref = 410.  # ppm
-                xco2 = np.sum(atm.CO2) / np.sum(atm.air) * 1.E6
                 if (config['retrieval_init']['sw_prof_init'] == 'afgl'):
-                    retrieval_init['trace gases']['CO2']['ref_profile'] = atm.CO2#*xco2_ref/xco2
-                    retrieval_init['trace gases']['CH4']['ref_profile'] = atm.CH4
-                    retrieval_init['trace gases']['H2O']['ref_profile'] = atm.H2O
+                    retrieval_init['trace gases']['CO2']['ref_profile'] = atm_full.get_gas('CO2').concentration
+                    retrieval_init['trace gases']['CH4']['ref_profile'] = atm_full.get_gas('CH4').concentration
+                    retrieval_init['trace gases']['H2O']['ref_profile'] = atm_full.get_gas('H2O').concentration
                 elif (config['retrieval_init']['sw_prof_init'] == 'sgm'):
                     retrieval_init['trace gases']['CO2']['ref_profile'] = atm_sgm['dcol_co2'][ialt, iact, :]
                     retrieval_init['trace gases']['CH4']['ref_profile'] = atm_sgm['dcol_ch4'][ialt, iact, :]
@@ -402,10 +377,19 @@ def level1b_to_level2_processor(config, sw_diag_output = False):
                 wave_meas = wavelength[istart:iend+1]  # nm
 
                 # Define isrf function
-                kernel = Kernel(wavelength_diffs, isrf, wave_lbl, wave_meas)
-                isrf_convolution = kernel.convolve
 
-                atm_ret = deepcopy(atm)  # to initialize each retrieval with the same atmosphere
+                if config['isrf']['tabulated']:
+                    isrf = Kernel.from_file(
+                        config['io_files']['isrf'], wave_lbl, wave_meas)
+                else:
+                    isrf = Kernel.from_gauss(wave_lbl,
+                                             wave_meas,
+                                             config['isrf']['fwhm'],
+                                             config['isrf']['shape'])
+
+                isrf_convolution = isrf.convolve
+
+                atm_ret = deepcopy(atm_full)  # to initialize each retrieval with the same atmosphere
                 sun = isrf_convolution(sun_lbl)
 
                 # Observation geometry
@@ -460,7 +444,7 @@ def level1b_to_level2_processor(config, sw_diag_output = False):
     # output to netcdf file
     level2_output(config['io_files']['output_l2'], l2product, retrieval_init, l1b, config['retrieval_init'])
 
-    if(config['retrieval_init']['diag_output']):
+    if(config['io_files']['output_l2_diag']):
         level2_diags_output(config['io_files']['output_l2_diag'], l2product, measurement)
 
     print('=> l1bl2 finished successfully')
@@ -468,6 +452,7 @@ def level1b_to_level2_processor(config, sw_diag_output = False):
     #print('cumulative run time: ',runtime_cum)
 
     return #l2product
+
 
 def level2_nan(retrieval_init, nlay):
 

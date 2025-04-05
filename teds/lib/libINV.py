@@ -23,16 +23,16 @@ def Gauss_Newton_iteration(retrieval_init, atm, optics, measurement, max_iter, c
     # initialization
     for key in retrieval_init['trace gases'].keys():
         if (key == 'CO2'):
-            k_dic[key] = 'molec_07'
-            dev.append('molec_07')
+            k_dic[key] = 'CO2'
+            dev.append('CO2')
         if (key == 'CH4'):
-            k_dic[key] = 'molec_32'
-            dev.append('molec_32')
+            k_dic[key] = 'CH4'
+            dev.append('CH4')
         if (key == 'H2O'):
-            k_dic[key] = 'molec_01'
-            dev.append('molec_01')
+            k_dic[key] = 'H2O'
+            dev.append('H2O')
         scaling = retrieval_init['trace gases'][key]['scaling']
-        Xcol = sum(atm.__getattribute__(key))/sum(atm.air)/scaling
+        Xcol = sum(atm.get_gas(key).concentration)/sum(atm.air)/scaling
         x_dic[key] = retrieval_init['trace gases'][key]['init']/Xcol   # prior scaling parameter
    
     m = 0
@@ -59,11 +59,11 @@ def Gauss_Newton_iteration(retrieval_init, atm, optics, measurement, max_iter, c
         alb_lst = []
         for key in retrieval_init['trace gases'].keys():
             if (key == 'CO2'):
-                atm.__getattribute__(key)[:] = x_dic[key]*retrieval_init['trace gases'][key]['ref_profile']
+                atm.get_gas(key).concentration[:] = x_dic[key]*retrieval_init['trace gases'][key]['ref_profile']
             if (key == 'CH4'):
-                atm.__getattribute__(key)[:] = x_dic[key]*retrieval_init['trace gases'][key]['ref_profile']
+                atm.get_gas(key).concentration[:] = x_dic[key]*retrieval_init['trace gases'][key]['ref_profile']
             if (key == 'H2O'):
-                atm.__getattribute__(key)[:] = x_dic[key]*retrieval_init['trace gases'][key]['ref_profile']
+                atm.get_gas(key).concentration[:] = x_dic[key]*retrieval_init['trace gases'][key]['ref_profile']
 
         m = 0
         while "alb%d" % (m) in retrieval_init['surface'].keys():
@@ -132,16 +132,16 @@ def Gauss_Newton_iteration(retrieval_init, atm, optics, measurement, max_iter, c
     # define output product, first update all parameter
     for key in retrieval_init['trace gases'].keys():
         if (key == 'CO2'):
-            atm.__getattribute__(key)[:] = x_dic[key]*retrieval_init['trace gases'][key]['ref_profile']
+            atm.get_gas(key).concentration[:] = x_dic[key]*retrieval_init['trace gases'][key]['ref_profile']
         if (key == 'CH4'):
-            atm.__getattribute__(key)[:] = x_dic[key]*retrieval_init['trace gases'][key]['ref_profile']
+            atm.get_gas(key).concentration[:] = x_dic[key]*retrieval_init['trace gases'][key]['ref_profile']
         if (key == 'H2O'):
-            atm.__getattribute__(key)[:] = x_dic[key]*retrieval_init['trace gases'][key]['ref_profile']
+            atm.get_gas(key).concentration[:] = x_dic[key]*retrieval_init['trace gases'][key]['ref_profile']
 
     # calculate column mixing ratio, precision and albedo values
     for l, key in enumerate(retrieval_init['trace gases'].keys()):
         scaling = retrieval_init['trace gases'][key]['scaling']
-        output['X'+key] = sum(atm.__getattribute__(key))/sum(atm.air)
+        output['X'+key] = sum(atm.get_gas(key).concentration)/sum(atm.air)
         output['X'+key+' precision'] = output['X'+key] * x_lst_precision[l]           # ppm
         ref_mixing_ratio = x_dic[key]*np.sum(retrieval_init['trace gases'][key]['ref_profile'])/sum(atm.air)/scaling
         output['gain_X'+key] = g_dic[key] * ref_mixing_ratio
@@ -161,17 +161,17 @@ def Gauss_Newton_iteration(retrieval_init, atm, optics, measurement, max_iter, c
     # Something to change in a next version. I get made about the differnet labeling
     
     for ispec, value in enumerate(k_dic.values()):
-        if(value == 'molec_07'):  # CO2
+        if(value == 'CO2'):  # CO2
             col = np.sum(retrieval_init['trace gases']['CO2']['ref_profile'])
             for klay in range(nlay):
                 delta_prof = col/retrieval_init['trace gases']['CO2']['ref_profile'][klay]
                 output['XCO2 col avg kernel'][klay] = np.sum(Gain[ispec, :]*fwd['layer_'+value][:, klay])*delta_prof
-        if(value == 'molec_32'):  # CH4
+        if(value == 'CH4'):  # CH4
             col = np.sum(retrieval_init['trace gases']['CH4']['ref_profile'])
             for klay in range(nlay):
                 delta_prof = col/retrieval_init['trace gases']['CH4']['ref_profile'][klay]
                 output['XCH4 col avg kernel'][klay] = np.sum(Gain[ispec, :]*fwd['layer_'+value][:, klay])*delta_prof
-        if(value == 'molec_01'):  # H2O
+        if(value == 'H2O'):  # H2O
             col = np.sum(retrieval_init['trace gases']['H2O']['ref_profile'])
             for klay in range(nlay):
                 delta_prof = col/retrieval_init['trace gases']['H2O']['ref_profile'][klay]

@@ -1,6 +1,5 @@
 # This source code is licensed under the 3-clause BSD license found in
 # the LICENSE file in the root directory of this project.
-from dataclasses import dataclass
 from netCDF4 import Dataset
 from scipy.interpolate import CubicSpline
 from tqdm import tqdm
@@ -8,7 +7,6 @@ from xarray import DataArray
 import numpy as np
 import numpy.typing as npt
 import os
-import pickle
 import sys
 
 from .atmosphere import Atmosphere
@@ -50,14 +48,6 @@ except ModuleNotFoundError:
         pass
 
 
-@dataclass
-class AtmosphereSimple:
-    """Minimal Atmosphere class."""
-    CO2: npt.NDArray[np.float64]
-    CH4: npt.NDArray[np.float64]
-    H2O: npt.NDArray[np.float64]
-
-
 def check_config(config: dict) -> None:
     """Check consistency of some of the configuration settings.
 
@@ -69,6 +59,7 @@ def check_config(config: dict) -> None:
     """
     check_file_presence(config['io_files']['geometry'], 'geometry')
     check_file_presence(config['io_files']['atmosphere'], 'atmosphere')
+    check_file_presence(config['io_files']['sun_reference'], 'sun_reference')
     if config['isrf']['enabled'] and config['isrf']['tabulated']:
         check_file_presence(config['io_files']['isrf'], 'ISRF')
     if config['alt_end']:
@@ -366,35 +357,35 @@ def carbon_radiation_scene_generation(config_user: dict) -> None:
     wave_lbl = np.arange(wave_start, wave_end, dwave_lbl)  # nm
 
     # Online calculation of cross section or retrieving data from
-    # dummy file depending on config.
-    optics = libRT.optic_abs_prop(wave_lbl, atm.zlay)
+    # dummy file depending on config. To save time, a NetCDF dump file
+    # may be used.
+    optics = libRT.OpticAbsProp(wave_lbl, atm.zlay)
     if (
             not os.path.exists(config['io_files']['dump_xsec'])
             or config['xsec_forced']):
-        molec = libRT.molecular_data(wave_lbl)
         # See hapi manual Sec 6.6
         iso_ids = [('CH4', 32), ('H2O', 1), ('CO2', 7)]
-        molec.get_data_HITRAN(config['io_files']['hapi'], iso_ids)
+        molec = libRT.MolecularData(
+            wave_lbl, config['io_files']['hapi'], iso_ids)
         atm_ref = Atmosphere.from_file(
             atm.zlay,
             atm.zlev,
             config['atmosphere']['surface_pressure'],
             config['io_files']['afgl'])
         # Molecular absorption optical properties
-        optics.cal_molec_xsec(molec, atm_ref)
-        # Dump optics.prop dictionary into temporary pkl file
-        pickle.dump(optics.prop, open(config['io_files']['dump_xsec'], 'wb'))
+        optics.calc_molec_xsec(molec, atm_ref)
+        optics.xsec_to_file(config['io_files']['dump_xsec'])
     else:
-        optics.prop = pickle.load(open(config['io_files']['dump_xsec'], 'rb'))
+        optics.xsec_from_file(config['io_files']['dump_xsec'])
 
     # Next we perform the RT simuations for the generated input
     n_alt, n_act = geometry.sza.shape
     n_lbl = wave_lbl.size
 
     # Solar irradiance spectrum
-    _sun = libRT.read_sun_spectrum_TSIS1HSRS(
+    sun_wavelengths, sun_spectrum = libRT.read_sun_spectrum_TSIS1HSRS(
         config['io_files']['sun_reference'])
-    sun = np.interp(wave_lbl, _sun['wl'], _sun['phsm2nm'])
+    sun = np.interp(wave_lbl, sun_wavelengths, sun_spectrum)
     # Calculate surface data
     surface = Surface(wave_lbl)
     # For output we use the level 1 data product class because it has
@@ -439,13 +430,20 @@ def carbon_radiation_scene_generation(config_user: dict) -> None:
         if config['use_python_radiative_transfer']:
             for i_act in range(n_act):
                 # Atmosphere for one target point (i_alt, i_act)
-                atm_p = AtmosphereSimple(
-                    atm.get_gas('co2').concentration[i_alt, i_act, :],
-                    atm.get_gas('ch4').concentration[i_alt, i_act, :],
-                    atm.get_gas('h2o').concentration[i_alt, i_act, :])
+                atm_p = Atmosphere.from_empty()
+
+                def copy_gas_one_column(gas_name: str) -> Gas:
+                    return Gas(
+                        gas_name,
+                        None,
+                        None,
+                        atm.get_gas(gas_name).concentration[i_alt, i_act, :])
+
+                atm_p.gases = [copy_gas_one_column('co2'),
+                               copy_gas_one_column('ch4'),
+                               copy_gas_one_column('h2o')]
                 # Calculate optical depths
-                optics.set_opt_depth_species(
-                    atm_p, ['molec_01', 'molec_32', 'molec_07'])
+                optics.set_opt_depth_species(atm_p, ['H2O', 'CH4', 'CO2'])
                 # Earth radiance spectra
                 alb = [albedo[i_alt, i_act]]
                 mu_sza = np.cos(np.deg2rad(geometry.sza[i_alt, i_act]))
@@ -457,9 +455,9 @@ def carbon_radiation_scene_generation(config_user: dict) -> None:
             cpp_rt_act(atm.get_gas('co2').concentration[i_alt, :, :],
                        atm.get_gas('ch4').concentration[i_alt, :, :],
                        atm.get_gas('h2o').concentration[i_alt, :, :],
-                       optics.prop['molec_07']['xsec'],
-                       optics.prop['molec_32']['xsec'],
-                       optics.prop['molec_01']['xsec'],
+                       optics.get_prop('CO2').xsec,
+                       optics.get_prop('CH4').xsec,
+                       optics.get_prop('H2O').xsec,
                        albedo[i_alt, :],
                        np.cos(np.deg2rad(geometry.sza[i_alt, :])),
                        np.cos(np.deg2rad(geometry.vza[i_alt, :])),

@@ -22,7 +22,7 @@ from teds.gm.types import Geometry
 from teds.l1al1b.python.io import read_ckd
 from teds.l1al1b.python.types import L1
 from teds.l1al1b.python.types import ProcLevel
-from teds.lib import libRT
+from teds.lib import radiative_transfer
 from teds.lib.convolution import Kernel
 from teds.lib.convolution import KernelGauss2D
 from teds.lib.io import check_file_presence
@@ -359,13 +359,13 @@ def carbon_radiation_scene_generation(config_user: dict) -> None:
     # Online calculation of cross section or retrieving data from
     # dummy file depending on config. To save time, a NetCDF dump file
     # may be used.
-    optics = libRT.OpticAbsProp(wave_lbl, atm.zlay)
+    optics = radiative_transfer.OpticAbsProp(wave_lbl, atm.zlay)
     if (
             not os.path.exists(config['io_files']['dump_xsec'])
             or config['xsec_forced']):
         # See hapi manual Sec 6.6
         iso_ids = [('CH4', 32), ('H2O', 1), ('CO2', 7)]
-        molec = libRT.MolecularData(
+        molec = radiative_transfer.MolecularData(
             wave_lbl, config['io_files']['hapi'], iso_ids)
         atm_ref = Atmosphere.from_file(
             atm.zlay,
@@ -383,8 +383,9 @@ def carbon_radiation_scene_generation(config_user: dict) -> None:
     n_lbl = wave_lbl.size
 
     # Solar irradiance spectrum
-    sun_wavelengths, sun_spectrum = libRT.read_sun_spectrum_TSIS1HSRS(
-        config['io_files']['sun_reference'])
+    sun_wavelengths, sun_spectrum = (
+        radiative_transfer.read_sun_spectrum_TSIS1HSRS(
+            config['io_files']['sun_reference']))
     sun = np.interp(wave_lbl, sun_wavelengths, sun_spectrum)
     # Calculate surface data
     surface = Surface(wave_lbl)
@@ -449,7 +450,7 @@ def carbon_radiation_scene_generation(config_user: dict) -> None:
                 mu_sza = np.cos(np.deg2rad(geometry.sza[i_alt, i_act]))
                 mu_vza = np.cos(np.deg2rad(geometry.vza[i_alt, i_act]))
                 surface.get_albedo_poly(alb)
-                radiance_lbl[i_act, :] = libRT.transmission(
+                radiance_lbl[i_act, :] = radiative_transfer.transmission(
                     sun, optics, surface, mu_sza, mu_vza)
         else:
             cpp_rt_act(atm.get_gas('co2').concentration[i_alt, :, :],

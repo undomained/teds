@@ -416,7 +416,7 @@ def read_l1(filename: str,
         l1_product.tai_seconds = nc_geo['tai_seconds'][alt_beg:alt_end].data
         l1_product.tai_subsec = (
             nc_geo['tai_subsec'][alt_beg:alt_end].data / 65535.0)
-    else:
+    elif l1_product.proc_level < ProcLevel.l1b:
         log.warning('L1 product has no image timestamps because no geometry '
                     'file given')
     if 'navigation_data' in nc.groups:

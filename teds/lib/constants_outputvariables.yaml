@@ -1,29 +1,3 @@
-# SGM: Radiances
-
-wavelength:
-  name: wavelength
-  long_name: 'wavelength'
-  units: 'nm'
-  valid_min: 0.
-  valid_max: 8000.
-  FillValue: -32767
-
-solarirradiance:
-  name: solar_irradiance
-  long_name: 'solar irradiance line-by-line'
-  units: 'photons / (nm m2 s)'
-  valid_min: 0.0
-  valid_max: 1.E+30
-  FillValue: -32767
-
-radiance_sgm:
-  name: radiance
-  long_name: 'radiance line-by-line'
-  units: 'photons / (sr nm m2 s)'
-  valid_min: 0.
-  valid_max: 1.E+28
-  FillValue: -32767
-
 # SGM: ATM
 albedo:
   name: albedo
@@ -31,22 +5,6 @@ albedo:
   units: '-'
   valid_min: 0.0
   valid_max: 1.0
-  FillValue: -32767
-
-central_layer_height:
-  name: zlay
-  long_name: 'central layer height'
-  units: 'm'
-  valid_min: 0.0
-  valid_max: 1.E+5
-  FillValue: -32767
-
-levelheight:
-  name: zlev
-  long_name: 'level height'
-  units: 'm'
-  valid_min: 0.
-  valid_max: 1.E+5
   FillValue: -32767
 
 subcol_density_co2:
@@ -208,76 +166,12 @@ convergence:
   valid_max: 1
   FillValue: -32767
 
-aqui_time:
-  name: aquisition time
-  long_name: aquisition time of sensing UTC
-  units: 's'
-  valid_min: 0
-  valid_max: 1E+25
-  FillValue: -32767
-
-process_flag:
-  name: processing flag
-  long_name: processing flag to indicate processor anormalies
-  units: '1'
-  valid_min: 0
-  valid_max: 101
-  FillValue: -32767
-
-maxiterations:
-  name: max iter
-  long_name: number of iterations
-  units: '1'
-  valid_min: 0
-  valid_max: 100
-  FillValue: -32767
-
-spectralchi2 :
-  name: chi2
-  long_name: 'spectral chi square of the fit'
-  units: '1'
-  valid_min: 0
-  valid_max: 100.
-  FillValue: -32767
-
-spectralshift :
-  name: spectral shift
-  long_name: 'constant shift of the spectral calibration'
-  units: 'nm'
-  valid_min: 0
-  valid_max: 10.
-  FillValue: -32767
-
-spectralsqueeze :
-  name: spectral squeeze
-  long_name: 'squeeze of the spectral calibration'
-  units: '1'
-  valid_min: 0
-  valid_max: 10.
-  FillValue: -32767
-
-surface_pressure:
-  name: 'surface pressure'
-  long_name: 'surface pressure'
-  units: hPa
-  valid_min: 0.
-  valid_max: 1400.
-  FillValue: -32767
-
 surface_elevation:
   name: 'surface elevation'
   long_name: 'surface elevation with respect to WGS-84'
   units: m
   valid_min: 0.
   valid_max: 9000.
-  FillValue: -32767
-
-XCO2:
-  name: 'XCO2'
-  long_name: 'CO2 dry air column mixing ratio XCO2'
-  units: ppmv
-  valid_min: 0.
-  valid_max: 3000.
   FillValue: -32767
 
 apriori_profileCO2:
@@ -304,22 +198,6 @@ qa_valueXCO2:
   valid_max: 101.
   FillValue: -32767
 
-avgkernelXCO2:
-  name: 'col avg kernel XCO2'
-  long_name: 'CO2 column averaging kernel of XCO2'
-  units: '1'
-  valid_min: 0.
-  valid_max: 10.
-  FillValue: -32767
-
-XCH4:
-  name: 'XCH4'
-  long_name: 'CH4 dry air column mixing ratio XCH4'
-  units: ppbv
-  valid_min: 0.
-  valid_max: 180000.
-  FillValue: -32767
-
 apriori_profileCH4:
   name: apri_prof_ch4
   long_name: 'a priori profile CH4 in layer column density'
@@ -342,22 +220,6 @@ qa_valueXCH4:
   units: ppbv
   valid_min: 0.
   valid_max: 101.
-  FillValue: -32767
-
-avgkernelXCH4:
-  name: 'col avg kernel XCH4'
-  long_name: 'CH4 column averaging kernel of XCH4'
-  units: '1'
-  valid_min: 0.
-  valid_max: 10.
-  FillValue: -32767
-
-XH2O:
-  name: 'XH2O'
-  long_name: 'H2O dry air column mixing ratio XH2O'
-  units: ppmv
-  valid_min: 0.
-  valid_max: 1.E+04
   FillValue: -32767
 
 apriori_profileH2O:
@@ -390,14 +252,6 @@ qa_valueXH2O:
   units: ppmv
   valid_min: 0.
   valid_max: 101.
-  FillValue: -32767
-
-avgkernelXH2O:
-  name: 'col avg kernel XH2O'
-  long_name: 'H2O column averaging kernel of XH2O'
-  units: '1'
-  valid_min: 0.
-  valid_max: 10.
   FillValue: -32767
 
 proxyXCO2:
@@ -463,55 +317,8 @@ qa_valueproxyXCH4:
   valid_min: 0.
   valid_max: 101.
   FillValue: -32767
+
 # diagnostics to a file that are not included in the level 2 data product
-l2wavelength:
-  name: wavelength
-  long_name: 'wavelength of measurement'
-  units: 'nm'
-  valid_min: 0.
-  valid_max: 4000.
-  FillValue: -32767
-
-l2measurement:
-  name: measurement
-  long_name: 'spectral radiance measurements'
-  units: 'photons/(nm m2 s sr)'
-  valid_min: 0.
-  valid_max: 1.E+26
-  FillValue: -32767
-
-l2solarirradiance:
-  name: solar irradiance
-  long_name: 'solar irradiance spectrum'
-  units: 'photons/(nm m2 s)'
-  valid_min: 0.
-  valid_max: 1.E+26
-  FillValue: -32767
-
-l2gainCO2:
-  name: 'gain CO2'
-  long_name: 'CO2 spectral gain vector'
-  units: 'ppm/(photons/(nm m2 s sr))'
-  valid_min: -1.E+30
-  valid_max: 1.E+30
-  FillValue: -32767
-
-l2gainCH4:
-  name: 'gain CH4'
-  long_name: 'CH4 spectral gain vector'
-  units: 'ppb/(photons/(nm m2 s sr))'
-  valid_min: -1.E+30
-  valid_max: 1.E+30
-  FillValue: -32767
-
-l2gainH2O:
-  name: 'gain H2O'
-  units: 'ppm/(photons/(nm m2 s sr))'
-  long_name: 'CO2 spectral gain vector'
-  valid_min: -1.E+30
-  valid_max: 1.E+30
-  FillValue: -32767
-
 l2gainvectorCO2:
   name: 'inversion gain vector CO2'
   long_name: 'CO2 column scale factor spectral gain vector from inversion'

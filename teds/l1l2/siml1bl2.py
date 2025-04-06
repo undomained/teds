@@ -4,7 +4,7 @@ import numpy as np
 import numpy.typing as npt
 import xarray as xr
 
-from teds.l1l2.l1bl2 import level2_output
+from teds.l1l2.l1bl2 import write_l2
 
 
 # Helper function to generate noise based on type
@@ -149,7 +149,11 @@ def simplified_level1b_to_level2_processor(config: dict) -> npt.NDArray:
     settings: dict = {}
 
     # Create the output file using the prepared data
-    level2_output(filename, l2product, retrieval_init, l1bproduct, settings)
+    write_l2(filename,
+             l2product,  # type: ignore
+             retrieval_init,  # type: ignore
+             l1bproduct,
+             settings)  # type: ignore
 
     print('=> l1bl2 finished successfully')
 

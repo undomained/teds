@@ -87,13 +87,15 @@ io_files:
   # CKD stores the target wavelengths. Only required is ISRF
   # convolution is enabled.
   ckd: ""
+  # Geometry file
   geometry: ""
   # AFGL model atmosphere file
   afgl: ""
   # Sentinel 2 albedo file
   s2_albedo: ""
+  # HAPI database location (directory with 'data' and 'header' text files)
   hapi: ""
-  # Solar spectrum file
+  # Solar irradiance file
   sun_reference: ""
   # Atmosphere data with plume and background gas columns
   atmosphere: ""
@@ -101,6 +103,7 @@ io_files:
   radiance: ""
   # Reference atmosphere
   atmosphere_ref: ""
+  # Dump file containg absorption cross-sections of the trace gases
   dump_xsec: ""
   # Files with meteorological (MicroHH) data. If empty then only the
   # AFGL standard atmosphere is used.

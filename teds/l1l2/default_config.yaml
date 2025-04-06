@@ -1,0 +1,62 @@
+# List of valid parameters for the L1-L2 processor
+
+# Initialization parameters for Gauss-Newton inversion
+retrieval_init:
+  max_iter: 35
+  chi2_lim: 0.05
+  # Take reference profiles from standard atmosphere or a previously
+  # generated SGM atmosphere product.
+  sw_prof_init: afgl
+
+atmosphere:
+  # Number of atmospheric layers
+  n_layers: 30
+  # Geometrical thickness of the layers, m
+  layer_thickness: 1000
+  # Surface pressure, Pa
+  surface_pressure: 101300
+
+# Settings for line-by-line spectra
+spec_settings:
+  # Initial and final wavelengths and the LBL step size [nm]
+  wave_start: 1590
+  wave_end: 1675
+  dwave: 0.002
+  # Shortwave and longwave extension of the measurement grid [nm]
+  wave_extend: 2.0
+
+# ISRF used for convolutions in the retrieval
+isrf:
+  # Whether to read ISRF from file. [io_files][isrf] must point to a
+  # file in that case.
+  tabulated: yes
+  # If not tabulated then [io_files][isrf] is ignored and the ISRF is
+  # constructed from the generalized Gaussian parameters instead.
+  fwhm: 0.456
+  shape: 2.91
+
+# Force new cross section calculation
+xsec_forced: no
+
+io_files:
+  # ISRF, only needed [isrf][tabulated] is true, which is the default
+  isrf: ""
+  # L1B data product
+  l1b: ""
+  # SGM atmosphere product, only used if taking the reference profiles
+  # from there. See sw_prof_init above.
+  atmosphere: ""
+  # Standard atmosphere file. Always needed regardless of the
+  # sw_prof_init flag.
+  afgl: ""
+  # Solar irradiance file
+  sun_reference: ""
+  # HAPI database location (directory with 'data' and 'header' text files)
+  hapi: ""
+  # Dump file containg absorption cross-sections of the trace gases
+  dump_xsec: ""
+  # L2 data product
+  l2: ""
+  # File with extra L2 diagnostics information, i.e. those not already
+  # included in the main product.
+  l2_diag: ""

@@ -69,9 +69,7 @@ ignore_missing_imports = true
 [[tool.mypy.overrides]]
 module = [
     'teds.lib.hapi',
-    'teds.lib.libRT',
     'teds.lib.data_netcdf.*',
-    'teds.lib.libINV',
     'teds.lib.libAMF',
     'teds.lib.libDOAS',
     'teds.lib.libNumTools',

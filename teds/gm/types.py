@@ -52,3 +52,19 @@ class Geometry:
                    np.zeros(shape),
                    np.zeros(shape),
                    np.zeros(shape))
+
+    def deg2rad(self) -> None:
+        self.lat = np.deg2rad(self.lat)
+        self.lon = np.deg2rad(self.lon)
+        self.sza = np.deg2rad(self.sza)
+        self.saa = np.deg2rad(self.saa)
+        self.vza = np.deg2rad(self.vza)
+        self.vaa = np.deg2rad(self.vaa)
+
+    def rad2deg(self) -> None:
+        self.lat = np.rad2deg(self.lat)
+        self.lon = np.rad2deg(self.lon)
+        self.sza = np.rad2deg(self.sza)
+        self.saa = np.rad2deg(self.saa)
+        self.vza = np.rad2deg(self.vza)
+        self.vaa = np.rad2deg(self.vaa)

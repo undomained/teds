@@ -5,6 +5,7 @@ from contextlib import redirect_stdout
 from dataclasses import dataclass
 from netCDF4 import Dataset
 from tqdm import tqdm
+from typing import Any
 import io
 import netCDF4 as nc
 import numpy as np
@@ -14,7 +15,9 @@ import sys
 import time
 
 from .hapi import db_begin, fetch_by_ids, absorptionCoefficient_Voigt
+from .surface import Surface
 from teds import log
+from teds.lib.convolution import Kernel
 from teds.sgm.atmosphere import Atmosphere
 import teds.lib.constants as const
 
@@ -40,107 +43,6 @@ def read_sun_spectrum_TSIS1HSRS(filename: str) -> tuple[
     wavelengths = ds['Vacuum Wavelength'][:].data
     return (wavelengths,
             ds['SSI'][:] / (const.hplanck * const.clight) * wavelengths * 1e-9)
-
-
-def transmission(sun_lbl: npt.NDArray[np.float64],
-                 optics,
-                 surface,
-                 mu0: float,
-                 muv: float,
-                 deriv: bool = False) -> npt.NDArray[np.float64]:
-    """Calculate transmission solution given geometry (mu0,muv) using
-    matrix algebra
-
-    Parameters
-    ----------
-    sun_lbl
-        Solar irradiance spectrum
-    optics
-        optic_prop object
-    surface
-        surface_prop object
-    mu0
-        cosine of the solar zenith angle [-]
-    muv
-        cosine of the viewing zenith angle [-]
-
-    Returns
-    -------
-        Single scattering relative radiance [wavelength] [1/sr]
-
-    """
-    if not (0 <= mu0 <= 1 and -1 <= muv <= 1):
-        log.error('transmission: input out of range')
-        sys.exit(1)
-
-    # Number of wavelengths and layers
-    nwave = optics.taua[:, 0].size
-
-    # Total vertical optical thickness per layer (Delta tau_k) [nwave,nlay]
-    tauk = optics.taua
-    # total optical thickness per spectral bin [nwave]
-    tautot = np.zeros([nwave])
-    tautot[:] = np.sum(tauk, axis=1)
-    mueff = abs(1./mu0) + abs(1./muv)
-    fact = mu0/np.pi
-    exptot = np.exp(-tautot*mueff)
-
-    rad_trans = sun_lbl*fact*surface.alb*exptot
-
-    if deriv:
-        # This is the derivative with respect to tautot and tauk
-        # because d_tautot / d_tauk = 1.
-        dev_tau = -mueff*rad_trans
-        dev_alb = fact*exptot*sun_lbl
-        return rad_trans, dev_tau, dev_alb
-    else:
-        return rad_trans
-
-
-def nonscat_fwd_model(isrf_convolution, sun_lbl,
-                      atm,  optics, surface, mu0, muv, dev=None):
-
-    species = list(filter(lambda x: x in ('CO2', 'CH4', 'H2O'), dev))
-
-    runtime = {}
-    time1 = time.time()
-
-    optics.set_opt_depth_species(atm, species)
-    runtime['opt'] = time.time()-time1
-    deriv = True
-
-    time1 = time.time()
-    rad_lbl, dev_tau_lbl, dev_alb_lbl = transmission(
-        sun_lbl, optics, surface, mu0, muv, deriv)
-    runtime['rtm'] = time.time()-time1
-
-    time1 = time.time()
-    fwd = {}
-
-    fwd['rad'] = isrf_convolution(rad_lbl)
-    fwd['rad_lbl'] = rad_lbl
-    fwd['alb0'] = isrf_convolution(dev_alb_lbl)
-    fwd['alb1'] = isrf_convolution(dev_alb_lbl*surface.spec)
-    fwd['alb2'] = isrf_convolution(dev_alb_lbl*surface.spec**2)
-    fwd['alb3'] = isrf_convolution(dev_alb_lbl*surface.spec**3)
-
-    runtime['conv'] = time.time()-time1
-
-    time1 = time.time()
-    nwave = fwd['rad'].size
-    nlay = optics.get_prop(species[0]).tau_alt[0, :].size
-
-    for spec in species:
-        # Derivative with respect to a scaling of the total optical depth
-        fwd[spec] = isrf_convolution(
-            np.sum(optics.get_prop(spec).tau_alt, axis=1) * dev_tau_lbl)
-        # Derivative with respect to a scaling of the layer optical deoth
-        fwd['layer_'+spec] = np.zeros((nwave, nlay))
-        for klay in range(optics.get_prop(spec).tau_alt[0, :].size):
-            fwd['layer_'+spec][:, klay] = isrf_convolution(
-                optics.get_prop(spec).tau_alt[:, klay] * dev_tau_lbl)
-    runtime['kern'] = time.time()-time1
-    return fwd, runtime
 
 
 class MolecularData:
@@ -170,7 +72,7 @@ class MolecularData:
         """
         self.wave = wave
         # Cross section data
-        self.xsdb = {}
+        self.xsdb: dict[Any, Any] = {}
         # Check whether input is in range
         if len(hp_ids) == 0:
             log.error('MolecularData.get_data_HITRAN: provide at least '
@@ -336,3 +238,140 @@ class OpticAbsProp:
         for species in nc.groups:
             self.props.append(SpeciesProperties(
                 species, nc[species]['xsec'][:].data, np.empty(())))
+
+
+def transmission(sun_lbl: npt.NDArray[np.float64],
+                 optics: OpticAbsProp,
+                 surface: Surface,
+                 mu0: float,
+                 muv: float,
+                 deriv: bool = False) -> (npt.NDArray[np.float64]
+                                          | tuple[npt.NDArray[np.float64],
+                                                  npt.NDArray[np.float64],
+                                                  npt.NDArray[np.float64]]):
+    """Calculate transmission solution given geometry (mu0,muv) using
+    matrix algebra
+
+    Parameters
+    ----------
+    sun_lbl
+        Solar irradiance spectrum
+    optics
+        optic_prop object
+    surface
+        surface_prop object
+    mu0
+        cosine of the solar zenith angle
+    muv
+        cosine of the viewing zenith angle
+
+    Returns
+    -------
+        Single scattering relative radiance [wavelength] [1/sr]
+
+    """
+    if not (0 <= mu0 <= 1 and -1 <= muv <= 1):
+        log.error('transmission: input out of range')
+        sys.exit(1)
+
+    # Total vertical optical thickness per layer (Delta tau_k) [n_wave,nlay]
+    tau_k = optics.taua
+    # total optical thickness per spectral bin [n_wave]
+    tau_tot = np.sum(tau_k, axis=1)
+    mueff = abs(1/mu0) + abs(1/muv)
+    fact = mu0 / np.pi
+    exp_tot = np.exp(-tau_tot * mueff)
+
+    dev_alb = fact * exp_tot * sun_lbl
+    rad_trans = surface.alb * dev_alb
+
+    if deriv:
+        # This is the derivative with respect to tau_tot and tau_k
+        # because d_tau_tot / d_tau_k = 1.
+        dev_tau = -mueff * rad_trans
+        return rad_trans, dev_tau, dev_alb
+    else:
+        return rad_trans
+
+
+def nonscat_fwd_model(gas_names: list[str],
+                      n_albedo: int,
+                      isrf: Kernel,
+                      sun_lbl: npt.NDArray[np.float64],
+                      atm: Atmosphere,
+                      optics: OpticAbsProp,
+                      surface: Surface,
+                      mu0: float,
+                      muv: float,
+                      timings: dict) -> tuple[npt.NDArray[np.float64],
+                                              list[npt.NDArray[np.float64]],
+                                              list[npt.NDArray[np.float64]]]:
+    """Non-scattering forward model.
+
+    Parameters
+    ----------
+    gas_names
+        Derivatives with respect to these gases will be computed
+    n_albedo
+        How many albedo coefficients to compute
+    isrf
+        ISRF
+    sun_lbl
+        Line-by-line solar irradiance spectrum
+    atm
+        Atmosphere with trace gas concentrations
+    optics
+        Optics properties for computing the optical depths
+    surface
+        Surface properties for recomputing albedo
+    mu0
+        cos(SZA)
+    muv
+        cos(VZA)
+    timings
+        Collections of measured times. Helps to identify potential
+        bottlenecks.
+
+    Returns
+    -------
+        Forward model radiance, derivatives of gas scalings and albedo
+        coefficients, and derivative of gas scaling factors per layer
+        optical depth.
+
+    """
+    time_opt = time.time()
+    optics.set_opt_depth_species(atm, gas_names)
+    timings['opt'] += time.time() - time_opt
+
+    time_rtm = time.time()
+    rad_lbl, dev_tau_lbl, dev_alb_lbl = transmission(
+        sun_lbl, optics, surface, mu0, muv, True)
+    timings['rtm'] += time.time() - time_rtm
+
+    time_conv = time.time()
+    rad = isrf.convolve(rad_lbl)
+    derivatives_albedo = []
+    derivatives_gases = []
+    derivatives_gases_layers = []
+    for i in range(n_albedo):
+        derivatives_albedo.append(isrf.convolve(dev_alb_lbl * surface.spec**i))
+    timings['conv'] += time.time() - time_conv
+
+    time_kern = time.time()
+    n_wave = rad.size
+    nlay = optics.get_prop(gas_names[0]).tau_alt[0, :].size
+    for gas in gas_names:
+        # Derivative with respect to a scaling of the total optical depth
+        derivatives_gases.append(isrf.convolve(
+            np.sum(optics.get_prop(gas).tau_alt, axis=1) * dev_tau_lbl))
+        # Derivative with respect to a scaling of the layer optical depth
+        layer = np.empty((n_wave, nlay))
+        for k_lay in range(optics.get_prop(gas).tau_alt[0, :].size):
+            layer[:, k_lay] = isrf.convolve(
+                optics.get_prop(gas).tau_alt[:, k_lay] * dev_tau_lbl)
+        derivatives_gases_layers.append(layer)
+    timings['kern'] += time.time() - time_kern
+
+    return (rad,
+            derivatives_gases+derivatives_albedo,
+            derivatives_gases_layers)

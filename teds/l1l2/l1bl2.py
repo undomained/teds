@@ -1,477 +1,263 @@
-# ==============================================================================
-#     level-1b to level-2 processor
-#     This source code is licensed under the 3-clause BSD license found in
-#     the LICENSE file in the root directory of this project.
-# ==============================================================================
+# This source code is licensed under the 3-clause BSD license found in
+# the LICENSE file in the root directory of this project.
+"""Level-1B to level-2 processor.
 
+The primary objective is to compute the dry air total column mixing
+ratios XCO2 and XCH4.
+
+"""
 import os
 import sys
 import numpy as np
-import pickle as pkl
+import time
 from tqdm import tqdm
 from copy import deepcopy
-import netCDF4 as nc
 
-from teds.lib import libINV
-from teds.lib import libRT
+from .io import write_l2
+from .io import write_l2_diagnostics
+from .types import L2
+from teds import log
+from teds.gm.io import read_geometry
+from teds.l1al1b.python.io import read_l1
 from teds.lib.convolution import Kernel
-from teds.lib.libWrite import writevariablefromname
+from teds.lib.gauss_newton import gauss_newton
+from teds.lib.io import check_file_presence
+from teds.lib.io import merge_config_with_default
+from teds.lib.io import print_heading
+from teds.lib.io import print_system_info
+from teds.lib.radiative_transfer import MolecularData
+from teds.lib.radiative_transfer import OpticAbsProp
+from teds.lib.radiative_transfer import read_sun_spectrum_TSIS1HSRS
 from teds.sgm import atmosphere
+from teds.sgm.io import read_atmosphere_and_albedo
 
 
-# def check_config(config: dict) -> None:
-#     """Check consistency of some of the configuration settings.
+def check_config(config: dict) -> None:
+    """Check consistency of some of the configuration settings.
 
-#     Parameters
-#     ----------
-#     config
-#         Configuration parameters.
+    Parameters
+    ----------
+    config
+        Configuration parameters.
 
-#     """
-#     check_file_presence(config['io_files']['dump_xsec'], 'dump_xsec')
-
-
-def get_l1b(l1b_filename):
-    # getting l1b data from file
-    nc_l1b = nc.Dataset(l1b_filename, mode='r')
-        
-    l1b_data = {}
-    l1b_data['wavelength'] = deepcopy(nc_l1b['observation_data/wavelength'][:])
-    l1b_data['radiance'] = deepcopy(nc_l1b['observation_data/radiance'][:])
-    l1b_data['noise'] = deepcopy(nc_l1b['observation_data/radiance_stdev'][:])
-    l1b_data['sza'] = deepcopy(nc_l1b['geolocation_data/solar_zenith'][:])
-    l1b_data['saa'] = deepcopy(nc_l1b['geolocation_data/solar_azimuth'][:])
-    l1b_data['vza'] = deepcopy(nc_l1b['geolocation_data/sensor_zenith'][:])
-    l1b_data['vaa'] = deepcopy(nc_l1b['geolocation_data/sensor_azimuth'][:])
-    l1b_data['latitude'] = deepcopy(nc_l1b['geolocation_data/latitude'][:])
-    l1b_data['longitude'] = deepcopy(nc_l1b['geolocation_data/longitude'][:])
-    # Extract mask
-    nc_var = nc_l1b['observation_data/radiance']
-    l1b_data['mask'] = ~nc_var[:].mask
-    if not nc_var[:].mask.shape:
-        l1b_data['mask'] = np.full(nc_var[:].shape, True)
-    
-    return (l1b_data)
-
-def get_sgm_atm(filen_sgm_atm):
-    data = nc.Dataset(filen_sgm_atm, mode='r')
-    atm_sgm = {}
-    surf_sgm = {}
-    surf_sgm['albedo'] = deepcopy(data['albedo_b11'][:])
-    atm_sgm['zlay'] = deepcopy(data['zlay'][:])
-    atm_sgm['zlev'] = deepcopy(data['zlev'][:])
-    atm_sgm['dcol_co2'] = deepcopy(data['dcol_co2'][:])
-    atm_sgm['dcol_ch4'] = deepcopy(data['dcol_ch4'][:])
-    atm_sgm['dcol_h2o'] = deepcopy(data['dcol_h2o'][:])
-    atm_sgm['col_co2'] = deepcopy(data['xco2'][:])
-    atm_sgm['col_ch4'] = deepcopy(data['xch4'][:])
-    atm_sgm['col_h2o'] = deepcopy(data['xh2o'][:])
-    if 'col_air' in data.variables:
-        atm_sgm['col_air'] = deepcopy(data['col_air'][:])
-    data.close()
-    return (surf_sgm, atm_sgm)
-
-def level2_output(filename, l2product, retrieval_init, l1bproduct, settings):
-    # output of level 2 data
-    nalt = len(l2product)
-    nalt = l1bproduct['latitude'][:, 0].size
-    nact = len(l2product[0])
-    nlay = len(l2product[0][0]['XCO2 col avg kernel'])
-
-    # filename
-    print(filename)
-    output_l2 = nc.Dataset(filename, mode='w')
-    output_l2.title = 'Tango Carbon E2ES L2 product'
-    output_l2.createDimension('number_layers', nlay)     # spectral axis
-    output_l2.createDimension('bins_across_track', nact)     # across track axis
-    output_l2.createDimension('bins_along_track', nalt)     # along track axis
-    output_l2.createDimension('bins_albedo', 1)     # spectral bins albedo
-    grp_ns = output_l2.createGroup('non_scattering_retrieval')
-    grp_prior = output_l2.createGroup('prior')
-    grp_diag = output_l2.createGroup('diagnostics')
-
-    # layer height
-
-    _ = writevariablefromname(output_l2, 'central_layer_height', ('number_layers',),  retrieval_init['zlay'])
-
-    # dimensions
-    _dimalt = ('bins_along_track')
-    _dims   = ('bins_along_track', 'bins_across_track')
-    _dims3d = ('bins_along_track', 'bins_across_track', 'number_layers',)
-    # variables
-    l2_conv = np.zeros((nalt, nact), dtype = np.int32)
-    l2_numb_iter = np.zeros((nalt, nact), dtype = np.int32)
-    l2_proc_flag = np.zeros((nalt, nact), dtype = np.int16) + 100
-    l2_chi2 = np.zeros((nalt, nact))
-    l2_alb = np.zeros((nalt, nact))
-    l2_spec_shift  = np.zeros((nalt, nact))
-    l2_spec_squeeze = np.zeros((nalt, nact))
-    l2_aqutime = np.zeros(nalt) + 99999.   #aquisition time (dummy)
-    
-    for ialt in range(nalt):
-        for iact in range(nact):
-            l2_conv[ialt, iact]         = int(l2product[ialt, iact]['convergence'])
-            l2_numb_iter[ialt, iact]    = l2product[ialt, iact]['number_iter']
-            l2_chi2[ialt, iact]         = l2product[ialt, iact]['chi2']
-            l2_alb[ialt, iact]          = l2product[ialt, iact]['alb0']
-            l2_spec_shift[ialt, iact]   = l2product[ialt, iact]['spec_shift']
-            l2_spec_squeeze[ialt, iact] = l2product[ialt, iact]['spec_squeeze']
-
-    # aquisition time
-    _ = writevariablefromname(output_l2, 'aqui_time',       _dimalt, l2_aqutime)
-    # processing flag
-    _ = writevariablefromname(grp_diag,  'process_flag',    _dims, l2_proc_flag)
-    # convergence
-    _ = writevariablefromname(grp_diag,  'convergence',     _dims, l2_conv)
-
-    var = output_l2.createVariable('latitude', 'f8', _dims)
-    var[:] = l1bproduct['latitude']
-    var.long_name = 'latitude at bin locations'
-    var.units = 'degrees_north'
-    var.valid_min = -90.0
-    var.valid_max = 90.0
-    var = output_l2.createVariable('longitude', 'f8', _dims)
-    var[:] = l1bproduct['longitude']
-    var.long_name = 'longitude at bin locations'
-    var.units = 'degrees_east'
-    var.valid_min = -180.0
-    var.valid_max = 180.0
-
-    # maxiterations
-    _ = writevariablefromname(grp_diag,  'maxiterations',   _dims, l2_numb_iter)
-    # chi2
-    _ = writevariablefromname(grp_diag,  'spectralchi2',    _dims, l2_chi2)
-    # albedo
-    _ = writevariablefromname(output_l2, 'albedo',          _dims, l2_alb)
-    # surface pressure
-    _ = writevariablefromname(grp_prior, 'surface_pressure',_dims, retrieval_init['surface pressure'])
-    # surface elevation
-    _ = writevariablefromname(grp_prior, 'surface_elevation',_dims, retrieval_init['surface elevation'])
-    # spectral shift
-    _ = writevariablefromname(output_l2, 'spectralshift',   _dims, l2_spec_shift)
-    # chi2
-    _ = writevariablefromname(output_l2, 'spectralsqueeze', _dims, l2_spec_squeeze)
-    
-    scale = {'CO2': 1.E6, 'CH4': 1.E9, 'H2O': 1.E6}
-    # names
-
-    gases = ['CO2', 'CH4', 'H2O']
-    for gas in gases:
-        xgas = "X" + gas
-        xgas_precision = xgas + " precision"
-        xgas_ker = xgas + ' col avg kernel'
-
-        l2_X = np.zeros((nalt, nact))
-        l2_X_prec  = np.zeros((nalt, nact))
-        l2_X_avgk  = np.zeros((nalt, nact, nlay))
-        l2_X_prof  = np.zeros((nalt, nact, nlay))
-
-        for ialt in range(nalt):
-            for iact in range(nact):
-                tmp = (l2product[ialt, iact][xgas]*scale[gas])
-                l2_X[ialt, iact] = tmp
-                l2_X_prec[ialt, iact] = l2product[ialt, iact][xgas_precision]*scale[gas]
-                l2_X_avgk[ialt, iact, :] = l2product[ialt, iact][xgas_ker][:]
-                l2_X_prof[ialt, iact, :] = retrieval_init['trace gases'][gas]['ref_profile']
-            
-            # write data
-            prec_varname   = 'precision'+xgas
-            avgker_varname = 'avgkernel'+xgas
-            aprof_varname  = 'apriori_profile'+gas
-
-        _ = writevariablefromname(grp_ns, xgas,           _dims,   l2_X)
-        _ = writevariablefromname(grp_ns, prec_varname,   _dims,   l2_X_prec)
-        _ = writevariablefromname(output_l2, avgker_varname, _dims3d, l2_X_avgk)
-        _ = writevariablefromname(grp_prior, aprof_varname,  _dims3d, l2_X_prof)
-    
-    #next the main product, proxy
-    gases = ['CO2', 'CH4']
-    for gas in gases:
-
-        xgas = "X" + gas + " proxy"
-        xgas_precision = xgas + " precision"
-        l2_X = np.zeros((nalt, nact))
-        l2_X_prec = np.zeros((nalt, nact))
-        l2_X_accu = np.zeros((nalt, nact))
-        l2_X_qav  = np.zeros((nalt, nact), dtype = np.int16)
-    
-        for ialt in range(nalt):
-            for iact in range(nact):
-                l2_X[ialt, iact] = (l2product[ialt, iact][xgas]*scale[gas])
-                l2_X_prec[ialt, iact] = l2product[ialt, iact][xgas_precision]*scale[gas]
-                l2_X_accu[ialt, iact] = 99999.
-                l2_X_qav[ialt, iact]  = 100
-
-        # define names in constants_outputvariables
-        vargas = "proxyX"+gas
-        varprecgas = "precision"+vargas
-        varaccugas = "accuracy" +vargas
-        varqavgas  = "qa_value" +vargas
-        # write data
-        _ = writevariablefromname(output_l2, vargas, _dims, l2_X)
-        _ = writevariablefromname(output_l2, varprecgas, _dims, l2_X_prec)
-        _ = writevariablefromname(output_l2, varaccugas, _dims, l2_X_accu)
-        _ = writevariablefromname(output_l2, varqavgas,  _dims, l2_X_qav)
-
-    output_l2.close()
+    """
+    check_file_presence(config['io_files']['l1b'], 'l1b')
+    check_file_presence(config['io_files']['atmosphere'], 'atmosphere')
+    check_file_presence(config['io_files']['afgl'], 'afgl')
+    check_file_presence(config['io_files']['sun_reference'], 'sun_reference')
+    if config['io_files']['isrf'] or config['isrf']['tabulated']:
+        check_file_presence(config['io_files']['isrf'], 'isrf')
+    if config['io_files']['dump_xsec']:
+        check_file_presence(config['io_files']['dump_xsec'], 'dump_xsec')
 
 
-def level2_diags_output(filename, l2product, measurement):
-    # this function writes some ectra diagnostics to a file that are not included in the level 2 data product.
-    nalt = len(l2product)
-    nact = len(l2product[0])
-    dum  = np.zeros([nalt, nact])
-    for ialt in range(nalt):
-        for iact in range(nact):
-            dum[ialt, iact] = len(measurement[ialt, iact]['wavelength'])
-    nwave = np.int16(np.max(dum))
-    # file name
-    print('diag_output')
-    output_l2diag = nc.Dataset(filename, mode='w')
-    output_l2diag.title = 'Tango Carbon E2ES L2 diagnostics'
-    output_l2diag.createDimension('bins_spectral', nwave)     # spectral axis
-    output_l2diag.createDimension('bins_along_track', nalt)     # across track axis
-    output_l2diag.createDimension('bins_across_track', nact)     # across track axis
+def level1b_to_level2_processor(config_user: dict) -> None:
+    """Generate L2 product for the Tango-Carbon instrument.
 
-    # create 2d arrays
-    l2diag_wave = np.zeros((nalt, nact, nwave))
-    l2diag_measurement = np.zeros((nalt, nact, nwave))
-    l2diag_sun_irradiance = np.zeros((nalt, nact, nwave))
-    l2diag_gainCO2 = np.zeros((nalt, nact, nwave))
-    l2diag_gainH2O = np.zeros((nalt, nact, nwave))
-    l2diag_gainCH4 = np.zeros((nalt, nact, nwave))
-    for ialt in range(nalt):
-        for iact in range(nact):
-            nw =  measurement[ialt, iact]['wavelength'][:].size
-            l2diag_wave[ialt, iact, :nw] = measurement[ialt, iact]['wavelength'][:]
-            l2diag_measurement[ialt, iact, :nw] = measurement[ialt, iact]['ymeas'][:]
-            l2diag_sun_irradiance[ialt, iact, :nw] = measurement[ialt, iact]['sun'][:]
-            l2diag_gainCO2[ialt, iact, :nw] = l2product[ialt, iact]['gain_XCO2'][:]
-            l2diag_gainH2O[ialt, iact, :nw] = l2product[ialt, iact]['gain_XH2O'][:]
-            l2diag_gainCH4[ialt, iact, :nw] = l2product[ialt, iact]['gain_XCH4'][:]
+    Parameters
+    ----------
+    config
+        Configuration dictionary
 
-    _dims = ('bins_along_track', 'bins_across_track', 'bins_spectral')
-    # wavelength of measurement
-    _ = writevariablefromname(output_l2diag, "l2wavelength", _dims, l2diag_wave)
-    # spectral radiance measurements
-    _ = writevariablefromname(output_l2diag, "l2measurement", _dims, l2diag_measurement)
-    # solar irradiance spectrum
-    _ = writevariablefromname(output_l2diag, "l2solarirradiance", _dims, l2diag_sun_irradiance)
-    # gain CO2
-    _ = writevariablefromname(output_l2diag, "l2gainCO2", _dims, l2diag_gainCO2)
-    # gain CH4
-    _ = writevariablefromname(output_l2diag, "l2gainCH4", _dims, l2diag_gainCH4)
-    # gain H2O
-    _ = writevariablefromname(output_l2diag, "l2gainH2O", _dims, l2diag_gainH2O)
-    output_l2diag.close()
+    """
+    print_heading('Tango L1-L2 processor', empty_line=False)
+    print_system_info()
+    print(flush=True)
 
+    config = merge_config_with_default(config_user, 'teds.l1l2')
+    check_config(config)
 
-def level1b_to_level2_processor(config):
-    # get the l1b files
+    print_heading('Preparing input')
 
-    print('level 1B to 2 proessor ...')
-    l1b = get_l1b(config['io_files']['input_l1b'])
+    log.info('Reading L1B product')
+    l1b = read_l1(config['io_files']['l1b'], 0, None)
+    geometry = read_geometry(config['io_files']['l1b'])
+    # Work with radians from now on. Will be converted back to degrees
+    # just before writing to output.
+    geometry.deg2rad()
 
-    # get sgm geo data
-    surf_sgm, atm_sgm = get_sgm_atm(config['io_files']['input_sgm'])
+    # Read atmosphere for reference profiles (might not be used
+    # depending on the sw_prof_init flag).
+    log.info('Reading Atmosphere')
+    _, atm_sgm = read_atmosphere_and_albedo(config['io_files']['atmosphere'])
 
-    # mask on radiance nan values
-    mask = l1b['mask']
-
-    # Internal lbl spectral grid
-    wave_start = config['spec_settings']['wavestart']
-    wave_end = config['spec_settings']['waveend']
+    # Define line-by-line spectral grid
+    wave_start = config['spec_settings']['wave_start']
+    wave_end = config['spec_settings']['wave_end']
     wave_extend = config['spec_settings']['wave_extend']
     dwave_lbl = config['spec_settings']['dwave']
     wave_lbl = np.arange(
-        wave_start-wave_extend, wave_end+wave_extend, dwave_lbl)  # nm
+        wave_start-wave_extend, wave_end+wave_extend, dwave_lbl)
 
+    # Trim L1B data to match the L2 wavelength window
+    i_start = np.searchsorted(l1b.wavelengths, wave_start)
+    i_end = np.searchsorted(l1b.wavelengths, wave_end)
+    _trim_ratio = (i_end - 1 - i_start) / len(l1b.wavelengths)  # for output
+    log.info(f'Trimming L1B wavelength grid by {100 * (1-_trim_ratio):.1f}%')
+    l1b.wavelengths = l1b.wavelengths[i_start:i_end+1]
+    l1b.spectra = l1b.spectra[:, :, i_start:i_end+1]
+    l1b.spectra_noise = l1b.spectra_noise[:, :, i_start:i_end+1]
+
+    # Main dimensions
+    n_alt, n_act, n_wave = l1b.spectra.shape
     # Vertical layering
-    nlay = config['atmosphere']['nlay']
-    dzlay = config['atmosphere']['dzlay']
-    psurf = config['atmosphere']['psurf']
-    nlev = nlay + 1  # number of levels
-
-    zlay = (np.arange(nlay-1, -1, -1)+0.5)*dzlay  # altitude of layer midpoint
-    zlev = np.arange(nlev-1, -1, -1)*dzlay  # altitude of layer interfaces = levels
+    n_lay = config['atmosphere']['n_layers']
+    dz_lay = config['atmosphere']['layer_thickness']
+    p_surf = config['atmosphere']['surface_pressure']
+    n_lev = n_lay + 1  # number of levels
+    # Altitude of layer midpoint
+    z_lay = (np.arange(n_lay - 1, -1, -1) + 0.5) * dz_lay
+    # Altitude of layer interfaces = levels
+    z_lev = np.arange(n_lev - 1, -1, -1) * dz_lay
 
     # Model atmosphere
-    atm_full = atmosphere.Atmosphere.from_file(
-        zlay, zlev, psurf, config['io_files']['input_afgl'])
-
-    sun_wavelengths, sun_spectrum = libRT.read_sun_spectrum_TSIS1HSRS(
-        config['io_files']['input_sun_reference'])
-    sun_lbl = np.interp(wave_lbl, sun_wavelengths, sun_spectrum)
-
-    # Download molecular absorption parameter
-    iso_ids = [('CH4', 32), ('H2O', 1), ('CO2', 7)]  # see hapi manual Sec 6.6
-    molec = libRT.MolecularData(
-        wave_lbl, config['io_files']['input_hapi'], iso_ids)
+    atm = atmosphere.Atmosphere.from_file(
+        z_lay, z_lev, p_surf, config['io_files']['afgl'])
 
     # Calculate optical properties.
-    optics = libRT.OpticAbsProp(wave_lbl, zlay)
+    optics = OpticAbsProp(wave_lbl, z_lay)
     # If a NetCDF dump file exists read from there instead
     if (
             not os.path.exists(config['io_files']['dump_xsec'])
             or config['xsec_forced']):
+        # Download molecular absorption parameters. See hapi manual
+        # Sec 6.6.
+        iso_ids = [('CH4', 32), ('H2O', 1), ('CO2', 7)]
+        molec = MolecularData(wave_lbl, config['io_files']['hapi'], iso_ids)
         # Molecular absorption optical properties
-        optics.calc_molec_xsec(molec, atm_full)
+        optics.calc_molec_xsec(molec, atm)
         optics.xsec_to_file(config['io_files']['dump_xsec'])
     else:
         optics.xsec_from_file(config['io_files']['dump_xsec'])
 
-    optics.set_opt_depth_species(atm_full, ['H2O', 'CH4', 'CO2'])
+    # Define isrf function
+    if config['isrf']['tabulated']:
+        log.info('Reading ISRF')
+        isrf = Kernel.from_file(
+            config['io_files']['isrf'], wave_lbl, l1b.wavelengths)
+    else:
+        log.info('Generating ISRF from generalized Gaussian parameters')
+        isrf = Kernel.from_gauss(wave_lbl,
+                                 l1b.wavelengths,
+                                 config['isrf']['fwhm'],
+                                 config['isrf']['shape'])
+
+    # Solar irradiance: line-by-line and convolved
+    sun_wavelengths, sun_spectrum = read_sun_spectrum_TSIS1HSRS(
+        config['io_files']['sun_reference'])
+    sun_lbl = np.interp(wave_lbl, sun_wavelengths, sun_spectrum)
+    l1b.solar_irradiance = isrf.convolve(sun_lbl)
 
     # Initialization of the least squares fit
-    retrieval_init = {}
-    retrieval_init['chi2 limit'] = config['retrieval_init']['chi2_lim']
-    retrieval_init['maximum iteration'] = config['retrieval_init']['max_iter']
-    retrieval_init['zlay'] = zlay
-    retrieval_init['trace gases'] = {'CO2': {'init': 400,      'scaling': 1E-6},
-                                     'CH4': {'init': 1700,     'scaling': 1E-9},
-                                     'H2O': {'init': 9000,     'scaling': 1E-6}}
+    retrieval_init = {
+        'chi2_lim': config['retrieval_init']['chi2_lim'],
+        'max_iter': config['retrieval_init']['max_iter'],
+        # Here we specify which gases to retrieve
+        'trace_gases': {
+            'CO2': {'init': 400e-6},
+            'CH4': {'init': 1700e-9},
+            'H2O': {'init': 9000e-6}
+        }
+    }
 
-#    retrieval_init['surface'] = {'alb0': 0.17}
-    retrieval_init['wavelength lbl'] = wave_lbl
-    retrieval_init['solar irradiance'] = sun_lbl
+    # Initialize L2 product
+    n_albedo_coefficients = 2
+    l2 = L2(n_alt,
+            n_act,
+            n_wave,
+            atm.zlay.size,
+            n_albedo_coefficients,
+            list(retrieval_init['trace_gases'].keys()))
 
-    nact = l1b['latitude'][0, :].size
-    nalt = l1b['latitude'][:, 0].size
+    # Timings
+    timings = {'opt': 0, 'rtm': 0, 'conv': 0, 'kern': 0}
+    total_time = time.time()
 
-    l2product = {}
-    xch4_model = 1.8E-6
-    xco2_model = 410.E-6
-
-    l2product = np.ndarray((nalt, nact), np.object_)
-    measurement = np.ndarray((nalt, nact), np.object_)
-
-    runtime_cum = {}
-    runtime_cum['opt'] = 0.
-    runtime_cum['rtm'] = 0.
-    runtime_cum['conv'] = 0.
-    runtime_cum['kern'] = 0.
-
-    for ialt in tqdm(range(nalt)):
-        for iact in range(nact):
-            # number of 'good' pixels
-            numb_spec_points = np.sum(mask[ialt,iact,:])/float(mask[ialt,iact,:].size)
-            if(numb_spec_points >=0.9):
-                # initialization of pixel retrieval
-                if (config['retrieval_init']['sw_prof_init'] == 'afgl'):
-                    retrieval_init['trace gases']['CO2']['ref_profile'] = atm_full.get_gas('CO2').concentration
-                    retrieval_init['trace gases']['CH4']['ref_profile'] = atm_full.get_gas('CH4').concentration
-                    retrieval_init['trace gases']['H2O']['ref_profile'] = atm_full.get_gas('H2O').concentration
-                elif (config['retrieval_init']['sw_prof_init'] == 'sgm'):
-                    retrieval_init['trace gases']['CO2']['ref_profile'] = atm_sgm['dcol_co2'][ialt, iact, :]
-                    retrieval_init['trace gases']['CH4']['ref_profile'] = atm_sgm['dcol_ch4'][ialt, iact, :]
-                    retrieval_init['trace gases']['H2O']['ref_profile'] = atm_sgm['dcol_h2o'][ialt, iact, :]
-                else:
-                    sys.exit('sw_prof_init of l1bl2 configuration not set correctly!')
-                    
-                retrieval_init['surface pressure']  = np.zeros([nalt,nact])+1013.  #these are dummy values for the time being
-                retrieval_init['surface elevation'] = np.zeros([nalt,nact])
-
-                wavelength = l1b['wavelength'][mask[ialt, iact, :]].data
-                istart = np.searchsorted(wavelength, wave_start)
-                iend = np.searchsorted(wavelength, wave_end)
-                wave_meas = wavelength[istart:iend+1]  # nm
-
-                # Define isrf function
-
-                if config['isrf']['tabulated']:
-                    isrf = Kernel.from_file(
-                        config['io_files']['isrf'], wave_lbl, wave_meas)
-                else:
-                    isrf = Kernel.from_gauss(wave_lbl,
-                                             wave_meas,
-                                             config['isrf']['fwhm'],
-                                             config['isrf']['shape'])
-
-                isrf_convolution = isrf.convolve
-
-                atm_ret = deepcopy(atm_full)  # to initialize each retrieval with the same atmosphere
-                sun = isrf_convolution(sun_lbl)
-
-                # Observation geometry
-                nwave = wave_meas.size
-                measurement[ialt, iact] = {}
-                measurement[ialt, iact]['wavelength'] = wave_meas[:]
-                measurement[ialt, iact]['mu0'] = np.cos(np.deg2rad(l1b['sza'][ialt, iact]))
-                measurement[ialt, iact]['muv'] = np.cos(np.deg2rad(l1b['vza'][ialt, iact]))
-                measurement[ialt, iact]['ymeas'] = l1b['radiance'][ialt, iact, mask[ialt,iact, :]][istart:iend+1].data
-                measurement[ialt, iact]['Smeas'] = np.eye(
-                    nwave)*(l1b['noise'][ialt, iact, mask[ialt,iact, :]][istart:iend+1].data)**2
-                measurement[ialt, iact]['sun'] = sun
-    
-                # derive first guess albedo from the maximum reflectance
-                ymeas_max = np.max(measurement[ialt, iact]['ymeas'])
-
-                idx = np.where(measurement[ialt, iact]['ymeas'] == ymeas_max)[0][0]
-                alb_first_guess = measurement[ialt, iact]['ymeas'][idx] / \
-                    sun[idx]*np.pi/np.cos(np.deg2rad(l1b['sza'][ialt, iact]))
-
-                retrieval_init['surface'] = {'alb0': alb_first_guess, 'alb1': 0.0}
-                l2product[ialt, iact], runtime = libINV.Gauss_Newton_iteration(
-                    retrieval_init, atm_ret, optics, measurement[ialt, iact],
-                    config['retrieval_init']['max_iter'], config['retrieval_init']['chi2_lim'],
-                    isrf_convolution)
-    
-                for key in runtime.keys():
-                    runtime_cum[key] = runtime_cum[key] + runtime[key]
-    
-                if (not l2product[ialt, iact]['convergence']):
-                    print('pixel did not converge (ialt,iact) = ', ialt, iact)
-    
-                # Define proxy product
-                l2product[ialt, iact]['XCO2 proxy'] = l2product[ialt,
-                                                                   iact]['XCO2']/l2product[ialt, iact]['XCH4']*xch4_model
-                l2product[ialt, iact]['XCH4 proxy'] = l2product[ialt,
-                                                                   iact]['XCH4']/l2product[ialt, iact]['XCO2']*xco2_model
-                rel_error = np.sqrt((l2product[ialt, iact]['XCO2 precision']/l2product[ialt, iact]['XCO2'])**2 +
-                                    (l2product[ialt, iact]['XCH4 precision']/l2product[ialt, iact]['XCH4'])**2)
-                l2product[ialt, iact]['XCO2 proxy precision'] = rel_error * l2product[ialt, iact]['XCO2']
-                l2product[ialt, iact]['XCH4 proxy precision'] = rel_error * l2product[ialt, iact]['XCH4']
+    print_heading('Retrieval')
+    log.info('Generating proxy product along track:')
+    for i_alt in tqdm(range(n_alt)):
+        for i_act in range(n_act):
+            if (config['retrieval_init']['sw_prof_init'] == 'afgl'):
+                retrieval_init['trace_gases']['CO2']['ref_profile'] = (
+                    atm.get_gas('CO2').concentration)
+                retrieval_init['trace_gases']['CH4']['ref_profile'] = (
+                    atm.get_gas('CH4').concentration)
+                retrieval_init['trace_gases']['H2O']['ref_profile'] = (
+                    atm.get_gas('H2O').concentration)
+            elif (config['retrieval_init']['sw_prof_init'] == 'sgm'):
+                retrieval_init['trace_gases']['CO2']['ref_profile'] = (
+                    atm_sgm.get_gas('CO2').concentration[i_alt, i_act, :])
+                retrieval_init['trace_gases']['CH4']['ref_profile'] = (
+                    atm_sgm.get_gas('CH4').concentration[i_alt, i_act, :])
+                retrieval_init['trace_gases']['H2O']['ref_profile'] = (
+                    atm_sgm.get_gas('H2O').concentration[i_alt, i_act, :])
             else:
-                l2product[ialt, iact] = level2_nan(retrieval_init, nlay)
-                l2product[ialt, iact]['XCO2 proxy'] = float("nan")
-                l2product[ialt, iact]['XCH4 proxy'] = float("nan")
-                l2product[ialt, iact]['XCO2 proxy precision'] = float("nan")
-                l2product[ialt, iact]['XCH4 proxy precision'] = float("nan")
+                log.error('sw_prof_init not set correctly')
+                sys.exit(1)
 
-            l2product[ialt, iact]['spec_shift']   = 0.  #dummies for the time beeing
-            l2product[ialt, iact]['spec_squeeze'] = 0.
+            # Dummy values for the time being
+            retrieval_init['surface_pressure'] = (
+                np.zeros([n_alt, n_act]) + 1013)
+            retrieval_init['surface_elevation'] = np.zeros([n_alt, n_act])
 
-    # output to netcdf file
-    level2_output(config['io_files']['output_l2'], l2product, retrieval_init, l1b, config['retrieval_init'])
+            # Derive first guess albedo from maximum reflectance
+            idx = np.argmax(l1b.spectra[i_alt, i_act, :])
+            alb_first_guess = (l1b.spectra[i_alt, i_act, idx]
+                               / l1b.solar_irradiance[idx]
+                               * np.pi
+                               / np.cos(geometry.sza[i_alt, i_act]))
+            retrieval_init['albedo_coefficients'] = np.zeros(
+                n_albedo_coefficients)
+            retrieval_init['albedo_coefficients'][0] = alb_first_guess
 
-    if(config['io_files']['output_l2_diag']):
-        level2_diags_output(config['io_files']['output_l2_diag'], l2product, measurement)
+            # Initialize each retrieval with the same atmosphere
+            atm_ret = deepcopy(atm)
 
-    print('=> l1bl2 finished successfully')
+            gauss_newton(
+                retrieval_init,
+                atm_ret,
+                optics,
+                wave_lbl,
+                sun_lbl,
+                l1b.spectra[i_alt, i_act, :],
+                np.eye(n_wave)*(l1b.spectra_noise[i_alt, i_act, :])**2,
+                np.cos(geometry.sza[i_alt, i_act]),
+                np.cos(geometry.vza[i_alt, i_act]),
+                isrf,
+                timings,
+                l2,
+                i_alt,
+                i_act)
 
-    #print('cumulative run time: ',runtime_cum)
+            if (not l2.converged[i_alt, i_act]):
+                log.warn(f'Pixel ({i_alt},{i_act}) not converged')
 
-    return #l2product
+    # Define proxy product
+    xch4_model = 1.8e-6
+    xco2_model = 410e-6
+    l2.proxys['CO2'] = (l2.mixing_ratios['CO2'] / l2.mixing_ratios['CH4']
+                        * xch4_model)
+    l2.proxys['CH4'] = (l2.mixing_ratios['CH4'] / l2.mixing_ratios['CO2']
+                        * xco2_model)
+    rel_error = np.sqrt((l2.precisions['CO2'] / l2.mixing_ratios['CO2'])**2
+                        + (l2.precisions['CH4'] / l2.mixing_ratios['CH4'])**2)
+    l2.proxy_precisions['CO2'] = rel_error * l2.mixing_ratios['CO2']
+    l2.proxy_precisions['CH4'] = rel_error * l2.mixing_ratios['CH4']
 
+    log.info('')
+    log.info('Writing output')
+    write_l2(config['io_files']['l2'], atm, l2, retrieval_init, geometry)
 
-def level2_nan(retrieval_init, nlay):
+    if config['io_files']['l2_diag']:
+        write_l2_diagnostics(config['io_files']['l2_diag'], l1b, l2)
 
-    output = {}
-    output['chi2'] = float("nan")
-    output['convergence'] = False
-    output['number_iter'] = 0.
+    total_time = time.time() - total_time
+    log.info('')
+    log.info('Timings:')
+    log.info(f"  Optics:             {timings['opt']:7.2f} s")
+    log.info(f"  Radiative transfer: {timings['rtm']:7.2f} s")
+    log.info(f"  Convolutions:       {timings['conv']:7.2f} s")
+    log.info(f"  Derivatives:        {timings['kern']:7.2f} s")
+    log.info(f"  Total:              {total_time:7.2f} s")
 
-    for l, key in enumerate(retrieval_init['trace gases'].keys()):
-        output['X'+key] = float("nan")
-        output['X'+key+' precision'] = float("nan")
-        output['gain_X'+key] = float("nan")
-
-    m = 0
-    while 'alb%d' % (m) in retrieval_init['surface'].keys():
-        output['alb%d' % (m)] = float("nan")
-        m = m+1
-    output['XCO2 col avg kernel'] = np.zeros(nlay)
-    output['XCH4 col avg kernel'] = np.zeros(nlay)
-    output['XH2O col avg kernel'] = np.zeros(nlay)
-
-    return(output)
+    print_heading('Success')

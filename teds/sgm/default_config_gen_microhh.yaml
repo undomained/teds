@@ -7,7 +7,7 @@ simulation:
   output_file: microhh_gases.nc
   default_filename: plume.default.0010800.nc
   ini_filename: plume.ini
-  data_names: [CH4, CO2, NO, NO2, U, V, W]
+  data_names: ["CH4", "CO2", "NO", "NO2", "U", "V", "W"]
   # set new emissions in kg/s and change fileds accordingly
   data_set_emissions: [5, 743, None, None]
   # Rotation angle in degrees

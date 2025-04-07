@@ -1,0 +1,18 @@
+# List of parameters for the microhh_create_tedsnetcdf function
+
+simulation:
+  # Path to the MicroHH simulation data
+  input_directory: ""
+  # Path and name of the output NetCDF file
+  output_file: microhh_gases.nc
+  default_filename: plume.default.0010800.nc
+  ini_filename: plume.ini
+  data_names: [CH4, CO2, NO, NO2, U, V, W]
+  # set new emissions in kg/s and change fileds accordingly
+  data_set_emissions: [5, 743, None, None]
+  # Rotation angle in degrees
+  rotation_angle: -45
+  # Source location in (latitude, longitude)
+  source_location:
+    lat0: 51.500833
+    lon0: 14.457222

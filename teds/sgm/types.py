@@ -13,9 +13,9 @@ import numpy.typing as npt
 class Gas:
     """Concentration and other attributes of a greenhouse gas"""
     name: str
-    source: npt.NDArray[np.float64] | None
+    source: npt.NDArray[np.floating] | None
     emission_in_kgps: float | None
-    concentration: npt.NDArray[np.float64]  # (x, y, z)
+    concentration: npt.NDArray[np.floating]  # (x, y, z)
 
 
 @dataclass
@@ -25,12 +25,12 @@ class Meteo:
     dx: float
     dy: float
     dz: float
-    x: npt.NDArray[np.float64]
-    y: npt.NDArray[np.float64]
-    z: npt.NDArray[np.float64]
-    lat: npt.NDArray[np.float64]
-    lon: npt.NDArray[np.float64]
-    znodes: npt.NDArray[np.float64]
+    x: npt.NDArray[np.floating]
+    y: npt.NDArray[np.floating]
+    z: npt.NDArray[np.floating]
+    lat: npt.NDArray[np.floating]
+    lon: npt.NDArray[np.floating]
+    znodes: npt.NDArray[np.floating]
     gases: list[Gas]
 
     @classmethod

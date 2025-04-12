@@ -85,7 +85,7 @@ def apply_isrf(l1_product: L1,
     l1_product.wavelengths = isrf.wavelengths_out
 
 
-def radiometric(l1_product: L1, rad_corr: npt.NDArray[np.float64]) -> None:
+def radiometric(l1_product: L1, rad_corr: npt.NDArray[np.floating]) -> None:
     """Convert from spectral photon radiance [nm-1 s-1 sr-1 m-2] to
     counts.
 
@@ -108,7 +108,7 @@ def radiometric(l1_product: L1, rad_corr: npt.NDArray[np.float64]) -> None:
 
 def map_to_detector(l1_product: L1,
                     ckd: CKDSwath,
-                    wavelengths: npt.NDArray[np.float64]) -> None:
+                    wavelengths: npt.NDArray[np.floating]) -> None:
     """Map spectra to detector.
 
     Spectra are mapped to infinitely thin curves on the detector (instead of
@@ -167,7 +167,7 @@ def stray_light(l1_product: L1, ckd: CKDStray) -> None:
         l1_product.signal[i_alt, :] = signal_convolved
 
 
-def prnu(l1_product: L1, prnu_qe: npt.NDArray[np.float64]) -> None:
+def prnu(l1_product: L1, prnu_qe: npt.NDArray[np.floating]) -> None:
     """Incorporate PRNU and quantum efficiency.
 
     Parameters
@@ -210,7 +210,7 @@ def nonlinearity(l1_product: L1, ckd: CKDNonlin) -> None:
 
 
 def dark_current(l1_product: L1,
-                 dark_current: npt.NDArray[np.float64]) -> None:
+                 dark_current: npt.NDArray[np.floating]) -> None:
     """Incorporate dark signal.
 
     If the dark signal does not depend linearly on exposure time, make
@@ -230,7 +230,7 @@ def dark_current(l1_product: L1,
 
 def noise(l1_product: L1,
           ckd: CKDNoise,
-          dark_current: npt.NDArray[np.float64],
+          dark_current: npt.NDArray[np.floating],
           n_coadditions: int,
           seed: int) -> None:
     """Add random noise to signal.
@@ -260,7 +260,7 @@ def noise(l1_product: L1,
     l1_product.signal += rng.normal(0.0, std, l1_product.signal.shape)
 
 
-def dark_offset(l1_product: L1, offset: npt.NDArray[np.float64]) -> None:
+def dark_offset(l1_product: L1, offset: npt.NDArray[np.floating]) -> None:
     """Incorporate offset.
 
     Parameters

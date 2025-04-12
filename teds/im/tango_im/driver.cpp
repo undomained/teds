@@ -51,7 +51,7 @@ auto driver(const SettingsIM& settings,
     // Read or construct the ISRF
     ISRF isrf {};
     if (settings.isrf.tabulated) {
-        spdlog::info("Reading ISRF from file");
+        spdlog::info("Reading ISRF from file:");
         isrf.fromFile(
           settings.io_files.isrf, l1_prod.wavelengths, ckd.wave.wavelengths);
     } else {

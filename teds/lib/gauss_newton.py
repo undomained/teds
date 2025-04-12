@@ -18,7 +18,7 @@ def gauss_newton(retrieval_init: dict,
                  wave_lbl: npt.NDArray[np.float64],
                  sun_lbl: npt.NDArray[np.float64],
                  ymeas: npt.NDArray[np.float64],
-                 Smeas: npt.NDArray[np.float64],
+                 Smeas_diag: npt.NDArray[np.float64],
                  mu0: float,
                  muv: float,
                  isrf: Kernel,
@@ -42,7 +42,7 @@ def gauss_newton(retrieval_init: dict,
         Solar irradiance on the line-by-line grid
     ymeas
         Radiance spectrum of a given ALT/ACT point
-    Smeas
+    Smeas_diag
         Radiance spectrum variances
     mu0
         cos(SZA)
@@ -81,8 +81,9 @@ def gauss_newton(retrieval_init: dict,
     state_vector[len(gas_names):] = retrieval_init['albedo_coefficients']
 
     chi_sqrt = []
+    n_dof = len(ymeas) - len(state_vector)
     surface = Surface(wave_lbl)
-    for iteration in range(retrieval_init['max_iter']):
+    for iterations in range(retrieval_init['max_iter']):
         for i_gas, gas in enumerate(gas_names):
             atm.get_gas(gas).concentration[:] = (
                 state_vector[i_gas]
@@ -112,7 +113,7 @@ def gauss_newton(retrieval_init: dict,
             jacobian[:, i] = derivative
 
         # Calculate least square solution
-        Syinv = np.eye(fwd_rad.size) / np.diag(Smeas)
+        Syinv = np.eye(fwd_rad.size) / Smeas_diag
         # Covariance matrix of the estimated least square solution
         JTJ = np.matmul(jacobian.T, np.matmul(Syinv, jacobian))
         Sx = np.linalg.solve(JTJ, np.eye(JTJ.shape[0]))
@@ -126,20 +127,16 @@ def gauss_newton(retrieval_init: dict,
 
         state_vector += state_delta
 
-        chi_sqrt.append(ytilde.T @ Syinv @ ytilde
-                        / (len(fwd_rad) - len(state_vector)))
+        chi_sqrt.append(((ymeas - fwd_rad)**2 / Smeas_diag).sum() / n_dof)
 
-        # Define convergence criteria or if iterations are too large
-        if iteration > 2:
-            if (
-                    np.abs(chi_sqrt[iteration]-chi_sqrt[iteration-1])
-                    < retrieval_init['chi2_lim']):
-                l2.converged[i_alt, i_act] = True
-                break
-        iteration += 1
+        if iterations > 2 and (chi_sqrt[-2] - chi_sqrt[-1]
+                               < retrieval_init['chi2_lim']):
+            l2.converged[i_alt, i_act] = True
+            break
+        iterations += 1
 
-    l2.chi2[i_alt, i_act] = chi_sqrt[iteration-1]
-    l2.number_iter[i_alt, i_act] = iteration
+    l2.chi2[i_alt, i_act] = chi_sqrt[-1]
+    l2.number_iter[i_alt, i_act] = iterations
 
     # Define output product, first update all parameters
     for i_gas, gas in enumerate(gas_names):

@@ -26,8 +26,8 @@ from teds.gm.io import read_geometry
 
 
 def fetch_granules(
-        lat: npt.NDArray[np.float64],
-        lon: npt.NDArray[np.float64],
+        lat: npt.NDArray[np.floating],
+        lon: npt.NDArray[np.floating],
         date_range: tuple[datetime.date, datetime.date],
         max_cloud_cover: float = 0.1) -> list[PystacItem]:
     """Return S2 granules corresponding to a target box.
@@ -195,8 +195,8 @@ def download_albedo(config: dict) -> list[DataArray]:
 
 def download_albedo_for_coords(
         config: dict,
-        lat: npt.NDArray[np.float64],
-        lon: npt.NDArray[np.float64]) -> list[DataArray]:
+        lat: npt.NDArray[np.floating],
+        lon: npt.NDArray[np.floating]) -> list[DataArray]:
     """Download Sentinel 2 albedo covering a target area.
 
     Parameters

@@ -72,7 +72,7 @@ def write_navigation(filename: str,
     nc.close()
 
 
-def nc_write_lat(nc: Dataset | Group, data: npt.NDArray[np.float64]) -> None:
+def nc_write_lat(nc: Dataset | Group, data: npt.NDArray[np.floating]) -> None:
     var = nc.createVariable('latitude',
                             'f8',
                             ('along_track_sample', 'across_track_sample'),
@@ -84,7 +84,7 @@ def nc_write_lat(nc: Dataset | Group, data: npt.NDArray[np.float64]) -> None:
     var[:] = data
 
 
-def nc_write_lon(nc: Dataset | Group, data: npt.NDArray[np.float64]) -> None:
+def nc_write_lon(nc: Dataset | Group, data: npt.NDArray[np.floating]) -> None:
     var = nc.createVariable('longitude',
                             'f8',
                             ('along_track_sample', 'across_track_sample'),
@@ -97,7 +97,7 @@ def nc_write_lon(nc: Dataset | Group, data: npt.NDArray[np.float64]) -> None:
 
 
 def nc_write_height(nc: Dataset | Group,
-                    data: npt.NDArray[np.float64]) -> None:
+                    data: npt.NDArray[np.floating]) -> None:
     var = nc.createVariable('height',
                             'f8',
                             ('along_track_sample', 'across_track_sample'),
@@ -109,7 +109,7 @@ def nc_write_height(nc: Dataset | Group,
     var[:] = data
 
 
-def nc_write_vza(nc: Dataset | Group, data: npt.NDArray[np.float64]) -> None:
+def nc_write_vza(nc: Dataset | Group, data: npt.NDArray[np.floating]) -> None:
     var = nc.createVariable('sensor_zenith',
                             'f8',
                             ('along_track_sample', 'across_track_sample'),
@@ -121,7 +121,7 @@ def nc_write_vza(nc: Dataset | Group, data: npt.NDArray[np.float64]) -> None:
     var[:] = data
 
 
-def nc_write_vaa(nc: Dataset | Group, data: npt.NDArray[np.float64]) -> None:
+def nc_write_vaa(nc: Dataset | Group, data: npt.NDArray[np.floating]) -> None:
     var = nc.createVariable('sensor_azimuth',
                             'f8',
                             ('along_track_sample', 'across_track_sample'),
@@ -133,7 +133,7 @@ def nc_write_vaa(nc: Dataset | Group, data: npt.NDArray[np.float64]) -> None:
     var[:] = data
 
 
-def nc_write_sza(nc: Dataset | Group, data: npt.NDArray[np.float64]) -> None:
+def nc_write_sza(nc: Dataset | Group, data: npt.NDArray[np.floating]) -> None:
     var = nc.createVariable('solar_zenith',
                             'f8',
                             ('along_track_sample', 'across_track_sample'),
@@ -145,7 +145,7 @@ def nc_write_sza(nc: Dataset | Group, data: npt.NDArray[np.float64]) -> None:
     var[:] = data
 
 
-def nc_write_saa(nc: Dataset | Group, data: npt.NDArray[np.float64]) -> None:
+def nc_write_saa(nc: Dataset | Group, data: npt.NDArray[np.floating]) -> None:
     var = nc.createVariable('solar_azimuth',
                             'f8',
                             ('along_track_sample', 'across_track_sample'),
@@ -197,9 +197,9 @@ def write_geometry(filename: str,
                    geometry: Geometry,
                    geometry_ext: Geometry,
                    orbit_start: datetime.datetime,
-                   timestamps: npt.NDArray[np.float64],
+                   timestamps: npt.NDArray[np.floating],
                    tai_seconds: npt.NDArray[np.uint],
-                   tai_subsec: npt.NDArray[np.float64]) -> None:
+                   tai_subsec: npt.NDArray[np.floating]) -> None:
     """Write viewing and solar geometries and image attributes to a file.
 
     Parameters

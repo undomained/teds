@@ -24,10 +24,10 @@ class Kernel:
 
     """
     def __init__(self,
-                 wavelength_diffs: npt.NDArray[np.float64],
-                 isrf: npt.NDArray[np.float64],
-                 wavelengths_in: npt.NDArray[np.float64],
-                 wavelengths_out: npt.NDArray[np.float64],
+                 wavelength_diffs: npt.NDArray[np.floating],
+                 isrf: npt.NDArray[np.floating],
+                 wavelengths_in: npt.NDArray[np.floating],
+                 wavelengths_out: npt.NDArray[np.floating],
                  wave_cutoff: float = 0.7) -> None:
         """Precompute kernel values that will be used for convolution.
 
@@ -68,8 +68,8 @@ class Kernel:
     @classmethod
     def from_file(cls,
                   filename: str,
-                  wavelengths_in: npt.NDArray[np.float64],
-                  wavelengths_out: npt.NDArray[np.float64]) -> Self:
+                  wavelengths_in: npt.NDArray[np.floating],
+                  wavelengths_out: npt.NDArray[np.floating]) -> Self:
         """Read ISRF from file."""
         nc = Dataset(filename)
         return cls(nc['wavelength'][:].data,
@@ -79,8 +79,8 @@ class Kernel:
 
     @classmethod
     def from_gauss(cls,
-                   wavelengths_in: npt.NDArray[np.float64],
-                   wavelengths_out: npt.NDArray[np.float64],
+                   wavelengths_in: npt.NDArray[np.floating],
+                   wavelengths_out: npt.NDArray[np.floating],
                    fwhm: float,
                    shape: float = 2.0,
                    wave_cutoff: float = 0.7) -> Self:
@@ -119,13 +119,13 @@ class Kernel:
 
     @staticmethod
     @numba.njit
-    def _convolve(wavelengths_in: npt.NDArray[np.float64],
-                  wavelengths_out: npt.NDArray[np.float64],
+    def _convolve(wavelengths_in: npt.NDArray[np.floating],
+                  wavelengths_out: npt.NDArray[np.floating],
                   wave_step: float,
-                  n_vals_half: npt.NDArray[np.float64],
+                  n_vals_half: npt.NDArray[np.floating],
                   n_vals: int,
-                  isrf_values: npt.NDArray[np.float64],
-                  data: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
+                  isrf_values: npt.NDArray[np.floating],
+                  data: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         """Convolve array.
 
         This needs to be static method to use Numba decorator. The
@@ -165,7 +165,7 @@ class Kernel:
         return conv
 
     def convolve(self,
-                 data: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
+                 data: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         """Convolve a data array with the kernel.
 
         Parameter
@@ -197,8 +197,8 @@ class KernelGauss:
 
     """
     def __init__(self,
-                 wave_in: npt.NDArray[np.float64],
-                 wave_out: npt.NDArray[np.float64],
+                 wave_in: npt.NDArray[np.floating],
+                 wave_out: npt.NDArray[np.floating],
                  fwhm: float,
                  shape: float = 2.0,
                  cutoff: float = 1.5) -> None:
@@ -226,7 +226,8 @@ class KernelGauss:
         # Number of rows in each kernel
         n_rows = wave_out.shape[0]
         # Matrix representing the convolution kernels
-        self.kernel = np.empty((len(wave_out), len(wave_in)), dtype=np.float64)
+        self.kernel = np.empty((len(wave_out), len(wave_in)),
+                               dtype=np.floating)
         # Ranges of non-zero values for each kernel row
         self.i_limits = np.empty((n_rows, 2), dtype=np.int32)
         self._gen_kernel(fwhm,
@@ -242,10 +243,10 @@ class KernelGauss:
     def _gen_kernel(fwhm: float,
                     shape: float,
                     cutoff: float,
-                    wave_in: npt.NDArray[np.float64],
-                    wave_out: npt.NDArray[np.float64],
+                    wave_in: npt.NDArray[np.floating],
+                    wave_out: npt.NDArray[np.floating],
                     i_limits: npt.NDArray[np.int32],
-                    kernel: npt.NDArray[np.float64]) -> None:
+                    kernel: npt.NDArray[np.floating]) -> None:
         do_gaussian = abs(shape - 2.0) < 1e-30
         sigma = fwhm / (2.0 * math.sqrt(2.0 * math.log(2.0)))
         sigma_2inv = 1 / (math.sqrt(2.0) * sigma)
@@ -268,8 +269,8 @@ class KernelGauss:
     @staticmethod
     @numba.njit
     def _convolve(i_limits: npt.NDArray[np.int32],
-                  kernel: npt.NDArray[np.float64],
-                  array: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
+                  kernel: npt.NDArray[np.floating],
+                  array: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         """Convolve the kernel with an array."""
         conv = np.empty(kernel.shape[0])
         for i_row in range(kernel.shape[0]):
@@ -279,7 +280,7 @@ class KernelGauss:
         return conv
 
     def convolve(self,
-                 array: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
+                 array: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         """Convolve the kernel with an array."""
         return KernelGauss._convolve(self.i_limits, self.kernel, array)
 
@@ -311,5 +312,5 @@ class KernelGauss2D:
         self.kernel /= self.kernel.sum()
 
     def convolve(self,
-                 data: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
+                 data: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         return convolve(data, self.kernel, mode='same')

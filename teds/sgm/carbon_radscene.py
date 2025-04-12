@@ -34,17 +34,17 @@ from teds.lib.surface import Surface
 try:
     from teds.lib.algorithms import cpp_rt_act
 except ModuleNotFoundError:
-    def cpp_rt_act(co2_concentration: npt.NDArray[np.float64],
-                   ch4_concentration: npt.NDArray[np.float64],
-                   h2o_concentration: npt.NDArray[np.float64],
-                   co2_xsec: npt.NDArray[np.float64],
-                   ch4_xsec: npt.NDArray[np.float64],
-                   h2o_xsec: npt.NDArray[np.float64],
-                   albedo: npt.NDArray[np.float64],
-                   mu_sza: npt.NDArray[np.float64],
-                   mu_vza: npt.NDArray[np.float64],
-                   sun: npt.NDArray[np.float64],
-                   rad: npt.NDArray[np.float64]) -> None:
+    def cpp_rt_act(co2_concentration: npt.NDArray[np.floating],
+                   ch4_concentration: npt.NDArray[np.floating],
+                   h2o_concentration: npt.NDArray[np.floating],
+                   co2_xsec: npt.NDArray[np.floating],
+                   ch4_xsec: npt.NDArray[np.floating],
+                   h2o_xsec: npt.NDArray[np.floating],
+                   albedo: npt.NDArray[np.floating],
+                   mu_sza: npt.NDArray[np.floating],
+                   mu_vza: npt.NDArray[np.floating],
+                   sun: npt.NDArray[np.floating],
+                   rad: npt.NDArray[np.floating]) -> None:
         pass
 
 
@@ -106,7 +106,7 @@ def gen_sedf(config: dict, geometry: Geometry) -> KernelGauss2D:
 
 
 def build_hetero_isrf(U_filename: str,
-                      albedo: npt.NDArray[np.float64],
+                      albedo: npt.NDArray[np.floating],
                       bin_alt: int) -> DataArray:
     nc_U = Dataset(U_filename)
     U = nc_U['U'][::-1, :].data
@@ -130,7 +130,7 @@ def build_hetero_isrf(U_filename: str,
 
 
 def reduce_alt_act_dimension(geometry: Geometry,
-                             albedo: npt.NDArray[np.float64],
+                             albedo: npt.NDArray[np.floating],
                              atm: Atmosphere,
                              alt_beg: int,
                              alt_end: int | None,
@@ -211,7 +211,7 @@ def get_geometry_margins_and_multipliers(
 def resample_alt_act(bin_alt: int,
                      bin_act: int,
                      atm: Atmosphere,
-                     albedo: npt.NDArray[np.float64],
+                     albedo: npt.NDArray[np.floating],
                      geometry: Geometry) -> tuple[Atmosphere,
                                                   list[DataArray],
                                                   Geometry]:

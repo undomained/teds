@@ -12,8 +12,8 @@ from teds.sgm.atmosphere import Atmosphere
 
 # Helper function to generate noise based on type
 def generate_noise(intensity: float,
-                   base_values: npt.NDArray[np.float64],
-                   noise_type: str) -> npt.NDArray[np.float64]:
+                   base_values: npt.NDArray[np.floating],
+                   noise_type: str) -> npt.NDArray[np.floating]:
     """Generates noise based on the specified type.
 
     Parameters

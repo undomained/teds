@@ -23,7 +23,7 @@ import teds.lib.constants as const
 
 
 def read_sun_spectrum_TSIS1HSRS(filename: str) -> tuple[
-        npt.NDArray[np.float64], npt.NDArray[np.float64]]:
+        npt.NDArray[np.floating], npt.NDArray[np.floating]]:
     """Read sun spectrum TSIS-1 HSRS.
 
     Downloaded from https://lasp.colorado.edu/lisird/data/tsis1_hsrs,
@@ -51,7 +51,7 @@ class MolecularData:
 
     """
     def __init__(self,
-                 wave: npt.NDArray[np.float64],
+                 wave: npt.NDArray[np.floating],
                  xsdbpath: str,
                  hp_ids: list[tuple[str, int]]) -> None:
         """Download line parameters from HITRAN web ressource via the
@@ -109,10 +109,10 @@ class SpeciesProperties:
     # Species name, e.g. CO2
     name: str
     # Absorption cross-section
-    xsec: npt.NDArray[np.float64]
+    xsec: npt.NDArray[np.floating]
     # Optical thickness (xsec * rho where rho is concentration at some
     # altitude). Depends on wavelength and altitude.
-    tau_alt: npt.NDArray[np.float64]
+    tau_alt: npt.NDArray[np.floating]
 
 
 class OpticAbsProp:
@@ -122,12 +122,12 @@ class OpticAbsProp:
     """
 
     def __init__(self, wave:
-                 npt.NDArray[np.float64],
-                 zlay: npt.NDArray[np.float64]) -> None:
+                 npt.NDArray[np.floating],
+                 zlay: npt.NDArray[np.floating]) -> None:
         # Optical properties. One entry per species.
         self.props: list[SpeciesProperties] = []
         # Total optical thickness
-        self.taua = np.empty(())
+        self.taua = np.empty((0, 0))
         # Wavelengths [nm]
         self.wave = wave
         # Vertical height layers, midpoints [m]
@@ -213,7 +213,7 @@ class OpticAbsProp:
         self.taua = np.zeros((nwave, nlay))
         for name in species_names:
             prop = self.get_prop(name)
-            self.taua = self.taua + prop.tau_alt
+            self.taua += prop.tau_alt
 
     def xsec_to_file(self, filename: str) -> None:
         """Save cross-section of each trace gas to NetCDF file."""
@@ -240,15 +240,15 @@ class OpticAbsProp:
                 species, nc[species]['xsec'][:].data, np.empty(())))
 
 
-def transmission(sun_lbl: npt.NDArray[np.float64],
+def transmission(sun_lbl: npt.NDArray[np.floating],
                  optics: OpticAbsProp,
                  surface: Surface,
                  mu0: float,
                  muv: float,
-                 deriv: bool = False) -> (npt.NDArray[np.float64]
-                                          | tuple[npt.NDArray[np.float64],
-                                                  npt.NDArray[np.float64],
-                                                  npt.NDArray[np.float64]]):
+                 deriv: bool = False) -> (npt.NDArray[np.floating]
+                                          | tuple[npt.NDArray[np.floating],
+                                                  npt.NDArray[np.floating],
+                                                  npt.NDArray[np.floating]]):
     """Calculate transmission solution given geometry (mu0,muv) using
     matrix algebra
 
@@ -297,15 +297,15 @@ def transmission(sun_lbl: npt.NDArray[np.float64],
 def nonscat_fwd_model(gas_names: list[str],
                       n_albedo: int,
                       isrf: Kernel,
-                      sun_lbl: npt.NDArray[np.float64],
+                      sun_lbl: npt.NDArray[np.floating],
                       atm: Atmosphere,
                       optics: OpticAbsProp,
                       surface: Surface,
                       mu0: float,
                       muv: float,
-                      timings: dict) -> tuple[npt.NDArray[np.float64],
-                                              list[npt.NDArray[np.float64]],
-                                              list[npt.NDArray[np.float64]]]:
+                      timings: dict) -> tuple[npt.NDArray[np.floating],
+                                              list[npt.NDArray[np.floating]],
+                                              list[npt.NDArray[np.floating]]]:
     """Non-scattering forward model.
 
     Parameters
@@ -352,7 +352,7 @@ def nonscat_fwd_model(gas_names: list[str],
     rad = isrf.convolve(rad_lbl)
     derivatives_albedo = []
     derivatives_gases = []
-    derivatives_gases_layers = []
+    derivatives_gases_layers: list[npt.NDArray[np.floating]] = []
     for i in range(n_albedo):
         derivatives_albedo.append(isrf.convolve(dev_alb_lbl * surface.spec**i))
     timings['conv'] += time.time() - time_conv

@@ -2,6 +2,7 @@
 # the LICENSE file in the root directory of this project.
 """Types used by L2 processor."""
 import numpy as np
+import numpy.typing as npt
 
 
 class L2:
@@ -24,11 +25,11 @@ class L2:
         # dictionary with Numpy arrays. This way gases can easily be
         # fetched by their name.
         self.albedo_coeffs = np.empty((n_albedo, n_alt, n_act))
-        self.mixing_ratios = {}
+        self.mixing_ratios: dict[str, npt.NDArray[np.floating]] = {}
         self.precisions = {}
         self.gains = {}
         self.col_avg_kernels = {}
-        self.proxys = {}
+        self.proxys: dict[str, npt.NDArray[np.floating]] = {}
         self.proxy_precisions = {}
         for gas in gas_names:
             self.mixing_ratios[gas] = np.empty((n_alt, n_act))

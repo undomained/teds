@@ -41,7 +41,7 @@ def coadding_and_binning(l1_product: L1,
     l1_product.signal /= count_table
 
 
-def dark_offset(l1_product: L1, offset: npt.NDArray[np.float64]) -> None:
+def dark_offset(l1_product: L1, offset: npt.NDArray[np.floating]) -> None:
     """Remove offset.
 
     Parameters
@@ -59,7 +59,7 @@ def dark_offset(l1_product: L1, offset: npt.NDArray[np.float64]) -> None:
 def noise(l1_product: L1,
           count_table: npt.NDArray[np.int32],
           ckd: CKDNoise,
-          dark_current: npt.NDArray[np.float64]) -> None:
+          dark_current: npt.NDArray[np.floating]) -> None:
     """Determine expected noise in signal.
 
     The signal is not changed.
@@ -91,7 +91,7 @@ def noise(l1_product: L1,
 
 
 def dark_current(l1_product: L1,
-                 dark_current: npt.NDArray[np.float64]) -> None:
+                 dark_current: npt.NDArray[np.floating]) -> None:
     """Remove dark signal.
 
     If the dark signal does not depend linearly on exposure time, make
@@ -150,7 +150,7 @@ def nonlinearity(l1_product: L1,
 
 def prnu(l1_product: L1,
          pixel_mask: npt.NDArray[np.bool_],
-         prnu_qe: npt.NDArray[np.float64]) -> None:
+         prnu_qe: npt.NDArray[np.floating]) -> None:
     """Remove PRNU and quantum efficiency.
 
     Parameters
@@ -172,7 +172,7 @@ def prnu(l1_product: L1,
 
 def remove_bad_values(n_cols: int,
                       pixel_mask: npt.NDArray[np.bool_],
-                      signals: npt.NDArray[np.float64]) -> None:
+                      signals: npt.NDArray[np.floating]) -> None:
     """Smooth over bad values in detector images.
 
     Some algorithms like stray light require all pixels to have a
@@ -192,8 +192,8 @@ def remove_bad_values(n_cols: int,
 
 
 def convolve(
-        signal: npt.NDArray[np.float64],
-        kernel_fft: npt.NDArray[np.complex128]) -> npt.NDArray[np.float64]:
+        signal: npt.NDArray[np.floating],
+        kernel_fft: npt.NDArray[np.complex128]) -> npt.NDArray[np.floating]:
     """Convolve a detector image with kernel.
 
     Parameters
@@ -216,8 +216,8 @@ def convolve(
     return signal_convolved
 
 
-def convolve_with_all_kernels(signal: npt.NDArray[np.float64],
-                              ckd: CKDStray) -> npt.NDArray[np.float64]:
+def convolve_with_all_kernels(signal: npt.NDArray[np.floating],
+                              ckd: CKDStray) -> npt.NDArray[np.floating]:
     """Convolve a detector image with multiple kernels.
 
     Parameters
@@ -289,7 +289,7 @@ def stray_light(l1_product: L1,
 def map_from_detector(l1_product: L1,
                       ckd: CKDSwath,
                       count_table: npt.NDArray[np.int32],
-                      wavelengths: npt.NDArray[np.float64]) -> None:
+                      wavelengths: npt.NDArray[np.floating]) -> None:
     """Map detector to spectra.
 
     Parameters
@@ -342,7 +342,7 @@ def map_from_detector(l1_product: L1,
     l1_product.wavelengths = wavelengths
 
 
-def radiometric(l1_product: L1, rad_corr: npt.NDArray[np.float64]) -> None:
+def radiometric(l1_product: L1, rad_corr: npt.NDArray[np.floating]) -> None:
     """Convert counts to spectral photon radiance [nm-1 s-1 sr-1 m-2].
 
     The quantum efficiency [e/ph] is taken into account by the PRNU
@@ -374,7 +374,7 @@ def bin_l1b(l1_product: L1, bin_spectra: int) -> None:
         Binning factor across ACT dimension
 
     """
-    def bin_ACT(arr: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
+    def bin_ACT(arr: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         """Bin across the ACT dimension.
 
         Array shape is assumed to be (n_alt, n_act, n_wave), where

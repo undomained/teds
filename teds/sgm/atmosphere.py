@@ -18,15 +18,15 @@ from teds.lib import constants
 @dataclass
 class Atmosphere:
     """Thermodynamic state and composition of the atmosphere."""
-    zlay: npt.NDArray[np.float64]
-    dzlay: npt.NDArray[np.float64]
-    zlev: npt.NDArray[np.float64]
+    zlay: npt.NDArray[np.floating]
+    dzlay: npt.NDArray[np.floating]
+    zlev: npt.NDArray[np.floating]
     psurf: float
-    tlev: npt.NDArray[np.float64]
-    tlay: npt.NDArray[np.float64]
-    plev: npt.NDArray[np.float64]
-    play: npt.NDArray[np.float64]
-    air: npt.NDArray[np.float64]
+    tlev: npt.NDArray[np.floating]
+    tlay: npt.NDArray[np.floating]
+    plev: npt.NDArray[np.floating]
+    play: npt.NDArray[np.floating]
+    air: npt.NDArray[np.floating]
     gases: list[Gas]
 
     @classmethod
@@ -44,8 +44,8 @@ class Atmosphere:
 
     @classmethod
     def from_file(cls,
-                  zlay: npt.NDArray[np.float64],
-                  zlev: npt.NDArray[np.float64],
+                  zlay: npt.NDArray[np.floating],
+                  zlev: npt.NDArray[np.floating],
                   psurf: float,
                   filename: str) -> Self:
         """Read atmospheric data from AFGL database file interpolate
@@ -249,12 +249,12 @@ def get_AFGL_atm_homogenous_distribution(
     return atm
 
 
-def rotate_grid(x: npt.NDArray[np.float64],
-                y: npt.NDArray[np.float64],
+def rotate_grid(x: npt.NDArray[np.floating],
+                y: npt.NDArray[np.floating],
                 x_origin: float,
                 y_origin: float,
-                angle: float) -> tuple[npt.NDArray[np.float64],
-                                       npt.NDArray[np.float64]]:
+                angle: float) -> tuple[npt.NDArray[np.floating],
+                                       npt.NDArray[np.floating]]:
     """Rotate xy grid around an origin by an angle."""
     x0 = x - x_origin
     y0 = y - y_origin
@@ -263,8 +263,8 @@ def rotate_grid(x: npt.NDArray[np.float64],
     return x_rot + x_origin, y_rot + y_origin
 
 
-def get_atmospheric_data(gm_lat: npt.NDArray[np.float64],
-                         gm_lon: npt.NDArray[np.float64],
+def get_atmospheric_data(gm_lat: npt.NDArray[np.floating],
+                         gm_lon: npt.NDArray[np.floating],
                          crs: str,
                          microhh_files: list[str]) -> Meteo:
     """Get meteorological data to same domain as input lat, lon.

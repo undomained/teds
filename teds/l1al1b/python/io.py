@@ -66,7 +66,8 @@ def read_binning_table(binning_file: str,
         bin_indices = np.arange(n_detector_rows * n_detector_cols,
                                 dtype=np.int32).reshape(
             n_detector_rows, n_detector_cols)
-        count_table = np.ones(n_detector_rows * n_detector_cols, np.int32)
+        count_table: npt.NDArray[np.int32] = np.ones(
+            n_detector_rows * n_detector_cols, np.int32)
     else:
         if not Path(binning_file).is_file():
             _text = "binning file" if binning_file is None else binning_file
@@ -205,12 +206,6 @@ def read_ckd(filename: str) -> CKD:
         ckd_swath,
         ckd_spectral,
         ckd_radiometric)
-
-
-def monotonic(x: npt.NDArray[np.float64], axis: int = -1) -> np.bool_:
-    """Test whether an array is strictly increasing/decreasing or not."""
-    dx = np.diff(x, axis=axis)
-    return np.all(dx < 0) or np.all(dx > 0)
 
 
 def read_geometry(l1_product: L1, config: dict) -> Geometry:

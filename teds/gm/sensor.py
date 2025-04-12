@@ -22,7 +22,7 @@ from teds import log
 
 
 class Sensor:
-    def __init__(self, thetas: npt.NDArray[np.float64]) -> None:
+    def __init__(self, thetas: npt.NDArray[np.floating]) -> None:
         self.thetas = thetas
         self.n_thetas = self.thetas.shape[0]
 
@@ -30,7 +30,7 @@ class Sensor:
     def trans_yaw_pitch_roll(y: float,
                              p: float,
                              r: float,
-                             degrees: bool = True) -> npt.NDArray[np.float64]:
+                             degrees: bool = True) -> npt.NDArray[np.floating]:
         """Transformation matrix.
 
         Ordering is: yaw, pitch, roll.
@@ -57,8 +57,8 @@ class Sensor:
         return rot_mat
 
     @staticmethod
-    def scale_axis(x: npt.NDArray[np.float64]) -> tuple[
-            npt.NDArray[np.float64], np.float64, np.float64]:
+    def scale_axis(x: npt.NDArray[np.floating]) -> tuple[
+            npt.NDArray[np.floating], np.floating, np.floating]:
         """Scale axis from -1 to 1."""
         offset = np.mean(x)
         scale_factor = 0.5 * (np.max(x) - np.min(x))
@@ -66,16 +66,16 @@ class Sensor:
 
     @staticmethod
     def apply_scale_axis(
-            x: npt.NDArray[np.float64],
-            scaled_axis: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
+            x: npt.NDArray[np.floating],
+            scaled_axis: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         """Apply scale factor and offset."""
         return (x - scaled_axis[1]) / scaled_axis[2]
 
     @staticmethod
     def line_sphere_intersect(
-            p_sat: npt.NDArray[np.float64],
-            p: npt.NDArray[np.float64],
-            r: float = wgs84.radiusearthkm) -> npt.NDArray[np.float64]:
+            p_sat: npt.NDArray[np.floating],
+            p: npt.NDArray[np.floating],
+            r: float = wgs84.radiusearthkm) -> npt.NDArray[np.floating]:
         # Following https://en.wikipedia.org/wiki/Line–sphere_intersection
         # p0 is the satellite postion, with dimensions n_times, 3
         # p1 is the swath position, with dimensionsn_times, n_xtrack, 3
@@ -216,11 +216,11 @@ class Sensor:
         return self.ground_points
 
     @staticmethod
-    def get_theta_az(p0: npt.NDArray[np.float64],
-                     p1: npt.NDArray[np.float64],
-                     lat: npt.NDArray[np.float64],
-                     lon: npt.NDArray[np.float64]) -> tuple[
-                         npt.NDArray[np.float64], npt.NDArray[np.float64]]:
+    def get_theta_az(p0: npt.NDArray[np.floating],
+                     p1: npt.NDArray[np.floating],
+                     lat: npt.NDArray[np.floating],
+                     lon: npt.NDArray[np.floating]) -> tuple[
+                         npt.NDArray[np.floating], npt.NDArray[np.floating]]:
         # https://github.com/kg4sgp/look-angles/blob/master/sphere/\
         # lookangle_sphere.m
         if len(p0.shape) == 2:
@@ -269,14 +269,14 @@ class Sensor:
                          dt_start: datetime.datetime,
                          dt_end: datetime.datetime,
                          dt_interval: float,
-                         thetas: npt.NDArray[np.float64],
+                         thetas: npt.NDArray[np.floating],
                          get_view_angles: bool = True,
                          get_solar_angles: bool = True) -> Geometry:
         # get ground points based on interpolation of computed points
         n_times = int((dt_end - dt_start).total_seconds() / dt_interval)
 
         # compute time axis as astropy object
-        ap_ts = Time([dt_start + datetime.timedelta(seconds=sec)
+        ap_ts = Time([dt_start + datetime.timedelta(seconds=float(sec))
                      for sec in np.arange(
                              0, n_times*dt_interval, dt_interval)])
 

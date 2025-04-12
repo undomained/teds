@@ -32,5 +32,5 @@ class Surface:
         """
         albedo = np.zeros(len(self.spec))
         for i in range(len(alb_coeff)):
-            albedo = albedo + alb_coeff[i] * self.spec**i
+            albedo += alb_coeff[i] * self.spec**i
         self.alb = albedo

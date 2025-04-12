@@ -11,7 +11,7 @@ from .types import Navigation
 
 def interpolate_navigation_data(
         navigation: Navigation,
-        timestamps: npt.NDArray[np.float64]) -> Navigation:
+        timestamps: npt.NDArray[np.floating]) -> Navigation:
     """Interpolate navigation data from orbit times to detector image
     times.
 
@@ -40,7 +40,7 @@ def interpolate_navigation_data(
         orb_pos[:, i_dir] = s(timestamps)
     # Interpolate quaternions
     indices = np.searchsorted(
-        navigation.time.astype(np.float64), timestamps)
+        navigation.time.astype(np.floating), timestamps)
     for i_alt in range(n_alt):
         idx_lo = indices[i_alt] - 1
         idx_hi = indices[i_alt]

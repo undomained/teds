@@ -204,7 +204,7 @@ def gen_prnu(conf: dict,
     nc = Dataset(conf['io_files']['detector'])
     # QE is more difficult because it is provided per wavelength.
     # First step is to interpolate QE onto the target temperature.
-    qe = np.zeros(nc.dimensions['wavelength'].size)
+    qe: npt.NDArray[np.floating] = np.zeros(nc.dimensions['wavelength'].size)
     temperatures_qe = nc['temperature_qe'][:]
     for i in range(len(qe)):
         spline = CubicSpline(temperatures_qe,

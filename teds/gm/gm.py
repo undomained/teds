@@ -174,9 +174,9 @@ def gen_image_timestamps(orbit_start: datetime.datetime,
 
 def generate_attitude_quaternions(
         config: dict,
-        lat_deg: npt.NDArray[np.float64],
-        lon_deg: npt.NDArray[np.float64],
-        vel: npt.NDArray[np.float64]) -> npt.NDArray[Quaternion]:
+        lat_deg: npt.NDArray[np.floating],
+        lon_deg: npt.NDArray[np.floating],
+        vel: npt.NDArray[np.floating]) -> npt.NDArray[Quaternion]:
     """Generate nominal attitude quaternions.
 
     The quaternions correspond to a rotation of the nadir
@@ -268,7 +268,7 @@ def convert_to_j2000(orbit_timestamps: npt.NDArray[np.datetime64],
     for i_pos in range(len(navigation.orb_pos)):
         tai_seconds = (Time(orbit_timestamps[i_pos], scale='tai')
                        - Time('1958-01-01', scale='tai')).to(units.s)
-        tai_subsec = np.float64((
+        tai_subsec = np.floating((
             tai_seconds
             - TimeDelta(val=np.uint(tai_seconds)*units.s)).to(units.s))
         # Solar model produces the J2000-ECEF quaternion so we need
@@ -283,7 +283,7 @@ def sensor_simulation(
         config: dict,
         sat_pos: dict,
         orbit_timestamps: npt.NDArray[np.datetime64],
-        los: npt.NDArray[np.float64]) -> Geometry:
+        los: npt.NDArray[np.floating]) -> Geometry:
     """Propogate sensor."""
     thetas = np.rad2deg(np.arctan(los[:, 1] / los[:, 2]))
     # Make and propage the sensor
@@ -338,7 +338,7 @@ def get_orbit(
         orbit_timestamps - np.datetime64(
             datetime.datetime(time_beg.year,
                               time_beg.month,
-                              time_beg.day))).astype(np.float64)
+                              time_beg.day))).astype(np.floating)
 
     # Compute satellite position every n seconds
     if not aocs_navigation:
@@ -420,7 +420,7 @@ def extend_geometry(geometry: Geometry,
         np.arange(-margin_act, n_cols + margin_act, 1.0 / density_act),
         indexing='ij')
 
-    def interp(data: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
+    def interp(data: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         """Interpolate to a target (dense) grid."""
         return interpn((alt_in, act_in),
                        data,
@@ -429,8 +429,8 @@ def extend_geometry(geometry: Geometry,
                        bounds_error=False,
                        fill_value=None)
 
-    def interp_angles(data: npt.NDArray[np.float64]) -> (
-            npt.NDArray[np.float64]):
+    def interp_angles(data: npt.NDArray[np.floating]) -> (
+            npt.NDArray[np.floating]):
         """For angles, need to interpolate sin and cos separately."""
         return np.arctan2(interp(np.sin(data)), interp(np.cos(data)))
 

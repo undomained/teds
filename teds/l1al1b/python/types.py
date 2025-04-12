@@ -56,34 +56,34 @@ class BinningTable:
 class CKDDark:
     """Dark offset and dark current CKD."""
     # Dark offset (independent of integration time)
-    offset: npt.NDArray[np.float64]
+    offset: npt.NDArray[np.floating]
     # Dark current per second of integration time
-    current: npt.NDArray[np.float64]
+    current: npt.NDArray[np.floating]
 
 
 @dataclass
 class CKDNoise:
     """Noise CKD."""
     # Conversion gain (signal dependent noise term)
-    conversion_gain: npt.NDArray[np.float64]
+    conversion_gain: npt.NDArray[np.floating]
     # Read noise (signal independent noise term)
-    read_noise: npt.NDArray[np.float64]
+    read_noise: npt.NDArray[np.floating]
 
 
 @dataclass
 class CKDNonlin:
     """Signal nonlinearity CKD."""
     # Observed, nonlinear signal in counts
-    observed: npt.NDArray[np.float64]
+    observed: npt.NDArray[np.floating]
     # Expected, linear signal in counts
-    expected: npt.NDArray[np.float64]
+    expected: npt.NDArray[np.floating]
 
 
 @dataclass
 class CKDPRNU:
     """Photoresponse non-uniformity (PRNU) CKD."""
     # PRNU including quantum efficiency
-    prnu_qe: npt.NDArray[np.float64]
+    prnu_qe: npt.NDArray[np.floating]
 
 
 @dataclass
@@ -92,10 +92,10 @@ class CKDStray:
     # Fourier transforms of stray light kernels
     kernels_fft: list[npt.NDArray[np.complex128]]
     # Total internal scattering factor
-    eta: npt.NDArray[np.float64]
+    eta: npt.NDArray[np.floating]
     # Kernel weights. For a given kernel, its weight is 0 outside its
     # domain of influence.
-    weights: npt.NDArray[np.float64]
+    weights: npt.NDArray[np.floating]
     # Boundaries of subimages that must be extracted for the
     # convolutions. The order of coefficients is 'bottom', 'top',
     # 'left', 'right'.
@@ -106,17 +106,17 @@ class CKDStray:
 class CKDSwath:
     """CKD related to the satellite swath."""
     # Across track angles
-    act_angles: npt.NDArray[np.float64]
+    act_angles: npt.NDArray[np.floating]
     # ACT angle of each detector pixel
-    act_map: npt.NDArray[np.float64]
+    act_map: npt.NDArray[np.floating]
     # Wavelength of each detector pixel
-    wavelength_map: npt.NDArray[np.float64]
+    wavelength_map: npt.NDArray[np.floating]
     # Row index of each L1B spectral element
-    row_map: npt.NDArray[np.float64]
+    row_map: npt.NDArray[np.floating]
     # Column index of each L1B spectral element
-    col_map: npt.NDArray[np.float64]
+    col_map: npt.NDArray[np.floating]
     # Line of sight vectors
-    line_of_sights: npt.NDArray[np.float64]
+    line_of_sights: npt.NDArray[np.floating]
 
 
 @dataclass
@@ -124,14 +124,14 @@ class CKDSpectral:
     """Spectral CKD."""
     # L1B wavelength grid, with uniform spacing. The same grid is
     # assigned to all L1B spectra.
-    wavelengths: npt.NDArray[np.float64]
+    wavelengths: npt.NDArray[np.floating]
 
 
 @dataclass
 class CKDRadiometric:
     """Radiometric CKD."""
     # Radiometric calibration (correction) constants
-    rad_corr: npt.NDArray[np.float64]
+    rad_corr: npt.NDArray[np.floating]
 
 
 @dataclass
@@ -166,20 +166,20 @@ class L1:
     proc_level: ProcLevel
 
     # Signal and noise of each detector pixel
-    signal: npt.NDArray[np.float64]
-    noise: npt.NDArray[np.float64]
+    signal: npt.NDArray[np.floating]
+    noise: npt.NDArray[np.floating]
     # Once spectra have been extracted from the detector, the signal
     # and noise arrays are discarded and we work with wavelengths and
     # spectra and their noise levels.
-    wavelengths: npt.NDArray[np.float64]
-    spectra: npt.NDArray[np.float64]
-    spectra_noise: npt.NDArray[np.float64]
-    solar_irradiance: npt.NDArray[np.float64]
+    wavelengths: npt.NDArray[np.floating]
+    spectra: npt.NDArray[np.floating]
+    spectra_noise: npt.NDArray[np.floating]
+    solar_irradiance: npt.NDArray[np.floating]
 
     # Detector image attributes
     time_units: str
     tai_seconds: npt.NDArray[np.uint]
-    tai_subsec: npt.NDArray[np.float64]
+    tai_subsec: npt.NDArray[np.floating]
     binning_table_id: int
     coad_factor: int
     exposure_time: float

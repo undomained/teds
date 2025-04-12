@@ -10,7 +10,7 @@ dependencies = [
     'netCDF4',
     'h5py',
     'scipy',
-    'numpy',
+    'numpy == 2.2',
     'PyYAML',
     'astropy',
     'sgp4',

@@ -36,8 +36,8 @@ def check_config(config: dict) -> None:
 
 
 def interp_sentinel2_albedo(s2_albedos: list[DataArray],
-                            lat: npt.NDArray[np.float64],
-                            lon: npt.NDArray[np.float64],) -> list[DataArray]:
+                            lat: npt.NDArray[np.floating],
+                            lon: npt.NDArray[np.floating],) -> list[DataArray]:
     if lat.shape[0] == 1:
         # Nothing to do here because there is no grid
         return s2_albedos

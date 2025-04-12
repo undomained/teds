@@ -87,7 +87,7 @@ def level1b_to_level2_processor(config_user: dict) -> None:
     wave_extend = config['spec_settings']['wave_extend']
     dwave_lbl = config['spec_settings']['dwave']
     wave_lbl = np.arange(
-        wave_start-wave_extend, wave_end+wave_extend, dwave_lbl)
+        wave_start - wave_extend, wave_end + wave_extend, dwave_lbl)
 
     # Trim L1B data to match the L2 wavelength window
     i_start = np.searchsorted(l1b.wavelengths, wave_start)
@@ -114,7 +114,7 @@ def level1b_to_level2_processor(config_user: dict) -> None:
     atm = atmosphere.Atmosphere.from_file(
         z_lay, z_lev, p_surf, config['io_files']['afgl'])
 
-    # Calculate optical properties.
+    # Calculate optical properties
     optics = OpticAbsProp(wave_lbl, z_lay)
     # If a NetCDF dump file exists read from there instead
     if (
@@ -213,21 +213,20 @@ def level1b_to_level2_processor(config_user: dict) -> None:
             # Initialize each retrieval with the same atmosphere
             atm_ret = deepcopy(atm)
 
-            gauss_newton(
-                retrieval_init,
-                atm_ret,
-                optics,
-                wave_lbl,
-                sun_lbl,
-                l1b.spectra[i_alt, i_act, :],
-                np.eye(n_wave)*(l1b.spectra_noise[i_alt, i_act, :])**2,
-                np.cos(geometry.sza[i_alt, i_act]),
-                np.cos(geometry.vza[i_alt, i_act]),
-                isrf,
-                timings,
-                l2,
-                i_alt,
-                i_act)
+            gauss_newton(retrieval_init,
+                         atm_ret,
+                         optics,
+                         wave_lbl,
+                         sun_lbl,
+                         l1b.spectra[i_alt, i_act, :],
+                         l1b.spectra_noise[i_alt, i_act, :]**2,
+                         np.cos(geometry.sza[i_alt, i_act]),
+                         np.cos(geometry.vza[i_alt, i_act]),
+                         isrf,
+                         timings,
+                         l2,
+                         i_alt,
+                         i_act)
 
             if (not l2.converged[i_alt, i_act]):
                 log.warn(f'Pixel ({i_alt},{i_act}) not converged')

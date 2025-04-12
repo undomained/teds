@@ -7,7 +7,7 @@ from typing import TypeVar
 import numpy as np
 import numpy.typing as npt
 
-BinType = TypeVar('BinType', npt.NDArray[np.float64], npt.NDArray[np.bool_])
+BinType = TypeVar('BinType', npt.NDArray[np.floating], npt.NDArray[np.bool_])
 
 
 def bin_data(binning_table: BinningTable,
@@ -51,8 +51,8 @@ def bin_data(binning_table: BinningTable,
 
 
 def unbin_data(binning_table: BinningTable,
-               binned_data: npt.NDArray[np.float64],
-               method: str = 'nearest') -> npt.NDArray[np.float64]:
+               binned_data: npt.NDArray[np.floating],
+               method: str = 'nearest') -> npt.NDArray[np.floating]:
     """Unbin each frame in a set of binned frames.
 
     Bin values are spread over all positions in an unbinned frame

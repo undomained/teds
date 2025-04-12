@@ -6,20 +6,20 @@ import numpy.typing as npt
 
 
 def solar_model(tai_seconds: np.uint,
-                tai_second_fraction: np.float64,
-                q_ecef_j2000: npt.NDArray[np.float64]) -> None: ...
+                tai_second_fraction: np.floating,
+                q_ecef_j2000: npt.NDArray[np.floating]) -> None: ...
 
 
 def geolocate(dem_filename: str,
-              los: npt.NDArray[np.float64],
+              los: npt.NDArray[np.floating],
               tai_seconds: npt.NDArray[np.uint],
-              tai_subsec: npt.NDArray[np.float64],
-              orb_pos: npt.NDArray[np.float64],
-              att_quat: npt.NDArray[np.float64],
-              lat: npt.NDArray[np.float64],
-              lon: npt.NDArray[np.float64],
-              height: npt.NDArray[np.float64],
-              vza: npt.NDArray[np.float64],
-              vaa: npt.NDArray[np.float64],
-              sza: npt.NDArray[np.float64],
-              saa: npt.NDArray[np.float64]) -> None: ...
+              tai_subsec: npt.NDArray[np.floating],
+              orb_pos: npt.NDArray[np.floating],
+              att_quat: npt.NDArray[np.floating],
+              lat: npt.NDArray[np.floating],
+              lon: npt.NDArray[np.floating],
+              height: npt.NDArray[np.floating],
+              vza: npt.NDArray[np.floating],
+              vaa: npt.NDArray[np.floating],
+              sza: npt.NDArray[np.floating],
+              saa: npt.NDArray[np.floating]) -> None: ...

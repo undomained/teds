@@ -9,12 +9,12 @@ import xarray as xr
 from teds import log
 
 
-def create_meshgrid(lat: npt.NDArray[np.float64],
-                    lon: npt.NDArray[np.float64],
-                    z: npt.NDArray[np.float64]) -> tuple[
-                        npt.NDArray[np.float64],
-                        npt.NDArray[np.float64],
-                        npt.NDArray[np.float64]]:
+def create_meshgrid(lat: npt.NDArray[np.floating],
+                    lon: npt.NDArray[np.floating],
+                    z: npt.NDArray[np.floating]) -> tuple[
+                        npt.NDArray[np.floating],
+                        npt.NDArray[np.floating],
+                        npt.NDArray[np.floating]]:
     """Create meshgrid for 2D lat, 2D lon, and 1D z arrays."""
     # Number of layers corresponds to the size of z
     z_grid = np.repeat(z[np.newaxis, np.newaxis, :], lat.shape[0], axis=0)
@@ -26,14 +26,14 @@ def create_meshgrid(lat: npt.NDArray[np.float64],
     return lat_grid, lon_grid, z_grid
 
 
-def regrid_3d(u: npt.NDArray[np.float64],
-              lat: npt.NDArray[np.float64],
-              lon: npt.NDArray[np.float64],
-              z: npt.NDArray[np.float64],
-              lat_new: npt.NDArray[np.float64],
-              lon_new: npt.NDArray[np.float64],
-              z_new: npt.NDArray[np.float64],
-              method: str = 'nearest') -> npt.NDArray[np.float64]:
+def regrid_3d(u: npt.NDArray[np.floating],
+              lat: npt.NDArray[np.floating],
+              lon: npt.NDArray[np.floating],
+              z: npt.NDArray[np.floating],
+              lat_new: npt.NDArray[np.floating],
+              lon_new: npt.NDArray[np.floating],
+              z_new: npt.NDArray[np.floating],
+              method: str = 'nearest') -> npt.NDArray[np.floating]:
     """Regrid a 3D matrix `u` defined on (lat, lon, z) to a new grid.
 
     Parameters
@@ -97,13 +97,13 @@ def regrid_3d(u: npt.NDArray[np.float64],
 
 
 def calculate_divergence_test(
-        Fx: npt.NDArray[np.float64],
-        Fy: npt.NDArray[np.float64],
+        Fx: npt.NDArray[np.floating],
+        Fy: npt.NDArray[np.floating],
         dx: float,
         dy: float,
-        method: str = 'fourth_order') -> tuple[npt.NDArray[np.float64],
-                                               npt.NDArray[np.float64],
-                                               npt.NDArray[np.float64]]:
+        method: str = 'fourth_order') -> tuple[npt.NDArray[np.floating],
+                                               npt.NDArray[np.floating],
+                                               npt.NDArray[np.floating]]:
     """Calculate the divergence of the vector field using the
     specified method.
 
@@ -136,7 +136,6 @@ def calculate_divergence_test(
         min_rows = min(dFx_dx.shape[0], dFy_dy.shape[0])
         min_cols = min(dFx_dx.shape[1], dFy_dy.shape[1])
 
-        divergence = np.zeros((min_rows, min_cols))
         divergence = (dFx_dx[:min_rows, :min_cols]
                       + dFy_dy[:min_rows, :min_cols])
 
@@ -165,7 +164,6 @@ def calculate_divergence_test(
         min_rows = min(dFx_dx.shape[0], dFy_dy.shape[0])
         min_cols = min(dFx_dx.shape[1], dFy_dy.shape[1])
 
-        divergence = np.zeros((min_rows, min_cols))
         divergence = (dFx_dx[:min_rows, :min_cols]
                       + dFy_dy[:min_rows, :min_cols])
 
@@ -176,12 +174,12 @@ def calculate_divergence_test(
         divergence, dFx_dx[:min_rows, :min_cols], dFy_dy[:min_rows, :min_cols])
 
 
-def calculate_divergence(Fx: npt.NDArray[np.float64],
-                         Fy: npt.NDArray[np.float64],
+def calculate_divergence(Fx: npt.NDArray[np.floating],
+                         Fy: npt.NDArray[np.floating],
                          dx: float,
-                         dy: float) -> tuple[npt.NDArray[np.float64],
-                                             npt.NDArray[np.float64],
-                                             npt.NDArray[np.float64]]:
+                         dy: float) -> tuple[npt.NDArray[np.floating],
+                                             npt.NDArray[np.floating],
+                                             npt.NDArray[np.floating]]:
     """Calculate the divergence of the vector field using the
     specified method.
 
@@ -287,9 +285,9 @@ def microhh_fit(sgm_filename: str,
                 sgm_ref_filename: str,
                 l2_filename: str,
                 ret_name: str,
-                apr_name: str) -> tuple[npt.NDArray[np.float64],
-                                        npt.NDArray[np.float64],
-                                        npt.NDArray[np.float64]]:
+                apr_name: str) -> tuple[npt.NDArray[np.floating],
+                                        npt.NDArray[np.floating],
+                                        npt.NDArray[np.floating]]:
     """Perform emission estimation.
 
     Fit apriori from scipy.optimize. Import curve_fitori and L2 data

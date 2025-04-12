@@ -159,7 +159,7 @@ def write_atmosphere(filename: str,
 
 def write_atmosphere_ref(filename: str,
                          atm: Atmosphere,
-                         albedo: npt.NDArray[np.float64],
+                         albedo: npt.NDArray[np.floating],
                          geometry: Geometry,
                          bin_alt: int,
                          bin_act: int) -> None:
@@ -189,7 +189,7 @@ def write_atmosphere_ref(filename: str,
     n_alt_binned = int(n_alt // bin_alt)
     n_act_binned = int(n_act // bin_act)
 
-    def bin_data(arr: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
+    def bin_data(arr: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         """Bin array in both ALT and ACT dimensions."""
         shape = np.array(arr.shape, dtype=int)
         shape[1] = n_act_binned
@@ -312,7 +312,7 @@ def write_radiance(
 
 
 def read_atmosphere_and_albedo(filename: str) -> tuple[
-        Atmosphere, npt.NDArray[np.float64]]:
+        Atmosphere, npt.NDArray[np.floating]]:
 
     nc = Dataset(filename)
 

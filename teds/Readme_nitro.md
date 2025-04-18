@@ -1,5 +1,5 @@
 # Tango end-to-end simulator
-Code to run the E2E simulation
+Code to run the Nitro E2E simulation
 
 License
 -------
@@ -56,16 +56,16 @@ Where the .cfg file is written is determined in the yaml file settings, but pyth
 See `build_instructions.md` in the teds directory
 
 ### Running the E2E processor
-In the teds directory the script `run_E2E.py` is situated.  
+In the teds directory the script `run_nitro_E2E.py` is situated.  
 This can be run for a single step or all steps after oneother.
 Get help on how to run:  
-`python run_E2E.py -h`
+`python run_nitro_E2E.py -h`
 #### Single step
 For instance running only geometry step.  
-`python run_E2E.py ../cfg/nitro/full_config.yaml gm`
+`python run_nitro_E2E.py ../cfg/nitro/full_config.yaml gm`
 
 #### Running the full simulation:  
-`python run_E2E.py ../cfg/nitro/full_config.yaml all`
+`python run_nitro_E2E.py ../cfg/nitro/full_config.yaml all`
 
 ### Output and input
 Output files of the different steps is written in dorectory `data/no2` (or someother directory. you can change the location by updating the yaml file).  

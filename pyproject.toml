@@ -88,6 +88,6 @@ module = [
     'teds.l1l2.l1bl2_no2',
     'teds.l2l4.l2l4',
     'teds.siml1b.radiance_offset',
-    'teds.run_E2E',
+    'teds.run_nitro_E2E',
 ]
 ignore_errors = true

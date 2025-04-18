@@ -12,7 +12,7 @@ import numpy.typing as npt
 import os
 
 from ..lib import constants
-from ..lib import libNumTools
+from ..lib import num_tools
 from ..lib.libWrite import variable_dict
 from ..lib.libWrite import writevariablefromname
 from .sgm_Carbon_radscene import get_geosgm_data
@@ -665,7 +665,7 @@ def convert_geoscene_to_remotap(config: dict) -> None:
     gm_org.xpos, gm_org.ypos = trans.latlon2xymts(gm_org.lat, gm_org.lon)
     # The orginal gm data for SZA, SAA. VZA, VAA are extrapolated to
     # the atmospheric mesh.
-    gm_data = libNumTools.expand_geometry(atm_org, gm_org)
+    gm_data = num_tools.expand_geometry(atm_org, gm_org)
 
     print('Generating RemoTAP geometry... ', end='', flush=True)
     create_remotap_geometry(config,

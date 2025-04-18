@@ -22,7 +22,7 @@ import logging
 from itertools import repeat
 import tqdm
 
-from lib import atmosphere, libSGM, libRT_no2, libNumTools, constants
+from lib import atmosphere, libSGM, libRT_no2, num_tools, constants
 from lib.libWrite import writevariablefromname
 
 
@@ -130,16 +130,16 @@ def get_cams_profiles( cfg, time, gm_data):
     # if time only has one value, dont interpolate over time
     if len(cams['time']) == 1:
         time_slice = 0
-        idx, w, shape = libNumTools.ndim_lin_interpol_get_indices_weights( [cams['lat'], cams['lon']], [lats, lons] )
+        idx, w, shape = num_tools.ndim_lin_interpol_get_indices_weights( [cams['lat'], cams['lon']], [lats, lons] )
 
     else:
         time_slice = slice(None)
-        idx, w, shape = libNumTools.ndim_lin_interpol_get_indices_weights( [cams['time'], cams['lat'], cams['lon']], [d_time_hours, lats, lons] )
+        idx, w, shape = num_tools.ndim_lin_interpol_get_indices_weights( [cams['time'], cams['lat'], cams['lon']], [d_time_hours, lats, lons] )
 
     # interpolate fields to time lat lon
-    profile_data['psfc'] = libNumTools.ndim_lin_interpol_get_values( cams['SP'][time_slice,:,:], idx, w, shape) * 1e-2 # convert to hPa
-    profile_data['psl'] = libNumTools.ndim_lin_interpol_get_values( cams['MSL'][time_slice,:,:], idx, w, shape) * 1e-2 # convert to hPa
-    profile_data['zgeop'] = libNumTools.ndim_lin_interpol_get_values( cams['Z'][time_slice,:,:], idx, w, shape)  # hPa
+    profile_data['psfc'] = num_tools.ndim_lin_interpol_get_values( cams['SP'][time_slice,:,:], idx, w, shape) * 1e-2 # convert to hPa
+    profile_data['psl'] = num_tools.ndim_lin_interpol_get_values( cams['MSL'][time_slice,:,:], idx, w, shape) * 1e-2 # convert to hPa
+    profile_data['zgeop'] = num_tools.ndim_lin_interpol_get_values( cams['Z'][time_slice,:,:], idx, w, shape)  # hPa
 
 
     variables = cfg['atm']['gases'].copy()
@@ -157,7 +157,7 @@ def get_cams_profiles( cfg, time, gm_data):
         
         varlist = []
         for i in range( cams['t'].shape[1]):
-            varlist.append( libNumTools.ndim_lin_interpol_get_values( cams[varcams][time_slice,i,:,:], idx, w, shape) )
+            varlist.append( num_tools.ndim_lin_interpol_get_values( cams[varcams][time_slice,i,:,:], idx, w, shape) )
         
         profile_data[var] = np.array( varlist )
 

@@ -79,7 +79,7 @@ def level1b_to_level2_processor(config_user: dict) -> None:
     # Read atmosphere for reference profiles (might not be used
     # depending on the sw_prof_init flag).
     log.info('Reading Atmosphere')
-    _, atm_sgm = read_atmosphere_and_albedo(config['io_files']['atmosphere'])
+    atm_sgm, _ = read_atmosphere_and_albedo(config['io_files']['atmosphere'])
 
     # Define line-by-line spectral grid
     wave_start = config['spec_settings']['wave_start']
@@ -229,7 +229,7 @@ def level1b_to_level2_processor(config_user: dict) -> None:
                          i_act)
 
             if (not l2.converged[i_alt, i_act]):
-                log.warn(f'Pixel ({i_alt},{i_act}) not converged')
+                log.warning(f'Pixel ({i_alt},{i_act}) not converged')
 
     # Define proxy product
     xch4_model = 1.8e-6

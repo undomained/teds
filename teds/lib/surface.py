@@ -11,8 +11,7 @@ class Surface:
         wave_max = np.amax(wave)
         wave_min = np.amin(wave)
         wave_mean = np.mean(wave)
-        spec = (wave - wave_mean) / (wave_max - wave_min)
-        self.spec = spec
+        self.spec = (wave - wave_mean) / (wave_max - wave_min)
         self.alb = np.zeros_like(wave)
 
     def get_albedo_poly(self, alb_coeff: list[float]) -> None:
@@ -30,7 +29,6 @@ class Surface:
             Albedo polynomial dependent on wavelength.
 
         """
-        albedo = np.zeros(len(self.spec))
+        self.alb[:] = 0
         for i in range(len(alb_coeff)):
-            albedo += alb_coeff[i] * self.spec**i
-        self.alb = albedo
+            self.alb += alb_coeff[i] * self.spec**i

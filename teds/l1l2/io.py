@@ -8,7 +8,7 @@ from .types import L2
 from teds.gm.types import Geometry
 from teds.gm.io import nc_write_lat
 from teds.gm.io import nc_write_lon
-from teds.l1al1b.python.types import L1
+from teds.l1al1b.types import L1
 from teds.sgm.atmosphere import Atmosphere
 
 

@@ -2,7 +2,6 @@
 # the LICENSE file in the root directory of this project.
 
 enable_testing()
-check_include_coverage()
 
 # Find and link against Catch2
 set(CATCH2_PATH "" CACHE STRING "Path to Catch2 installation directory")
@@ -44,5 +43,5 @@ endif()
 # Test data will be read from this directory by tests
 set(FIXTURE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/common)
 
-add_subdirectory(l1al1b/c++)
-add_subdirectory(im/c++)
+add_subdirectory(cpp/im)
+add_subdirectory(cpp/l1al1b)

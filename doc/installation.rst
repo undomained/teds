@@ -48,7 +48,11 @@ You will notice that the shell's prompt has changed to remind you that you are i
    pip install --upgrade pip
    pip install --editable .
 
-from the root source directory. The second command installs all dependencies found in :file:`pyproject.toml` and creates an *editable* build of TEDS suitable for development.
+from the root source directory. The second command installs all dependencies found in :file:`pyproject.toml` and creates an *editable* build of TEDS suitable for development. Here the C++ environment is defined by the initial cache file that is in the root source directory. If you want to override that run
+
+.. code-block:: bash
+
+   INITIAL_CACHE_FILE=initial_cache.cmake pip install -editable .
 
 If your working directory is the same as where the virtual environment is located, the TEDS package should automatically be found by Python scripts. If not, you might need to update your ``PYTHONPATH``.
 

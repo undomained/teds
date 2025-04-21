@@ -14,10 +14,10 @@ import os
 import sys
 import time
 
+from .convolution import Kernel
 from .hapi import db_begin, fetch_by_ids, absorptionCoefficient_Voigt
 from .surface import Surface
 from teds import log
-from teds.lib.convolution import Kernel
 from teds.sgm.atmosphere import Atmosphere
 import teds.lib.constants as const
 
@@ -179,10 +179,10 @@ class OpticAbsProp:
                     Environment={'p': pressure / const.PSTD, 'T': temp},
                     WavenumberStep=nu_samp)
                 dim_nu = nu.size
-                nu_ext = np.insert(nu, 0, nu[0]-nu_samp)
-                nu_ext = np.append(nu_ext, nu[dim_nu-1]+nu_samp)
-                xs_ext = np.insert(xs, 0, 0.)
-                xs_ext = np.append(xs_ext, 0.)
+                nu_ext = np.insert(nu, 0, nu[0] - nu_samp)
+                nu_ext = np.append(nu_ext, nu[dim_nu-1] + nu_samp)
+                xs_ext = np.insert(xs, 0, 0)
+                xs_ext = np.append(xs_ext, 0)
                 # Interpolate on wavelength grid provided on input
                 xsec[:, ki] = np.interp(
                     self.wave, np.flip(1e7 / nu_ext), np.flip(xs_ext))
@@ -242,7 +242,7 @@ class OpticAbsProp:
 
 def transmission(sun_lbl: npt.NDArray[np.floating],
                  optics: OpticAbsProp,
-                 surface: Surface,
+                 albedo: npt.NDArray[np.floating],
                  mu0: float,
                  muv: float,
                  deriv: bool = False) -> (npt.NDArray[np.floating]
@@ -258,8 +258,8 @@ def transmission(sun_lbl: npt.NDArray[np.floating],
         Solar irradiance spectrum
     optics
         optic_prop object
-    surface
-        surface_prop object
+    albedo
+        Albedo
     mu0
         cosine of the solar zenith angle
     muv
@@ -283,7 +283,7 @@ def transmission(sun_lbl: npt.NDArray[np.floating],
     exp_tot = np.exp(-tau_tot * mueff)
 
     dev_alb = fact * exp_tot * sun_lbl
-    rad_trans = surface.alb * dev_alb
+    rad_trans = albedo * dev_alb
 
     if deriv:
         # This is the derivative with respect to tau_tot and tau_k
@@ -345,7 +345,7 @@ def nonscat_fwd_model(gas_names: list[str],
 
     time_rtm = time.time()
     rad_lbl, dev_tau_lbl, dev_alb_lbl = transmission(
-        sun_lbl, optics, surface, mu0, muv, True)
+        sun_lbl, optics, surface.alb, mu0, muv, True)
     timings['rtm'] += time.time() - time_rtm
 
     time_conv = time.time()

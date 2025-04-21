@@ -19,9 +19,9 @@ from teds import log
 from teds.gm import vincenty
 from teds.gm.io import read_geometry
 from teds.gm.types import Geometry
-from teds.l1al1b.python.io import read_ckd
-from teds.l1al1b.python.types import L1
-from teds.l1al1b.python.types import ProcLevel
+from teds.l1al1b.io import read_ckd
+from teds.l1al1b.types import L1
+from teds.l1al1b.types import ProcLevel
 from teds.lib import radiative_transfer
 from teds.lib.convolution import Kernel
 from teds.lib.convolution import KernelGauss2D
@@ -32,20 +32,21 @@ from teds.lib.io import print_system_info
 from teds.lib.surface import Surface
 
 try:
-    from teds.lib.algorithms import cpp_rt_act
+    from teds_cpp.bindings import rt_act
 except ModuleNotFoundError:
-    def cpp_rt_act(co2_concentration: npt.NDArray[np.floating],
-                   ch4_concentration: npt.NDArray[np.floating],
-                   h2o_concentration: npt.NDArray[np.floating],
-                   co2_xsec: npt.NDArray[np.floating],
-                   ch4_xsec: npt.NDArray[np.floating],
-                   h2o_xsec: npt.NDArray[np.floating],
-                   albedo: npt.NDArray[np.floating],
-                   mu_sza: npt.NDArray[np.floating],
-                   mu_vza: npt.NDArray[np.floating],
-                   sun: npt.NDArray[np.floating],
-                   rad: npt.NDArray[np.floating]) -> None:
-        pass
+    def rt_act(co2_concentration: npt.NDArray[np.floating],
+               ch4_concentration: npt.NDArray[np.floating],
+               h2o_concentration: npt.NDArray[np.floating],
+               co2_xsec: npt.NDArray[np.floating],
+               ch4_xsec: npt.NDArray[np.floating],
+               h2o_xsec: npt.NDArray[np.floating],
+               albedo: npt.NDArray[np.floating],
+               mu_sza: npt.NDArray[np.floating],
+               mu_vza: npt.NDArray[np.floating],
+               sun: npt.NDArray[np.floating],
+               rad: npt.NDArray[np.floating]) -> None:
+        log.error('no implementation: calling rt_act stub')
+        sys.exit(1)
 
 
 def check_config(config: dict) -> None:
@@ -451,19 +452,19 @@ def carbon_radiation_scene_generation(config_user: dict) -> None:
                 mu_vza = np.cos(np.deg2rad(geometry.vza[i_alt, i_act]))
                 surface.get_albedo_poly(alb)
                 radiance_lbl[i_act, :] = radiative_transfer.transmission(
-                    sun, optics, surface, mu_sza, mu_vza)
+                    sun, optics, surface.alb, mu_sza, mu_vza)
         else:
-            cpp_rt_act(atm.get_gas('co2').concentration[i_alt, :, :],
-                       atm.get_gas('ch4').concentration[i_alt, :, :],
-                       atm.get_gas('h2o').concentration[i_alt, :, :],
-                       optics.get_prop('CO2').xsec,
-                       optics.get_prop('CH4').xsec,
-                       optics.get_prop('H2O').xsec,
-                       albedo[i_alt, :],
-                       np.cos(np.deg2rad(geometry.sza[i_alt, :])),
-                       np.cos(np.deg2rad(geometry.vza[i_alt, :])),
-                       sun,
-                       radiance_lbl)
+            rt_act(atm.get_gas('co2').concentration[i_alt, :, :],
+                   atm.get_gas('ch4').concentration[i_alt, :, :],
+                   atm.get_gas('h2o').concentration[i_alt, :, :],
+                   optics.get_prop('CO2').xsec,
+                   optics.get_prop('CH4').xsec,
+                   optics.get_prop('H2O').xsec,
+                   albedo[i_alt, :],
+                   np.cos(np.deg2rad(geometry.sza[i_alt, :])),
+                   np.cos(np.deg2rad(geometry.vza[i_alt, :])),
+                   sun,
+                   radiance_lbl)
         if config['isrf']['enabled']:
             for i_act in range(n_act):
                 rad_output.spectra[i_alt, i_act, :] = isrf.convolve(

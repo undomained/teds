@@ -4,7 +4,7 @@
 # including tests. Some source files are exluded from the check for
 # now. No new exceptions should be added.
 
-files=$(find teds -name "*.py" -regextype posix-extended \
+all_files=$(find teds -name "*.py" -regextype posix-extended \
              ! -wholename teds/lib/hapi.py \
              ! -wholename teds/ckd/ckd_generation/ckd_generator_nitro.py \
              ! -wholename teds/ckd/ckd_generation/generator_class.py \
@@ -19,5 +19,5 @@ files=$(find teds -name "*.py" -regextype posix-extended \
              ! -wholename teds/lib/libAMF.py \
              ! -wholename "teds/lib/data_netcdf/*" \
          )
-flake8 $files
+flake8 $all_files
 exit $?

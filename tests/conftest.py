@@ -11,7 +11,7 @@ import numpy as np
 
 from teds.gm.types import Navigation
 from teds.l1al1b.io import read_binning_table
-from teds.l1al1b.python.binning import bin_data
+from teds.l1al1b.binning import bin_data
 from teds.l1al1b.types import BinningTable
 from teds.l1al1b.types import CKD
 from teds.l1al1b.types import CKDDark

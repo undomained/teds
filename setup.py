@@ -1,55 +1,49 @@
-# Instructions for Setuptools for building TEDS C++ extensions
+# Instructions for Setuptools for building the C++ component TEDS
 
 from setuptools import Extension
 from setuptools import setup
-import numpy
+from setuptools.command.build_ext import build_ext
 import os
 import platform
+import site
 import subprocess
 
 if platform.system() == 'Windows':
     setup(ext_modules=[])
     exit(0)
 
-sources = ['teds/l1al1b/tango_l1b/algorithm.cpp',
-           'teds/l1al1b/tango_l1b/quaternion.cpp',
-           'teds/l1al1b/tango_l1b/solar_model.cpp',
-           'teds/l1al1b/tango_l1b/dem.cpp',
-           'teds/l1al1b/tango_l1b/geometry.cpp',
-           'teds/l1al1b/python/geolocation.cpp']
-include_dirs = [numpy.get_include()]
-library_dirs = []
-compiler_flags = ['-O3', '-std=c++20', '-fopenmp']
 
-# Attempt to find the NetCDF library depending on which package
-# manager is used
-try:
-    # Determine package name and location by searching for 'netcdf'
-    res = subprocess.check_output(['dpkg', '-S', 'netcdf']).decode('utf-8')
-    netcdf_header = list(
-        filter(lambda x: x.endswith('/netcdf'), res.split()))[0]
-    netcdf_library = list(
-        filter(lambda x: x.endswith('/libnetcdf_c++4.so'), res.split()))[0]
-    include_dirs.append(os.path.dirname(netcdf_header))
-    library_dirs.append(os.path.dirname(netcdf_library))
-except FileNotFoundError or subprocess.CalledProcessError:
-    pass
+class CMakeExtension(Extension):
+    def __init__(self, name):
+        super().__init__(name,
+                         sources=[],
+                         py_limited_api=True)
+        self.source_dir = os.path.abspath('')
 
-extension_geo = Extension('teds.l1al1b.python.geolocation',
-                          sources,
-                          include_dirs=include_dirs,
-                          library_dirs=library_dirs,
-                          libraries=['netcdf_c++4'],
-                          extra_compile_args=compiler_flags,
-                          extra_link_args=['-lgomp'],
-                          py_limited_api=True)
 
-sources = ['teds/lib/algorithms.cpp']
-extension_alg = Extension('teds.lib.algorithms',
-                          sources,
-                          include_dirs=include_dirs,
-                          extra_compile_args=compiler_flags,
-                          extra_link_args=['-lgomp'],
-                          py_limited_api=True)
+class CMakeBuild(build_ext):
+    def build_cmake(self, ext):
+        if 'INITIAL_CACHE_FILE' in os.environ:
+            initial_cache_file = os.environ['INITIAL_CACHE_FILE']
+        else:
+            initial_cache_file = ext.source_dir + '/initial_cache.cmake'
+        lib_dest_dir = site.getsitepackages()[0] + '/teds_cpp'
+        cmake_args = [f'-C {initial_cache_file}',
+                      f'-D CMAKE_LIBRARY_OUTPUT_DIRECTORY={lib_dest_dir}']
+        if subprocess.call(['which', 'ninja']) == 0:
+            cmake_args += ['-G Ninja']
+        build_args = ["--config", "Release"]
+        self.build_lib = self.build_lib
+        os.makedirs(self.build_lib, exist_ok=True)
+        subprocess.check_call(
+            ["cmake", ext.source_dir] + cmake_args, cwd=self.build_lib)
+        subprocess.check_call(
+            ["cmake", "--build", "."] + build_args, cwd=self.build_lib)
 
-setup(ext_modules=[extension_geo, extension_alg])
+    def run(self):
+        for ext in self.extensions:
+            self.build_cmake(ext)
+
+
+setup(ext_modules=[CMakeExtension('cpp.bindings')],
+      cmdclass={'build_ext': CMakeBuild})

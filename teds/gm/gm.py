@@ -29,8 +29,8 @@ from teds import log
 from teds.l1al1b import geolocate
 from teds.l1al1b import interpolate_navigation_data
 from teds.l1al1b import solar_model
-from teds.l1al1b.python.io import read_ckd
-from teds.l1al1b.python.types import L1
+from teds.l1al1b.io import read_ckd
+from teds.l1al1b.types import L1
 from teds.lib.io import merge_config_with_default
 from teds.lib.io import print_heading
 from teds.lib.io import print_system_info
@@ -268,7 +268,7 @@ def convert_to_j2000(orbit_timestamps: npt.NDArray[np.datetime64],
     for i_pos in range(len(navigation.orb_pos)):
         tai_seconds = (Time(orbit_timestamps[i_pos], scale='tai')
                        - Time('1958-01-01', scale='tai')).to(units.s)
-        tai_subsec = np.floating((
+        tai_subsec = np.float64((
             tai_seconds
             - TimeDelta(val=np.uint(tai_seconds)*units.s)).to(units.s))
         # Solar model produces the J2000-ECEF quaternion so we need

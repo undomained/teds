@@ -100,12 +100,7 @@ class Atmosphere:
         # Number of input levels
         nlev_in = zalt_in.size
 
-        # [#/m^2 * 1/hPa] air column above P is
-        # P*NA/constants.MDRYAIR/g from p = m*kg/area
-        sp = constants.NA/(constants.MDRYAIR*constants.g0)
-
         atm.zlay = zlay
-        atm.dzlay = zlev[0:zlev.size-1] - zlev[1:zlev.size]
         atm.zlev = zlev
         atm.psurf = psurf
 

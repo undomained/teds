@@ -27,7 +27,7 @@ from teds import log
 from teds.lib.io import merge_config_with_default
 from teds.lib.io import print_heading
 from teds.lib.io import print_system_info
-import teds.l1al1b.python.types as tp
+import teds.l1al1b.types as tp
 
 
 def gen_dark(conf: dict) -> tp.CKDDark:

@@ -14,8 +14,8 @@ import numpy as np
 from ..lib.libWrite import writevariablefromname
 from teds.gm.io import nc_write_geometry
 from teds.gm.io import read_geometry
-from teds.l1al1b.python.calibration import bin_l1b
-from teds.l1al1b.python.types import L1
+from teds.l1al1b.calibration import bin_l1b
+from teds.l1al1b.types import L1
 from teds.lib.convolution import KernelGauss
 from teds.lib.io import print_heading
 

@@ -7,6 +7,7 @@ from teds import log
 from typing import Self
 import numpy as np
 import numpy.typing as npt
+import sys
 
 
 @dataclass
@@ -80,5 +81,5 @@ class Meteo:
         res = list(filter(lambda x: x.name == name, self.gases))
         if not res:
             log.error(f'object does not contain {name}')
-            exit(1)
+            sys.exit(1)
         return res[0]

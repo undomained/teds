@@ -6,6 +6,7 @@ from scipy.interpolate import RegularGridInterpolator
 from xarray import DataArray
 import numpy as np
 import numpy.typing as npt
+import sys
 
 from .atmosphere import combine_meteo_standard_atm
 from .atmosphere import get_AFGL_atm_homogenous_distribution
@@ -32,7 +33,7 @@ def check_config(config: dict) -> None:
         filename = config['io_files'][entry]
         if not Path(filename).is_file():
             log.error(f'[io_files][{entry}] ({filename}) not found')
-            exit(1)
+            sys.exit(1)
 
 
 def interp_sentinel2_albedo(s2_albedos: list[DataArray],
@@ -130,7 +131,7 @@ def geoscene_generation(config_user: dict) -> None:
         if len(config['scene_spec']['albedo']) != n_act:
             log.error(
                 'input error in sgm, albedo dimension not consistent with gm')
-            exit(1)
+            sys.exit(1)
         s2_albedo = DataArray(
             np.reshape(config['scene_spec']['albedo'], (n_alt, n_act)),
             dims=('y', 'x')

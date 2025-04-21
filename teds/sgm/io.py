@@ -11,7 +11,7 @@ from .types import Gas
 from .types import Meteo
 from teds.gm.io import nc_write_geometry
 from teds.gm.types import Geometry
-from teds.l1al1b.python.types import L1
+from teds.l1al1b.types import L1
 
 
 def write_atmosphere(filename: str,

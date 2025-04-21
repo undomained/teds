@@ -18,7 +18,7 @@ from .io import write_l2_diagnostics
 from .types import L2
 from teds import log
 from teds.gm.io import read_geometry
-from teds.l1al1b.python.io import read_l1
+from teds.l1al1b.io import read_l1
 from teds.lib.convolution import Kernel
 from teds.lib.gauss_newton import gauss_newton
 from teds.lib.io import check_file_presence

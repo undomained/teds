@@ -65,7 +65,6 @@ include(FetchContent)
 find_package(OpenMP REQUIRED)
 target_link_libraries(common PUBLIC OpenMP::OpenMP_CXX)
 # Python
-find_package(Python3 COMPONENTS Interpreter Development NumPy)
 if (TARGET Python3::NumPy)
   target_link_libraries(common PUBLIC Python3::Python Python3::NumPy)
 endif()

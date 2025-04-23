@@ -39,6 +39,12 @@ if (INCLUDE_COVERAGE)
   string(APPEND CMAKE_CXX_FLAGS " ${COVERAGE_FLAGS}")
 endif()
 
+# Most dependencies are in cpp/common/CMakeLists.txt. But we need the
+# NumPy here so we can later decide whether to build the C++ bindings
+# library. If the package is only found in common then it won't be
+# visible here.
+find_package(Python3 COMPONENTS Interpreter Development NumPy)
+
 # Libraries and executables to be built - one core library with common
 # functionality, one library for each module (IM, L1B, L2), and one
 # for tests.

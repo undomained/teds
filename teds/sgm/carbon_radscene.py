@@ -435,8 +435,8 @@ def carbon_radiation_scene_generation(config_user: dict) -> None:
         stokes_Q = np.empty(rad_output.spectra.shape)
         stokes_U = np.empty(rad_output.spectra.shape)
     else:
-        stokes_Q = np.empty()
-        stokes_U = np.empty()
+        stokes_Q = np.empty((0))
+        stokes_U = np.empty((0))
 
     # Line-by-line radiances for one scan-line
     radiance_lbl = np.empty([n_act, n_lbl])

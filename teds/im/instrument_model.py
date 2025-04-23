@@ -19,6 +19,7 @@ Input files are:
 
 """
 from . import forward_models as fw
+from .io import read_pol
 from teds import log
 from teds.l1al1b.io import copy_navigation_data
 from teds.l1al1b.io import read_binning_table
@@ -48,6 +49,8 @@ def check_config(config: dict) -> None:
     check_file_presence(config['io_files']['ckd'], 'CKD')
     if config['isrf']['tabulated']:
         check_file_presence(config['io_files']['isrf'], 'ISRF')
+    if config['io_files']['mueller']:
+        check_file_presence(config['io_files']['mueller'], 'mueller')
     proc_level = read_proc_level(config['io_files']['sgm'])
     if proc_level < ProcLevel.sgm:
         config['isrf']['in_memory'] = True
@@ -130,6 +133,10 @@ def run_instrument_model(config_user: dict | None = None) -> None:
                              config['alt_end'],
                              config['isrf']['in_memory'],
                              config['io_files']['geometry'])
+    stokes_q_u, mueller = read_pol(config['io_files']['sgm'],
+                                   config['io_files']['mueller'],
+                                   config['alt_beg'],
+                                   config['alt_end'])
     set_l1_meta(config, l1_product)
     if len(l1_product.spectra.shape) >= 2 and (
             l1_product.spectra.shape[1] != len(ckd.swath.act_angles)):
@@ -156,6 +163,9 @@ def run_instrument_model(config_user: dict | None = None) -> None:
     print_heading('Forward model')
     # Output processing level
     cal_level = ProcLevel[config['cal_level'].lower()]
+    if stokes_q_u and mueller.size > 0:
+        log.info('Applying Mueller elements to Stokes I,Q,U')
+        fw.apply_mueller(l1_product, stokes_q_u, mueller)
     if step_needed(ProcLevel.sgm, l1_product.proc_level, cal_level):
         log.info('ISRF convolution')
         fw.apply_isrf(l1_product,

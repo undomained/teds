@@ -65,6 +65,8 @@ def check_config(config: dict) -> None:
         check_file_presence(config['io_files']['isrf'], 'ISRF')
     if config['alt_end']:
         config['alt_end'] += 1
+    if config['io_files']['q_u']:
+        check_file_presence(config['io_files']['q_u'], 'q_u')
     if config['io_files']['isrf_U'] and not config['sedf']['enabled']:
         log.error(f"If isrf_U ({config['io_files']['isrf_U']}) is present the "
                   "SEDF must be enabled (set [sedf][enabled] to true)")
@@ -424,6 +426,18 @@ def carbon_radiation_scene_generation(config_user: dict) -> None:
         rad_output.solar_irradiance = sun
         rad_output.proc_level = ProcLevel.sgm
 
+    # q and u if supplied
+    if config['io_files']['q_u']:
+        nc = Dataset(config['io_files']['q_u'])
+        stokes_waves = nc['wavelength'][:].data
+        stokes_q = CubicSpline(stokes_waves, nc['q'][:].data)(wave_lbl)
+        stokes_u = CubicSpline(stokes_waves, nc['u'][:].data)(wave_lbl)
+        stokes_Q = np.empty(rad_output.spectra.shape)
+        stokes_U = np.empty(rad_output.spectra.shape)
+    else:
+        stokes_Q = np.empty()
+        stokes_U = np.empty()
+
     # Line-by-line radiances for one scan-line
     radiance_lbl = np.empty([n_act, n_lbl])
     for i_alt in tqdm(range(n_alt)):
@@ -465,13 +479,28 @@ def carbon_radiation_scene_generation(config_user: dict) -> None:
                    np.cos(np.deg2rad(geometry.vza[i_alt, :])),
                    sun,
                    radiance_lbl)
+        if stokes_Q.size > 0:
+            if config['isrf']['enabled']:
+                for i_act in range(n_act):
+                    stokes_Q[i_alt, i_act, :] = isrf.convolve(
+                        radiance_lbl[i_act] * stokes_q)
+                    stokes_U[i_alt, i_act, :] = isrf.convolve(
+                        radiance_lbl[i_act] * stokes_u)
+            else:
+                stokes_Q[i_alt, :, :] = radiance_lbl * stokes_q
+                stokes_U[i_alt, :, :] = radiance_lbl * stokes_q
+
         if config['isrf']['enabled']:
             for i_act in range(n_act):
                 rad_output.spectra[i_alt, i_act, :] = isrf.convolve(
                     radiance_lbl[i_act, :])
 
     log.info('Writing output')
-    write_radiance(
-        config['io_files']['radiance'], config, rad_output, hetero_isrf)
+    write_radiance(config['io_files']['radiance'],
+                   config,
+                   rad_output,
+                   hetero_isrf,
+                   stokes_Q,
+                   stokes_U)
 
     print_heading('Success')

@@ -112,3 +112,6 @@ io_files:
   # heterogeneous ISRF is generated and saved in the SGM radiance
   # file.
   isrf_U: ""
+  # Stokes q=Q/I and u=U/I parameters. If present, then Q and U are
+  # also saved in the radiance file.
+  q_u: ""

@@ -13,6 +13,7 @@ from tqdm import tqdm
 import numpy as np
 import numpy.typing as npt
 
+from .types import Stokes
 from teds.l1al1b.calibration import convolve_with_all_kernels
 from teds.l1al1b.types import BinningTable
 from teds.l1al1b.types import CKDNoise
@@ -22,6 +23,29 @@ from teds.l1al1b.types import CKDSwath
 from teds.l1al1b.types import L1
 from teds.l1al1b.types import ProcLevel
 from teds.lib.convolution import Kernel
+
+
+def apply_mueller(l1_product: L1,
+                  stokes: Stokes,
+                  mueller: npt.NDArray[np.floating]) -> None:
+    """Add Mueller matrix elements to Stokes I,Q,U parameters.
+
+    Compute I_pol = I + M_01 / M_00 * Q + M_02 / M_00 * U.
+
+    Parameters
+    ----------
+    l1_product
+        L1 product (signal and detector settings)
+    stokes
+        Stokes Q and U parameters
+    mueller
+        Mueller matrix elements for each ALT, ACT, and wavelength
+
+    """
+    M_00 = mueller[0]
+    M_01 = mueller[1]
+    M_02 = mueller[2]
+    l1_product.spectra += M_01 / M_00 * stokes.Q + M_02 / M_00 * stokes.U
 
 
 def apply_isrf(l1_product: L1,

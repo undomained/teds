@@ -243,8 +243,12 @@ def write_atmosphere_ref(filename: str,
                      geometry_binned)
 
 
-def write_radiance(
-        filename: str, config: dict, rad: L1, hetero_isrf: DataArray) -> None:
+def write_radiance(filename: str,
+                   config: dict,
+                   rad: L1,
+                   hetero_isrf: DataArray,
+                   stokes_Q: npt.NDArray[np.floating],
+                   stokes_U: npt.NDArray[np.floating]) -> None:
     """Write SGM radiances to NetCDF file."""
     default_fill = -32767
     n_alt, n_act, n_wav = rad.spectra.shape
@@ -288,6 +292,29 @@ def write_radiance(
     var.min_value = 0.0
     var.max_value = 1e28
     var[:] = rad.spectra
+
+    if stokes_Q.size > 0:
+        var = nc.createVariable(
+            'q',
+            'f8',
+            ('along_track_sample', 'across_track_sample', 'wavelength'),
+            fill_value=default_fill)
+        var.long_name = 'Stokes Q parameter'
+        var.units = 'photons / (sr nm m2 s)'
+        var.min_value = 0.0
+        var.max_value = 1e28
+        var[:] = stokes_Q
+
+        var = nc.createVariable(
+            'u',
+            'f8',
+            ('along_track_sample', 'across_track_sample', 'wavelength'),
+            fill_value=default_fill)
+        var.long_name = 'Stokes U parameter'
+        var.units = 'photons / (sr nm m2 s)'
+        var.min_value = 0.0
+        var.max_value = 1e28
+        var[:] = stokes_U
 
     nc_write_geometry(nc, rad.geometry, False)
 

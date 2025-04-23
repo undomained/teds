@@ -83,3 +83,5 @@ io_files:
   geometry: ""
   # Navigation data (orbit positions and attitude quaternions)
   navigation: ""
+  # Mueller elements corresponding to the scene
+  mueller: ""

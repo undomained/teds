@@ -45,5 +45,11 @@ endif()
 add_subdirectory(cpp/common)
 add_subdirectory(cpp/l1al1b)
 add_subdirectory(cpp/im)
-add_subdirectory(cpp/bindings)
 add_subdirectory(tests)
+
+# Only build the C++ extensions for Python if the Python development
+# libraries, including Numpy, are found. This might not be the case on
+# a production system where Python support is not required anyway.
+if (TARGET Python3::NumPy)
+  add_subdirectory(cpp/bindings)
+endif()

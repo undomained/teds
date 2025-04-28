@@ -3,41 +3,30 @@
 
 #include "algorithm.h"
 
-#include "constants.h"
-
-#include <numeric>
-
 namespace tango {
 
-[[nodiscard]] auto binaryFindIdx(const std::vector<double>& list,
+[[nodiscard]] auto binaryFindIdx(const Eigen::ArrayXd& list,
                                  const double x) -> int
 {
     int i_begin {};
     int i_end { static_cast<int>(list.size() - 1) };
     int i_mid {};
-    if (x <= list.front()) {
+    if (x <= list(0)) {
         return i_begin;
     }
-    if (x >= list.back()) {
+    if (x >= list(list.size() - 1)) {
         return i_end;
     }
     while (true) {
         i_mid = (i_begin + i_end) / 2;
-        if (x < list[i_mid]) {
+        if (x < list(i_mid)) {
             i_end = i_mid - 1;
-        } else if (x < list[i_mid + 1]) {
+        } else if (x < list(i_mid + 1)) {
             return i_mid;
         } else {
             i_begin = i_mid + 1;
         }
     }
-}
-
-[[nodiscard]] auto dotProduct(const std::array<double, dims::vec>& a,
-                              const std::array<double, dims::vec>& b) -> double
-{
-    return std::inner_product(
-      a.cbegin(), a.cbegin() + dims::vec, b.cbegin(), 0.0);
 }
 
 } // namespace tango

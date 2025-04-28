@@ -13,18 +13,19 @@ auto getFFTSize(const int n_rows, const int n_cols) -> int
     return (n_rows / 2 + 1) * n_cols;
 }
 
-auto fft_r2c(const int n_rows,
-             const int n_cols,
-             std::vector<double>& image,
-             std::vector<std::complex<double>>& image_fft) -> void
+auto fft_r2c(const ArrayXXd& image, Eigen::ArrayXcd& image_fft) -> void
 {
-    const std::vector<std::size_t> shape { static_cast<std::size_t>(n_rows),
-                                           static_cast<std::size_t>(n_cols) };
+    const std::vector<std::size_t> shape {
+        static_cast<std::size_t>(image.rows()),
+        static_cast<std::size_t>(image.cols())
+    };
     const std::vector<std::ptrdiff_t> stride_in {
-        static_cast<std::ptrdiff_t>(n_cols * sizeof(double)), sizeof(double)
+        static_cast<std::ptrdiff_t>(image.cols() * sizeof(double)),
+        sizeof(double)
     };
     const std::vector<std::ptrdiff_t> stride_out {
-        static_cast<std::ptrdiff_t>(n_cols * sizeof(std::complex<double>)),
+        static_cast<std::ptrdiff_t>(image.cols()
+                                    * sizeof(std::complex<double>)),
         sizeof(std::complex<double>)
     };
     const std::vector<std::size_t> axes { 1, 0 };
@@ -38,19 +39,20 @@ auto fft_r2c(const int n_rows,
                    1.0);
 }
 
-auto fft_c2r(const int n_rows,
-             const int n_cols,
-             std::vector<std::complex<double>>& image_fft,
-             std::vector<double>& image) -> void
+auto fft_c2r(Eigen::ArrayXcd& image_fft, ArrayXXd& image) -> void
 {
-    const std::vector<std::size_t> shape { static_cast<std::size_t>(n_rows),
-                                           static_cast<std::size_t>(n_cols) };
+    const std::vector<std::size_t> shape {
+        static_cast<std::size_t>(image.rows()),
+        static_cast<std::size_t>(image.cols())
+    };
     const std::vector<std::ptrdiff_t> stride_in {
-        static_cast<std::ptrdiff_t>(n_cols * sizeof(std::complex<double>)),
+        static_cast<std::ptrdiff_t>(image.cols()
+                                    * sizeof(std::complex<double>)),
         sizeof(std::complex<double>)
     };
     const std::vector<std::ptrdiff_t> stride_out {
-        static_cast<std::ptrdiff_t>(n_cols * sizeof(double)), sizeof(double)
+        static_cast<std::ptrdiff_t>(image.cols() * sizeof(double)),
+        sizeof(double)
     };
     const std::vector<std::size_t> axes { 1, 0 };
     pocketfft::c2r(shape,
@@ -63,42 +65,62 @@ auto fft_c2r(const int n_rows,
                    1.0);
 }
 
-auto convolve(const int image_n_rows,
-              const int image_n_cols,
-              const std::vector<double>& image_in,
+auto convolve(const Eigen::Ref<const ArrayXXd> image_in,
               const int kernel_n_rows,
               const int kernel_n_cols,
-              const std::vector<std::complex<double>>& kernel_fft,
-              std::vector<std::complex<double>>& image_fft,
-              std::vector<double>& image_out) -> void
+              const Eigen::ArrayXcd& kernel_fft,
+              Eigen::ArrayXcd& image_fft,
+              ArrayXXd& image_out) -> void
 {
-    const int kernel_size { kernel_n_rows * kernel_n_cols };
-    assert(image_n_rows <= kernel_n_rows
+    assert(image_in.rows() <= kernel_n_rows
            && "Image dimension must be less than the kernel dimension");
-    assert(image_n_cols <= kernel_n_cols
+    assert(image_in.cols() <= kernel_n_cols
            && "Image dimension must be less than the kernel dimension");
     // Enlarge image_in to the size of the kernel and pad with zeros
-    std::vector<double> image(kernel_size, 0.0);
-    for (int i {}; i < image_n_rows; ++i) {
-        for (int j {}; j < image_n_cols; ++j) {
-            image[i * kernel_n_cols + j] = image_in[i * image_n_cols + j];
-        }
-    }
-    fft_r2c(kernel_n_rows, kernel_n_cols, image, image_fft);
+    ArrayXXd image(ArrayXXd::Zero(kernel_n_rows, kernel_n_cols));
+    image.topLeftCorner(image_in.rows(), image_in.cols()) = image_in;
+    fft_r2c(image, image_fft);
     // Image FFT x kernel FFT
-    for (int i {}; i < static_cast<int>(kernel_fft.size()); ++i) {
-        image_fft[i] *= kernel_fft[i];
-    }
+    image_fft *= kernel_fft;
     // Image real
-    fft_c2r(kernel_n_rows, kernel_n_cols, image_fft, image);
-    // Shrink the resulting image to the original size
-    image_out.resize(image_n_rows * image_n_cols);
-    const double kernel_size_inv { 1.0 / kernel_size };
-    for (int i {}; i < image_n_rows; ++i) {
-        for (int j {}; j < image_n_cols; ++j) {
-            image_out[i * image_n_cols + j] =
-              image[i * kernel_n_cols + j] * kernel_size_inv;
-        }
+    fft_c2r(image_fft, image);
+    const int norm { kernel_n_rows * kernel_n_cols };
+    image_out = image.topLeftCorner(image_in.rows(), image_in.cols()) / norm;
+}
+
+auto convolveMulti(
+  const Eigen::Array<int, Eigen::Dynamic, box::n, Eigen::RowMajor>& edges,
+  const ArrayXXd& weights,
+  const Eigen::Ref<const ArrayXXd> image_in,
+  const Eigen::VectorXi& kernel_rows,
+  const Eigen::VectorXi& kernel_cols,
+  const std::vector<Eigen::ArrayXcd>& kernels_fft,
+  Eigen::ArrayXcd& image_fft,
+  ArrayXXd& image_out) -> void
+{
+    image_out = 0.0;
+    for (int i_kernel {}; i_kernel < static_cast<int>(kernels_fft.size());
+         ++i_kernel) {
+        // Number of rows and column in this subsignal
+        const int b { edges(i_kernel, box::b) };
+        const int t { edges(i_kernel, box::t) - 1 };
+        const int l { edges(i_kernel, box::l) };
+        const int r { edges(i_kernel, box::r) - 1 };
+        auto weights_sub(weights.row(i_kernel).reshaped<Eigen::RowMajor>(
+          image_in.rows(), image_in.cols()));
+        const ArrayXXd sub_signal(
+          image_in(Eigen::seq(b, t), Eigen::seq(l, r))
+          * weights_sub(Eigen::seq(b, t), Eigen::seq(l, r)));
+        // Result of convolution using one of the subimages and kernels
+        ArrayXXd conv_result(sub_signal.rows(), sub_signal.cols());
+        convolve(sub_signal,
+                 kernel_rows(i_kernel),
+                 kernel_cols(i_kernel),
+                 kernels_fft[i_kernel],
+                 image_fft,
+                 conv_result);
+        // The full convolution is a sum over all convolutions
+        image_out(Eigen::seq(b, t), Eigen::seq(l, r)) += conv_result;
     }
 }
 

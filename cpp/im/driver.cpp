@@ -11,7 +11,6 @@
 #include <common/isrf.h>
 #include <common/l1.h>
 #include <common/timer.h>
-#include <netcdf>
 #include <spdlog/spdlog.h>
 
 namespace tango {
@@ -101,7 +100,7 @@ auto driver(const SettingsIM& settings,
     if (l1_prod.level >= ProcLevel::nonlin
         && settings.cal_level < ProcLevel::nonlin) {
         spdlog::info("Nonlinearity");
-        nonlinearity(ckd, settings.nonlin.enabled, nonlin_spline, l1_prod);
+        nonlinearity(settings.nonlin.enabled, nonlin_spline, l1_prod);
     }
     // Dark current
     if (l1_prod.level >= ProcLevel::dark_current
@@ -143,7 +142,7 @@ auto driver(const SettingsIM& settings,
                              l1_prod);
     }
     // Bin detector images if they exist
-    if (!l1_prod.signal.empty()) {
+    if (l1_prod.signal.size() > 0) {
         spdlog::info("Detector image binning ({}x1)",
                      static_cast<int>(settings.detector.binning_table_id));
         binDetectorImages(ckd.n_detector_rows,

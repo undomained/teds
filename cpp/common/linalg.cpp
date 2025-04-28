@@ -5,55 +5,104 @@
 
 namespace tango {
 
-auto dgemm(const char trans_a,
-           const char trans_b,
-           const int n_rows_a,
-           const int n_cols_a,
-           const double* a,
-           const std::vector<double>& b,
-           std::vector<double>& c) -> void
+auto sparseToBanded(const Eigen::SparseMatrix<double>& mat_sparse)
+  -> Eigen::MatrixXd
 {
-    // Throughout this function, a and b are swapped from the Fortran
-    // perspective. Thus, trans_b is used where trans_a would normally
-    // be used, n_rows_b instead of n_rows_a, and so on. If a and b
-    // were not swapped, the function would yield c^T instead of c.
-    constexpr double one { 1.0 };
-    constexpr double zero { 0.0 };
-    int n_rows_b { trans_a == 'n' ? n_cols_a : n_rows_a };
-    int n_cols_b { static_cast<int>(b.size()) / n_rows_b };
-    if (trans_b == 't') {
-        std::swap(n_rows_b, n_cols_b);
+    // Number of non-zero elements in the first column determines the
+    // number of bands including the diagonal.
+    const int n_bands { mat_sparse.outerIndexPtr()[1]
+                        - mat_sparse.outerIndexPtr()[0] };
+    Eigen::MatrixXd mat_banded(n_bands, mat_sparse.cols());
+    for (int j {}; j < mat_sparse.outerSize(); ++j) {
+        for (Eigen::SparseMatrix<double>::InnerIterator it(mat_sparse, j); it;
+             ++it) {
+            if (it.row() >= j) {
+                mat_banded(it.row() - j, j) = it.value();
+            }
+        }
     }
-    const int M { trans_b == 'n' ? n_cols_b : n_rows_b };
-    const int N { trans_a == 'n' ? n_rows_a : n_cols_a };
-    const int K { trans_b == 'n' ? n_rows_b : n_cols_b };
-    const int LDA { trans_b == 'n' ? M : K };
-    const int LDB { trans_a == 'n' ? K : N };
-    c.resize(M * N);
-    dgemm_(&trans_b,
-           &trans_a,
-           &M,
-           &N,
-           &K,
-           &one,
-           b.data(),
-           &LDA,
-           a,
-           &LDB,
-           &zero,
-           c.data(),
-           &M);
+    return mat_banded;
 }
 
-auto dgemm(const char trans_a,
-           const char trans_b,
-           const int n_rows_a,
-           const int n_cols_a,
-           const std::vector<double>& a,
-           const std::vector<double>& b,
-           std::vector<double>& c) -> void
+auto ldlt_decompose(Eigen::MatrixXd& L, Eigen::VectorXd& D) -> void
 {
-    dgemm(trans_a, trans_b, n_rows_a, n_cols_a, a.data(), b, c);
+    const int n_diag { static_cast<int>(L.cols()) };
+    const int n_rows { static_cast<int>(L.rows()) };
+    D.resize(n_diag);
+    Eigen::VectorXd v(n_diag);
+    for (int j {}; j < n_diag; ++j) {
+        const int row_start { std::max(0, j - n_rows + 1) };
+        for (int i { row_start }; i < j; ++i) {
+            v(i) = L(j - i, i) * D(i);
+        }
+        D(j) = L(0, j);
+        for (int k { row_start }; k < j; ++k) {
+            D(j) -= L(j - k, k) * v(k);
+        }
+        for (int i { j }; i < j + n_rows; ++i) {
+            const int row_start { std::max(0, i - n_rows + 1) };
+            for (int k { row_start }; k < j; ++k) {
+                L(i - j, j) -= L(i - k, k) * v(k);
+            }
+            L(i - j, j) /= D(j);
+        }
+    }
+}
+
+static auto banded_forward_substitution(const Eigen::MatrixXd& A,
+                                        const Eigen::VectorXd& b)
+  -> Eigen::VectorXd
+{
+    const int n_rows { static_cast<int>(A.rows()) };
+    Eigen::VectorXd y(b.size());
+    for (int i {}; i < A.cols(); ++i) {
+        const int row_start { std::max(0, i - n_rows + 1) };
+        y(i) = b(i);
+        for (int j { row_start }; j < i; ++j) {
+            y(i) -= A(i - j, j) * y(j);
+        }
+        y(i) /= A(0, i);
+    }
+    return y;
+}
+
+static auto banded_back_substitution(const Eigen::MatrixXd& A,
+                                     const Eigen::VectorXd& b)
+  -> Eigen::VectorXd
+{
+    const int n_diag { static_cast<int>(A.cols()) };
+    const int n_rows { static_cast<int>(A.rows()) };
+    Eigen::VectorXd y(b.size());
+    // Backward substitution (solving A^T*x=y)
+    for (int i { n_diag - 1 }; i >= 0; --i) {
+        const int max_row { i + n_rows - 1 };
+        y(i) = b(i);
+        for (int j { std::min(n_diag - 1, max_row) }; j > i; --j) {
+            // No need to explicitly use A^T here
+            y(i) -= A(j - i, i) * y(j);
+        }
+        // In the case of LDLT algorithm the diagonal elements are
+        // zero. Otherwise use y(i) /= A(0, i) here.
+    }
+    return y;
+}
+
+auto ldlt_solve(const Eigen::MatrixXd& L,
+                const Eigen::VectorXd& D,
+                const Eigen::MatrixXd& B) -> Eigen::MatrixXd
+{
+    Eigen::MatrixXd X(B.rows(), B.cols());
+    for (int i_col {}; i_col < B.cols(); ++i_col) {
+        Eigen::VectorXd b(B.col(i_col));
+        // Solve Lz = b
+        auto z(banded_forward_substitution(L, b));
+        // Solve Dy = z
+        Eigen::VectorXd y(z.array() / D.array());
+        // Solve L^Tx = y
+        auto x(banded_back_substitution(L, y));
+        X.col(i_col) = x;
+    }
+    return X;
 }
 
 } // namespace tango

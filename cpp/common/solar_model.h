@@ -16,10 +16,7 @@
 
 #pragma once
 
-#include "constants.h"
-#include "quaternion.h"
-
-#include <array>
+#include <Eigen/Dense>
 #include <cstdint>
 
 namespace tango {
@@ -30,8 +27,8 @@ namespace tango {
 // ECR coordinates and the J200-to-ECR quaternion.
 auto solarModel(const uint32_t tai_seconds,
                 const double tai_second_fraction,
-                std::array<double, dims::vec>& sun,
-                Quaternion& q_j2000_ecef) -> void;
+                Eigen::Vector3d& sun,
+                Eigen::Quaterniond& q_j2000_ecef) -> void;
 
 // Number of days since noon January 1, 4713 BC of the Julian
 // calendar. Arguments form a Gregorian calendar date.
@@ -85,8 +82,7 @@ auto getSun2000(const double t,
                 const double sma,
                 const double moon_mean_lon,
                 const double nutation_lon,
-                const double nutation_obl,
-                std::array<double, dims::vec>& sun) -> void;
+                const double nutation_obl) -> Eigen::Vector3d;
 
 // Greenwich hour angle in radians
 [[nodiscard]] auto getGHA2000(const double t,
@@ -95,11 +91,10 @@ auto getSun2000(const double t,
                               const double nutation_obl) -> double;
 
 // Get J2000 to mean-of-day (precession) transformation
-auto j2000ToMOD(const double t, Quaternion& q_j2000_to_mod) -> void;
+auto j2000ToMOD(const double t) -> Eigen::Quaterniond;
 
 auto getNutationQuaternion(const double nutation_lon,
                            const double nutation_obl,
-                           const double mean_obliquity,
-                           Quaternion& q_nutation) -> void;
+                           const double mean_obliquity) -> Eigen::Quaterniond;
 
 } // namespace tango

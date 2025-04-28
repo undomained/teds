@@ -3,14 +3,11 @@
 
 #include "b_spline.h"
 
-#include "constants.h"
-
-#include <array>
+#include "algorithm.h"
 
 namespace tango {
 
-BSpline::BSpline(const int order, const std::vector<double>& knots)
-  : order { order }
+BSpline::BSpline(const int order, const Eigen::ArrayXd& knots) : order { order }
 {
     // Number of knots to skip for better smoothness
     const int i_start { order / 2 + 1 };
@@ -18,11 +15,11 @@ BSpline::BSpline(const int order, const std::vector<double>& knots)
     // Copy the B-spline knots and pad them from both ends by (order)
     // elements.
     for (int i {}; i < static_cast<int>(knots.size()) - order - 1; ++i) {
-        this->knots[i + order + 1] = knots[i + i_start];
+        this->knots(i + order + 1) = knots(i + i_start);
     }
     for (int i {}; i < order + 1; ++i) {
-        this->knots[i] = knots.front();
-        this->knots[this->knots.size() - 1 - i] = knots.back();
+        this->knots(i) = knots(0);
+        this->knots(this->knots.size() - 1 - i) = knots(knots.size() - 1);
     }
     control_points_tmp.resize(this->knots.size(), 0.0);
 }
@@ -61,20 +58,24 @@ auto BSpline::deBoor(const std::vector<double>& control_points,
     return d_cur[order];
 }
 
-auto BSpline::evalBasis(const std::vector<double>& x_data,
-                        std::vector<double>& B) -> void
+auto BSpline::genBasis(const Eigen::ArrayXd& x_data)
+  -> Eigen::SparseMatrix<double>
 {
-    const int n_states { nStates() };
-    B.resize(x_data.size() * n_states, 0.0);
+    std::vector<Eigen::Triplet<double>> triplets {};
+    triplets.reserve(x_data.size() * (order + 1));
     for (int i_point {}; i_point < static_cast<int>(x_data.size()); ++i_point) {
         const int i_x { findInterval(x_data[i_point]) };
         for (int k {}; k <= order; ++k) {
             control_points_tmp[i_x - k] = 1.0;
-            B[i_point * n_states + i_x - k] =
-              deBoor(control_points_tmp, x_data[i_point]);
+            triplets.push_back({ i_point,
+                                 i_x - k,
+                                 deBoor(control_points_tmp, x_data[i_point]) });
             control_points_tmp[i_x - k] = 0.0;
         }
     }
+    Eigen::SparseMatrix<double> B(x_data.size(), nStates());
+    B.setFromTriplets(triplets.cbegin(), triplets.cend());
+    return B;
 }
 
 } // namespace tango

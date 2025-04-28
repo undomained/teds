@@ -3,15 +3,11 @@
 
 #include "forward_models.h"
 
-#include <common/isrf.h>
-
-#include <Eigen/Sparse>
-#include <algorithm>
 #include <common/b_spline_2d.h>
 #include <common/binning_table.h>
 #include <common/ckd.h>
-#include <common/cubic_spline.h>
 #include <common/fourier.h>
+#include <common/isrf.h>
 #include <common/l1.h>
 #include <netcdf>
 #include <random>
@@ -29,56 +25,42 @@ auto applyISRF(const CKD& ckd,
     // If this process is disabled then linearly interpolate the
     // line-by-line spectra onto the CKD wavelength grids. We cannot
     // simply return like the other processes.
-    const size_t n_waves_in { l1_prod.wavelengths.size() };
-    const int n_waves_out { static_cast<int>(ckd.wave.wavelengths.size()) };
-    std::vector<double> spectra_out(l1_prod.n_alt * ckd.n_act * n_waves_out);
+    const size_t n_waves_in { static_cast<size_t>(l1_prod.wavelengths.size()) };
+    const size_t n_waves_out { static_cast<size_t>(
+      ckd.wave.wavelengths.size()) };
+    ArrayXXd spectra_out(l1_prod.n_alt * ckd.n_act, n_waves_out);
     if (enabled) {
         // If the spectra are not in memory then read them one by one
         // for the convolution.
-        if (l1_prod.spectra.empty()) {
+        if (l1_prod.spectra.size() == 0) {
             const netCDF::NcFile nc { sgm_filename, netCDF::NcFile::read };
             const netCDF::NcVar nc_var { nc.getVar("radiance") };
-            std::vector<double> buf(ckd.n_act * n_waves_in);
-            const size_t n_act { static_cast<size_t>(ckd.n_act) };
-            for (size_t i_alt {}; i_alt < static_cast<size_t>(l1_prod.n_alt);
-                 ++i_alt) {
-                nc_var.getVar(
-                  { i_alt, 0, 0 }, { 1, n_act, n_waves_in }, buf.data());
+            ArrayXXd buf(ckd.n_act, n_waves_in);
+            for (int i_alt {}; i_alt < l1_prod.n_alt; ++i_alt) {
+                nc_var.getVar({ static_cast<size_t>(i_alt), 0, 0 },
+                              { 1, static_cast<size_t>(ckd.n_act), n_waves_in },
+                              buf.data());
 #pragma omp parallel for
                 for (int i_act = 0; i_act < ckd.n_act; ++i_act) {
-                    const size_t act_idx { i_alt * ckd.n_act + i_act };
-                    isrf.convolve(act_idx,
-                                  &buf[i_act * n_waves_in],
-                                  &spectra_out[act_idx * n_waves_out]);
+                    const int act_idx { i_alt * ckd.n_act + i_act };
+                    spectra_out.row(act_idx) =
+                      isrf.convolve(buf.row(i_act), act_idx);
                 }
             }
         } else {
 #pragma omp parallel for
-            for (size_t i_alt = 0; i_alt < static_cast<size_t>(l1_prod.n_alt);
-                 ++i_alt) {
-                for (int i_act {}; i_act < ckd.n_act; ++i_act) {
-                    const size_t act_idx { i_alt * ckd.n_act + i_act };
-                    isrf.convolve(act_idx,
-                                  &l1_prod.spectra[act_idx * n_waves_in],
-                                  &spectra_out[act_idx * n_waves_out]);
-                }
+            for (int i = 0; i < l1_prod.n_alt * ckd.n_act; ++i) {
+                spectra_out.row(i) = isrf.convolve(l1_prod.spectra.row(i), i);
             }
         }
     } else {
 #pragma omp parallel for
-        for (size_t i_alt = 0; i_alt < static_cast<size_t>(l1_prod.n_alt);
-             ++i_alt) {
-            for (int i_act {}; i_act < ckd.n_act; ++i_act) {
-                const size_t act_idx { i_alt * ckd.n_act + i_act };
-                const std::vector<double> spectrum {
-                    l1_prod.spectra.begin() + act_idx * n_waves_in,
-                    l1_prod.spectra.begin() + (act_idx + 1) * n_waves_in
-                };
-                const LinearSpline spline { l1_prod.wavelengths, spectrum };
-                for (int i {}; i < n_waves_out; ++i) {
-                    spectra_out[act_idx * n_waves_out + i] =
-                      spline.eval(ckd.wave.wavelengths[i]);
-                }
+        for (int i_act = 0; i_act < l1_prod.n_alt * ckd.n_act; ++i_act) {
+            const LinearSpline spline { l1_prod.wavelengths,
+                                        l1_prod.spectra.row(i_act) };
+            for (size_t i_wave {}; i_wave < n_waves_out; ++i_wave) {
+                spectra_out.row(i_act)(i_wave) =
+                  spline.eval(ckd.wave.wavelengths(i_wave));
             }
         }
     }
@@ -94,15 +76,9 @@ auto radiometric(const CKD& ckd, const bool enabled, L1& l1_prod) -> void
     }
     const double exposure_time_inv { 1.0 / l1_prod.exposure_time };
 #pragma omp parallel for
-    for (size_t i_alt = 0; i_alt < static_cast<size_t>(l1_prod.n_alt);
-         ++i_alt) {
-        for (int i_act {}; i_act < ckd.n_act; ++i_act) {
-            for (int i {}; i < ckd.n_wavelengths; ++i) {
-                l1_prod.spectra[(i_alt * ckd.n_act + i_act) * ckd.n_wavelengths
-                                + i] /=
-                  ckd.rad.rad[i_act][i] * exposure_time_inv;
-            }
-        }
+    for (int i_alt = 0; i_alt < l1_prod.n_alt; ++i_alt) {
+        l1_prod.spectra(Eigen::seqN(i_alt * ckd.n_act, ckd.n_act),
+                        Eigen::all) /= ckd.rad.rad * exposure_time_inv;
     }
 }
 
@@ -111,24 +87,24 @@ auto mapToDetector(const CKD& ckd,
                    L1& l1_prod) -> void
 {
     l1_prod.level = ProcLevel::stray;
-    l1_prod.signal.assign(l1_prod.n_alt * ckd.npix, 0.0);
+    l1_prod.signal.resize(l1_prod.n_alt, ckd.npix);
 #pragma omp parallel for
     for (int i_alt = 0; i_alt < l1_prod.n_alt; ++i_alt) {
         const BSpline2D bspline_2d {
             b_spline_order,
             ckd.swath.act_angles,
             ckd.wave.wavelengths,
-            &l1_prod.spectra[i_alt * ckd.n_act * ckd.wave.wavelengths.size()]
+            l1_prod.spectra(Eigen::seqN(i_alt * ckd.n_act, ckd.n_act),
+                            Eigen::all)
         };
         bspline_2d.eval(ckd.swath.act_map,
                         ckd.swath.wavelength_map,
-                        &l1_prod.signal[i_alt * ckd.npix]);
+                        l1_prod.signal.row(i_alt));
         for (int i {}; i < ckd.npix; ++i) {
-            l1_prod.signal[i_alt * ckd.npix + i] =
-              std::max(0.0, l1_prod.signal[i_alt * ckd.npix + i]);
+            l1_prod.signal(i_alt, i) = std::max(0.0, l1_prod.signal(i_alt, i));
         }
     }
-    l1_prod.spectra = std::vector<double> {};
+    l1_prod.spectra = ArrayXXd {};
 }
 
 auto strayLight(const CKD& ckd, const bool enabled, L1& l1_prod) -> void
@@ -137,60 +113,33 @@ auto strayLight(const CKD& ckd, const bool enabled, L1& l1_prod) -> void
     if (!enabled) {
         return;
     }
-#pragma omp parallel for
+    // Pre-allocate the signal FFT for efficiency
+    Eigen::ArrayXcd signal_fft(ckd.stray.kernel_fft_sizes.maxCoeff());
+    // Result of convolution
+    ArrayXXd conv_result(ckd.n_detector_rows, ckd.n_detector_cols);
+#pragma omp parallel for firstprivate(signal_fft, conv_result)
     for (int i_alt = 0; i_alt < l1_prod.n_alt; ++i_alt) {
-        std::vector<double> conv_result(ckd.npix, 0.0);
-        std::vector<std::complex<double>> image_fft(
-          *std::ranges::max_element(ckd.stray.kernel_fft_sizes));
-        for (int i_kernel {}; i_kernel < ckd.stray.n_kernels; ++i_kernel) {
-            std::vector<double> image_weighted {
-                l1_prod.signal.begin() + i_alt * ckd.npix,
-                l1_prod.signal.begin() + (i_alt + 1) * ckd.npix
-            };
-            for (int i {}; i < ckd.npix; ++i) {
-                image_weighted[i] *= ckd.stray.weights[i_kernel][i];
-            }
-            const int image_n_rows {
-                ckd.stray.edges[i_kernel * box::n + box::t]
-                - ckd.stray.edges[i_kernel * box::n + box::b]
-            };
-            const int image_n_cols {
-                ckd.stray.edges[i_kernel * box::n + box::r]
-                - ckd.stray.edges[i_kernel * box::n + box::l]
-            };
-            std::vector<double> sub_image(image_n_rows * image_n_cols);
-            for (int i {}; i < image_n_rows; ++i) {
-                for (int j {}; j < image_n_cols; ++j) {
-                    sub_image[i * image_n_cols + j] = image_weighted
-                      [(i + ckd.stray.edges[i_kernel * box::n + box::b])
-                         * ckd.n_detector_cols
-                       + j + ckd.stray.edges[i_kernel * box::n + box::l]];
-                }
-            }
-            std::vector<double> conv_result_sub {};
-            convolve(image_n_rows,
-                     image_n_cols,
-                     sub_image,
-                     ckd.stray.kernel_rows[i_kernel],
-                     ckd.stray.kernel_cols[i_kernel],
-                     ckd.stray.kernels_fft[i_kernel],
-                     image_fft,
-                     conv_result_sub);
-            for (int i {}; i < image_n_rows; ++i) {
-                for (int j {}; j < image_n_cols; ++j) {
-                    conv_result
-                      [(i + ckd.stray.edges[i_kernel * box::n + box::b])
-                         * ckd.n_detector_cols
-                       + j + ckd.stray.edges[i_kernel * box::n + box::l]] +=
-                      conv_result_sub[i * image_n_cols + j];
-                }
-            }
+        auto signal(l1_prod.signal.row(i_alt).reshaped<Eigen::RowMajor>(
+          ckd.n_detector_rows, ckd.n_detector_cols));
+        if (ckd.stray.n_kernels > 1) {
+            convolveMulti(ckd.stray.edges,
+                          ckd.stray.weights,
+                          signal,
+                          ckd.stray.kernel_rows,
+                          ckd.stray.kernel_cols,
+                          ckd.stray.kernels_fft,
+                          signal_fft,
+                          conv_result);
+        } else {
+            convolve(signal,
+                     ckd.stray.kernel_rows(0),
+                     ckd.stray.kernel_cols(0),
+                     ckd.stray.kernels_fft.front(),
+                     signal_fft,
+                     conv_result);
         }
-        for (int i {}; i < ckd.npix; ++i) {
-            const int idx { i_alt * ckd.npix + i };
-            l1_prod.signal[idx] =
-              (1.0 - ckd.stray.eta[i]) * l1_prod.signal[idx] + conv_result[i];
-        }
+        signal = (1.0 - ckd.stray.eta) * signal + conv_result;
+        l1_prod.signal.row(i_alt) = signal.reshaped<Eigen::RowMajor>();
     }
 }
 
@@ -202,16 +151,11 @@ auto prnu(const CKD& ckd, const bool enabled, L1& l1_prod) -> void
     }
 #pragma omp parallel for
     for (int i_alt = 0; i_alt < l1_prod.n_alt; ++i_alt) {
-        for (int i {}; i < ckd.npix; ++i) {
-            if (!ckd.pixel_mask[i]) {
-                l1_prod.signal[i_alt * ckd.npix + i] *= ckd.prnu.prnu[i];
-            }
-        }
+        l1_prod.signal.row(i_alt) *= ckd.prnu.prnu;
     }
 }
 
-auto nonlinearity(const CKD& ckd,
-                  const bool enabled,
+auto nonlinearity(const bool enabled,
                   const LinearSpline& nonlin_spline,
                   L1& l1_prod) -> void
 {
@@ -221,12 +165,8 @@ auto nonlinearity(const CKD& ckd,
     }
 #pragma omp parallel for
     for (int i_alt = 0; i_alt < l1_prod.n_alt; ++i_alt) {
-        for (int i {}; i < ckd.npix; ++i) {
-            if (!ckd.pixel_mask[i]) {
-                const int idx { i_alt * ckd.npix + i };
-                l1_prod.signal[idx] = nonlin_spline.eval(l1_prod.signal[idx]);
-            }
-        }
+        l1_prod.signal.row(i_alt) =
+          nonlin_spline.eval(l1_prod.signal.row(i_alt));
     }
 }
 
@@ -238,12 +178,7 @@ auto darkCurrent(const CKD& ckd, const bool enabled, L1& l1_prod) -> void
     }
 #pragma omp parallel for
     for (int i_alt = 0; i_alt < l1_prod.n_alt; ++i_alt) {
-        for (int i {}; i < ckd.npix; ++i) {
-            if (!ckd.pixel_mask[i]) {
-                l1_prod.signal[i_alt * ckd.npix + i] +=
-                  ckd.dark.current[i] * l1_prod.exposure_time;
-            }
-        }
+        l1_prod.signal.row(i_alt) += ckd.dark.current * l1_prod.exposure_time;
     }
 }
 
@@ -261,12 +196,12 @@ auto noise(const CKD& ckd,
     for (int i_alt = 0; i_alt < l1_prod.n_alt; ++i_alt) {
         static std::mt19937 gen { static_cast<unsigned long>(seed) };
         for (int i {}; i < ckd.npix; ++i) {
-            const int idx { i_alt * ckd.npix + i };
             const double noise_value { std::sqrt(
-              (ckd.noise.n2[i] + std::abs(l1_prod.signal[idx]) * ckd.noise.g[i])
+              (ckd.noise.n2(i)
+               + std::abs(l1_prod.signal(i_alt, i)) * ckd.noise.g(i))
               / n_coadditions) };
             std::normal_distribution<> d { 0.0, noise_value };
-            l1_prod.signal[idx] += d(gen);
+            l1_prod.signal(i_alt, i) += d(gen);
         }
     }
 }
@@ -279,11 +214,7 @@ auto darkOffset(const CKD& ckd, const bool enabled, L1& l1_prod) -> void
     }
 #pragma omp parallel for
     for (int i_alt = 0; i_alt < l1_prod.n_alt; ++i_alt) {
-        for (int i {}; i < ckd.npix; ++i) {
-            if (!ckd.pixel_mask[i]) {
-                l1_prod.signal[i_alt * ckd.npix + i] += ckd.dark.offset[i];
-            }
-        }
+        l1_prod.signal.row(i_alt) += ckd.dark.offset;
     }
 }
 
@@ -297,7 +228,7 @@ auto binDetectorImages(const int n_rows,
     const BinningTable binning_table {
         n_rows, n_cols, binning_filename, binning_table_id
     };
-    binning_table.bin(l1_prod.signal, scale_by_binsize);
+    l1_prod.signal = binning_table.binMulti(l1_prod.signal, scale_by_binsize);
     l1_prod.binning_table_id = static_cast<uint8_t>(binning_table_id);
 }
 
@@ -305,10 +236,8 @@ auto digitalToAnalog(const int nr_coadditions, L1& l1_prod) -> void
 {
     l1_prod.level = ProcLevel::l1a;
     l1_prod.nr_coadditions = static_cast<uint16_t>(nr_coadditions);
-    for (double& val : l1_prod.signal) {
-        val *= l1_prod.nr_coadditions;
-        val = std::round(val);
-    }
+    l1_prod.signal *= l1_prod.nr_coadditions;
+    l1_prod.signal = Eigen::round(l1_prod.signal);
 }
 
 auto estimateOptimalCoadd(const CKD& ckd,
@@ -324,9 +253,8 @@ auto estimateOptimalCoadd(const CKD& ckd,
     for (int i_alt = 0; i_alt < l1_prod.n_alt; ++i_alt) {
         double max_val {};
         for (int i {}; i < ckd.npix; ++i) {
-            if (!ckd.pixel_mask[i]) {
-                max_val =
-                  std::max(max_val, l1_prod.signal[i_alt * ckd.npix + i]);
+            if (!ckd.pixel_mask(i)) {
+                max_val = std::max(max_val, l1_prod.signal(i_alt, i));
             }
         }
         const double I_sig { max_val / exposure_time };

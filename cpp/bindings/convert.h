@@ -7,15 +7,11 @@
 
 #include "init.h"
 
+#include <common/constants.h>
+#include <common/eigen.h>
 #include <vector>
 
-namespace tango {
-
-class Quaternion;
-
-} // namespace tango
-
-// Convert a Numpy array to a C++ vector
+// Convert Numpy array to C++ vector
 template <typename T>
 auto convert2cpp(const PyArrayObject* np_data, std::vector<T>& data) -> void
 {
@@ -25,10 +21,13 @@ auto convert2cpp(const PyArrayObject* np_data, std::vector<T>& data) -> void
     }
 }
 
-// Convert a Numpy array containing quaternions to a C++ vector
+// Convert Numpy array to Eigen array
 auto convert2cpp(const PyArrayObject* np_data,
-                 std::vector<tango::Quaternion>& data) -> void;
+                 ArrayXNd<tango::dims::vec>& data) -> void;
 
-// Convert a C++ vector to a Numpy array
-auto convert2np(const std::vector<double>& data,
-                PyArrayObject* np_data) -> void;
+// Convert Numpy quaternion array to Eigen quaternion array
+auto convert2cpp(const PyArrayObject* np_data,
+                 std::vector<Eigen::Quaterniond>& data) -> void;
+
+// Convert an Eigen array to a Numpy array
+auto convert2np(const ArrayXXd& data, PyArrayObject* np_data) -> void;

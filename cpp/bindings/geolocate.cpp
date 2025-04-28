@@ -5,7 +5,6 @@
 
 #include "convert.h"
 
-#include <common/constants.h>
 #include <common/geometry.h>
 
 auto geolocate(PyObject* /* self */, PyObject* args) -> PyObject*
@@ -55,15 +54,15 @@ auto geolocate(PyObject* /* self */, PyObject* args) -> PyObject*
     }
     const int n_alt { static_cast<int>(*PyArray_DIMS(np_tai_seconds)) };
     const int n_act { static_cast<int>(*PyArray_DIMS(np_los)) };
-    std::vector<double> los(n_act * tango::dims::vec);
+    ArrayXNd<tango::dims::vec> los(n_act, tango::dims::vec);
     convert2cpp(np_los, los);
     std::vector<uint32_t> tai_seconds(n_alt);
     convert2cpp(np_tai_seconds, tai_seconds);
     std::vector<double> tai_subsec(n_alt);
     convert2cpp(np_tai_subsec, tai_subsec);
-    std::vector<double> orb_pos(n_alt * tango::dims::vec);
+    ArrayXNd<tango::dims::vec> orb_pos(n_alt, tango::dims::vec);
     convert2cpp(np_orb_pos, orb_pos);
-    std::vector<tango::Quaternion> att_quat(n_alt);
+    std::vector<Eigen::Quaterniond> att_quat(n_alt);
     convert2cpp(np_att_quat, att_quat);
     tango::Geometry geo {};
     try {

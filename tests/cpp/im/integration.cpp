@@ -30,7 +30,7 @@ TEST_CASE("integration tests")
 
     tango::L1 l1 {};
     readL1A(fixture_dir, l1);
-    writeSGM(fixture_dir, sgm_filename, ckd, l1);
+    writeSGM(sgm_filename, ckd, l1);
 
     writeGeometry(geometry_filename, l1);
 
@@ -65,7 +65,7 @@ TEST_CASE("integration tests")
         // Run the simulator and read the L1A product from temporary space
         tango::driver(settings);
         tango::readL1(l1a_filename, 0, std::optional<size_t> {}, l1, true);
-        CHECK_THAT(absSum(l1.signal), WithinRel(1284800.0, 1e-6));
+        CHECK_THAT(l1.signal.abs().sum(), WithinRel(169932258.0, 1e-6));
     }
 
     SECTION("Full chain, no ADC or binning")
@@ -73,7 +73,7 @@ TEST_CASE("integration tests")
         settings.cal_level = tango::ProcLevel::raw;
         tango::driver(settings);
         tango::readL1(l1a_filename, 0, std::optional<size_t> {}, l1, true);
-        CHECK_THAT(absSum(l1.signal), WithinRel(642164.3174249, 1e-6));
+        CHECK_THAT(l1.signal.abs().sum(), WithinRel(84961878.1162073, 1e-6));
     }
 
     SECTION("Full chain, binning 4")
@@ -81,7 +81,7 @@ TEST_CASE("integration tests")
         settings.detector.binning_table_id = 4;
         tango::driver(settings);
         tango::readL1(l1a_filename, 0, std::optional<size_t> {}, l1, true);
-        CHECK_THAT(absSum(l1.signal), WithinRel(1284464.0, 1e-6));
+        CHECK_THAT(l1.signal.abs().sum(), WithinRel(169938478.0, 1e-6));
     }
 
     SECTION("Full chain, binning 4, no ADC")
@@ -90,7 +90,7 @@ TEST_CASE("integration tests")
         settings.detector.binning_table_id = 4;
         tango::driver(settings);
         tango::readL1(l1a_filename, 0, std::optional<size_t> {}, l1, true);
-        CHECK_THAT(absSum(l1.signal), WithinRel(163950.7084508, 1e-6));
+        CHECK_THAT(l1.signal.abs().sum(), WithinRel(21732574.3560229, 1e-6));
     }
 
     // Teardown

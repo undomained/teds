@@ -5,9 +5,9 @@
 
 #pragma once
 
+#include "constants.h"
+#include "eigen.h"
 #include "linear_spline.h"
-
-#include <complex>
 
 namespace tango {
 
@@ -36,28 +36,26 @@ public:
     int npix_binned {};
     // Number of L1B spectra (spatial samples across track)
     int n_act {};
-    // Number of L1B wavelengths
-    int n_wavelengths {};
 
-    // Bad pixel mask
-    std::vector<bool> pixel_mask {};
+    // Bad pixel mask (true means bad)
+    ArrayXb pixel_mask {};
 
     // Dark
     struct
     {
         // Dark offset (independent of integration time)
-        std::vector<double> offset {};
+        Eigen::ArrayXd offset {};
         // Dark current per second of integration time
-        std::vector<double> current {};
+        Eigen::ArrayXd current {};
     } dark;
 
     // Noise
     struct
     {
         // Conversion gain (signal dependent noise term)
-        std::vector<double> g {};
+        Eigen::ArrayXd g {};
         // Square of read noise (signal independent noise term)
-        std::vector<double> n2 {};
+        Eigen::ArrayXd n2 {};
     } noise;
 
     // Nonlinearity
@@ -71,7 +69,7 @@ public:
     struct
     {
         // Photoresponse non-uniformity
-        std::vector<double> prnu {};
+        Eigen::ArrayXd prnu {};
     } prnu;
 
     // Stray light
@@ -80,39 +78,39 @@ public:
         // Number of stray light kernels
         int n_kernels {};
         // Number of rows of each kernel
-        std::vector<int> kernel_rows {};
+        Eigen::VectorXi kernel_rows {};
         // Number of columns of each kernel
-        std::vector<int> kernel_cols {};
+        Eigen::VectorXi kernel_cols {};
         // The FFT array size of each kernel
-        std::vector<int> kernel_fft_sizes {};
+        Eigen::VectorXi kernel_fft_sizes {};
         // Fourier transforms of the kernels
-        std::vector<std::vector<std::complex<double>>> kernels_fft {};
+        std::vector<Eigen::ArrayXcd> kernels_fft {};
         // Total internal scattering factor
-        std::vector<double> eta {};
+        ArrayXXd eta {};
         // Kernel weights
-        std::vector<std::vector<double>> weights {};
+        ArrayXXd weights {};
         // Boundaries of subimages that must be extracted for the
         // convolutions. The order of coefficients is 'bottom', 'top',
         // 'left', 'right'.
-        std::vector<int> edges {};
+        Eigen::Array<int, Eigen::Dynamic, box::n, Eigen::RowMajor> edges {};
     } stray;
 
     // Swath
     struct
     {
         // Across track angles
-        std::vector<double> act_angles {};
+        Eigen::ArrayXd act_angles {};
         // ACT angle of each detector pixel
-        std::vector<double> act_map {};
+        ArrayXXd act_map {};
         // Wavelength of each detector pixel
-        std::vector<double> wavelength_map {};
+        ArrayXXd wavelength_map {};
         // Row index of each L1B spectral element
-        std::vector<double> row_map {};
+        ArrayXXd row_map {};
         // Column index of each L1B spectral element
-        std::vector<double> col_map {};
+        ArrayXXd col_map {};
         // Line of sight vectors
         // Dimensions: (n_act, 3)
-        std::vector<double> los {};
+        ArrayXNd<dims::vec> los {};
     } swath;
 
     // Spectral
@@ -120,7 +118,7 @@ public:
     {
         // Wavelengths assigned to each detector column of each L1B spectrum.
         // Dimensions: (n_act, n_wavelengths).
-        std::vector<double> wavelengths {};
+        Eigen::ArrayXd wavelengths {};
     } wave;
 
     // Radiometric
@@ -128,7 +126,7 @@ public:
     {
         // Radiometric calibration constants
         // Dimensions: (n_act, n_detector_cols).
-        std::vector<std::vector<double>> rad {};
+        ArrayXXd rad {};
     } rad;
 
     ~CKD() = default;

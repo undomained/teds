@@ -16,7 +16,7 @@ set(INCLUDE_PATHS /usr/include CACHE STRING "")
 set(LIBRARY_PATHS /usr/lib64 CACHE STRING "")
 
 # Linear algebra libraries
-set(LIBRARIES netcdf_c++4 netcdf lapack CACHE STRING "")
+set(LIBRARIES netcdf_c++4 netcdf CACHE STRING "")
 
 # Where to install
 set(CMAKE_INSTALL_PREFIX /usr/local/tango CACHE STRING "")

@@ -6,10 +6,7 @@
 
 #pragma once
 
-#include <algorithm>
-#include <cstdint>
-#include <string>
-#include <vector>
+#include "eigen.h"
 
 namespace tango {
 
@@ -20,11 +17,12 @@ private:
     // data. The data could represent, e.g., an image or part of the
     // CKD.
     std::vector<uint32_t> bin_indices {};
-    // count_table[i] is the superpixel size of the ith element of
-    // binned data
-    std::vector<uint16_t> count_table {};
 
 public:
+    // count_table[i] is the superpixel size of the ith element of
+    // binned data
+    Eigen::ArrayXd count_table {};
+
     // Construct a binning table from the binning table name given by
     // user input and the binning table ID. The latter is stored in an
     // L1A file and corresponds to a group name in the binning table
@@ -49,32 +47,23 @@ public:
     // Return a bin (superpixel) size
     [[nodiscard]] auto binSize(const int idx) const -> int
     {
-        return static_cast<int>(count_table[idx]);
+        return static_cast<int>(count_table(idx));
     }
-    // Bin an array and save result in data_binned. If
-    // scale_by_bin_size then then binned array is divided by the
-    // count table (false for normal L1A product).
-    auto bin(const std::vector<double>& data,
-             std::vector<double>& data_binned,
-             const bool scale_by_bin_size = true) const -> void;
-    // Bin an array and save the result in the same array
-    auto bin(std::vector<double>& data,
-             const bool scale_by_bin_size = true) const -> void;
+    // Bin an array
+    auto bin(const Eigen::ArrayXd& data) const -> Eigen::ArrayXd;
+    auto bin(const ArrayXXd& data) const -> Eigen::ArrayXd;
     // Bin a boolean array
-    auto bin(std::vector<bool>& data) const -> void;
-
-    // Like bin but don't multiply with the count table
+    auto bin(const ArrayXb& data) const -> ArrayXb;
+    // Bin multiple images in a 2D Eigen array. One row corresponds to
+    // one image. If scale_by_bin_size then binned array is divided by
+    // the count table (false for normal L1A product).
+    auto binMulti(const ArrayXXd& data,
+                  const bool scale_by_bin_size) const -> ArrayXXd;
 
     // Unbin data using the binning table. Output array is the same
     // size as the binning table (bin_indices.size()).
-    auto unbin(const std::ranges::range auto& data,
-               std::vector<double>& data_unbinned) const -> void
-    {
-        std::ranges::fill(data_unbinned, 0.0);
-        for (int i {}; i < static_cast<int>(bin_indices.size()); ++i) {
-            data_unbinned[i] = data[bin_indices[i]];
-        }
-    }
+    auto unbin(const Eigen::Ref<const Eigen::ArrayXd> data) const
+      -> Eigen::ArrayXd;
 };
 
 } // namespace tango

@@ -53,9 +53,9 @@ TEST_CASE("integration tests")
         // Run the simulator and read the L1B product from temporary space
         tango::driver(settings);
         tango::readL1(l1b_filename, 0, std::optional<size_t> {}, l1, true);
-        CHECK_THAT(absSum(l1.wavelengths), WithinRel(163065.0, 1e-6));
-        CHECK_THAT(absSum(l1.spectra), WithinRel(1.1228954e21, 1e-6));
-        CHECK_THAT(absSum(l1.spectra_noise), WithinRel(4.5107790e18, 1e-6));
+        CHECK_THAT(l1.wavelengths.abs().sum(), WithinRel(163065.0, 1e-6));
+        CHECK_THAT(l1.spectra.abs().sum(), WithinRel(1.6769428e21, 1e-6));
+        CHECK_THAT(l1.spectra_noise.abs().sum(), WithinRel(6.9570764e18, 1e-6));
     }
 
     SECTION("Full chain, L1A binning 2")
@@ -66,14 +66,14 @@ TEST_CASE("integration tests")
         const tango::BinningTable binning_table {
             0, 0, binningtable_filename, bin_factor
         };
-        binning_table.bin(l1.signal, false);
+        l1.signal = binning_table.binMulti(l1.signal, false);
         l1.binning_table_id = bin_factor;
         writeL1A(fixture_dir, l1a_filename, l1);
         tango::driver(settings);
         tango::readL1(l1b_filename, 0, std::optional<size_t> {}, l1, true);
-        CHECK_THAT(absSum(l1.wavelengths), WithinRel(163065.0, 1e-6));
-        CHECK_THAT(absSum(l1.spectra), WithinRel(1.1287256e21, 1e-6));
-        CHECK_THAT(absSum(l1.spectra_noise), WithinRel(3.1991014e18, 1e-6));
+        CHECK_THAT(l1.wavelengths.abs().sum(), WithinRel(163065.0, 1e-6));
+        CHECK_THAT(l1.spectra.abs().sum(), WithinRel(1.6933739e21, 1e-6));
+        CHECK_THAT(l1.spectra_noise.abs().sum(), WithinRel(4.9733939e18, 1e-6));
     }
 
     SECTION("Full chain, L1B binning 5")
@@ -81,9 +81,9 @@ TEST_CASE("integration tests")
         settings.bin_spectra = 5;
         tango::driver(settings);
         tango::readL1(l1b_filename, 0, std::optional<size_t> {}, l1, true);
-        CHECK_THAT(absSum(l1.wavelengths), WithinRel(163065.0, 1e-6));
-        CHECK_THAT(absSum(l1.spectra), WithinRel(2.2439481e20, 1e-6));
-        CHECK_THAT(absSum(l1.spectra_noise), WithinRel(4.0342468e17, 1e-6));
+        CHECK_THAT(l1.wavelengths.abs().sum(), WithinRel(163065.0, 1e-6));
+        CHECK_THAT(l1.spectra.abs().sum(), WithinRel(3.3496472e20, 1e-6));
+        CHECK_THAT(l1.spectra_noise.abs().sum(), WithinRel(6.2222817e17, 1e-6));
     }
 
     SECTION("Geolocation")
@@ -98,16 +98,16 @@ TEST_CASE("integration tests")
         tango::readL1(l1b_filename, 0, std::optional<size_t> {}, l1, true);
         tango::Geometry geo {};
         readGeo(l1b_filename, geo);
-        CHECK_THAT(absSum(l1.wavelengths), WithinRel(163065.0, 1e-6));
-        CHECK_THAT(absSum(l1.spectra), WithinRel(9.0256472e20, 1e-6));
-        CHECK_THAT(absSum(l1.spectra_noise), WithinRel(7.8356179e17, 1e-6));
-        CHECK_THAT(absSum(geo.lat), WithinRel(2590.0187939, 1e-6));
-        CHECK_THAT(absSum(geo.lon), WithinRel(722.7365457, 1e-6));
-        CHECK_THAT(absSum(geo.height), WithinAbs(2.42670388e-8, 1e-6));
-        CHECK_THAT(absSum(geo.sza), WithinRel(1959.7164232, 1e-6));
-        CHECK_THAT(absSum(geo.saa), WithinRel(7716.1682454, 1e-6));
-        CHECK_THAT(absSum(geo.vza), WithinRel(46.5414419, 1e-6));
-        CHECK_THAT(absSum(geo.vaa), WithinRel(4495.8437611, 1e-6));
+        CHECK_THAT(l1.wavelengths.abs().sum(), WithinRel(163065.0, 1e-6));
+        CHECK_THAT(l1.spectra.abs().sum(), WithinRel(1.3641337e21, 1e-6));
+        CHECK_THAT(l1.spectra_noise.abs().sum(), WithinRel(1.2243153e18, 1e-6));
+        CHECK_THAT(geo.lat.abs().sum(), WithinRel(2590.0187939, 1e-6));
+        CHECK_THAT(geo.lon.abs().sum(), WithinRel(722.7365457, 1e-6));
+        CHECK_THAT(geo.height.abs().sum(), WithinAbs(2.42670388e-8, 1e-6));
+        CHECK_THAT(geo.sza.abs().sum(), WithinRel(1959.7164232, 1e-6));
+        CHECK_THAT(geo.saa.abs().sum(), WithinRel(7716.1682454, 1e-6));
+        CHECK_THAT(geo.vza.abs().sum(), WithinRel(46.5414419, 1e-6));
+        CHECK_THAT(geo.vaa.abs().sum(), WithinRel(4495.8437611, 1e-6));
     }
 
     // Teardown

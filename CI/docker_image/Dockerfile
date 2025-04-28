@@ -27,7 +27,6 @@ RUN export DEBCONF_NOWARNINGS=yes \
     python3-setuptools \
     unzip \
     wget \
-    liblapack-dev \
     libeigen3-dev \
     libnetcdf-c++4-dev
 ENV LANGUAGE=en_US.UTF-8 LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8

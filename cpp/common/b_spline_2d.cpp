@@ -7,122 +7,34 @@
 
 namespace tango {
 
-// Compute the solution of a system of linear equations ATA * X = AT,
-// where ATA is a band matrix of order N with KL subdiagonals and KU
-// superdiagonals, and X and AT are N-by-NRHS matrices. For B-splines,
-// A is the B-spline matrix and the number of diagonals is the
-// B-spline order. On exit, X^T (because of Fortran ordering) will be
-// stored in A.
-static auto banded_ATA_X_AT(const int n_diagonals,
-                            const int n_rows_A,
-                            std::vector<double>& A) -> void
-{
-    constexpr char uplo { 'u' };
-    constexpr char trans { 'n' };
-    constexpr double one { 1.0 };
-    constexpr double zero { 0.0 };
-    const int n_cols_A { static_cast<int>(A.size()) / n_rows_A };
-    std::vector<double> ATA(n_cols_A * n_cols_A);
-    dsyrk_(&uplo,
-           &trans,
-           &n_cols_A,
-           &n_rows_A,
-           &one,
-           A.data(),
-           &n_cols_A,
-           &zero,
-           ATA.data(),
-           &n_rows_A);
-    // Complete the upper (lower in Fortran) triangle
-    for (int i {}; i < n_rows_A; ++i) {
-        for (int k {}; k <= n_diagonals; ++k) {
-            const int j { std::min(i + k, n_cols_A - 1) };
-            ATA[i * n_cols_A + j] = ATA[j * n_cols_A + i];
-        }
-    }
-    // Convert (A^T A) into a banded matrix
-    const int KL { n_diagonals };
-    const int KU { n_diagonals };
-    const int n_rows_band { 2 * KL + KU + 1 };
-    std::vector<double> ATA_banded(n_rows_band * n_cols_A);
-    for (int i {}; i < n_cols_A; ++i) {
-        for (int j { std::max(0, i - n_diagonals) };
-             j <= std::min(i + n_diagonals, n_cols_A - 1);
-             ++j) {
-            constexpr int first_idx { 0 }; // C++: 0, Fortran: 1
-            ATA_banded[(KL + KU + first_idx + i - j) * n_cols_A + j] =
-              ATA[i * n_cols_A + j];
-        }
-    }
-    // Transpose ATA_banded for dgbsv re-using ATA as a work array
-    ATA.resize(n_cols_A * n_rows_band);
-    for (int i {}; i < n_cols_A; ++i) {
-        for (int j {}; j < n_rows_band; ++j) {
-            ATA[i * n_rows_band + j] = ATA_banded[j * n_cols_A + i];
-        }
-    }
-    ATA_banded = std::move(ATA);
-    std::vector<int> ipiv(n_cols_A);
-    int info {};
-    dgbsv_(&n_cols_A,
-           &n_diagonals,
-           &n_diagonals,
-           &n_rows_A,
-           ATA_banded.data(),
-           &n_rows_band,
-           ipiv.data(),
-           A.data(),
-           &n_rows_A,
-           &info);
-}
-
 BSpline2D::BSpline2D(const int order,
-                     const std::vector<double>& x_values_r,
-                     const std::vector<double>& x_values_c,
-                     const double* data_in)
+                     const Eigen::ArrayXd& x_values_r,
+                     const Eigen::ArrayXd& x_values_c,
+                     const Eigen::Ref<const ArrayXXd> data_in)
 {
     // Initialize 1D B-splines across rows and columns of the input grid
     b_spline_r = { order, x_values_r };
     b_spline_c = { order, x_values_c };
-    // B-spline matrix across rows
-    std::vector<double> B_mat_r {};
-    b_spline_r.evalBasis(x_values_r, B_mat_r);
-    // B-spline matrix across columns
-    std::vector<double> B_mat_c {};
-    b_spline_c.evalBasis(x_values_c, B_mat_c);
+    // B-spline matrices across rows and columns
+    Eigen::SparseMatrix<double> B_mat_r(b_spline_r.genBasis(x_values_r));
+    Eigen::SparseMatrix<double> B_mat_c(b_spline_c.genBasis(x_values_c));
     // Find X from A^T A X = A^T where A is the B-spline matrix across
-    // rows. The result X^T is stored in B_mat_r.
-    banded_ATA_X_AT(order, static_cast<int>(x_values_r.size()), B_mat_r);
-    const std::vector<double>& XT { B_mat_r };
-    // Find Y from B^T B Y = B^T where B is the B-spline matrix across
-    // columns. The result Y^T is stored in B_mat_c.
-    banded_ATA_X_AT(order, static_cast<int>(x_values_c.size()), B_mat_c);
-    const std::vector<double>& YT { B_mat_c };
-    // Compute P Y^T
-    std::vector<double> PYT {};
-    dgemm('n',
-          'n',
-          static_cast<int>(x_values_r.size()),
-          static_cast<int>(x_values_c.size()),
-          data_in,
-          YT,
-          PYT);
-    // Compute control points from Q = X P Y^T
-    dgemm('t',
-          'n',
-          static_cast<int>(x_values_r.size()),
-          b_spline_r.nStates(),
-          XT,
-          PYT,
-          control_points);
-}
-
-BSpline2D::BSpline2D(const int order,
-                     const std::vector<double>& x_values_r,
-                     const std::vector<double>& x_values_c,
-                     const std::vector<double>& data_in)
-{
-    BSpline2D(order, x_values_r, x_values_c, data_in.data());
+    // rows.
+    Eigen::MatrixXd L(sparseToBanded(B_mat_r.transpose() * B_mat_r));
+    Eigen::VectorXd D {};
+    ldlt_decompose(L, D);
+    Eigen::MatrixXd B_mat_r_full(B_mat_r.transpose());
+    auto X = ldlt_solve(L, D, B_mat_r_full);
+    // Find Y from A^T A Y = A^T where A is the B-spline matrix across
+    // columns.
+    L = sparseToBanded(B_mat_c.transpose() * B_mat_c);
+    ldlt_decompose(L, D);
+    Eigen::MatrixXd B_mat_c_full(B_mat_c.transpose());
+    auto Y = ldlt_solve(L, D, B_mat_c_full);
+    // Control points are given by X P Y^T where P are the datapoints
+    auto P(data_in.matrix().reshaped<Eigen::RowMajor>(x_values_r.size(),
+                                                      x_values_c.size()));
+    control_points = X * P * Y.transpose();
 }
 
 // Given a target point x, find the knot interval i_x ... i_x+1 and
@@ -142,9 +54,9 @@ static auto nonzeroBSplineValues(const BSpline& b_spline,
     }
 }
 
-auto BSpline2D::eval(const std::vector<double>& x,
-                     const std::vector<double>& y,
-                     double* z) const -> void
+auto BSpline2D::eval(const ArrayXXd& x,
+                     const ArrayXXd& y,
+                     Eigen::Ref<ArrayXXd> z) const -> void
 {
     std::vector<double> b_spline_c_values(b_spline_r.getOrder() + 1);
     std::vector<double> b_spline_r_values(b_spline_r.getOrder() + 1);
@@ -154,18 +66,26 @@ auto BSpline2D::eval(const std::vector<double>& x,
       std::max(b_spline_r.nStates(), b_spline_c.nStates())
         + b_spline_r.getOrder() + 1,
       0.0);
-    for (int i_point {}; i_point < static_cast<int>(x.size()); ++i_point) {
-        const int i_r { b_spline_r.findInterval(x[i_point]) };
-        const int i_c { b_spline_c.findInterval(y[i_point]) };
-        nonzeroBSplineValues(
-          b_spline_r, x[i_point], control_points_tmp, b_spline_r_values);
-        nonzeroBSplineValues(
-          b_spline_c, y[i_point], control_points_tmp, b_spline_c_values);
-        for (int i {}; i <= b_spline_r.getOrder(); ++i) {
-            for (int j {}; j <= b_spline_r.getOrder(); ++j) {
-                z[i_point] +=
-                  control_points[(i_r - i) * b_spline_c.nStates() + i_c - j]
-                  * b_spline_r_values[i] * b_spline_c_values[j];
+    auto z_view(z.reshaped<Eigen::RowMajor>(x.rows(), x.cols()));
+    z_view = 0.0;
+    for (int i_row {}; i_row < static_cast<int>(x.rows()); ++i_row) {
+        for (int i_col {}; i_col < static_cast<int>(x.cols()); ++i_col) {
+            const int i_r { b_spline_r.findInterval(x(i_row, i_col)) };
+            const int i_c { b_spline_c.findInterval(y(i_row, i_col)) };
+            nonzeroBSplineValues(b_spline_r,
+                                 x(i_row, i_col),
+                                 control_points_tmp,
+                                 b_spline_r_values);
+            nonzeroBSplineValues(b_spline_c,
+                                 y(i_row, i_col),
+                                 control_points_tmp,
+                                 b_spline_c_values);
+            for (int i {}; i <= b_spline_r.getOrder(); ++i) {
+                for (int j {}; j <= b_spline_r.getOrder(); ++j) {
+                    z_view(i_row, i_col) += control_points(i_r - i, i_c - j)
+                                            * b_spline_r_values[i]
+                                            * b_spline_c_values[j];
+                }
             }
         }
     }

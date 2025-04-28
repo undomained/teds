@@ -11,7 +11,6 @@
 #include <common/io.h>
 #include <common/l1.h>
 #include <common/timer.h>
-
 #include <spdlog/spdlog.h>
 
 namespace tango {
@@ -57,7 +56,7 @@ auto driver(const SettingsL1B& settings,
     if (l1_prod.level == ProcLevel::l1a
         && settings.cal_level > ProcLevel::l1a) {
         spdlog::info("Scaling with bin size and coaddition factors");
-        binScaling(ckd, binning_table, l1_prod);
+        binScaling(binning_table, l1_prod);
     }
     // Dark offset
     if (l1_prod.level < ProcLevel::dark_offset
@@ -89,7 +88,7 @@ auto driver(const SettingsL1B& settings,
         spdlog::info("PRNU");
         prnu(ckd, settings.prnu.enabled, l1_prod);
     }
-    if (!l1_prod.signal.empty() && settings.cal_level >= ProcLevel::stray) {
+    if (!l1_prod.signal.size() == 0 && settings.cal_level >= ProcLevel::stray) {
         spdlog::info("Smoothing out bad detector signals");
         removeBadValues(ckd, l1_prod);
     }
@@ -133,7 +132,6 @@ auto driver(const SettingsL1B& settings,
     if (l1_prod.level >= ProcLevel::swath) {
         binL1B(settings.bin_spectra, l1_prod);
     }
-
     writeL1(settings.io_files.l1b,
             settings.getConfig(),
             l1_prod,

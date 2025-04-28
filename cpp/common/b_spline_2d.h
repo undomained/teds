@@ -12,8 +12,7 @@
 #pragma once
 
 #include "b_spline.h"
-
-#include <vector>
+#include "eigen.h"
 
 namespace tango {
 
@@ -26,7 +25,7 @@ private:
     BSpline b_spline_c {};
     // Control point matrix with dimensions Nr x Nc where Nr is the
     // number of B-spline states across rows (see BSpline::nStates).
-    std::vector<double> control_points {};
+    Eigen::MatrixXd control_points {};
 
 public:
     BSpline2D() = default;
@@ -56,13 +55,9 @@ public:
     //                used as the B-spline knots.
     //   data_in - the data values on that grid.
     BSpline2D(const int order,
-              const std::vector<double>& x_values_r,
-              const std::vector<double>& x_values_c,
-              const double* data_in);
-    BSpline2D(const int order,
-              const std::vector<double>& x_values_r,
-              const std::vector<double>& x_values_c,
-              const std::vector<double>& data_in);
+              const Eigen::ArrayXd& x_values_r,
+              const Eigen::ArrayXd& x_values_c,
+              const Eigen::Ref<const ArrayXXd> data_in);
     // Evaluate the 2D B-spline for points on a target grid (can be
     // irregular). The result for one target point can be expressed as
     //
@@ -76,9 +71,9 @@ public:
     // only evaluate a limited set of non-zero basis functions by
     // making use of de Boor's algorithm. The result array z should be
     // allocated and initialized outside this routine.
-    auto eval(const std::vector<double>& x,
-              const std::vector<double>& y,
-              double* z) const -> void;
+    auto eval(const ArrayXXd& x,
+              const ArrayXXd& y,
+              Eigen::Ref<ArrayXXd> z) const -> void;
 };
 
 } // namespace tango

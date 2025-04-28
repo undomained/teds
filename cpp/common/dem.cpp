@@ -5,12 +5,9 @@
 
 #include "constants.h"
 
-#include <algorithm>
 #include <cassert>
 #include <cmath>
 #include <netcdf>
-#include <numbers>
-#include <numeric>
 
 namespace tango {
 

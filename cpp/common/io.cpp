@@ -6,7 +6,6 @@
 #include "cubic_spline.h"
 #include "geometry.h"
 #include "l1.h"
-#include "quaternion.h"
 #include "time.h"
 
 #include <filesystem>
@@ -195,6 +194,41 @@ auto splitString(const std::string& list,
     }
 }
 
+auto readGeometry(const netCDF::NcGroup& grp,
+                  const size_t n_alt,
+                  const size_t n_act,
+                  const size_t alt_beg,
+                  Geometry& geo) -> void
+{
+    geo.lat.resize(n_alt, n_act);
+    geo.lon.resize(n_alt, n_act);
+    geo.height.resize(n_alt, n_act);
+    geo.vza.resize(n_alt, n_act);
+    geo.vaa.resize(n_alt, n_act);
+    geo.sza.resize(n_alt, n_act);
+    geo.saa.resize(n_alt, n_act);
+    // Starts and counts
+    std::vector<size_t> starts { alt_beg, 0 };
+    std::vector<size_t> counts { n_alt, n_act };
+    grp.getVar("latitude").getVar(starts, counts, geo.lat.data());
+    grp.getVar("longitude").getVar(starts, counts, geo.lon.data());
+    grp.getVar("sensor_zenith").getVar(starts, counts, geo.vza.data());
+    grp.getVar("sensor_azimuth").getVar(starts, counts, geo.vaa.data());
+    grp.getVar("solar_zenith").getVar(starts, counts, geo.sza.data());
+    grp.getVar("solar_azimuth").getVar(starts, counts, geo.saa.data());
+    geo.lat *= math::deg_to_rad;
+    geo.lon *= math::deg_to_rad;
+    geo.vza *= math::deg_to_rad;
+    geo.vaa *= math::deg_to_rad;
+    geo.sza *= math::deg_to_rad;
+    geo.saa *= math::deg_to_rad;
+    if (const auto var { grp.getVar("sensor_zenith") }; var.isNull()) {
+        geo.height = 0.0;
+    } else {
+        var.getVar(starts, counts, geo.vza.data());
+    }
+}
+
 auto readL1(const std::string& filename,
             const size_t alt_beg,
             const std::optional<size_t> alt_end,
@@ -251,22 +285,23 @@ auto readL1(const std::string& filename,
     if (!nc.getGroup("science_data").isNull()) {
         const auto grp { nc.getGroup("science_data") };
         const auto n_bins { nc.getDim("bin").getSize() };
-        l1_prod.signal.resize(n_alt * n_bins);
-        l1_prod.noise.resize(n_alt * n_bins, 1.0);
+        l1_prod.signal.resize(n_alt, n_bins);
+        l1_prod.noise.resize(n_alt, n_bins);
         grp.getVar("detector_image")
           .getVar({ alt_beg, 0 }, { n_alt, n_bins }, l1_prod.signal.data());
-        if (const auto var { grp.getVar("detector_stdev") }; !var.isNull()) {
+        if (const auto var { grp.getVar("detector_stdev") }; var.isNull()) {
+            l1_prod.noise = 1.0;
+        } else {
             var.getVar({ alt_beg, 0 }, { n_alt, n_bins }, l1_prod.noise.data());
         }
     } else {
         const size_t n_act { nc.getDim("across_track_sample").getSize() };
-        l1_prod.n_act = static_cast<int>(n_act);
         const auto n_wavelength { nc.getDim("wavelength").getSize() };
         l1_prod.wavelengths.resize(n_wavelength);
         if (const auto grp { nc.getGroup("observation_data") }; grp.isNull()) {
             nc.getVar("wavelength").getVar(l1_prod.wavelengths.data());
             if (in_memory || l1_prod.level < ProcLevel::sgm) {
-                l1_prod.spectra.resize(n_alt * n_act * n_wavelength);
+                l1_prod.spectra.resize(n_alt * n_act, n_wavelength);
                 nc.getVar("radiance")
                   .getVar({ alt_beg, 0, 0 },
                           { n_alt, n_act, n_wavelength },
@@ -274,14 +309,15 @@ auto readL1(const std::string& filename,
             }
         } else {
             grp.getVar("wavelength").getVar(l1_prod.wavelengths.data());
-            l1_prod.spectra.resize(n_alt * n_act * n_wavelength);
+            l1_prod.spectra.resize(n_alt * n_act, n_wavelength);
             grp.getVar("radiance")
               .getVar({ alt_beg, 0, 0 },
                       { n_alt, n_act, n_wavelength },
                       l1_prod.spectra.data());
-            l1_prod.spectra_noise.assign(n_alt * n_act * n_wavelength, 1.0);
-            if (const auto var { grp.getVar("radiance_stdev") };
-                !var.isNull()) {
+            l1_prod.spectra_noise.resize(n_alt * n_act, n_wavelength);
+            if (const auto var { grp.getVar("radiance_stdev") }; var.isNull()) {
+                l1_prod.spectra_noise = 1.0;
+            } else {
                 var.getVar({ alt_beg, 0, 0 },
                            { n_alt, n_act, n_wavelength },
                            l1_prod.spectra_noise.data());
@@ -289,42 +325,45 @@ auto readL1(const std::string& filename,
         }
     }
 
+    // Geometry
+    if (const auto grp { nc.getGroup("geolocation_data") }; !grp.isNull()) {
+        const size_t n_act { nc.getDim("across_track_sample").getSize() };
+        readGeometry(grp, n_alt, n_act, alt_beg, l1_prod.geo);
+    }
+
     // Navigation data
     if (const auto grp { nc.getGroup("navigation_data") }; !grp.isNull()) {
         const auto n_time { grp.getDim("time").getSize() };
-        std::vector<double> times(n_time);
-        std::vector<double> orb_pos(n_time * dims::vec);
-        std::vector<double> att_quat_raw(n_time * dims::quat);
+        Eigen::ArrayXd times(n_time);
+        ArrayXXd orb_pos(n_time, dims::vec);
+        ArrayXXd att_quat_raw(n_time, dims::quat);
         grp.getVar("time").getVar(times.data());
         grp.getVar("orb_pos").getVar(orb_pos.data());
         grp.getVar("att_quat").getVar(att_quat_raw.data());
         // Interpolate orbit positions to detector image timestamps
-        l1_prod.orb_pos.resize(l1_prod.n_alt * dims::vec);
+        l1_prod.orb_pos0.resize(l1_prod.n_alt * dims::vec);
+        l1_prod.orb_pos.resize(l1_prod.n_alt, dims::vec);
         for (int i_dir {}; i_dir < dims::vec; ++i_dir) {
-            // Orbit position component (x/y/z)
-            std::vector<double> pos_comp(n_time);
-            for (int i {}; i < static_cast<int>(n_time); ++i) {
-                pos_comp[i] = orb_pos[i * dims::vec + i_dir];
-            }
-            const CubicSpline spline { times, pos_comp };
+            const CubicSpline spline { times, orb_pos.col(i_dir) };
+            l1_prod.orb_pos.col(i_dir) = spline.eval(l1_prod.time);
             for (int i_alt {}; i_alt < l1_prod.n_alt; ++i_alt) {
-                l1_prod.orb_pos[i_alt * dims::vec + i_dir] =
-                  spline.eval(l1_prod.time[i_alt]);
+                l1_prod.orb_pos0[i_alt * dims::vec + i_dir] =
+                  l1_prod.orb_pos(i_alt, i_dir);
             }
         }
         // Interpolate attitude quaternions to detector image timestamps
-        std::vector<Quaternion> att_quat(n_time);
+        std::vector<Eigen::Quaterniond> att_quat(n_time);
         for (int i {}; i < static_cast<int>(n_time); ++i) {
-            att_quat[i] = { att_quat_raw[i * dims::quat + 0],
-                            att_quat_raw[i * dims::quat + 1],
-                            att_quat_raw[i * dims::quat + 2],
-                            att_quat_raw[i * dims::quat + 3] };
-            att_quat[i].normalize();
+            att_quat[i] = Eigen::Quaterniond(att_quat_raw(i, 3),
+                                             att_quat_raw(i, 0),
+                                             att_quat_raw(i, 1),
+                                             att_quat_raw(i, 2))
+                            .normalized();
         }
         l1_prod.att_quat.resize(l1_prod.n_alt);
         for (int i_alt {}; i_alt < l1_prod.n_alt; ++i_alt) {
-            interpolateQuaternion(
-              times, att_quat, l1_prod.time[i_alt], l1_prod.att_quat[i_alt]);
+            l1_prod.att_quat[i_alt] =
+              interpolateQuaternion(times, att_quat, l1_prod.time[i_alt]);
         }
     }
 }
@@ -451,7 +490,7 @@ auto writeL1(const std::string& filename,
     // Science or observation data
     if (l1_prod.level <= ProcLevel::stray) {
         auto nc_grp { nc.addGroup("science_data") };
-        const auto n_bins { l1_prod.signal.size() / n_alt };
+        const auto n_bins { static_cast<size_t>(l1_prod.signal.cols()) };
         const auto nc_bin { nc.addDim("bin", n_bins) };
         const std::vector<netCDF::NcDim> nc_detector_shape { nc_alt, nc_bin };
         if (l1_prod.level == ProcLevel::l1a) {
@@ -477,7 +516,7 @@ auto writeL1(const std::string& filename,
             nc_var.putAtt("valid_max", netCDF::ncDouble, 1e30);
             nc_var.putVar(l1_prod.signal.data());
         }
-        if (!l1_prod.noise.empty()) {
+        if (l1_prod.noise.size() > 0) {
             nc_var = nc_grp.addVar(
               "detector_stdev", netCDF::ncDouble, nc_detector_shape);
             nc_var.putAtt("long_name", "standard deviation of detector bin");
@@ -489,8 +528,10 @@ auto writeL1(const std::string& filename,
     } else {
         auto nc_grp { nc.addGroup("observation_data") };
 
-        const auto n_act { static_cast<size_t>(l1_prod.n_act) };
-        const auto n_wavelength { l1_prod.wavelengths.size() };
+        const size_t n_act { static_cast<size_t>(l1_prod.spectra.rows()
+                                                 / l1_prod.n_alt) };
+        const size_t n_wavelength { static_cast<size_t>(
+          l1_prod.wavelengths.size()) };
         const auto nc_act { nc.addDim("across_track_sample", n_act) };
         const auto nc_wavelength { nc.addDim("wavelength", n_wavelength) };
 
@@ -516,7 +557,7 @@ auto writeL1(const std::string& filename,
         }
         nc_var.putVar(l1_prod.spectra.data());
 
-        if (!l1_prod.spectra_noise.empty()) {
+        if (l1_prod.spectra_noise.size() > 0) {
             nc_var = nc_grp.addVar("radiance_stdev",
                                    netCDF::ncDouble,
                                    { nc_alt, nc_act, nc_wavelength });
@@ -534,13 +575,13 @@ auto writeL1(const std::string& filename,
         }
     }
     // Geolocation data
-    if (l1_prod.geo.lat.empty()) {
+    if (l1_prod.geo.lat.size() == 0) {
         return;
     }
     // Need a copy of geometry because l1_prod is read-only but we
     // need to convert the angles to degrees.
     Geometry geo { l1_prod.geo };
-    const auto n_act { l1_prod.geo.lat.size() / n_alt };
+    const auto n_act { l1_prod.geo.lat.cols() };
     const auto nc_act { l1_prod.level >= ProcLevel::swath
                           ? nc.getDim("across_track_sample")
                           : nc.addDim("across_track_sample", n_act) };
@@ -628,30 +669,11 @@ auto copyGeometry(const std::string& l1a_filename,
 {
     const netCDF::NcFile nc_geo { geo_filename, netCDF::NcFile::read };
     const auto n_act { nc_geo.getDim("across_track_sample").getSize() };
-    l1_prod.geo.lat.resize(l1_prod.n_alt * n_act);
-    l1_prod.geo.lon.resize(l1_prod.n_alt * n_act);
-    l1_prod.geo.vza.resize(l1_prod.n_alt * n_act);
-    l1_prod.geo.vaa.resize(l1_prod.n_alt * n_act);
-    l1_prod.geo.sza.resize(l1_prod.n_alt * n_act);
-    l1_prod.geo.saa.resize(l1_prod.n_alt * n_act);
-    // Starts and counts
-    std::vector<size_t> s { alt_beg + getIMImageStart(l1a_filename), 0 };
-    std::vector<size_t> c { static_cast<size_t>(l1_prod.n_alt), n_act };
-    nc_geo.getVar("latitude").getVar(s, c, l1_prod.geo.lat.data());
-    nc_geo.getVar("longitude").getVar(s, c, l1_prod.geo.lon.data());
-    nc_geo.getVar("sensor_zenith").getVar(s, c, l1_prod.geo.vza.data());
-    nc_geo.getVar("sensor_azimuth").getVar(s, c, l1_prod.geo.vaa.data());
-    nc_geo.getVar("solar_zenith").getVar(s, c, l1_prod.geo.sza.data());
-    nc_geo.getVar("solar_azimuth").getVar(s, c, l1_prod.geo.saa.data());
-    for (int i {}; i < static_cast<int>(l1_prod.geo.lat.size()); ++i) {
-        l1_prod.geo.lat[i] *= math::deg_to_rad;
-        l1_prod.geo.lon[i] *= math::deg_to_rad;
-        l1_prod.geo.vza[i] *= math::deg_to_rad;
-        l1_prod.geo.vaa[i] *= math::deg_to_rad;
-        l1_prod.geo.sza[i] *= math::deg_to_rad;
-        l1_prod.geo.saa[i] *= math::deg_to_rad;
-    }
-    l1_prod.geo.height.assign(l1_prod.n_alt * n_act, 0.0);
+    readGeometry(nc_geo,
+                 static_cast<size_t>(l1_prod.n_alt),
+                 n_act,
+                 alt_beg + getIMImageStart(l1a_filename),
+                 l1_prod.geo);
 }
 
 auto copyNavigationData(const std::string& navigation_filename,

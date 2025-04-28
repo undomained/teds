@@ -22,7 +22,6 @@ add_library(common SHARED
   isrf.cpp
   binning_table.cpp
   # Geometry
-  quaternion.cpp
   geometry.cpp
   dem.cpp
   solar_model.cpp)
@@ -71,7 +70,7 @@ endif()
 # Logging
 find_package(spdlog HINTS ${SPDLOG_PATH})
 if (TARGET spdlog::spdlog)
-  get_target_property(_loc spdlog::spdlog IMPORTED_LOCATION_NONE)
+  get_target_property(_loc spdlog::spdlog IMPORTED_LOCATION_RELEASE)
   message(STATUS "Found ${_loc}")
 else()
   if (first_run)
@@ -79,7 +78,7 @@ else()
   endif()
   FetchContent_Declare(spdlog
     GIT_REPOSITORY https://github.com/gabime/spdlog
-    GIT_TAG bae78f7b6c32fbfb97dd5751591734c12103fc1a)
+    GIT_TAG v1.15.2)
   FetchContent_MakeAvailable(spdlog)
   install(DIRECTORY ${spdlog_SOURCE_DIR}/include/spdlog DESTINATION include)
   install(TARGETS spdlog EXPORT commonConfig)

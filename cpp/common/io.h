@@ -13,8 +13,15 @@
 
 #include <spdlog/pattern_formatter.h>
 
+namespace netCDF {
+
+class NcGroup;
+
+} // namespace netCDF
+
 namespace tango {
 
+class Geometry;
 class L1;
 
 // Define a new spdlog formatter flag. The primary purpose is to show
@@ -69,6 +76,12 @@ auto splitString(const std::string& list,
 // Convert a process level enum to string suitable for displaying in
 // output.
 [[nodiscard]] auto procLevelToString(const ProcLevel proc_level) -> std::string;
+
+auto readGeometry(const netCDF::NcGroup& grp,
+                  const size_t n_alt,
+                  const size_t n_act,
+                  const size_t alt_beg,
+                  Geometry& geo) -> void;
 
 // Read a list of L1 products from a single NetCDF file. The input
 // data level may be L1A, L1B, or anything in between. alt_beg/end

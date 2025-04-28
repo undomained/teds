@@ -3,15 +3,14 @@
 
 #include "solar_model.h"
 
-#include <cmath>
-#include <stdexcept>
+#include "constants.h"
 
 namespace tango {
 
 auto solarModel(const uint32_t tai_seconds,
                 const double tai_second_fraction,
-                std::array<double, dims::vec>& sun,
-                Quaternion& q_j2000_ecef) -> void
+                Eigen::Vector3d& sun,
+                Eigen::Quaterniond& q_j2000_ecef) -> void
 {
     // UT1 time in modified Julian day 2000 (MJD2000) format
     double t_mjd {};
@@ -45,33 +44,29 @@ auto solarModel(const uint32_t tai_seconds,
       t_mjd, day_fract_UT1, nutation_lon, nutation_obl) };
 
     // Transform Greenwich hour angle to rotation Quaternion
-    const Quaternion q_gha {
-        0.0, 0.0, -std::sin(gha / 2.0), std::cos(gha / 2.0)
+    const Eigen::Quaterniond q_gha {
+        std::cos(gha / 2.0), 0.0, 0.0, -std::sin(gha / 2.0)
     };
 
     // Transform the sun and the satellite into ECR. The nutation and
     // such is already done. Only the Greenwich hour angle has to be
     // applied.
-    getSun2000(
-      t_mjd, sun_mean_lon, sma, moon_mean_lon, nutation_lon, nutation_obl, sun);
-    q_gha.rotate(sun);
+    sun = getSun2000(
+      t_mjd, sun_mean_lon, sma, moon_mean_lon, nutation_lon, nutation_obl);
+    sun = q_gha * sun;
 
     // J2000 to ECR rotation of the Sun
-    Quaternion q_j2000_to_mod {};
-    j2000ToMOD(t_mjd, q_j2000_to_mod);
+    Eigen::Quaterniond q_j2000_to_mod(j2000ToMOD(t_mjd));
 
     // Nutation quaternion
-    Quaternion q_nutation {};
-    getNutationQuaternion(
-      nutation_lon, nutation_obl, mean_obliquity, q_nutation);
-    q_nutation.conjugate();
+    Eigen::Quaterniond q_nutation(
+      getNutationQuaternion(nutation_lon, nutation_obl, mean_obliquity));
+    q_nutation = q_nutation.conjugate();
 
     // We can now compute the ECR transformation for the satellite
     // which is a combination of the Greenwich hour angle rotation,
     // nutation rotation, and the J2000 to MOD rotation.
-    q_j2000_ecef = { q_gha };
-    q_j2000_ecef.multiply(q_nutation);
-    q_j2000_ecef.multiply(q_j2000_to_mod);
+    q_j2000_ecef = q_gha * q_nutation * q_j2000_to_mod;
 }
 
 [[nodiscard]] auto julianDayNumber(const int year,
@@ -187,8 +182,7 @@ auto getSun2000(const double t,
                 const double sma,
                 const double moon_mean_lon,
                 const double nutation_lon,
-                const double nutation_obl,
-                std::array<double, dims::vec>& sun) -> void
+                const double nutation_obl) -> Eigen::Vector3d
 {
     // Compute planet mean anomalies
     const double anomaly_venus { fmod(50.40828 + 1.60213022 * t, 360.0)
@@ -225,9 +219,9 @@ auto getSun2000(const double t,
     // longitude and velocity aberration
     const double app_sun_lon { geom_sun_lon + nutation_lon
                                - abberation / sun_dist };
-    sun[0] = std::cos(app_sun_lon);
-    sun[1] = std::sin(app_sun_lon) * std::cos(nutation_obl);
-    sun[2] = std::sin(app_sun_lon) * std::sin(nutation_obl);
+    return { std::cos(app_sun_lon),
+             std::sin(app_sun_lon) * std::cos(nutation_obl),
+             std::sin(app_sun_lon) * std::sin(nutation_obl) };
 }
 
 [[nodiscard]] auto getGHA2000(const double t,
@@ -244,7 +238,7 @@ auto getSun2000(const double t,
              + day_fract * 360.0 * math::deg_to_rad };
 }
 
-auto j2000ToMOD(const double t, Quaternion& q_j2000_to_mod) -> void
+auto j2000ToMOD(const double t) -> Eigen::Quaterniond
 {
     // UT MJD2000 time in J2000 centuries
     const double tc { (t - 0.5) / 36525.0 };
@@ -256,68 +250,69 @@ auto j2000ToMOD(const double t, Quaternion& q_j2000_to_mod) -> void
                           * math::deg_to_rad / 3600.0 };
     const double xip { (2306.2181 * tc + 1.095 * tc2 + 0.018 * tc3)
                        * math::deg_to_rad / 3600.0 };
-    const std::array<double, dims::vec * dims::vec> rot_mat {
-        // 00
-        -std::sin(zeta0) * std::sin(xip)
-          + std::cos(zeta0) * std::cos(xip) * std::cos(thetap),
-        // 01
-        -std::cos(zeta0) * std::sin(xip)
-          - std::sin(zeta0) * std::cos(xip) * std::cos(thetap),
-        // 02
-        -std::cos(xip) * std::sin(thetap),
-        // 10
-        std::sin(zeta0) * std::cos(xip)
-          + std::cos(zeta0) * std::sin(xip) * std::cos(thetap),
-        // 11
-        std::cos(zeta0) * std::cos(xip)
-          - std::sin(zeta0) * std::sin(xip) * std::cos(thetap),
-        // 12
-        -std::sin(xip) * std::sin(thetap),
-        // 20
-        std::cos(zeta0) * std::sin(thetap),
-        // 21
-        -std::sin(zeta0) * std::sin(thetap),
-        // 22
-        std::cos(thetap)
-    };
-    q_j2000_to_mod = { rot_mat };
+    const Eigen::Matrix3d rot_mat(
+      (Eigen::Matrix3d()
+         // 00
+         << -std::sin(zeta0) * std::sin(xip)
+              + std::cos(zeta0) * std::cos(xip) * std::cos(thetap),
+       // 01
+       -std::cos(zeta0) * std::sin(xip)
+         - std::sin(zeta0) * std::cos(xip) * std::cos(thetap),
+       // 02
+       -std::cos(xip) * std::sin(thetap),
+       // 10
+       std::sin(zeta0) * std::cos(xip)
+         + std::cos(zeta0) * std::sin(xip) * std::cos(thetap),
+       // 11
+       std::cos(zeta0) * std::cos(xip)
+         - std::sin(zeta0) * std::sin(xip) * std::cos(thetap),
+       // 12
+       -std::sin(xip) * std::sin(thetap),
+       // 20
+       std::cos(zeta0) * std::sin(thetap),
+       // 21
+       -std::sin(zeta0) * std::sin(thetap),
+       // 22
+       std::cos(thetap))
+        .finished());
+    return Eigen::Quaterniond(rot_mat);
 }
 
 auto getNutationQuaternion(const double nutation_lon,
                            const double nutation_obl,
-                           const double mean_obliquity,
-                           Quaternion& q_nutation) -> void
+                           const double mean_obliquity) -> Eigen::Quaterniond
 {
     // Nutation rotation matrix
-    const std::array<double, dims::vec * dims::vec> rot_mat {
-        // 00
-        std::cos(nutation_lon),
-        // 01
-        std::sin(nutation_lon) * std::cos(nutation_obl),
-        // 01
-        std::sin(nutation_lon) * std::sin(nutation_obl),
-        // 10
-        -std::sin(nutation_lon) * std::cos(mean_obliquity),
-        // 11
-        std::cos(nutation_lon) * std::cos(nutation_obl)
-            * std::cos(mean_obliquity)
-          + std::sin(nutation_obl) * std::sin(mean_obliquity),
-        // 12
-        std::cos(nutation_lon) * std::sin(nutation_obl)
-            * std::cos(mean_obliquity)
-          - std::cos(nutation_obl) * std::sin(mean_obliquity),
-        // 20
-        -std::sin(nutation_lon) * std::sin(mean_obliquity),
-        // 21
-        std::cos(nutation_lon) * std::cos(nutation_obl)
-            * std::sin(mean_obliquity)
-          - std::sin(nutation_obl) * std::cos(mean_obliquity),
-        // 22
-        std::cos(nutation_lon) * std::sin(nutation_obl)
-            * std::sin(mean_obliquity)
-          + std::cos(nutation_obl) * std::cos(mean_obliquity),
-    };
-    q_nutation = { rot_mat };
+    const Eigen::Matrix3d rot_mat(
+      (Eigen::Matrix3d()
+         // 00
+         << std::cos(nutation_lon),
+       // 01
+       std::sin(nutation_lon) * std::cos(nutation_obl),
+       // 01
+       std::sin(nutation_lon) * std::sin(nutation_obl),
+       // 10
+       -std::sin(nutation_lon) * std::cos(mean_obliquity),
+       // 11
+       std::cos(nutation_lon) * std::cos(nutation_obl)
+           * std::cos(mean_obliquity)
+         + std::sin(nutation_obl) * std::sin(mean_obliquity),
+       // 12
+       std::cos(nutation_lon) * std::sin(nutation_obl)
+           * std::cos(mean_obliquity)
+         - std::cos(nutation_obl) * std::sin(mean_obliquity),
+       // 20
+       -std::sin(nutation_lon) * std::sin(mean_obliquity),
+       // 21
+       std::cos(nutation_lon) * std::cos(nutation_obl)
+           * std::sin(mean_obliquity)
+         - std::sin(nutation_obl) * std::cos(mean_obliquity),
+       // 22
+       std::cos(nutation_lon) * std::sin(nutation_obl)
+           * std::sin(mean_obliquity)
+         + std::cos(nutation_obl) * std::cos(mean_obliquity))
+        .finished());
+    return Eigen::Quaterniond(rot_mat);
 }
 
 } // namespace tango

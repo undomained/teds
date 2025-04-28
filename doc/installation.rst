@@ -79,7 +79,6 @@ The C++ code depends on the following libraries:
  * spdlog -- a popular C++ logging library
  * yaml-cpp -- a YAML parser
  * NetCDF -- self-describing data format library
- * Lapack -- linear algebra library
  * pocketfft -- library for fast Fourier transforms
  * Eigen3 -- linear algebra library
 
@@ -87,7 +86,7 @@ You can install the first four with your Linux distribution's package manager. F
 
 .. code-block:: bash
 
-   sudo apt install libspdlog-dev libyaml-cpp-dev libnetcdf-c++4-dev liblapack-dev libeigen3-dev
+   sudo apt install libspdlog-dev libyaml-cpp-dev libnetcdf-c++4-dev libeigen3-dev
 
 A copy of pocketfft is hosted at Bitbucket. You can clone it with
 
@@ -95,7 +94,7 @@ A copy of pocketfft is hosted at Bitbucket. You can clone it with
 
    git clone git@bitbucket.org:sron_earth/pocketfft.git
 
-That said, you only need to ensure that NetCDF and Lapack are present. The rest, if not found, are downloaded and built automatically.
+That said, you only need to ensure that NetCDF and Eigen are present. The rest, if not found, are downloaded and built automatically.
 
 Both C++ codes depend on an OpenMP capable C++ compiler is required. Any recent version of the GNU C++ compiler :command:`g++` will do. If not already present, install by issuing
 

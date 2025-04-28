@@ -5,7 +5,6 @@
 
 #include <netcdf>
 #include <numeric>
-#include <sstream>
 
 namespace tango {
 
@@ -18,7 +17,8 @@ BinningTable::BinningTable(const int detector_n_rows,
         // Default binning table is the same size as the unbinned detector
         bin_indices.resize(detector_n_rows * detector_n_cols);
         std::iota(bin_indices.begin(), bin_indices.end(), 0);
-        count_table.resize(detector_n_rows * detector_n_cols, 1);
+        count_table =
+          Eigen::ArrayXd::Constant(detector_n_rows * detector_n_cols, 1.0);
         return;
     }
     const netCDF::NcFile nc { binning_table, netCDF::NcFile::read };
@@ -34,43 +34,58 @@ BinningTable::BinningTable(const int detector_n_rows,
     nc.getGroup(group_name).getVar("count_table").getVar(count_table.data());
 }
 
-auto BinningTable::bin(const std::vector<double>& data,
-                       std::vector<double>& data_binned,
-                       const bool scale_by_bin_size) const -> void
+auto BinningTable::bin(const Eigen::ArrayXd& data) const -> Eigen::ArrayXd
 {
-    const size_t n_full { bin_indices.size() };
-    const size_t n_binned { count_table.size() };
-    const size_t n_alt { data.size() / n_full };
-    data_binned.assign(n_alt * n_binned, 0.0);
-#pragma omp parallel for
-    for (size_t i_alt = 0; i_alt < n_alt; ++i_alt) {
-        for (size_t i {}; i < n_full; ++i) {
-            data_binned[i_alt * n_binned + bin_indices[i]] +=
-              data[i_alt * n_full + i];
+    Eigen::ArrayXd data_binned(Eigen::ArrayXd::Zero(count_table.size()));
+    for (long int i {}; i < data.size(); ++i) {
+        data_binned(bin_indices[i]) += data(i);
+    }
+    data_binned /= count_table;
+    return data_binned;
+}
+
+auto BinningTable::bin(const ArrayXXd& data) const -> Eigen::ArrayXd
+{
+    Eigen::ArrayXd data_binned(Eigen::ArrayXd::Zero(count_table.size()));
+    for (long int i {}; i < data.size(); ++i) {
+        data_binned(bin_indices[i]) += data.data()[i];
+    }
+    data_binned /= count_table;
+    return data_binned;
+}
+
+auto BinningTable::binMulti(const ArrayXXd& data,
+                            const bool scale_by_bin_size) const -> ArrayXXd
+{
+    ArrayXXd data_binned(ArrayXXd::Zero(data.rows(), count_table.size()));
+    for (long int i_row {}; i_row < data.rows(); ++i_row) {
+        for (long int i {}; i < data.cols(); ++i) {
+            data_binned(i_row, bin_indices[i]) += data(i_row, i);
         }
         if (scale_by_bin_size) {
-            for (size_t i {}; i < n_binned; ++i) {
-                data_binned[i_alt * n_binned + i] /= count_table[i];
-            }
+            data_binned.row(i_row) /= count_table;
         }
     }
+    return data_binned;
 }
 
-auto BinningTable::bin(std::vector<double>& data,
-                       const bool scale_by_bin_size) const -> void
+auto BinningTable::bin(const ArrayXb& data) const -> ArrayXb
 {
-    std::vector<double> data_binned {};
-    bin(data, data_binned, scale_by_bin_size);
-    data = std::move(data_binned);
-}
-
-auto BinningTable::bin(std::vector<bool>& data) const -> void
-{
-    std::vector<bool> data_binned(count_table.size(), false);
-    for (int i {}; i < static_cast<int>(data.size()); ++i) {
+    ArrayXb data_binned(ArrayXb::Constant(count_table.size(), false));
+    for (long int i {}; i < data.size(); ++i) {
         data_binned[bin_indices[i]] = data_binned[bin_indices[i]] || data[i];
     }
-    data = std::move(data_binned);
+    return data_binned;
+}
+
+auto BinningTable::unbin(const Eigen::Ref<const Eigen::ArrayXd> data) const
+  -> Eigen::ArrayXd
+{
+    Eigen::ArrayXd data_unbinned(Eigen::ArrayXd::Zero(bin_indices.size()));
+    for (size_t i {}; i < bin_indices.size(); ++i) {
+        data_unbinned(i) = data(bin_indices[i]);
+    }
+    return data_unbinned;
 }
 
 } // namespace tango

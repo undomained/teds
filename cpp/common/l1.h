@@ -8,8 +8,10 @@
 
 #pragma once
 
+#include "eigen.h"
 #include "geometry.h"
 
+#include <Eigen/Geometry>
 #include <array>
 #include <memory>
 
@@ -22,39 +24,40 @@ struct L1
     // across-track positions is stored in the CKD and is not a user
     // parameter.
     int n_alt {};
-    // Current number of across-track positions. If there is binning
-    // across track this could differ from the across_track_sample
-    // dimension on the CKD.
-    int n_act {};
 
     // Science data
     // Detector signal for all along track (ALT) positions. Units
-    // depend on the calibration level. Dimension is ALT x bins per
-    // image where the number of bins per detector image depends on
-    // binning.
-    std::vector<double> signal {};
+    // depend on the calibration level. Dimensions are ALT x bins
+    // where the number of bins per detector image depends on
+    // binning. When using Eigen slicing, signal.row(i) returns the
+    // ith detector image, not a detector row.
+    ArrayXXd signal {};
     // Detector signal noise (stdev) levels
-    std::vector<double> noise {};
-    // Partially or fully calibrated spectra extracted from detector images
-    std::vector<double> spectra {};
+    ArrayXXd noise {};
+    // Partially or fully calibrated spectra extracted from detector
+    // images. Dimensions are (ACT x ALT) x wavelengths. When slicing,
+    // spectra.row(i) returns all the spectrum corresponding to one
+    // ALT and ACT positions.
+    ArrayXXd spectra {};
     // Spectra noise values
-    std::vector<double> spectra_noise {};
+    ArrayXXd spectra_noise {};
     // Wavelength grid associated with spectra. Can change between
     // calibration steps. For instance, the SGM data has the
     // line-by-line grid but otherwise the grid is read from the CKD.
-    std::vector<double> wavelengths {};
+    Eigen::ArrayXd wavelengths {};
 
     // Navigation data
     // Orbit positions
-    std::vector<double> orb_pos {};
+    std::vector<double> orb_pos0 {};
+    ArrayXNd<dims::vec> orb_pos {};
     // Attitude quaternions
-    std::vector<Quaternion> att_quat {};
+    std::vector<Eigen::Quaterniond> att_quat {};
 
     // Geolocation data
     Geometry geo {};
 
     // Detector image meta data
-    std::vector<double> time {};
+    Eigen::ArrayXd time {};
     std::vector<uint32_t> tai_seconds {};
     std::vector<double> tai_subsec {};
     uint8_t binning_table_id { 1 };

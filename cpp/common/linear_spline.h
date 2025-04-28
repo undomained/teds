@@ -11,7 +11,7 @@
 
 #pragma once
 
-#include <vector>
+#include <Eigen/Dense>
 
 namespace tango {
 
@@ -20,16 +20,18 @@ class LinearSpline
 private:
     bool equal_spacing { true };
     double range {};
-    std::vector<double> knots {};
-    std::vector<double> values {};
+    Eigen::ArrayXd knots {};
+    Eigen::ArrayXd values {};
     [[nodiscard]] auto lookupIdx(const double x) const -> int;
 
 public:
     LinearSpline() = default;
-    LinearSpline(const std::vector<double>& x_values,
-                 const std::vector<double>& y_values);
+    LinearSpline(const Eigen::ArrayXd& x_values,
+                 const Eigen::ArrayXd& y_values);
     [[nodiscard]] auto eval(const double x) const -> double;
+    [[nodiscard]] auto eval(const Eigen::ArrayXd& x) const -> Eigen::ArrayXd;
     [[nodiscard]] auto deriv(const double x) const -> double;
+    [[nodiscard]] auto deriv(const Eigen::ArrayXd& x) const -> Eigen::ArrayXd;
     // Construct a new spline by inverting the x and y values
     [[nodiscard]] auto invert() const -> LinearSpline;
     ~LinearSpline() = default;

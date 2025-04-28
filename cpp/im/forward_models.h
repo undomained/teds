@@ -21,7 +21,6 @@
 #pragma once
 
 #include <string>
-#include <vector>
 
 namespace tango {
 
@@ -58,8 +57,7 @@ auto strayLight(const CKD& ckd, const bool enabled, L1& l1_prod) -> void;
 auto prnu(const CKD& ckd, const bool enabled, L1& l1_prod) -> void;
 
 // Convert from the ideal to measured signal using the nonlinearity CKD
-auto nonlinearity(const CKD& ckd,
-                  const bool enabled,
+auto nonlinearity(const bool enabled,
                   const LinearSpline& nonlin_spline,
                   L1& l1_prod) -> void;
 

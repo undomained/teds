@@ -13,70 +13,92 @@
 #include <netcdf>
 #include <numeric>
 
-// Read an array from the common fixtures folder and return the array
-// dimensions (required for constructing the CKD).
-template <typename T>
-auto readArrayFromTxt(const std::string& filename,
-                      std::vector<T>& array) -> std::array<int, 2>
+// Read dimensions of an array (required for constructing the CKD)
+auto readDimensions(const std::string& filename) -> std::array<int, 2>
 {
-    array.clear();
     std::ifstream in { filename };
     std::string line {};
+    std::vector<double> dummy {};
     int n_rows {};
     while (std::getline(in, line)) {
         std::stringstream ss { line };
-        T val {};
+        double val {};
         while (ss >> val) {
-            array.push_back(val);
+            dummy.push_back(val);
         }
         ++n_rows;
     }
-    return { n_rows, static_cast<int>(array.size()) / n_rows };
+    return { n_rows, static_cast<int>(dummy.size()) / n_rows };
 }
 
-auto read2DArrayFromTxt(const std::string& filename,
-                        std::vector<std::vector<double>>& array) -> void
+// Read an array from the common fixtures folder
+auto readArrayFromTxt(const std::string& filename) -> Eigen::ArrayXd
 {
-    array.clear();
     std::ifstream in { filename };
     std::string line {};
+    std::vector<double> buf {};
     while (std::getline(in, line)) {
         std::stringstream ss { line };
         double val {};
-        array.emplace_back(std::vector<double> {});
         while (ss >> val) {
-            array.back().push_back(val);
+            buf.push_back(val);
         }
     }
+    Eigen::ArrayXd arr(buf.size());
+    for (int i {}; i < static_cast<int>(buf.size()); ++i) {
+        arr(i) = buf[i];
+    }
+    return arr;
 }
 
-// Because fixtures small return the flattened array directly
-auto flatten2D(const std::vector<std::vector<double>>& data_2d)
-  -> std::vector<double>
+// Read an array from the common fixtures folder
+auto readBoolArrayFromTxt(const std::string& filename) -> ArrayXb
 {
-    const int n_rows { static_cast<int>(data_2d.size()) };
-    const int n_cols { static_cast<int>(data_2d.front().size()) };
-    std::vector<double> data_1d(n_rows * n_cols);
-    for (int i {}; i < n_rows; ++i) {
-        for (int j {}; j < n_cols; ++j) {
-            data_1d[i * n_cols + j] = data_2d[i][j];
+    std::ifstream in { filename };
+    std::string line {};
+    std::vector<bool> buf {};
+    while (std::getline(in, line)) {
+        std::stringstream ss { line };
+        bool val {};
+        while (ss >> val) {
+            buf.push_back(val);
         }
     }
-    return data_1d;
+    ArrayXb arr(buf.size());
+    for (int i {}; i < static_cast<int>(buf.size()); ++i) {
+        arr(i) = buf[i];
+    }
+    return arr;
+}
+
+auto read2DArrayFromTxt(const std::string& filename) -> ArrayXXd
+{
+    std::ifstream in { filename };
+    std::string line {};
+    std::vector<double> buf {};
+    int n_rows {};
+    while (std::getline(in, line)) {
+        std::stringstream ss { line };
+        double val {};
+        while (ss >> val) {
+            buf.push_back(val);
+        }
+        ++n_rows;
+    }
+    ArrayXXd arr(n_rows, buf.size() / n_rows);
+    for (int i {}; i < static_cast<int>(buf.size()); ++i) {
+        arr.data()[i] = buf[i];
+    }
+    return arr;
 }
 
 auto readNonlinCKD(const std::string& fixture_dir,
-                   std::vector<double>& x_values,
-                   std::vector<double>& y_values) -> void
+                   Eigen::ArrayXd& x_values,
+                   Eigen::ArrayXd& y_values) -> void
 {
-    std::vector<double> buf {};
-    readArrayFromTxt(fixture_dir + "/ckd_nonlin.txt", buf);
-    x_values.resize(buf.size() / 2);
-    y_values.resize(buf.size() / 2);
-    for (int i {}; i < static_cast<int>(x_values.size()); ++i) {
-        x_values[i] = buf[2 * i];
-        y_values[i] = buf[2 * i + 1];
-    }
+    Eigen::ArrayXd buf = readArrayFromTxt(fixture_dir + "/ckd_nonlin.txt");
+    x_values = buf(Eigen::seq(0, Eigen::last, 2));
+    y_values = buf(Eigen::seq(1, Eigen::last, 2));
 }
 
 auto genStrayCKD(const std::string& fixture_dir,
@@ -85,36 +107,32 @@ auto genStrayCKD(const std::string& fixture_dir,
                  tango::CKD& ckd) -> void
 {
     ckd.stray.n_kernels = 2;
-    std::vector<std::vector<double>> kernels(ckd.stray.n_kernels);
-    const auto [n_kernel_rows, n_kernel_cols] { readArrayFromTxt(
-      fixture_dir + "/ckd_stray_kernel.txt", kernels.front()) };
+    const auto [n_kernel_rows, n_kernel_cols] { readDimensions(
+      fixture_dir + "/ckd_stray_kernel.txt") };
+    ArrayXXd kernel(readArrayFromTxt(fixture_dir + "/ckd_stray_kernel.txt")
+                      .reshaped<Eigen::RowMajor>(n_kernel_rows, n_kernel_cols));
     ckd.stray.kernel_rows.resize(ckd.stray.n_kernels);
     ckd.stray.kernel_cols.resize(ckd.stray.n_kernels);
     ckd.stray.kernels_fft.resize(ckd.stray.n_kernels);
     ckd.stray.kernel_fft_sizes.resize(ckd.stray.n_kernels);
-    ckd.stray.eta.resize(ckd.stray.n_kernels);
-    ckd.stray.weights.resize(ckd.stray.n_kernels);
-    ckd.stray.edges.resize(ckd.stray.n_kernels * tango::box::n);
+    ckd.stray.weights =
+      ArrayXXd::Constant(ckd.stray.n_kernels, n_rows * n_cols, 1.0);
+    ckd.stray.edges.resize(ckd.stray.n_kernels, tango::box::n);
     for (int i_kernel {}; i_kernel < ckd.stray.n_kernels; ++i_kernel) {
-        kernels[i_kernel] = kernels.front();
-        ckd.stray.kernel_rows[i_kernel] = n_kernel_rows;
-        ckd.stray.kernel_cols[i_kernel] = n_kernel_cols;
-        ckd.stray.kernel_fft_sizes[i_kernel] =
+        ckd.stray.kernel_rows(i_kernel) = n_kernel_rows;
+        ckd.stray.kernel_cols(i_kernel) = n_kernel_cols;
+        ckd.stray.kernel_fft_sizes(i_kernel) =
           tango::getFFTSize(n_kernel_rows, n_kernel_cols);
         ckd.stray.kernels_fft[i_kernel].resize(
-          ckd.stray.kernel_fft_sizes[i_kernel]);
-        tango::fft_r2c(n_kernel_rows,
-                       n_kernel_cols,
-                       kernels[i_kernel],
-                       ckd.stray.kernels_fft[i_kernel]);
-        ckd.stray.weights[i_kernel].assign(n_rows * n_cols, 1.0);
-        ckd.stray.edges[i_kernel * tango::box::n + tango::box::b] = 0;
-        ckd.stray.edges[i_kernel * tango::box::n + tango::box::t] = n_rows;
-        ckd.stray.edges[i_kernel * tango::box::n + tango::box::l] = 0;
-        ckd.stray.edges[i_kernel * tango::box::n + tango::box::r] = n_cols;
+          ckd.stray.kernel_fft_sizes(i_kernel));
+        tango::fft_r2c(kernel, ckd.stray.kernels_fft[i_kernel]);
+        ckd.stray.edges(i_kernel, tango::box::b) = 0;
+        ckd.stray.edges(i_kernel, tango::box::t) = n_rows;
+        ckd.stray.edges(i_kernel, tango::box::l) = 0;
+        ckd.stray.edges(i_kernel, tango::box::r) = n_cols;
     }
     constexpr double eta { 0.10 };
-    ckd.stray.eta.assign(n_rows * n_cols, eta);
+    ckd.stray.eta = ArrayXXd::Constant(n_rows, n_cols, eta);
 }
 
 // Read CKD for tests. Different CKD sections are read one by one from
@@ -122,47 +140,48 @@ auto genStrayCKD(const std::string& fixture_dir,
 auto readCKD(const std::string& fixture_dir, tango::CKD& ckd) -> void
 {
     // Basic dimensions and the pixel mask
-    const auto [n_rows, n_cols] { readArrayFromTxt(
-      fixture_dir + "/ckd_pixel_mask.txt", ckd.pixel_mask) };
+    const auto [n_rows, n_cols] { readDimensions(fixture_dir
+                                                 + "/ckd_dark_offset.txt") };
     ckd.n_detector_rows = n_rows;
     ckd.n_detector_cols = n_cols;
     ckd.npix = ckd.n_detector_rows * ckd.n_detector_cols;
     ckd.n_detector_rows_binned = ckd.n_detector_rows;
     ckd.n_detector_cols_binned = ckd.n_detector_cols;
     ckd.npix_binned = ckd.npix;
+    ckd.pixel_mask = readBoolArrayFromTxt(fixture_dir + "/ckd_pixel_mask.txt");
     // Dark CKD
-    readArrayFromTxt(fixture_dir + "/ckd_dark_offset.txt", ckd.dark.offset);
-    readArrayFromTxt(fixture_dir + "/ckd_dark_current.txt", ckd.dark.current);
+    ckd.dark.offset = readArrayFromTxt(fixture_dir + "/ckd_dark_offset.txt");
+    ckd.dark.current = readArrayFromTxt(fixture_dir + "/ckd_dark_current.txt");
     // Noise CKD
-    readArrayFromTxt(fixture_dir + "/ckd_conversion_gain.txt", ckd.noise.g);
-    readArrayFromTxt(fixture_dir + "/ckd_read_noise.txt", ckd.noise.n2);
-    for (double& val : ckd.noise.n2) {
-        val *= val;
-    }
+    ckd.noise.g = readArrayFromTxt(fixture_dir + "/ckd_conversion_gain.txt");
+    ckd.noise.n2 = readArrayFromTxt(fixture_dir + "/ckd_read_noise.txt");
+    ckd.noise.n2 *= ckd.noise.n2;
     // Nonlinearity CKD
-    std::vector<double> x_values {};
-    std::vector<double> y_values {};
+    Eigen::ArrayXd x_values {};
+    Eigen::ArrayXd y_values {};
     readNonlinCKD(fixture_dir, x_values, y_values);
     ckd.nonlin.spline = { x_values, y_values };
     // PRNU CKD
-    readArrayFromTxt(fixture_dir + "/ckd_prnu.txt", ckd.prnu.prnu);
+    ckd.prnu.prnu = readArrayFromTxt(fixture_dir + "/ckd_prnu.txt");
     // Stray light CKD
     genStrayCKD(fixture_dir, ckd.n_detector_rows, ckd.n_detector_cols, ckd);
     // Detector mapping
-    readArrayFromTxt(fixture_dir + "/ckd_swath_act_angle.txt",
-                     ckd.swath.act_angles);
-    readArrayFromTxt(fixture_dir + "/ckd_swath_act_map.txt", ckd.swath.act_map);
-    readArrayFromTxt(fixture_dir + "/ckd_swath_wavelength_map.txt",
-                     ckd.swath.wavelength_map);
-    readArrayFromTxt(fixture_dir + "/ckd_swath_row_map.txt", ckd.swath.row_map);
-    readArrayFromTxt(fixture_dir + "/ckd_swath_col_map.txt", ckd.swath.col_map);
-    readArrayFromTxt(fixture_dir + "/ckd_swath_los.txt", ckd.swath.los);
+    ckd.swath.act_angles =
+      readArrayFromTxt(fixture_dir + "/ckd_swath_act_angle.txt");
+    ckd.swath.act_map =
+      read2DArrayFromTxt(fixture_dir + "/ckd_swath_act_map.txt");
+    ckd.swath.wavelength_map =
+      read2DArrayFromTxt(fixture_dir + "/ckd_swath_wavelength_map.txt");
+    ckd.swath.row_map =
+      read2DArrayFromTxt(fixture_dir + "/ckd_swath_row_map.txt");
+    ckd.swath.col_map =
+      read2DArrayFromTxt(fixture_dir + "/ckd_swath_col_map.txt");
+    ckd.swath.los = read2DArrayFromTxt(fixture_dir + "/ckd_swath_los.txt");
     ckd.n_act = static_cast<int>(ckd.swath.act_angles.size());
     // Spectral
-    readArrayFromTxt(fixture_dir + "/ckd_spectral.txt", ckd.wave.wavelengths);
-    ckd.n_wavelengths = static_cast<int>(ckd.wave.wavelengths.size());
+    ckd.wave.wavelengths = readArrayFromTxt(fixture_dir + "/ckd_spectral.txt");
     // Radiometric
-    read2DArrayFromTxt(fixture_dir + "/ckd_radiometric.txt", ckd.rad.rad);
+    ckd.rad.rad = read2DArrayFromTxt(fixture_dir + "/ckd_radiometric.txt");
 }
 
 // Construct L1A product from fixtures
@@ -170,11 +189,14 @@ auto readL1A(const std::string& fixture_dir, tango::L1& l1) -> void
 {
     l1.n_alt = 1;
     l1.exposure_time = 0.0460833;
-    readArrayFromTxt(fixture_dir + "/detector_image.txt", l1.signal);
-    l1.noise.assign(l1.signal.size(), 1.0);
-    readArrayFromTxt(fixture_dir + "/ckd_spectral.txt", l1.wavelengths);
-    readArrayFromTxt(fixture_dir + "/l1b_radiance.txt", l1.spectra);
-    readArrayFromTxt(fixture_dir + "/l1b_radiance_stdev.txt", l1.spectra_noise);
+    l1.signal = read2DArrayFromTxt(fixture_dir + "/detector_image.txt");
+    const auto n_bins(l1.signal.size());
+    l1.signal = l1.signal.reshaped<Eigen::RowMajor>(1, n_bins);
+    l1.noise = ArrayXXd::Constant(l1.signal.rows(), l1.signal.cols(), 1.0);
+    l1.wavelengths = readArrayFromTxt(fixture_dir + "/ckd_spectral.txt");
+    l1.spectra = read2DArrayFromTxt(fixture_dir + "/l1b_radiance.txt");
+    l1.spectra_noise =
+      read2DArrayFromTxt(fixture_dir + "/l1b_radiance_stdev.txt");
 }
 
 // Read geolocation data from an L1B product
@@ -183,14 +205,13 @@ auto readGeo(const std::string& filename, tango::Geometry& geo) -> void
     const netCDF::NcFile nc { filename, netCDF::NcFile::read };
     const auto n_alt { nc.getDim("along_track_sample").getSize() };
     const auto n_act { nc.getDim("across_track_sample").getSize() };
-    const auto n_bins { n_alt * n_act };
-    geo.lat.resize(n_bins);
-    geo.lon.resize(n_bins);
-    geo.height.resize(n_bins);
-    geo.sza.resize(n_bins);
-    geo.saa.resize(n_bins);
-    geo.vza.resize(n_bins);
-    geo.vaa.resize(n_bins);
+    geo.lat.resize(n_alt, n_act);
+    geo.lon.resize(n_alt, n_act);
+    geo.height.resize(n_alt, n_act);
+    geo.sza.resize(n_alt, n_act);
+    geo.saa.resize(n_alt, n_act);
+    geo.vza.resize(n_alt, n_act);
+    geo.vaa.resize(n_alt, n_act);
     const auto grp { nc.getGroup("geolocation_data") };
     grp.getVar("latitude").getVar(geo.lat.data());
     grp.getVar("longitude").getVar(geo.lon.data());
@@ -212,7 +233,8 @@ auto writeCKD(const std::string& fixture_dir,
     const auto nc_n_rows { nc.addDim("detector_row", ckd.n_detector_rows) };
     const auto nc_n_cols { nc.addDim("detector_column", ckd.n_detector_cols) };
     const auto nc_n_act { nc.addDim("across_track_sample", ckd.n_act) };
-    const auto nc_n_waves { nc.addDim("wavelength", ckd.n_wavelengths) };
+    const auto nc_n_waves { nc.addDim("wavelength",
+                                      ckd.wave.wavelengths.size()) };
     const auto nc_vector { nc.addDim("vector", 3) };
     const std::vector<netCDF::NcDim> nc_detector_shape { nc_n_rows, nc_n_cols };
     netCDF::NcGroup nc_grp {};
@@ -234,14 +256,11 @@ auto writeCKD(const std::string& fixture_dir,
     nc_grp = nc.addGroup("noise");
     nc_grp.addVar("g", netCDF::ncDouble, nc_detector_shape)
       .putVar(ckd.noise.g.data());
-    std::vector<double> buf { ckd.noise.n2 };
-    for (double& val : buf) {
-        val = std::sqrt(val);
-    }
-    nc_grp.addVar("n", netCDF::ncDouble, nc_detector_shape).putVar(buf.data());
+    Eigen::ArrayXd n { ckd.noise.n2.sqrt() };
+    nc_grp.addVar("n", netCDF::ncDouble, nc_detector_shape).putVar(n.data());
     // Nonlinearity CKD
-    std::vector<double> x_values {};
-    std::vector<double> y_values {};
+    Eigen::ArrayXd x_values {};
+    Eigen::ArrayXd y_values {};
     readNonlinCKD(fixture_dir, x_values, y_values);
     nc_grp = nc.addGroup("nonlinearity");
     const auto nc_knots { nc_grp.addDim("knots", x_values.size()) };
@@ -282,13 +301,7 @@ auto writeCKD(const std::string& fixture_dir,
       .putVar(ckd.stray.eta.data());
     nc_var = nc_grp.addVar(
       "weights", netCDF::ncDouble, { nc_n_kernel, nc_n_rows, nc_n_cols });
-    buf.resize(ckd.stray.n_kernels * ckd.npix);
-    for (int i {}; i < ckd.stray.n_kernels; ++i) {
-        for (int j {}; j < ckd.npix; ++j) {
-            buf[i * ckd.npix + j] = ckd.stray.weights[i][j];
-        }
-    }
-    nc_var.putVar(buf.data());
+    nc_var.putVar(ckd.stray.weights.data());
     nc_grp.addVar("edges", netCDF::ncInt, { nc_n_kernel, nc_edges_of_box })
       .putVar(ckd.stray.edges.data());
     // Swath CKD
@@ -310,10 +323,9 @@ auto writeCKD(const std::string& fixture_dir,
       .addVar("wavelength", netCDF::ncDouble, nc_n_waves)
       .putVar(ckd.wave.wavelengths.data());
     // Radiometric CKD
-    const auto rad { flatten2D(ckd.rad.rad) };
     nc.addGroup("radiometric")
-      .addVar("radiometric", netCDF::ncDouble, { nc_n_act, nc_n_cols })
-      .putVar(rad.data());
+      .addVar("radiometric", netCDF::ncDouble, { nc_n_act, nc_n_waves })
+      .putVar(ckd.rad.rad.data());
 }
 
 // Write L1A product to NetCDF file with minimal structure (no
@@ -330,7 +342,7 @@ auto writeL1A(const std::string& fixture_dir,
     nc.putAtt("instrument", "Carbon");
     // Image attributes
     auto grp { nc.addGroup("image_attributes") };
-    l1.time = { 44025.4149999619 };
+    l1.time = Eigen::ArrayXd::Constant(1, 44025.4149999619);
     grp.addVar("time", netCDF::ncDouble, nc_n_alt).putVar(l1.time.data());
     l1.tai_seconds = { 2038997625 };
     grp.addVar("tai_seconds", netCDF::ncUint, nc_n_alt)
@@ -348,25 +360,25 @@ auto writeL1A(const std::string& fixture_dir,
       .addVar("detector_image", netCDF::ncInt, { nc_n_alt, nc_n_bin })
       .putVar(l1.signal.data());
     // Navigation data
-    std::vector<double> nav_times {};
-    readArrayFromTxt(fixture_dir + "/navigation_time.txt", nav_times);
-    readArrayFromTxt(fixture_dir + "/navigation_orb_pos.txt", l1.orb_pos);
-    std::vector<double> att_quat {};
-    readArrayFromTxt(fixture_dir + "/navigation_att_quat.txt", att_quat);
+    Eigen::ArrayXd nav_times(
+      readArrayFromTxt(fixture_dir + "/navigation_time.txt"));
+    Eigen::ArrayXd orb_pos(
+      readArrayFromTxt(fixture_dir + "/navigation_orb_pos.txt"));
+    Eigen::ArrayXd att_quat(
+      readArrayFromTxt(fixture_dir + "/navigation_att_quat.txt"));
     grp = nc.addGroup("navigation_data");
     const auto dim_time { grp.addDim("time", nav_times.size()) };
     const auto dim_vec { grp.addDim("vector_elements", 3) };
     const auto dim_quat { grp.addDim("quaternion_elements", 4) };
     grp.addVar("time", netCDF::ncDouble, dim_time).putVar(nav_times.data());
     grp.addVar("orb_pos", netCDF::ncDouble, { dim_time, dim_vec })
-      .putVar(l1.orb_pos.data());
+      .putVar(orb_pos.data());
     grp.addVar("att_quat", netCDF::ncDouble, { dim_time, dim_quat })
       .putVar(att_quat.data());
 }
 
 // Write SGM product to NetCDF file
-auto writeSGM(const std::string& fixture_dir,
-              const std::string& filename,
+auto writeSGM(const std::string& filename,
               const tango::CKD& ckd,
               tango::L1& l1) -> void
 {
@@ -382,8 +394,9 @@ auto writeSGM(const std::string& fixture_dir,
     // Generate LBL grid
     std::vector<double> lbl_wavelengths(nc_n_waves.getSize());
     for (int i {}; i < static_cast<int>(lbl_wavelengths.size()); ++i) {
-        const double& wave_0 { ckd.wave.wavelengths.front() };
-        const double& wave_n { ckd.wave.wavelengths.back() };
+        const double& wave_0 { ckd.wave.wavelengths(0) };
+        const double& wave_n { ckd.wave.wavelengths(ckd.wave.wavelengths.size()
+                                                    - 1) };
         constexpr double margin { 1.0 };
         lbl_wavelengths[i] =
           wave_0 - margin
@@ -392,13 +405,8 @@ auto writeSGM(const std::string& fixture_dir,
     // Generate LBL spectra
     std::vector<double> lbl_spectra(ckd.n_act * lbl_wavelengths.size());
     for (int i_act {}; i_act < ckd.n_act; ++i_act) {
-        std::vector<double> x_values { ckd.wave.wavelengths };
-        std::vector<double> y_values {
-            l1.spectra.begin() + i_act * ckd.n_detector_cols,
-            l1.spectra.begin() + (i_act + 1) * ckd.n_detector_cols
-        };
-        std::ranges::reverse(x_values);
-        std::ranges::reverse(y_values);
+        Eigen::ArrayXd x_values(ckd.wave.wavelengths.reverse());
+        Eigen::ArrayXd y_values(l1.spectra.row(i_act).reverse());
         const tango::CubicSpline spline { x_values, y_values };
         for (int i {}; i < static_cast<int>(lbl_wavelengths.size()); ++i) {
             lbl_spectra[i_act * lbl_wavelengths.size() + i] =
@@ -417,7 +425,7 @@ auto writeGeometry(const std::string& filename, tango::L1& l1) -> void
     netCDF::NcFile nc { filename, netCDF::NcFile::replace };
     // Dimensions
     const auto nc_n_alt { nc.addDim("along_track_sample", l1.n_alt) };
-    l1.time = { 44025.4149999619 };
+    l1.time = Eigen::ArrayXd::Constant(1, 44025.4149999619);
     auto nc_time { nc.addVar("time", netCDF::ncDouble, nc_n_alt) };
     nc_time.putVar(l1.time.data());
     nc_time.putAtt("units", "seconds since 2022-08-12");
@@ -433,16 +441,15 @@ auto writeNavigation(const std::string& fixture_dir,
                      const std::string& filename) -> void
 {
     netCDF::NcFile nc { filename, netCDF::NcFile::replace };
-    std::vector<double> buf {};
-    readArrayFromTxt(fixture_dir + "/navigation_time.txt", buf);
+    Eigen::ArrayXd buf(readArrayFromTxt(fixture_dir + "/navigation_time.txt"));
     const auto dim_time { nc.addDim("time", buf.size()) };
     const auto dim_vec { nc.addDim("vector_elements", 3) };
     const auto dim_quat { nc.addDim("quaternion_elements", 4) };
     nc.addVar("time", netCDF::ncDouble, dim_time).putVar(buf.data());
-    readArrayFromTxt(fixture_dir + "/navigation_orb_pos.txt", buf);
+    buf = readArrayFromTxt(fixture_dir + "/navigation_orb_pos.txt");
     nc.addVar("orb_pos", netCDF::ncDouble, { dim_time, dim_vec })
       .putVar(buf.data());
-    readArrayFromTxt(fixture_dir + "/navigation_att_quat.txt", buf);
+    buf = readArrayFromTxt(fixture_dir + "/navigation_att_quat.txt");
     nc.addVar("att_quat", netCDF::ncDouble, { dim_time, dim_quat })
       .putVar(buf.data());
 }
@@ -451,9 +458,9 @@ auto writeNavigation(const std::string& fixture_dir,
 auto writeBinningTable(const std::string& fixture_dir,
                        const std::string& filename) -> void
 {
+    const auto [n_rows,
+                n_cols] { readDimensions(fixture_dir + "/detector_image.txt") };
     std::vector<double> buf {};
-    const auto [n_rows, n_cols] { readArrayFromTxt(
-      fixture_dir + "/detector_image.txt", buf) };
     netCDF::NcFile nc { filename, netCDF::NcFile::replace };
     const auto nc_rows { nc.addDim("row", n_rows) };
     const auto nc_cols { nc.addDim("column", n_cols) };
@@ -501,12 +508,4 @@ auto writeBinningTable(const std::string& fixture_dir,
         grp.addVar("count_table", netCDF::ncUshort, nc_bins)
           .putVar(count_table.data());
     }
-}
-
-auto absSum(std::vector<double> array) -> double
-{
-    return std::accumulate(
-      array.begin(), array.end(), 0.0, [](const double s, const double a) {
-          return s + std::abs(a);
-      });
 }

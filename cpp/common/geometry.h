@@ -5,34 +5,34 @@
 
 #pragma once
 
-#include "dem.h"
-#include "quaternion.h"
-
-#include <cstdint>
+#include "constants.h"
+#include "eigen.h"
 
 namespace tango {
 
+class DEM;
+
 struct Geometry
 {
-    std::vector<double> lat {};
-    std::vector<double> lon {};
-    std::vector<double> height {};
-    std::vector<double> vza {}; // Viewing zenith angle
-    std::vector<double> vaa {}; // Viewing azimuth angle
-    std::vector<double> sza {}; // Solar zenith angle
-    std::vector<double> saa {}; // Solar azimuth angle
+    ArrayXXd lat {};
+    ArrayXXd lon {};
+    ArrayXXd height {};
+    ArrayXXd vza {}; // Viewing zenith angle
+    ArrayXXd vaa {}; // Viewing azimuth angle
+    ArrayXXd sza {}; // Solar zenith angle
+    ArrayXXd saa {}; // Solar azimuth angle
 };
 
 // Convert angles from radians to degrees. If dealing with longitudes,
 // then first bring them to the -180/180 range.
-auto moduloAndConvertAngles(std::vector<double>& angles) -> void;
+auto moduloAndConvertAngles(ArrayXXd& angles) -> void;
 
 // Given a series of timestamps and quaternions, find the quaternion
 // corresponding to an arbitrary timestamp.
-auto interpolateQuaternion(const std::vector<double>& att_times,
-                           const std::vector<Quaternion>& att_quaternions,
-                           const double image_time,
-                           Quaternion& quat) -> void;
+auto interpolateQuaternion(
+  const Eigen::ArrayXd& att_times,
+  const std::vector<Eigen::Quaterniond>& att_quaternions,
+  const double image_time) -> Eigen::Quaterniond;
 
 // Given a line-of-sight (LOS) vector and the satellite position in
 // cartesian coordinates, return the point of intersection with the
@@ -41,9 +41,8 @@ auto interpolateQuaternion(const std::vector<double>& att_times,
 // by value. Algorithm taken from Joint Polar Satellite System (JPPS)
 // VIIRS Geolocation Algorithm Theoretical Basis Document (ATBD)
 // section 3.3.2.2.1.
-auto intersectEllipsoid(std::array<double, dims::vec> los,
-                        std::array<double, dims::vec> sat,
-                        std::array<double, dims::vec>& pos) -> void;
+auto intersectEllipsoid(Eigen::Vector3d los,
+                        Eigen::Vector3d sat) -> Eigen::Vector3d;
 
 // Given a digital elevation model, a LOS vector, the satellite
 // position in cartesian coordinates, and the ellipsoid intersection
@@ -51,14 +50,14 @@ auto intersectEllipsoid(std::array<double, dims::vec> los,
 // longitude, and height of the target point. Note that the
 // intersection point is updated by this function.
 auto intersectTerrain(DEM& dem,
-                      const std::array<double, dims::vec>& los,
-                      std::array<double, dims::vec>& pos,
+                      const Eigen::Vector3d& los,
+                      Eigen::Vector3d& pos,
                       double& lat,
                       double& lon,
                       double& height) -> void;
 
 // Convert from cartesian to geodetic coordinates.
-auto cart2geo(const std::array<double, dims::vec>& xyz,
+auto cart2geo(const Eigen::Vector3d& xyz,
               double& lat,
               double& lon,
               double& height) -> void;
@@ -66,8 +65,8 @@ auto cart2geo(const std::array<double, dims::vec>& xyz,
 // Given the sun and LOS vectors in ECR coordinates and the target
 // point latitude and longitude, return the solar zenith and azimuth
 // angles and the sensor viewing zenith and azimuth angles.
-auto solarAndViewingGeometry(const std::array<double, dims::vec>& sun,
-                             const std::array<double, dims::vec>& los,
+auto solarAndViewingGeometry(const Eigen::Vector3d& sun,
+                             const Eigen::Vector3d& los,
                              const double lat,
                              const double lon,
                              double& sza,
@@ -83,11 +82,11 @@ auto solarAndViewingGeometry(const std::array<double, dims::vec>& sun,
 //  att_quat_sc_j2000 - spacecraft-to-J2000 attitude quaternions
 //  geo - resulting viewing and solar geometries
 auto geolocate(const std::string& dem_filename,
-               const std::vector<double>& los,
+               const ArrayXNd<dims::vec>& los,
                const std::vector<uint32_t>& tai_seconds,
                const std::vector<double>& tai_subsec,
-               const std::vector<double>& orb_pos_j2000,
-               const std::vector<Quaternion>& att_quat_sc_j2000,
+               const ArrayXNd<dims::vec>& orb_pos_j2000,
+               const std::vector<Eigen::Quaterniond>& att_quat_sc_j2000,
                Geometry& geo) -> void;
 
 } // namespace tango

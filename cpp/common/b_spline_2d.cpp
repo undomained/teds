@@ -16,24 +16,24 @@ BSpline2D::BSpline2D(const int order,
     b_spline_r = { order, x_values_r };
     b_spline_c = { order, x_values_c };
     // B-spline matrices across rows and columns
-    Eigen::SparseMatrix<double> B_mat_r(b_spline_r.genBasis(x_values_r));
-    Eigen::SparseMatrix<double> B_mat_c(b_spline_c.genBasis(x_values_c));
+    Eigen::SparseMatrix<double> B_mat_r = b_spline_r.genBasis(x_values_r);
+    Eigen::SparseMatrix<double> B_mat_c = b_spline_c.genBasis(x_values_c);
     // Find X from A^T A X = A^T where A is the B-spline matrix across
     // rows.
-    Eigen::MatrixXd L(sparseToBanded(B_mat_r.transpose() * B_mat_r));
+    Eigen::MatrixXd L = sparseToBanded(B_mat_r.transpose() * B_mat_r);
     Eigen::VectorXd D {};
     ldlt_decompose(L, D);
-    Eigen::MatrixXd B_mat_r_full(B_mat_r.transpose());
+    Eigen::MatrixXd B_mat_r_full = B_mat_r.transpose();
     auto X = ldlt_solve(L, D, B_mat_r_full);
     // Find Y from A^T A Y = A^T where A is the B-spline matrix across
     // columns.
     L = sparseToBanded(B_mat_c.transpose() * B_mat_c);
     ldlt_decompose(L, D);
-    Eigen::MatrixXd B_mat_c_full(B_mat_c.transpose());
+    Eigen::MatrixXd B_mat_c_full = B_mat_c.transpose();
     auto Y = ldlt_solve(L, D, B_mat_c_full);
     // Control points are given by X P Y^T where P are the datapoints
-    auto P(data_in.matrix().reshaped<Eigen::RowMajor>(x_values_r.size(),
-                                                      x_values_c.size()));
+    auto P = data_in.matrix().reshaped<Eigen::RowMajor>(x_values_r.size(),
+                                                        x_values_c.size());
     control_points = X * P * Y.transpose();
 }
 
@@ -66,7 +66,7 @@ auto BSpline2D::eval(const ArrayXXd& x,
       std::max(b_spline_r.nStates(), b_spline_c.nStates())
         + b_spline_r.getOrder() + 1,
       0.0);
-    auto z_view(z.reshaped<Eigen::RowMajor>(x.rows(), x.cols()));
+    auto z_view = z.reshaped<Eigen::RowMajor>(x.rows(), x.cols());
     z_view = 0.0;
     for (int i_row {}; i_row < static_cast<int>(x.rows()); ++i_row) {
         for (int i_col {}; i_col < static_cast<int>(x.cols()); ++i_col) {

@@ -9,6 +9,7 @@ add_library(common SHARED
   timer.cpp
   yaml.cpp
   settings.cpp
+  l2.cpp
   # Math
   algorithm.cpp
   linalg.cpp

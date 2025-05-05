@@ -5,7 +5,9 @@ from netCDF4 import Dataset
 import numpy as np
 
 from .types import L2
+from .types import RefProfiles
 from teds.gm.types import Geometry
+from teds.gm.io import nc_write_height
 from teds.gm.io import nc_write_lat
 from teds.gm.io import nc_write_lon
 from teds.l1al1b.types import L1
@@ -15,7 +17,7 @@ from teds.sgm.atmosphere import Atmosphere
 def write_l2(filename: str,
              atm: Atmosphere,
              l2: L2,
-             retrieval_init: dict,
+             ref_profiles: RefProfiles,
              geometry: Geometry) -> None:
     """Write L2 data product to NetCDF file."""
     default_fill = -32767
@@ -23,7 +25,7 @@ def write_l2(filename: str,
     n_lay = l2.col_avg_kernels['CO2'].shape[2]
 
     nc = Dataset(filename, mode='w')
-    nc.title = 'Tango Carbon E2ES L2 product'
+    nc.title = 'Tango Carbon level 2 data'
     nc.createDimension('along_track_sample', n_alt)
     nc.createDimension('across_track_sample', n_act)
     nc.createDimension('layers', n_lay)
@@ -37,27 +39,29 @@ def write_l2(filename: str,
     var.valid_max = 1e+5
     var[:] = atm.zlay
 
+    grp = nc.createGroup('geolocation_data')
     geometry.rad2deg()
-    nc_write_lat(nc, geometry.lat)
-    nc_write_lon(nc, geometry.lon)
+    nc_write_lat(grp, geometry.lat)
+    nc_write_lon(grp, geometry.lon)
+    nc_write_height(grp, geometry.height)
 
     var = nc.createVariable(
         'aquisition_time', 'f8', 'along_track_sample', fill_value=default_fill)
-    var.long_name = 'aquisition time of sensing UTC'
+    var.long_name = 'aquisition time of sensing in UTC'
     var.units = 's'
     var.valid_min = 0.0
     var.valid_max = 1e+25
     var[:] = np.full(n_alt, 99999)
 
     var = nc.createVariable('albedo', 'f8', _dims, fill_value=default_fill)
-    var.long_name = 'albedo'
+    var.long_name = 'wavelength-independent component of albedo'
     var.valid_min = 0
     var.valid_max = 1
-    var[:] = l2.albedo_coeffs[0]
+    var[:] = l2.albedo0
 
     var = nc.createVariable(
         'spectral_shift', 'f8', _dims, fill_value=default_fill)
-    var.long_name = 'constant shift of the spectral calibration'
+    var.long_name = 'constant shift of spectral calibration'
     var.units = 'nm'
     var.valid_min = 0
     var.valid_max = 10
@@ -65,7 +69,7 @@ def write_l2(filename: str,
 
     var = nc.createVariable(
         'spectral_squeeze', 'f8', _dims, fill_value=default_fill)
-    var.long_name = 'squeeze of the spectral calibration'
+    var.long_name = 'squeeze of spectral calibration'
     var.valid_min = 0
     var.valid_max = 10
     var[:] = l2.spec_squeeze
@@ -73,16 +77,11 @@ def write_l2(filename: str,
     grp_prior = nc.createGroup('prior')
     grp_ns = nc.createGroup('non_scattering_retrieval')
 
-    scale = {'CO2': 1.E6, 'CH4': 1.E9, 'H2O': 1.E6}
+    scale = {'CO2': 1e6, 'CH4': 1e9, 'H2O': 1e6}
 
     gases = ['CO2', 'CH4', 'H2O']
     for gas in gases:
         xgas = 'X' + gas
-        l2_X_prof = np.zeros((n_alt, n_act, n_lay))
-        for ialt in range(n_alt):
-            for iact in range(n_act):
-                l2_X_prof[ialt, iact, :] = (
-                    retrieval_init['trace_gases'][gas]['ref_profile'])
 
         var = grp_ns.createVariable(
             xgas.lower(), 'f8', _dims, fill_value=default_fill)
@@ -111,60 +110,51 @@ def write_l2(filename: str,
         var[:] = l2.col_avg_kernels[gas]
 
         var = grp_prior.createVariable(
-            'apri_prof_'+gas.lower(), 'f8', _dims3d, fill_value=default_fill)
+            'apri_prof_'+gas.lower(), 'f8', 'layers', fill_value=default_fill)
         var.long_name = f'a priori profile {gas} in layer column density'
         var.units = 'molecules / cm2'
         var.valid_min = 0
         var.valid_max = 1e28
-        var[:] = l2_X_prof
+        var[:] = ref_profiles.gases[gas]
 
     # Next the main product, proxy
     gases = ['CO2', 'CH4']
     for gas in gases:
-        xgas = "X" + gas + " proxy"
-        l2_X_accu = np.zeros((n_alt, n_act))
-        l2_X_qav = np.zeros((n_alt, n_act), dtype=np.int16)
+        xgas = ('x' + gas).lower()
+        xgas_proxy = "X" + gas + " proxy"
 
-        for ialt in range(n_alt):
-            for iact in range(n_act):
-                l2_X_accu[ialt, iact] = 99999.
-                l2_X_qav[ialt, iact] = 100
-
-        xgas_name = ('x' + gas).lower()
         var = nc.createVariable(
-            xgas_name+'_proxy', 'f8', _dims, fill_value=default_fill)
-        var.long_name = f'{gas} proxy dry air column mixing ratio {xgas}'
+            xgas+'_proxy', 'f8', _dims, fill_value=default_fill)
+        var.long_name = f'{xgas_proxy} dry air column mixing ratio'
         var.units = ('ppbv' if gas == 'CH4' else 'ppmv')
         var.valid_min = 0
         var.valid_max = 2e20
         var[:] = l2.proxys[gas] * scale[gas]
 
         var = nc.createVariable(
-            'precision_'+xgas_name, 'f8', _dims, fill_value=default_fill)
-        var.long_name = (
-            f'{gas} precision of proxy dry air column mixing ratio {xgas}')
+            'precision_'+xgas+'_proxy', 'f8', _dims, fill_value=default_fill)
+        var.long_name = f'{xgas_proxy} dry air column mixing ratio precision'
         var.units = ('ppbv' if gas == 'CH4' else 'ppmv')
         var.valid_min = 0
         var.valid_max = 2e20
         var[:] = l2.proxy_precisions[gas] * scale[gas]
 
         var = nc.createVariable(
-            'accuracy_'+xgas_name, 'f8', _dims, fill_value=default_fill)
-        var.long_name = (
-            f'{gas} accuracy of dry air column mixing ratio {xgas}')
+            'accuracy_'+xgas+'_proxy', 'f8', _dims, fill_value=default_fill)
+        var.long_name = f'{xgas_proxy} dry air column mixing ratio accuracy'
         var.units = ('ppbv' if gas == 'CH4' else 'ppmv')
         var.valid_min = 0
         var.valid_max = 300
         var[:] = np.full((n_alt, n_act), 99999)
 
         var = nc.createVariable(
-            'qa_value_'+xgas_name, 'f8', _dims, fill_value=default_fill)
-        var.long_name = (f'proxy {xgas} quality value of dry air column '
-                         f'mixing ratio {xgas}')
+            'qa_value_'+xgas+'_proxy', 'f8', _dims, fill_value=default_fill)
+        var.long_name = (
+            f'{xgas_proxy} dry air column mixing ratio quality value')
         var.units = ('ppbv' if gas == 'CH4' else 'ppmv')
         var.valid_min = 0
         var.valid_max = 300
-        var[:] = l2_X_qav
+        var[:] = 100
 
     var = grp_prior.createVariable(
         'surface_pressure', 'f8', _dims, fill_value=default_fill)
@@ -172,38 +162,30 @@ def write_l2(filename: str,
     var.units = 'hPa'
     var.valid_min = 0
     var.valid_max = 1400
-    var[:] = retrieval_init['surface_pressure']
-
-    var = grp_prior.createVariable(
-        'surface_elevation', 'f8', _dims, fill_value=default_fill)
-    var.long_name = 'surface elevation with respect to WGS-84'
-    var.units = 'm'
-    var.valid_min = 0
-    var.valid_max = 9000
-    var[:] = retrieval_init['surface_elevation']
+    var[:] = 1013
 
     grp = nc.createGroup('diagnostics')
 
     var = grp.createVariable(
-        'processing_flag', 'f8', _dims, fill_value=default_fill)
-    var.long_name = 'processing flag to indicate processor anormalies'
+        'processing_flag', 'i2', _dims, fill_value=default_fill)
+    var.long_name = 'processing flag to indicate processor anomalies'
     var.valid_min = 0
     var.valid_max = 101
     var[:] = np.full((n_alt, n_act), 100, dtype=np.int16)
 
     var = grp.createVariable(
-        'convergence', 'i4', _dims, fill_value=default_fill)
+        'convergence', 'u1', _dims, fill_value=7)
     var.long_name = 'whether pixel converged'
     var.valid_min = 0
     var.valid_max = 1
     var[:] = l2.converged
 
     var = grp.createVariable(
-        'maxiterations', 'i4', _dims, fill_value=default_fill)
+        'iterations', 'i4', _dims, fill_value=default_fill)
     var.long_name = 'number of iterations'
     var.valid_min = 0
     var.valid_max = 100
-    var[:] = l2.number_iter
+    var[:] = l2.iterations
 
     var = grp.createVariable('chi2', 'f8', _dims, fill_value=default_fill)
     var.long_name = 'spectral chi square of the fit'

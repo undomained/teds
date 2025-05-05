@@ -4,7 +4,6 @@
 #include "linear_spline.h"
 
 #include "algorithm.h"
-#include "constants.h"
 
 namespace tango {
 
@@ -42,16 +41,13 @@ LinearSpline::LinearSpline(const Eigen::ArrayXd& x_values,
 
 [[nodiscard]] auto LinearSpline::eval(const double x) const -> double
 {
-    const int idx { equal_spacing ? lookupIdx(x) : binaryFindIdx(knots, x) };
-    if (idx == fill::i || idx == knots.size() - 1) {
-        if (x < knots(0)) {
-            const double t { (x - knots(0)) / (knots(1) - knots(0)) };
-            return std::lerp(values(0), values(1), t);
-        }
-        const double& knots_2 { knots(knots.size() - 2) };
-        const double t { (x - knots_2) / (knots(knots.size() - 1) - knots_2) };
-        return std::lerp(
-          values(knots.size() - 2), values(values.size() - 1), t);
+    int idx;
+    if (x < knots(0)) {
+        idx = 0;
+    } else if (x > knots(knots.size() - 2)) {
+        idx = static_cast<int>(knots.size() - 2);
+    } else {
+        idx = (equal_spacing ? lookupIdx(x) : binaryFindIdx(knots, x));
     }
     const double t { (x - knots(idx)) / (knots(idx + 1) - knots(idx)) };
     return std::lerp(values(idx), values(idx + 1), t);
@@ -69,13 +65,13 @@ LinearSpline::LinearSpline(const Eigen::ArrayXd& x_values,
 
 [[nodiscard]] auto LinearSpline::deriv(const double x) const -> double
 {
-    const int idx { equal_spacing ? lookupIdx(x) : binaryFindIdx(knots, x) };
-    if (idx == fill::i || idx == knots.size() - 1) {
-        if (x < knots(0)) {
-            return (values(1) - values(0)) / (knots(1) - knots(0));
-        }
-        return (values(values.size() - 1) - values(knots.size() - 2))
-               / (knots(knots.size() - 1) - knots(knots.size() - 2));
+    int idx;
+    if (x < knots(0)) {
+        idx = 0;
+    } else if (x > knots(knots.size() - 2)) {
+        idx = static_cast<int>(knots.size() - 2);
+    } else {
+        idx = (equal_spacing ? lookupIdx(x) : binaryFindIdx(knots, x));
     }
     return (values(idx + 1) - values(idx)) / (knots(idx + 1) - knots(idx));
 }

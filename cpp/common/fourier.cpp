@@ -77,7 +77,7 @@ auto convolve(const Eigen::Ref<const ArrayXXd> image_in,
     assert(image_in.cols() <= kernel_n_cols
            && "Image dimension must be less than the kernel dimension");
     // Enlarge image_in to the size of the kernel and pad with zeros
-    ArrayXXd image(ArrayXXd::Zero(kernel_n_rows, kernel_n_cols));
+    ArrayXXd image = ArrayXXd::Zero(kernel_n_rows, kernel_n_cols);
     image.topLeftCorner(image_in.rows(), image_in.cols()) = image_in;
     fft_r2c(image, image_fft);
     // Image FFT x kernel FFT
@@ -106,8 +106,8 @@ auto convolveMulti(
         const int t { edges(i_kernel, box::t) - 1 };
         const int l { edges(i_kernel, box::l) };
         const int r { edges(i_kernel, box::r) - 1 };
-        auto weights_sub(weights.row(i_kernel).reshaped<Eigen::RowMajor>(
-          image_in.rows(), image_in.cols()));
+        auto weights_sub = weights.row(i_kernel).reshaped<Eigen::RowMajor>(
+          image_in.rows(), image_in.cols());
         const ArrayXXd sub_signal(
           image_in(Eigen::seq(b, t), Eigen::seq(l, r))
           * weights_sub(Eigen::seq(b, t), Eigen::seq(l, r)));

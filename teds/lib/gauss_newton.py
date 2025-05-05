@@ -9,14 +9,17 @@ from .radiative_transfer import OpticAbsProp
 from .radiative_transfer import nonscat_fwd_model
 from .surface import Surface
 from teds.l1l2.types import L2
+from teds.l1l2.types import RefProfiles
 from teds.sgm.atmosphere import Atmosphere
 
 
-def gauss_newton(retrieval_init: dict,
+def gauss_newton(config: dict,
+                 ref_profiles: RefProfiles,
                  atm: Atmosphere,
                  optics: OpticAbsProp,
                  wave_lbl: npt.NDArray[np.float64],
                  sun_lbl: npt.NDArray[np.float64],
+                 sun: npt.NDArray[np.floating],
                  ymeas: npt.NDArray[np.floating],
                  Smeas_diag: npt.NDArray[np.floating],
                  mu0: float,
@@ -62,40 +65,51 @@ def gauss_newton(retrieval_init: dict,
 
     """
     # Gases to be retrieved
-    gas_names = list(retrieval_init['trace_gases'].keys())
+    gas_names = config['retrieval']['gases']
+    n_gas = len(gas_names)
+    state_vector_names = {}
+    for i, gas_name in enumerate(gas_names):
+        state_vector_names[gas_name] = i
+    n_state = n_gas
+
+    n_albedo = config['retrieval']['n_albedos']
+    for i in range(n_albedo):
+        state_vector_names['albedo_' + str(i)] = i
+    n_state += n_albedo
 
     # State vector, to be populated with gas concentrations and albedo
     # coefficients.
-    state_vector = np.empty(
-        len(gas_names)+len(retrieval_init['albedo_coefficients']))
+    state_vector = np.empty(n_state)
 
     # Start by adding gas scaling initial guesses to the state vector
     for i, gas in enumerate(gas_names):
         xcol = sum(atm.get_gas(gas).concentration) / sum(atm.air)
         # Prior scaling parameter
-        state_vector[i] = retrieval_init['trace_gases'][gas]['init'] / xcol
+        state_vector[i] = ref_profiles.initial[gas] / xcol
 
     # Next add albedo coefficient initial guesses. The first entries
-    # are always gases. Thus, slicing with [len(gas_names):] allows to
-    # access the albedo coefficients.
-    state_vector[len(gas_names):] = retrieval_init['albedo_coefficients']
+    # are always gases. Thus, slicing with [n_gas:n_gas+n_albedo]
+    # allows to access the albedo coefficients.
+    state_vector[n_gas:n_gas+n_albedo] = 0
+    # Derive first guess albedo from maximum reflectance
+    idx = np.argmax(ymeas)
+    state_vector[n_gas] = ymeas[idx] / sun[idx] * np.pi / mu0
 
-    chi_sqrt = []
+    chi2 = []
     n_dof = len(ymeas) - len(state_vector)
     surface = Surface(wave_lbl)
-    for iterations in range(retrieval_init['max_iter']):
+    for iterations in range(config['retrieval']['max_iter']):
         for i_gas, gas in enumerate(gas_names):
             atm.get_gas(gas).concentration[:] = (
-                state_vector[i_gas]
-                * retrieval_init['trace_gases'][gas]['ref_profile'])
+                state_vector[i_gas] * ref_profiles.gases[gas])
 
         # Calculate surface data
-        surface.get_albedo_poly(list(state_vector[len(gas_names):]))
+        surface.get_albedo_poly(list(state_vector[n_gas:n_gas+n_albedo]))
 
         # Nonscattering forward model
         fwd_rad, derivatives, derivatives_layers = nonscat_fwd_model(
             gas_names,
-            len(retrieval_init['albedo_coefficients']),
+            n_albedo,
             isrf,
             sun_lbl,
             atm,
@@ -114,35 +128,31 @@ def gauss_newton(retrieval_init: dict,
 
         # Calculate least square solution
         Syinv = np.eye(fwd_rad.size) / Smeas_diag
-        # Covariance matrix of the estimated least square solution
         JTJ = np.matmul(jacobian.T, np.matmul(Syinv, jacobian))
         Sx = np.linalg.solve(JTJ, np.eye(JTJ.shape[0]))
         gain = np.matmul(Sx, np.matmul(jacobian.T, Syinv))
-        # Least squares solution
         state_delta = np.matmul(gain, ytilde)
 
-        x_lst_precision = np.empty(len(state_delta))
+        precisions = np.empty(len(state_delta))
         for m in range(len(state_delta)):
-            x_lst_precision[m] = np.sqrt(Sx[m, m])
+            precisions[m] = np.sqrt(Sx[m, m])
 
         state_vector += state_delta
 
-        chi_sqrt.append(((ymeas - fwd_rad)**2 / Smeas_diag).sum() / n_dof)
+        chi2.append(((ymeas - fwd_rad)**2 / Smeas_diag).sum() / n_dof)
 
-        if iterations > 2 and (chi_sqrt[-2] - chi_sqrt[-1]
-                               < retrieval_init['chi2_lim']):
+        if iterations > 2 and (chi2[-2] - chi2[-1]
+                               < config['retrieval']['chi2_lim']):
             l2.converged[i_alt, i_act] = True
             break
-        iterations += 1
 
-    l2.chi2[i_alt, i_act] = chi_sqrt[-1]
-    l2.number_iter[i_alt, i_act] = iterations
+    l2.chi2[i_alt, i_act] = chi2[-1]
+    l2.iterations[i_alt, i_act] = iterations + 1
 
     # Define output product, first update all parameters
     for i_gas, gas in enumerate(gas_names):
         atm.get_gas(gas).concentration[:] = (
-            state_vector[i_gas]
-            * retrieval_init['trace_gases'][gas]['ref_profile'])
+            state_vector[i_gas] * ref_profiles.gases[gas])
 
     # Calculate column mixing ratio, precision, and albedo values
     for i_gas, gas in enumerate(gas_names):
@@ -153,24 +163,19 @@ def gauss_newton(retrieval_init: dict,
         mixing_ratio = (
             sum(atm.get_gas(gas).concentration)/sum(atm.air))
         l2.mixing_ratios[gas][i_alt, i_act] = mixing_ratio
-        l2.precisions[gas][i_alt, i_act] = (
-            mixing_ratio * x_lst_precision[i_gas])
-        ref_mixing_ratio = (
-            state_vector[i_gas]
-            * np.sum(retrieval_init['trace_gases'][gas]['ref_profile'])
-            / sum(atm.air) / scaling)
+        l2.precisions[gas][i_alt, i_act] = mixing_ratio * precisions[i_gas]
+        ref_mixing_ratio = (state_vector[i_gas]
+                            * np.sum(ref_profiles.gases[gas])
+                            / sum(atm.air) / scaling)
         l2.gains[gas][i_alt, i_act, :] = gain[i_gas] * ref_mixing_ratio
-    for i in range(len(retrieval_init['albedo_coefficients'])):
-        l2.albedo_coeffs[i, i_alt, i_act] = state_vector[len(gas_names)+i]
+    l2.albedo0[i_alt, i_act] = state_vector[n_gas]
 
     # Calculate column averaging kernels
     n_lay = atm.zlay.size
     for i_gas, gas in enumerate(gas_names):
-        col = np.sum(retrieval_init['trace_gases'][gas]['ref_profile'])
+        col = np.sum(ref_profiles.gases[gas])
         for k_lay in range(n_lay):
-            delta_prof = (
-                col
-                / retrieval_init['trace_gases'][gas]['ref_profile'][k_lay])
+            delta_prof = col / ref_profiles.gases[gas][k_lay]
             l2.col_avg_kernels[gas][i_alt, i_act, k_lay] = (
-                np.sum(gain[i_gas, :] * derivatives_layers[i_gas][:, k_lay])
+                np.dot(gain[i_gas, :], derivatives_layers[i_gas][:, k_lay])
                 * delta_prof)

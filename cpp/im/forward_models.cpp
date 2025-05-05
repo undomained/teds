@@ -119,8 +119,8 @@ auto strayLight(const CKD& ckd, const bool enabled, L1& l1_prod) -> void
     ArrayXXd conv_result(ckd.n_detector_rows, ckd.n_detector_cols);
 #pragma omp parallel for firstprivate(signal_fft, conv_result)
     for (int i_alt = 0; i_alt < l1_prod.n_alt; ++i_alt) {
-        auto signal(l1_prod.signal.row(i_alt).reshaped<Eigen::RowMajor>(
-          ckd.n_detector_rows, ckd.n_detector_cols));
+        auto signal = l1_prod.signal.row(i_alt).reshaped<Eigen::RowMajor>(
+          ckd.n_detector_rows, ckd.n_detector_cols);
         if (ckd.stray.n_kernels > 1) {
             convolveMulti(ckd.stray.edges,
                           ckd.stray.weights,

@@ -4,9 +4,10 @@ import numpy as np
 import numpy.typing as npt
 import xarray as xr
 
+from .io import write_l2
+from .types import L2
+from .types import RefProfiles
 from teds.gm.types import Geometry
-from teds.l1l2.l1bl2 import write_l2
-from teds.l1l2.types import L2
 from teds.sgm.atmosphere import Atmosphere
 
 
@@ -85,9 +86,9 @@ def simplified_level1b_to_level2_processor(config: dict) -> L2:
     # Convergence flag (dummy value)
     l2.converged[:] = 1
     # Number of iterations (dummy value)
-    l2.number_iter[:] = 1
+    l2.iterations[:] = 1
     # Albedo value from dataset
-    l2.albedo_coeffs[0] = ds["albedo_b11"].values
+    l2.albedo0 = ds["albedo_b11"].values
     for gas in trace_gases:
         scale = {'CO2': 1.E6, 'CH4': 1.E9, 'H2O': 1.E6}
         l2.mixing_ratios[gas] = ds['x' + gas.lower()].values / scale[gas]
@@ -115,17 +116,10 @@ def simplified_level1b_to_level2_processor(config: dict) -> L2:
     atm.zlay = ds["zlay"].values
 
     # Define retrieval initialization parameters
-    retrieval_init = {
-        # Surface pressure calculation
-        'surface_pressure': ds["col_air"] / 6.02214076e23 * 0.029 * 9.81 / 100,
-        # Surface elevation data
-        'surface_elevation': ds["zlev"].values[-1],
-        'trace_gases': {  # Reference profiles for trace gases
-            'CO2': {'ref_profile': np.ones(nlay)},  # Dummy profile for CO2
-            'CH4': {'ref_profile': np.ones(nlay)},  # Dummy profile for CH4
-            'H2O': {'ref_profile': np.ones(nlay)}   # Dummy profile for H2O
-        }
-    }
+    ref_profiles = RefProfiles()
+    for gas in ('CO2', 'CH4', 'H2O'):
+        ref_profiles.gases[gas] = np.ones(nlay)
+        ref_profiles.initial[gas] = 1.0
 
     # Define Level 1B product data (latitude and longitude)
     geometry = Geometry.from_shape((nalt, nact))
@@ -134,7 +128,7 @@ def simplified_level1b_to_level2_processor(config: dict) -> L2:
     geometry.deg2rad()
 
     # Create the output file using the prepared data
-    write_l2(filename, atm, l2, retrieval_init, geometry)
+    write_l2(filename, atm, l2, ref_profiles, geometry)
 
     print('=> l1bl2 finished successfully')
 

@@ -57,8 +57,8 @@ auto noise(const CKD& ckd,
     const Eigen::Ref<const ArrayXd> count_table(binning_table.count_table);
 #pragma omp parallel for
     for (int i_alt = 0; i_alt < l1_prod.n_alt; ++i_alt) {
-        const auto& var { g * Eigen::abs(l1_prod.signal.row(i_alt)) + n2 };
-        const auto& coad { l1_prod.noise.row(i_alt) };
+        const auto& var(g * Eigen::abs(l1_prod.signal.row(i_alt)) + n2);
+        const auto& coad(l1_prod.noise.row(i_alt));
         l1_prod.noise.row(i_alt) = Eigen::sqrt(var / (coad * count_table));
     }
 }
@@ -106,8 +106,8 @@ auto prnu(const CKD& ckd, const bool enabled, L1& l1_prod) -> void
 auto removeBadValues(const CKD& ckd, L1& l1_prod) -> void
 {
     const int n_cols { ckd.n_detector_cols };
-    const Eigen::ArrayXd col_indices(
-      Eigen::ArrayXd::LinSpaced(n_cols, 0, n_cols - 1));
+    const Eigen::ArrayXd col_indices =
+      Eigen::ArrayXd::LinSpaced(n_cols, 0, n_cols - 1);
 #pragma omp parallel for
     for (int i_alt = 0; i_alt < l1_prod.n_alt; ++i_alt) {
         Eigen::ArrayXd x_values(n_cols);
@@ -154,12 +154,12 @@ auto strayLight(const CKD& ckd,
 #pragma omp parallel for firstprivate(signal_fft, conv_result)
     for (int i_alt = 0; i_alt < l1_prod.n_alt; ++i_alt) {
         // Unbin the detector image
-        const ArrayXXd signal_unbin(
+        const ArrayXXd signal_unbin =
           binning_table.unbin(l1_prod.signal.row(i_alt))
             .reshaped<Eigen::RowMajor>(ckd.n_detector_rows,
-                                       ckd.n_detector_cols));
+                                       ckd.n_detector_cols);
         // "Ideal" signal, i.e. the one without stray light
-        ArrayXXd signal_ideal { signal_unbin };
+        ArrayXXd signal_ideal = signal_unbin;
         // Van Cittert algorithm
         for (int i_vc {}; i_vc < n_van_cittert; ++i_vc) {
             if (ckd.stray.n_kernels > 1) {
@@ -198,7 +198,7 @@ auto mapFromDetector(const CKD& ckd,
                                  ckd.wave.wavelengths.size());
     // Assume there is binning only across rows. From that determine
     // the number of rows of the binned detector image.
-    Eigen::ArrayXd rows(Eigen::ArrayXd::Zero(ckd.n_detector_rows_binned));
+    Eigen::ArrayXd rows = Eigen::ArrayXd::Zero(ckd.n_detector_rows_binned);
     for (int i {}; i < ckd.n_detector_rows_binned; ++i) {
         const double cur_bin_size { static_cast<double>(
           binning_table.binSize(i * ckd.n_detector_cols)) };
@@ -211,8 +211,8 @@ auto mapFromDetector(const CKD& ckd,
             rows[i] = rows[i - 1] + cur_bin_size + bin_size_half;
         }
     }
-    const Eigen::ArrayXd cols(Eigen::ArrayXd::LinSpaced(
-      ckd.n_detector_cols, 0.0, ckd.n_detector_cols - 1));
+    const Eigen::ArrayXd cols = Eigen::ArrayXd::LinSpaced(
+      ckd.n_detector_cols, 0.0, ckd.n_detector_cols - 1);
 #pragma omp parallel for
     for (int i_alt = 0; i_alt < l1_prod.n_alt; ++i_alt) {
         const BSpline2D bspline_2d_signal {
@@ -232,8 +232,8 @@ auto mapFromDetector(const CKD& ckd,
           l1_prod.spectra_noise(Eigen::seqN(i_alt * ckd.n_act, ckd.n_act),
                                 Eigen::all));
     }
-    l1_prod.signal = ArrayXXd {};
-    l1_prod.noise = ArrayXXd {};
+    l1_prod.signal.resize(0, 0);
+    l1_prod.noise.resize(0, 0);
     l1_prod.wavelengths = ckd.wave.wavelengths;
 }
 
@@ -259,8 +259,8 @@ static auto binRowCol(const int row_bin,
                       const int col_bin,
                       const ArrayXXd& array) -> ArrayXXd
 {
-    ArrayXXd array_binned(
-      ArrayXXd::Zero(array.rows() / row_bin, array.cols() / col_bin));
+    ArrayXXd array_binned =
+      ArrayXXd::Zero(array.rows() / row_bin, array.cols() / col_bin);
     for (int r {}; r < row_bin; ++r) {
         for (int c {}; c < col_bin; ++c) {
             array_binned += array(Eigen::seq(r, Eigen::last, row_bin),

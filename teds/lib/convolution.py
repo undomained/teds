@@ -158,7 +158,7 @@ class Kernel:
         # array corresponding to a target (convolved data)
         # wavelength. Do this for all wavelengths at once.
         first_in_wavelength = wavelengths_out - n_vals_half * wave_step
-        first_in_idx = np.searchsorted(wavelengths_in, first_in_wavelength)
+        first_in_idx = np.searchsorted(wavelengths_in, first_in_wavelength) - 1
         for i_wave in range(len(wavelengths_out)):
             idx_beg = first_in_idx[i_wave]
             conv[i_wave] = np.dot(isrf_values, data[idx_beg:idx_beg+n_vals])

@@ -78,7 +78,7 @@ def nc_write_lat(nc: Dataset | Group, data: npt.NDArray[np.floating]) -> None:
                             ('along_track_sample', 'across_track_sample'),
                             fill_value=default_fill)
     var.long_name = 'latitude at bin locations'
-    var.units = 'degrees'
+    var.units = 'degrees_north'
     var.valid_min = -90.0
     var.valid_max = 90.0
     var[:] = data
@@ -89,8 +89,8 @@ def nc_write_lon(nc: Dataset | Group, data: npt.NDArray[np.floating]) -> None:
                             'f8',
                             ('along_track_sample', 'across_track_sample'),
                             fill_value=default_fill)
-    var.long_name = 'longitudes at bin locations'
-    var.units = 'degrees'
+    var.long_name = 'longitude at bin locations'
+    var.units = 'degrees_east'
     var.valid_min = -180.0
     var.valid_max = 180.0
     var[:] = data

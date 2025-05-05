@@ -121,17 +121,22 @@ class OpticAbsProp:
 
     """
 
-    def __init__(self, wave:
-                 npt.NDArray[np.floating],
+    def __init__(self,
+                 wave: npt.NDArray[np.floating],
                  zlay: npt.NDArray[np.floating]) -> None:
         # Optical properties. One entry per species.
         self.props: list[SpeciesProperties] = []
         # Total optical thickness
-        self.taua = np.empty((0, 0))
+        self.taua = np.empty((wave.size, zlay.size))
         # Wavelengths [nm]
         self.wave = wave
-        # Vertical height layers, midpoints [m]
-        self.zlay = zlay
+
+    def check_wavelength_grid(
+            self, wave_lbl: npt.NDArray[np.floating]) -> None:
+        if (wave_lbl.size != self.taua.shape[0]):
+            log.error('absorption cross-sections have been generated for a '
+                      'different wavelength grid')
+            sys.exit(1)
 
     def get_prop(self, species: str) -> SpeciesProperties:
         """Return x-section and optical thickness from species name."""
@@ -157,8 +162,8 @@ class OpticAbsProp:
             atmosphere_data object
 
         """
-        nlay = self.zlay.size
         nwave = self.wave.size
+        nlay = self.taua.shape[1]
         nu_samp = 0.005  # Wavenumber sampling [1/cm] of cross sections
         # Loop over all isotopologues, id = HITRAN global isotopologue ID
         for id in molec_data.xsdb.keys():
@@ -199,9 +204,6 @@ class OpticAbsProp:
             atmospheric input and species to be combined to total optical depth
 
         """
-        nlay = self.zlay.size
-        nwave = self.wave.size
-
         # Cross sections are given in cm^2, atmospheric densities in
         # m^2
         conv_f = 1e-4
@@ -210,7 +212,7 @@ class OpticAbsProp:
             prop = self.get_prop(name)
             prop.tau_alt = prop.xsec * atm.get_gas(name).concentration * conv_f
 
-        self.taua = np.zeros((nwave, nlay))
+        self.taua[:] = 0
         for name in species_names:
             prop = self.get_prop(name)
             self.taua += prop.tau_alt
@@ -220,13 +222,13 @@ class OpticAbsProp:
         nc = Dataset(filename, 'w')
         nc.title = 'Absorption cross-sections of L2 gases'
         nc.description = 'Each group refers to one trace gas'
-        nc.createDimension('layer', len(self.zlay))
+        nc.createDimension('layer', self.taua.shape[1])
         nc.createDimension('wavelength', len(self.wave))
         for prop in self.props:
             grp = nc.createGroup(prop.name)
             var = grp.createVariable('xsec', 'f8', ('wavelength', 'layer'))
             var.long_name = 'absorption cross-section'
-            var.units = 'm2'
+            var.units = 'cm2'
             var.min_value = 0.0
             var.max_value = 1.0
             var[:] = prop.xsec

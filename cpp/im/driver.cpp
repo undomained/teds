@@ -20,7 +20,7 @@ auto driver(const SettingsIM& settings,
             const char* const argv[]) -> void
 {
     // Set up loggers and print general information
-    initLogging(false);
+    initLogging();
     printHeading("Tango instrument model", false);
     printSystemInfo(TANGO_PROJECT_VERSION,
                     TANGO_GIT_COMMIT_ABBREV,
@@ -28,8 +28,7 @@ auto driver(const SettingsIM& settings,
                     TANGO_EXECUTABLE,
                     TANGO_CXX_COMPILER,
                     TANGO_CXX_COMPILER_FLAGS,
-                    TANGO_LIBRARIES,
-                    settings.io_files.binning_table);
+                    TANGO_LIBRARIES);
 
     // Read in the CKD
     printHeading("Reading CKD and input data");
@@ -159,6 +158,8 @@ auto driver(const SettingsIM& settings,
         digitalToAnalog(settings.detector.nr_coadditions, l1_prod);
     }
 
+    spdlog::info("");
+    spdlog::info("Writing output");
     writeL1(settings.io_files.l1a,
             settings.getConfig(),
             l1_prod,

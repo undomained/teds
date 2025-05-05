@@ -36,7 +36,7 @@ BinningTable::BinningTable(const int detector_n_rows,
 
 auto BinningTable::bin(const Eigen::ArrayXd& data) const -> Eigen::ArrayXd
 {
-    Eigen::ArrayXd data_binned(Eigen::ArrayXd::Zero(count_table.size()));
+    Eigen::ArrayXd data_binned = Eigen::ArrayXd::Zero(count_table.size());
     for (long int i {}; i < data.size(); ++i) {
         data_binned(bin_indices[i]) += data(i);
     }
@@ -46,7 +46,7 @@ auto BinningTable::bin(const Eigen::ArrayXd& data) const -> Eigen::ArrayXd
 
 auto BinningTable::bin(const ArrayXXd& data) const -> Eigen::ArrayXd
 {
-    Eigen::ArrayXd data_binned(Eigen::ArrayXd::Zero(count_table.size()));
+    Eigen::ArrayXd data_binned = Eigen::ArrayXd::Zero(count_table.size());
     for (long int i {}; i < data.size(); ++i) {
         data_binned(bin_indices[i]) += data.data()[i];
     }
@@ -57,7 +57,7 @@ auto BinningTable::bin(const ArrayXXd& data) const -> Eigen::ArrayXd
 auto BinningTable::binMulti(const ArrayXXd& data,
                             const bool scale_by_bin_size) const -> ArrayXXd
 {
-    ArrayXXd data_binned(ArrayXXd::Zero(data.rows(), count_table.size()));
+    ArrayXXd data_binned = ArrayXXd::Zero(data.rows(), count_table.size());
     for (long int i_row {}; i_row < data.rows(); ++i_row) {
         for (long int i {}; i < data.cols(); ++i) {
             data_binned(i_row, bin_indices[i]) += data(i_row, i);
@@ -71,7 +71,7 @@ auto BinningTable::binMulti(const ArrayXXd& data,
 
 auto BinningTable::bin(const ArrayXb& data) const -> ArrayXb
 {
-    ArrayXb data_binned(ArrayXb::Constant(count_table.size(), false));
+    ArrayXb data_binned = ArrayXb::Constant(count_table.size(), false);
     for (long int i {}; i < data.size(); ++i) {
         data_binned[bin_indices[i]] = data_binned[bin_indices[i]] || data[i];
     }
@@ -81,7 +81,7 @@ auto BinningTable::bin(const ArrayXb& data) const -> ArrayXb
 auto BinningTable::unbin(const Eigen::Ref<const Eigen::ArrayXd> data) const
   -> Eigen::ArrayXd
 {
-    Eigen::ArrayXd data_unbinned(Eigen::ArrayXd::Zero(bin_indices.size()));
+    Eigen::ArrayXd data_unbinned = Eigen::ArrayXd::Zero(bin_indices.size());
     for (size_t i {}; i < bin_indices.size(); ++i) {
         data_unbinned(i) = data(bin_indices[i]);
     }

@@ -17,6 +17,7 @@ const std::map<std::string, tango::ProcLevel> proc_level_to_enum {
     { "swath", tango::ProcLevel::swath },
     { "l1b", tango::ProcLevel::l1b },
     { "sgm", tango::ProcLevel::sgm },
+    { "l2", tango::ProcLevel::l2 },
 };
 
 // Mapping between a binning mode and its corresponding entry in Unbin

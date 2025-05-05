@@ -2,6 +2,7 @@
 
 #include <common/ckd.h>
 #include <common/cubic_spline.h>
+#include <common/eigen.h>
 #include <common/fourier.h>
 #include <common/l1.h>
 

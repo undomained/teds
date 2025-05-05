@@ -51,6 +51,7 @@ find_package(Python3 COMPONENTS Interpreter Development NumPy)
 add_subdirectory(cpp/common)
 add_subdirectory(cpp/l1al1b)
 add_subdirectory(cpp/im)
+add_subdirectory(cpp/l1l2)
 add_subdirectory(tests)
 
 # Only build the C++ extensions for Python if the Python development

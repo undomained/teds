@@ -11,6 +11,8 @@
 #include "constants.h"
 #include "setting.h"
 
+#include <Eigen/Dense>
+#include <map>
 #include <spdlog/pattern_formatter.h>
 
 namespace netCDF {
@@ -23,6 +25,7 @@ namespace tango {
 
 class Geometry;
 class L1;
+class L2;
 
 // Define a new spdlog formatter flag. The primary purpose is to show
 // labels such as [warning] for warnings but no label for regular
@@ -38,9 +41,8 @@ public:
 
 // Set up two loggers: one with a verbose pattern (mostly used
 // throughout the code) and a plain one (clean pattern, i.e. prints
-// just the message text). The argument sets the logger level to
-// either debug or info.
-auto initLogging(const bool set_debug_level) -> void;
+// just the message text).
+auto initLogging() -> void;
 
 // Print the name of a processing section. For example, the CKD
 // initialization would start with
@@ -59,8 +61,13 @@ auto printSystemInfo(const std::string& project_version,
                      const std::string& executable,
                      const std::string& compiler,
                      const std::string& compiler_flags,
-                     const std::string& libraries,
-                     const std::string& binning_table) -> void;
+                     const std::string& libraries) -> void;
+
+// Print the percentage of work done (iteration / work_size). Call
+// this in OpenMP parallel for loops with dynamic scheduling.
+auto printPercentage(const int iteration,
+                     const size_t work_size,
+                     const std::string_view text) -> void;
 
 // Check if filename exists. If required == true and filename is an
 // empty string raise an error, otherwise return without checking.
@@ -72,6 +79,10 @@ auto checkFileWritable(const std::string& filename) -> void;
 
 auto splitString(const std::string& list,
                  const char delimiter) -> std::vector<std::string>;
+
+// Convert word to lower or upper case
+auto lower(const std::string& str) -> std::string;
+auto upper(const std::string& str) -> std::string;
 
 // Convert a process level enum to string suitable for displaying in
 // output.
@@ -105,6 +116,26 @@ auto writeL1(const std::string& filename,
              const bool compress,
              const int argc = 0,
              const char* const argv[] = nullptr) -> void;
+
+// Write L2 product to file
+auto writeL2(const std::string& filename,
+             const std::string& config,
+             const L2& l2,
+             Geometry& geometry,
+             const Eigen::ArrayXd& z_lay,
+             const std::map<std::string, Eigen::ArrayXd>& ref_profiles,
+             const bool compress,
+             const int argc,
+             const char* const argv[] = nullptr) -> void;
+
+// Write additional L2 diagnostics information to a separate file
+auto writeL2Diagnostics(const std::string& filename,
+                        const std::string& config,
+                        const L1& l1b,
+                        const L2& l2,
+                        const bool compress,
+                        const int argc,
+                        const char* const argv[]) -> void;
 
 // Copy geolocation data from the geometry file directly to the L1B
 // product. This is a placeholder function until geolocation is

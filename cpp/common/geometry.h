@@ -41,8 +41,8 @@ auto interpolateQuaternion(
 // by value. Algorithm taken from Joint Polar Satellite System (JPPS)
 // VIIRS Geolocation Algorithm Theoretical Basis Document (ATBD)
 // section 3.3.2.2.1.
-auto intersectEllipsoid(Eigen::Vector3d los,
-                        Eigen::Vector3d sat) -> Eigen::Vector3d;
+auto intersectEllipsoid(const Eigen::Vector3d& los,
+                        const Eigen::Vector3d& sat) -> Eigen::Vector3d;
 
 // Given a digital elevation model, a LOS vector, the satellite
 // position in cartesian coordinates, and the ellipsoid intersection

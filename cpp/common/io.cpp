@@ -6,6 +6,7 @@
 #include "cubic_spline.h"
 #include "geometry.h"
 #include "l1.h"
+#include "l2.h"
 #include "time.h"
 
 #include <filesystem>
@@ -17,6 +18,9 @@
 #include <yaml-cpp/yaml.h>
 
 namespace tango {
+
+// Compression will be enabled only for official products (L1A, L1B, L2)
+constexpr int compression_level { 5 };
 
 auto tango_formatter_flag::format(const spdlog::details::log_msg& log_msg,
                                   const std::tm& /* tm_time */,
@@ -52,7 +56,7 @@ auto tango_formatter_flag::clone() const
     return spdlog::details::make_unique<tango_formatter_flag>();
 }
 
-auto initLogging(const bool set_debug_level) -> void
+auto initLogging() -> void
 {
     // Only if the logger does not already exist
     if (!spdlog::get("plain")) {
@@ -63,11 +67,7 @@ auto initLogging(const bool set_debug_level) -> void
         spdlog::stdout_color_mt("plain");
         spdlog::get("plain")->set_pattern("%v");
     }
-    if (set_debug_level) {
-        spdlog::set_level(spdlog::level::debug);
-    } else {
-        spdlog::set_level(spdlog::level::info);
-    }
+    spdlog::set_level(spdlog::level::info);
 }
 
 auto printHeading(const std::string& heading,
@@ -88,8 +88,7 @@ auto printSystemInfo(const std::string& project_version,
                      const std::string& executable,
                      const std::string& compiler,
                      const std::string& compiler_flags,
-                     const std::string& libraries,
-                     const std::string& binning_table) -> void
+                     const std::string& libraries) -> void
 {
     spdlog::get("plain")->info("Version                 : {}", project_version);
     if (git_commit != "GITDIR-N") {
@@ -115,7 +114,32 @@ auto printSystemInfo(const std::string& project_version,
             spdlog::get("plain")->info("                          {}", lib);
         }
     }
-    spdlog::get("plain")->info("Binning table file      : {}", binning_table);
+}
+
+auto printPercentage(const int iteration,
+                     const size_t work_size,
+                     const std::string_view text) -> void
+{
+    if (omp_get_thread_num() != 0) {
+        return;
+    }
+    // Number of times this function has been called by the first
+    // process. The actual iteration number should always be larger
+    // than the adjusted iteration number. If not then the adjusted
+    // iteration number is from a previous parallel for loop and needs
+    // to be reset.
+    static int adjusted_iteration { fill::i };
+    static size_t prev_work_size {};
+    if (iteration < adjusted_iteration || iteration < omp_get_num_threads()
+        || work_size != prev_work_size) {
+        adjusted_iteration = fill::i;
+        prev_work_size = work_size;
+    }
+    ++adjusted_iteration;
+    spdlog::info(
+      "{} {:6.2f}%",
+      text,
+      std::min(100.0, 1e2 * iteration / static_cast<double>(work_size)));
 }
 
 auto checkPresenceOfFile(const Setting<std::string>& setting,
@@ -163,6 +187,24 @@ auto splitString(const std::string& list,
     return strings;
 }
 
+auto lower(const std::string& str) -> std::string
+{
+    std::string str_l { str };
+    for (size_t i {}; i < str_l.length(); ++i) {
+        str_l[i] = std::tolower(str_l[i]);
+    }
+    return str_l;
+}
+
+auto upper(const std::string& str) -> std::string
+{
+    std::string str_u { str };
+    for (size_t i {}; i < str_u.length(); ++i) {
+        str_u[i] = std::toupper(str_u[i]);
+    }
+    return str_u;
+}
+
 [[nodiscard]] auto procLevelToString(const ProcLevel proc_level) -> std::string
 {
     switch (proc_level) {
@@ -188,6 +230,8 @@ auto splitString(const std::string& list,
         return "L1B";
     case ProcLevel::sgm:
         return "SGM";
+    case ProcLevel::l2:
+        return "L2";
     case ProcLevel::n_levels:
     default:
         throw std::invalid_argument { "invalid process identifier" };
@@ -222,10 +266,10 @@ auto readGeometry(const netCDF::NcGroup& grp,
     geo.vaa *= math::deg_to_rad;
     geo.sza *= math::deg_to_rad;
     geo.saa *= math::deg_to_rad;
-    if (const auto var { grp.getVar("sensor_zenith") }; var.isNull()) {
+    if (const auto var { grp.getVar("height") }; var.isNull()) {
         geo.height = 0.0;
     } else {
-        var.getVar(starts, counts, geo.vza.data());
+        var.getVar(starts, counts, geo.height.data());
     }
 }
 
@@ -368,30 +412,40 @@ auto readL1(const std::string& filename,
     }
 }
 
-auto writeL1(const std::string& filename,
-             const std::string& config,
-             const L1& l1_prod,
-             const bool compress,
-             const int argc,
-             const char* const argv[]) -> void
+// Apply compression to a NetCDF variable
+static auto setCompression(const bool compress,
+                           netCDF::NcVar& nc_var,
+                           std::vector<size_t> chunksizes) -> void
 {
-    // L1B or lower level product
-    netCDF::NcFile nc { filename, netCDF::NcFile::replace };
-    spdlog::info("Writing output data (calibration level: {})",
-                 procLevelToString(l1_prod.level));
+    if (compress) {
+        nc_var.setCompression(true, true, compression_level);
+        nc_var.setChunking(netCDF::NcVar::nc_CHUNKED, chunksizes);
+    }
+}
 
+// Write global attributes to a NetCDF file
+static auto writeHeader(netCDF::NcFile& nc,
+                        const ProcLevel level,
+                        const std::string& filename,
+                        const std::string& config,
+                        const int argc,
+                        const char* const argv[]) -> void
+{
     // Global attributes
     nc.putAtt("Conventions", "CF-1.11");
-    if (l1_prod.level == ProcLevel::l1b) {
+    if (level == ProcLevel::l2) {
+        nc.putAtt("title", "Tango Carbon level 2 data");
+    } else if (level == ProcLevel::l1b) {
         nc.putAtt("title", "Tango Carbon level 1B data");
     } else {
         nc.putAtt("title", "Tango Carbon level 1A data");
     }
-    if (l1_prod.level == ProcLevel::l1a || l1_prod.level == ProcLevel::l1b) {
-        nc.putAtt("product_type", procLevelToString(l1_prod.level));
+    if (level == ProcLevel::l1a || level == ProcLevel::l1b
+        || level == ProcLevel::l2) {
+        nc.putAtt("product_type", procLevelToString(level));
     } else {
         nc.putAtt("product_type", "L1X");
-        nc.putAtt("l1x_level", netCDF::ncInt, static_cast<int>(l1_prod.level));
+        nc.putAtt("l1x_level", netCDF::ncInt, static_cast<int>(level));
     }
     nc.putAtt("project", "TANGO");
     nc.putAtt("instrument", "Carbon");
@@ -414,17 +468,76 @@ auto writeL1(const std::string& filename,
     };
     nc.putAtt("processing_version", processing_version);
 
-    // Compression will be enabled only for official products (L1A, L1B)
-    constexpr int compression_level { 5 };
-
-    const size_t n_alt { static_cast<size_t>(l1_prod.n_alt) };
-    const auto nc_alt { nc.addDim("along_track_sample", n_alt) };
-
     auto nc_var { nc.addVar("configuration", netCDF::ncString) };
     nc_var.putAtt("comment",
                   "configuration parameters used for producing this file");
     const char* conf_char { config.c_str() };
     nc_var.putVar(&conf_char);
+}
+
+// Write latitudes to a NetCDF group. Values are converted to degrees
+// first and brought to the range -180..180.
+static auto writeLat(netCDF::NcGroup& nc_grp,
+                     const std::vector<netCDF::NcDim>& geometry_shape,
+                     ArrayXXd& lat) -> void
+{
+    auto nc_var { nc_grp.addVar("latitude", netCDF::ncDouble, geometry_shape) };
+    nc_var.putAtt("long_name", "latitude at bin locations");
+    nc_var.putAtt("_FillValue", netCDF::ncDouble, fill::d);
+    nc_var.putAtt("valid_min", netCDF::ncDouble, -90.0);
+    nc_var.putAtt("valid_max", netCDF::ncDouble, 90.0);
+    nc_var.putAtt("units", "degrees_north");
+    moduloAndConvertAngles(lat);
+    nc_var.putVar(lat.data());
+}
+
+// Write longitudes to a NetCDF group
+static auto writeLon(netCDF::NcGroup& nc_grp,
+                     const std::vector<netCDF::NcDim>& geometry_shape,
+                     ArrayXXd& lon) -> void
+{
+    auto nc_var { nc_grp.addVar(
+      "longitude", netCDF::ncDouble, geometry_shape) };
+    nc_var.putAtt("long_name", "longitude at bin locations");
+    nc_var.putAtt("_FillValue", netCDF::ncDouble, fill::d);
+    nc_var.putAtt("valid_min", netCDF::ncDouble, -180.0);
+    nc_var.putAtt("valid_max", netCDF::ncDouble, 180.0);
+    nc_var.putAtt("units", "degrees_east");
+    moduloAndConvertAngles(lon);
+    nc_var.putVar(lon.data());
+}
+
+// Write heights (elevation from sea level) to a NetCDF group
+static auto writeHeight(netCDF::NcGroup& nc_grp,
+                        const std::vector<netCDF::NcDim>& geometry_shape,
+                        const ArrayXXd& height) -> void
+{
+    auto nc_var { nc_grp.addVar("height", netCDF::ncDouble, geometry_shape) };
+    nc_var.putAtt("long_name", "height from sea level at bin locations");
+    nc_var.putAtt("_FillValue", netCDF::ncDouble, fill::d);
+    nc_var.putAtt("valid_min", netCDF::ncDouble, -1000.0);
+    nc_var.putAtt("valid_max", netCDF::ncDouble, 10000.0);
+    nc_var.putAtt("units", "m");
+    nc_var.putVar(height.data());
+}
+
+auto writeL1(const std::string& filename,
+             const std::string& config,
+             const L1& l1_prod,
+             const bool compress,
+             const int argc,
+             const char* const argv[]) -> void
+{
+    // L1B or lower level product
+    netCDF::NcFile nc { filename, netCDF::NcFile::replace };
+    spdlog::info("Writing output data (calibration level: {})",
+                 procLevelToString(l1_prod.level));
+
+    writeHeader(nc, l1_prod.level, filename, config, argc, argv);
+
+    const size_t n_alt { static_cast<size_t>(l1_prod.n_alt) };
+    const auto nc_alt { nc.addDim("along_track_sample", n_alt) };
+    netCDF::NcVar nc_var {};
 
     // Detector image attributes
     if (l1_prod.level < ProcLevel::l1b) {
@@ -501,11 +614,7 @@ auto writeL1(const std::string& filename,
             nc_var.putAtt("units", "counts");
             nc_var.putAtt("valid_min", netCDF::ncInt, 0);
             nc_var.putAtt("valid_max", netCDF::ncInt, 60000);
-            if (compress) {
-                nc_var.setCompression(true, true, compression_level);
-                std::vector<size_t> chunksize { 1, n_bins };
-                nc_var.setChunking(netCDF::NcVar::nc_CHUNKED, chunksize);
-            }
+            setCompression(compress, nc_var, { 1, n_bins });
             nc_var.putVar(l1_prod.signal.data());
         } else {
             nc_var = nc_grp.addVar(
@@ -550,11 +659,8 @@ auto writeL1(const std::string& filename,
         nc_var.putAtt("units", "nm-1 s-1 sr-1 m-2");
         nc_var.putAtt("valid_min", netCDF::ncDouble, 0.0);
         nc_var.putAtt("valid_max", netCDF::ncDouble, 1e20);
-        std::vector<size_t> chunksize { 1, n_act, n_wavelength };
-        if (compress) {
-            nc_var.setCompression(true, true, compression_level);
-            nc_var.setChunking(netCDF::NcVar::nc_CHUNKED, chunksize);
-        }
+        std::vector<size_t> chunksizes { 1, n_act, n_wavelength };
+        setCompression(compress, nc_var, chunksizes);
         nc_var.putVar(l1_prod.spectra.data());
 
         if (l1_prod.spectra_noise.size() > 0) {
@@ -567,10 +673,7 @@ auto writeL1(const std::string& filename,
             nc_var.putAtt("units", "nm-1 s-1 sr-1 m-2");
             nc_var.putAtt("valid_min", netCDF::ncDouble, 0.0);
             nc_var.putAtt("valid_max", netCDF::ncDouble, 1e20);
-            if (compress) {
-                nc_var.setCompression(true, true, compression_level);
-                nc_var.setChunking(netCDF::NcVar::nc_CHUNKED, chunksize);
-            }
+            setCompression(compress, nc_var, chunksizes);
             nc_var.putVar(l1_prod.spectra_noise.data());
         }
     }
@@ -588,31 +691,11 @@ auto writeL1(const std::string& filename,
     auto nc_grp { nc.addGroup("geolocation_data") };
     const std::vector<netCDF::NcDim> geometry_shape { nc_alt, nc_act };
 
-    nc_var = nc_grp.addVar("latitude", netCDF::ncDouble, geometry_shape);
-    nc_var.putAtt("long_name", "latitude at bin locations");
-    nc_var.putAtt("_FillValue", netCDF::ncDouble, fill::d);
-    nc_var.putAtt("valid_min", netCDF::ncDouble, -90.0);
-    nc_var.putAtt("valid_max", netCDF::ncDouble, 90.0);
-    nc_var.putAtt("units", "degrees_north");
-    moduloAndConvertAngles(geo.lat);
-    nc_var.putVar(geo.lat.data());
+    writeLat(nc_grp, geometry_shape, geo.lat);
 
-    nc_var = nc_grp.addVar("longitude", netCDF::ncDouble, geometry_shape);
-    nc_var.putAtt("long_name", "longitude at bin locations");
-    nc_var.putAtt("_FillValue", netCDF::ncDouble, fill::d);
-    nc_var.putAtt("valid_min", netCDF::ncDouble, -180.0);
-    nc_var.putAtt("valid_max", netCDF::ncDouble, 180.0);
-    nc_var.putAtt("units", "degrees_east");
-    moduloAndConvertAngles(geo.lon);
-    nc_var.putVar(geo.lon.data());
+    writeLon(nc_grp, geometry_shape, geo.lon);
 
-    nc_var = nc_grp.addVar("height", netCDF::ncDouble, geometry_shape);
-    nc_var.putAtt("long_name", "height from sea level at bin locations");
-    nc_var.putAtt("_FillValue", netCDF::ncDouble, fill::d);
-    nc_var.putAtt("valid_min", netCDF::ncDouble, -1000.0);
-    nc_var.putAtt("valid_max", netCDF::ncDouble, 10000.0);
-    nc_var.putAtt("units", "m");
-    nc_var.putVar(geo.height.data());
+    writeHeight(nc_grp, geometry_shape, geo.height);
 
     nc_var = nc_grp.addVar("sensor_zenith", netCDF::ncDouble, geometry_shape);
     nc_var.putAtt("long_name", "sensor zenith angle at bin locations");
@@ -649,6 +732,296 @@ auto writeL1(const std::string& filename,
     nc_var.putAtt("units", "degrees");
     moduloAndConvertAngles(geo.saa);
     nc_var.putVar(geo.saa.data());
+}
+
+auto writeL2(const std::string& filename,
+             const std::string& config,
+             const L2& l2,
+             Geometry& geometry,
+             const Eigen::ArrayXd& z_lay,
+             const std::map<std::string, Eigen::ArrayXd>& ref_profiles,
+             const bool compress,
+             const int argc,
+             const char* const argv[]) -> void
+{
+    netCDF::NcFile nc { filename, netCDF::NcFile::replace };
+
+    writeHeader(nc, ProcLevel::l2, filename, config, argc, argv);
+
+    const auto nc_alt { nc.addDim("along_track_sample", geometry.lat.rows()) };
+    const auto nc_act { nc.addDim("across_track_sample", geometry.lat.cols()) };
+    const auto nc_lay { nc.addDim("layers",
+                                  l2.col_avg_kernels.at("CO2").cols()) };
+
+    // Work variables
+    netCDF::NcGroup nc_grp {};
+    netCDF::NcVar nc_var {};
+    std::vector<double> buf {};
+    std::vector<size_t> chunksizes { nc_alt.getSize(), nc_act.getSize() };
+
+    const std::map<std::string, double> scales { { "CO2", 1e6 },
+                                                 { "CH4", 1e9 },
+                                                 { "H2O", 1e6 } };
+
+    nc_var = nc.addVar("zlay", netCDF::ncDouble, nc_lay);
+    nc_var.putAtt("long_name", "central layer height");
+    nc_var.putAtt("_FillValue", netCDF::ncDouble, fill::d);
+    nc_var.putAtt("valid_min", netCDF::ncDouble, 0.0);
+    nc_var.putAtt("valid_max", netCDF::ncDouble, 1e+5);
+    nc_var.putAtt("units", "m");
+    nc_var.putVar(z_lay.data());
+
+    for (const std::string gas : { "CO2", "CH4" }) {
+        const std::string xgas { 'x' + lower(gas) };
+        const std::string xgas_proxy { 'X' + gas + " proxy" };
+
+        nc_var =
+          nc.addVar(xgas + "_proxy", netCDF::ncDouble, { nc_alt, nc_act });
+        setCompression(compress, nc_var, chunksizes);
+        nc_var.putAtt("long_name", xgas_proxy + " dry air column mixing ratio");
+        nc_var.putAtt("_FillValue", netCDF::ncDouble, fill::d);
+        nc_var.putAtt("valid_min", netCDF::ncDouble, 0.0);
+        nc_var.putAtt("valid_max", netCDF::ncDouble, 2e20);
+        nc_var.putAtt("units", gas == "CH4" ? "ppbv" : "ppmv");
+        nc_var.putVar((l2.proxys.at(gas) * scales.at(gas)).eval().data());
+
+        nc_var = nc.addVar(
+          "precision_" + xgas + "_proxy", netCDF::ncDouble, { nc_alt, nc_act });
+        setCompression(compress, nc_var, chunksizes);
+        nc_var.putAtt("long_name",
+                      xgas_proxy + " dry air column mixing ratio precision");
+        nc_var.putAtt("_FillValue", netCDF::ncDouble, fill::d);
+        nc_var.putAtt("valid_min", netCDF::ncDouble, 0.0);
+        nc_var.putAtt("valid_max", netCDF::ncDouble, 2e20);
+        nc_var.putAtt("units", gas == "CH4" ? "ppbv" : "ppmv");
+        nc_var.putVar(
+          (l2.proxy_precisions.at(gas) * scales.at(gas)).eval().data());
+
+        nc_var = nc.addVar(
+          "accuracy_" + xgas + "_proxy", netCDF::ncDouble, { nc_alt, nc_act });
+        setCompression(compress, nc_var, chunksizes);
+        nc_var.putAtt("long_name",
+                      xgas_proxy + " dry air column mixing ratio accuracy");
+        nc_var.putAtt("_FillValue", netCDF::ncDouble, fill::d);
+        nc_var.putAtt("valid_min", netCDF::ncDouble, 0.0);
+        nc_var.putAtt("valid_max", netCDF::ncDouble, 300.0);
+        nc_var.putAtt("units", gas == "CH4" ? "ppbv" : "ppmv");
+        buf.assign(nc_alt.getSize() * nc_act.getSize(), 99999.0);
+        nc_var.putVar(buf.data());
+
+        nc_var = nc.addVar(
+          "qa_value_" + xgas + "_proxy", netCDF::ncDouble, { nc_alt, nc_act });
+        setCompression(compress, nc_var, chunksizes);
+        nc_var.putAtt("long_name",
+                      xgas_proxy
+                        + " dry air column mixing ratio quality value");
+        nc_var.putAtt("_FillValue", netCDF::ncDouble, fill::d);
+        nc_var.putAtt("valid_min", netCDF::ncDouble, 0.0);
+        nc_var.putAtt("valid_max", netCDF::ncDouble, 300.0);
+        buf.assign(nc_alt.getSize() * nc_act.getSize(), 100.0);
+        nc_var.putVar(buf.data());
+    }
+
+    for (const std::string gas : { "CO2", "CH4", "H2O" }) {
+        const std::string xgas { 'x' + lower(gas) };
+        nc_var = nc.addVar("col_avg_kernel_" + xgas,
+                           netCDF::ncDouble,
+                           { nc_alt, nc_act, nc_lay });
+        setCompression(
+          compress, nc_var, { 1, nc_act.getSize(), nc_lay.getSize() });
+        nc_var.putAtt("long_name",
+                      lower(gas) + " column averaging kernel of " + xgas);
+        nc_var.putAtt("_FillValue", netCDF::ncDouble, fill::d);
+        nc_var.putAtt("valid_min", netCDF::ncDouble, 0.0);
+        nc_var.putAtt("valid_max", netCDF::ncDouble, 1e28);
+        nc_var.putAtt("units", "molecules / cm2");
+        nc_var.putVar(l2.col_avg_kernels.at(gas).data());
+    }
+
+    nc_var = nc.addVar("aquisition_time", netCDF::ncDouble, nc_alt);
+    nc_var.putAtt("long_name", "aquisition time of sensing in UTC");
+    nc_var.putAtt("_FillValue", netCDF::ncDouble, fill::d);
+    nc_var.putAtt("valid_min", netCDF::ncDouble, 0.0);
+    nc_var.putAtt("valid_max", netCDF::ncDouble, 1e+25);
+    nc_var.putAtt("units", "s");
+    buf.assign(nc_alt.getSize(), 99999.0);
+    nc_var.putVar(buf.data());
+
+    nc_var = nc.addVar("albedo", netCDF::ncDouble, { nc_alt, nc_act });
+    setCompression(compress, nc_var, chunksizes);
+    nc_var.putAtt("long_name", "wavelength-independent component of albedo");
+    nc_var.putAtt("_FillValue", netCDF::ncDouble, fill::d);
+    nc_var.putAtt("valid_min", netCDF::ncDouble, 0.0);
+    nc_var.putAtt("valid_max", netCDF::ncDouble, 1.0);
+    nc_var.putAtt("units", "s");
+    nc_var.putVar(l2.albedo0.data());
+
+    nc_var = nc.addVar("spectral_shift", netCDF::ncDouble, { nc_alt, nc_act });
+    setCompression(compress, nc_var, chunksizes);
+    nc_var.putAtt("long_name", "constant shift of spectral calibration");
+    nc_var.putAtt("_FillValue", netCDF::ncDouble, fill::d);
+    nc_var.putAtt("valid_min", netCDF::ncDouble, 0.0);
+    nc_var.putAtt("valid_max", netCDF::ncDouble, 10.0);
+    nc_var.putAtt("units", "nm");
+    nc_var.putVar(l2.spec_shift.data());
+
+    nc_var =
+      nc.addVar("spectral_squeeze", netCDF::ncDouble, { nc_alt, nc_act });
+    setCompression(compress, nc_var, chunksizes);
+    nc_var.putAtt("long_name", "squeeze of spectral calibration");
+    nc_var.putAtt("_FillValue", netCDF::ncDouble, fill::d);
+    nc_var.putAtt("valid_min", netCDF::ncDouble, 0.0);
+    nc_var.putAtt("valid_max", netCDF::ncDouble, 10.0);
+    nc_var.putVar(l2.spec_squeeze.data());
+
+    nc_grp = nc.addGroup("non_scattering_retrieval");
+    for (const std::string gas : { "CO2", "CH4", "H2O" }) {
+        const std::string xgas { 'x' + lower(gas) };
+        nc_var = nc_grp.addVar(xgas, netCDF::ncDouble, { nc_alt, nc_act });
+        setCompression(compress, nc_var, chunksizes);
+        nc_var.putAtt("long_name",
+                      lower(gas) + " dry air column mixing ratio " + xgas);
+        nc_var.putAtt("_FillValue", netCDF::ncDouble, fill::d);
+        nc_var.putAtt("valid_min", netCDF::ncDouble, 0.0);
+        nc_var.putAtt("valid_max", netCDF::ncDouble, 1e4);
+        nc_var.putAtt("units", gas == "CH4" ? "ppbv" : "ppmv");
+        nc_var.putVar(
+          (l2.mixing_ratios.at(gas) * scales.at(gas)).eval().data());
+
+        nc_var = nc_grp.addVar(
+          "precision_" + xgas, netCDF::ncDouble, { nc_alt, nc_act });
+        setCompression(compress, nc_var, chunksizes);
+        nc_var.putAtt("long_name",
+                      lower(gas) + " precision of dry air column mixing ratio "
+                        + xgas);
+        nc_var.putAtt("_FillValue", netCDF::ncDouble, fill::d);
+        nc_var.putAtt("valid_min", netCDF::ncDouble, 0.0);
+        nc_var.putAtt("valid_max", netCDF::ncDouble, 1e4);
+        nc_var.putAtt("units", gas == "CH4" ? "ppbv" : "ppmv");
+        nc_var.putVar((l2.precisions.at(gas) * scales.at(gas)).eval().data());
+    }
+
+    nc_grp = nc.addGroup("geolocation_data");
+    writeLat(nc_grp, { nc_alt, nc_act }, geometry.lat);
+    writeLon(nc_grp, { nc_alt, nc_act }, geometry.lon);
+    writeHeight(nc_grp, { nc_alt, nc_act }, geometry.height);
+
+    nc_grp = nc.addGroup("prior");
+    for (const std::string gas : { "CO2", "CH4", "H2O" }) {
+        nc_var =
+          nc_grp.addVar("apri_prof_" + lower(gas), netCDF::ncDouble, nc_lay);
+        nc_var.putAtt("long_name",
+                      "a priori profile " + lower(gas)
+                        + " in layer column density");
+        nc_var.putAtt("_FillValue", netCDF::ncDouble, fill::d);
+        nc_var.putAtt("valid_min", netCDF::ncDouble, 0.0);
+        nc_var.putAtt("valid_max", netCDF::ncDouble, 1e28);
+        nc_var.putAtt("units", "molecules / cm2");
+        nc_var.putVar(ref_profiles.at(gas).data());
+    }
+    nc_var =
+      nc_grp.addVar("surface_pressure", netCDF::ncDouble, { nc_alt, nc_act });
+    setCompression(compress, nc_var, chunksizes);
+    nc_var.putAtt("long_name", "surface pressure");
+    nc_var.putAtt("_FillValue", netCDF::ncDouble, fill::d);
+    nc_var.putAtt("valid_min", netCDF::ncDouble, 0.0);
+    nc_var.putAtt("valid_max", netCDF::ncDouble, 1400.0);
+    buf.assign(nc_alt.getSize() * nc_act.getSize(), 1013.0);
+    nc_var.putVar(buf.data());
+
+    nc_grp = nc.addGroup("diagnostics");
+
+    nc_var =
+      nc_grp.addVar("processing_flag", netCDF::ncShort, { nc_alt, nc_act });
+    setCompression(compress, nc_var, chunksizes);
+    nc_var.putAtt("long_name",
+                  "processing flag to indicate processor anomalies");
+    nc_var.putAtt("_FillValue", netCDF::ncShort, fill::i);
+    nc_var.putAtt("valid_min", netCDF::ncShort, 0);
+    nc_var.putAtt("valid_max", netCDF::ncShort, 101);
+    std::vector<int16_t> buf_i16(nc_alt.getSize() * nc_act.getSize(), 100);
+    nc_var.putVar(buf_i16.data());
+
+    nc_var = nc_grp.addVar("convergence", netCDF::ncByte, { nc_alt, nc_act });
+    setCompression(compress, nc_var, chunksizes);
+    nc_var.putAtt("long_name", "whether pixel converged");
+    nc_var.putAtt("_FillValue", netCDF::ncByte, 7);
+    nc_var.putAtt("valid_min", netCDF::ncByte, 0);
+    nc_var.putAtt("valid_max", netCDF::ncByte, 1);
+    std::vector<uint8_t> buf_u8(nc_alt.getSize() * nc_act.getSize());
+    for (int i {}; i < static_cast<int>(buf_u8.size()); ++i) {
+        buf_u8[i] =
+          static_cast<bool>(l2.converged.reshaped<Eigen::RowMajor>()(i));
+    }
+    nc_var.putVar(buf_u8.data());
+
+    nc_var = nc_grp.addVar("iterations", netCDF::ncInt, { nc_alt, nc_act });
+    setCompression(compress, nc_var, chunksizes);
+    nc_var.putAtt("long_name", "number of iterations");
+    nc_var.putAtt("_FillValue", netCDF::ncInt, fill::i);
+    nc_var.putAtt("valid_min", netCDF::ncInt, 0);
+    nc_var.putAtt("valid_max", netCDF::ncInt, 100);
+    nc_var.putVar(l2.iterations.data());
+
+    nc_var = nc_grp.addVar("chi2", netCDF::ncDouble, { nc_alt, nc_act });
+    setCompression(compress, nc_var, chunksizes);
+    nc_var.putAtt("long_name", "spectral chi square of the fit");
+    nc_var.putAtt("_FillValue", netCDF::ncDouble, fill::i);
+    nc_var.putAtt("valid_min", netCDF::ncDouble, 0.0);
+    nc_var.putAtt("valid_max", netCDF::ncDouble, 100.0);
+    nc_var.putVar(l2.chi2.data());
+}
+
+auto writeL2Diagnostics(const std::string& filename,
+                        const std::string& config,
+                        const L1& l1b,
+                        const L2& l2,
+                        const bool compress,
+                        const int argc,
+                        const char* const argv[]) -> void
+{
+    netCDF::NcFile nc { filename, netCDF::NcFile::replace };
+
+    writeHeader(nc, ProcLevel::l2, filename, config, argc, argv);
+    nc.putAtt("title", "Tango Carbon level 2 diagnostics data");
+
+    const auto nc_alt { nc.addDim("along_track_sample", l1b.n_alt) };
+    const auto nc_act { nc.addDim("across_track_sample",
+                                  l1b.spectra.rows() / l1b.n_alt) };
+    const auto nc_wav { nc.addDim("wavelength", l1b.wavelengths.size()) };
+
+    // Work variables
+    netCDF::NcVar nc_var {};
+    const std::vector<netCDF::NcDim> nc_dims { nc_alt, nc_act, nc_wav };
+    std::vector<size_t> chunksizes { 1, nc_act.getSize(), nc_wav.getSize() };
+
+    nc_var = nc.addVar("wavelength", netCDF::ncDouble, nc_wav);
+    nc_var.putAtt("long_name", "wavelengths");
+    nc_var.putAtt("_FillValue", netCDF::ncDouble, fill::d);
+    nc_var.putAtt("valid_min", netCDF::ncDouble, 0.0);
+    nc_var.putAtt("valid_max", netCDF::ncDouble, 8000.0);
+    nc_var.putAtt("units", "nm");
+    nc_var.putVar(l1b.wavelengths.data());
+
+    nc_var = nc.addVar("measurement", netCDF::ncDouble, nc_dims);
+    setCompression(compress, nc_var, chunksizes);
+    nc_var.putAtt("long_name", "spectral photon radiance");
+    nc_var.putAtt("_FillValue", netCDF::ncDouble, fill::d);
+    nc_var.putAtt("valid_min", netCDF::ncDouble, 0.0);
+    nc_var.putAtt("valid_max", netCDF::ncDouble, 1e20);
+    nc_var.putAtt("units", "nm-1 s-1 sr-1 m-2");
+    nc_var.putVar(l1b.spectra.data());
+
+    for (const std::string gas : { "CO2", "CH4", "H2O" }) {
+        nc_var = nc.addVar("gain_" + lower(gas), netCDF::ncDouble, nc_dims);
+        setCompression(compress, nc_var, chunksizes);
+        nc_var.putAtt("long_name", gas + " spectral gain vector");
+        nc_var.putAtt("_FillValue", netCDF::ncDouble, 1e37);
+        nc_var.putAtt("valid_min", netCDF::ncDouble, -1e30);
+        nc_var.putAtt("valid_max", netCDF::ncDouble, 1e30);
+        nc_var.putAtt("units", "ppm/(photons/(nm m2 s sr))");
+        nc_var.putVar(l2.gains.at(gas).data());
+    }
 }
 
 // Fetch the image_start value that was used in the instrument model

@@ -27,10 +27,10 @@ CubicSpline::CubicSpline(const Eigen::Ref<const Eigen::ArrayXd> x_values,
     if (equal_spacing) {
         range = knots(knots.size() - 1) - knots(0);
     }
-    const Eigen::ArrayXd delta_x(knots(Eigen::seq(1, Eigen::last))
-                                 - knots(Eigen::seqN(0, knots.size() - 1)));
-    const Eigen::ArrayXd delta_y(y_values(Eigen::seq(1, Eigen::last))
-                                 - y_values(Eigen::seqN(0, knots.size() - 1)));
+    const Eigen::ArrayXd delta_x = knots(Eigen::seq(1, Eigen::last))
+                                   - knots(Eigen::seqN(0, knots.size() - 1));
+    const Eigen::ArrayXd delta_y = y_values(Eigen::seq(1, Eigen::last))
+                                   - y_values(Eigen::seqN(0, knots.size() - 1));
     Eigen::ArrayXd diag(knots.size());
     diag(0) = 1.0;
     diag(diag.size() - 1) = 1.0;

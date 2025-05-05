@@ -37,22 +37,22 @@ auto interpolateQuaternion(
     return att_quaternions[idx].slerp(idx_delta, att_quaternions[idx + 1]);
 }
 
-auto intersectEllipsoid(Eigen::Vector3d los,
-                        Eigen::Vector3d sat) -> Eigen::Vector3d
+auto intersectEllipsoid(const Eigen::Vector3d& los,
+                        const Eigen::Vector3d& sat) -> Eigen::Vector3d
 {
     const Eigen::Array3d scaling { earth::a, earth::a, earth::b };
-    los = los.array() / scaling;
-    sat = sat.array() / scaling;
-    const double ps { los.dot(sat) };
-    const double pp { los.dot(los) };
-    const double ss { sat.dot(sat) };
+    Eigen::Vector3d los0 = los.array() / scaling;
+    Eigen::Vector3d sat0 = sat.array() / scaling;
+    const double ps { los0.dot(sat0) };
+    const double pp { los0.dot(los0) };
+    const double ss { sat0.dot(sat0) };
     const double discriminant { ps * ps - pp * (ss - 1.0) };
     if (discriminant < 0.0) {
         throw std::runtime_error { "no intersection with the ellipsoid, the "
                                    "satellite is looking past Earth" };
     }
     const double d { (-ps - std::sqrt(discriminant)) / pp };
-    return (sat + d * los).array() * scaling;
+    return (sat0 + d * los0).array() * scaling;
 }
 
 auto intersectTerrain(DEM& dem,
@@ -152,7 +152,7 @@ auto solarAndViewingGeometry(const Eigen::Vector3d& sun,
     // Normal vector in the east direction
     const Eigen::Vector3d east { -std::sin(lon), std::cos(lon), 0 };
     // Normal vector in the north direction
-    Eigen::Vector3d north(zenith.cross(east));
+    Eigen::Vector3d north = zenith.cross(east);
     // Solar geometry
     sza = std::acos(zenith.dot(sun));
     saa = std::atan2(east.dot(sun), north.dot(sun));
@@ -187,16 +187,16 @@ auto geolocate(const std::string& dem_filename,
         Eigen::Vector3d sun {};
         solarModel(tai_seconds[i_alt], tai_subsec[i_alt], sun, q_j2000_ecef);
         // Transform orbit positions from J2000 to ECEF
-        Eigen::Vector3d orb_pos_ecef(orb_pos_j2000.row(i_alt));
+        Eigen::Vector3d orb_pos_ecef = orb_pos_j2000.row(i_alt);
         orb_pos_ecef = q_j2000_ecef * orb_pos_ecef;
         // Compute the spacecraft-to-ECEF attitude quaternions
-        const Eigen::Quaterniond q_sc_ecef { q_j2000_ecef
-                                             * att_quat_sc_j2000[i_alt] };
+        const Eigen::Quaterniond q_sc_ecef =
+          q_j2000_ecef * att_quat_sc_j2000[i_alt];
         for (int i_act {}; i_act < n_act; ++i_act) {
-            Eigen::Vector3d los_cur(los.row(i_act));
+            Eigen::Vector3d los_cur = los.row(i_act);
             los_cur = q_sc_ecef * los_cur;
             // LOS intersection point with ground
-            Eigen::Vector3d pos(intersectEllipsoid(los_cur, orb_pos_ecef));
+            Eigen::Vector3d pos = intersectEllipsoid(los_cur, orb_pos_ecef);
             if (dem_filename.empty()) {
                 cart2geo(pos,
                          geo.lat(i_alt, i_act),

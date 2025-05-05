@@ -1,12 +1,21 @@
 # List of valid parameters for the L1-L2 processor
 
 # Initialization parameters for Gauss-Newton inversion
-retrieval_init:
+retrieval:
+  # Gauss-Newton iteration limit
   max_iter: 35
+  # chi2 convergence criterion between two Gauss-Newton iterations
   chi2_lim: 0.05
+  # Number of albedo coefficients to fit for
+  n_albedos: 2
   # Take reference profiles from standard atmosphere or a previously
   # generated SGM atmosphere product.
   sw_prof_init: afgl
+  # Gases to be retrieved
+  gases: [co2, ch4, h2o]
+  # Initial concentrations of gases to be retrieved. Order must match
+  # those in [retrieval][gases].
+  initial_concentrations: [400e-6, 1700e-9, 9000e-6]
 
 atmosphere:
   # Number of atmospheric layers
@@ -51,9 +60,7 @@ io_files:
   afgl: ""
   # Solar irradiance file
   sun_reference: ""
-  # HAPI database location (directory with 'data' and 'header' text files)
-  hapi: ""
-  # Dump file containg absorption cross-sections of the trace gases
+  # Dump file containing absorption cross-sections of the trace gases
   dump_xsec: ""
   # L2 data product
   l2: ""

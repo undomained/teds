@@ -97,8 +97,8 @@ auto ISRF::lookupIdx(const double lambda) const -> int
 auto ISRF::convolve(const Eigen::Ref<const Eigen::VectorXd> data_in,
                     const int i_kernel) const -> Eigen::ArrayXd
 {
-    const auto& kernel { kernels.matrix().row(
-      std::min(i_kernel, static_cast<int>(kernels.rows() - 1))) };
+    const auto& kernel = kernels.matrix().row(
+      std::min(i_kernel, static_cast<int>(kernels.rows() - 1)));
     Eigen::ArrayXd data_out(wavelengths_out.size());
     for (int i_conv {}; i_conv < static_cast<int>(data_out.size()); ++i_conv) {
         const double first_wavelength { wavelengths_out(i_conv)

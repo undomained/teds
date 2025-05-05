@@ -93,13 +93,13 @@ auto ldlt_solve(const Eigen::MatrixXd& L,
 {
     Eigen::MatrixXd X(B.rows(), B.cols());
     for (int i_col {}; i_col < B.cols(); ++i_col) {
-        Eigen::VectorXd b(B.col(i_col));
+        Eigen::VectorXd b = B.col(i_col);
         // Solve Lz = b
-        auto z(banded_forward_substitution(L, b));
+        Eigen::VectorXd z = banded_forward_substitution(L, b);
         // Solve Dy = z
         Eigen::VectorXd y(z.array() / D.array());
         // Solve L^Tx = y
-        auto x(banded_back_substitution(L, y));
+        Eigen::VectorXd x = banded_back_substitution(L, y);
         X.col(i_col) = x;
     }
     return X;

@@ -43,8 +43,30 @@ constexpr double e { 8.1819190842621490908e-2 };
 
 } // namespace earth
 
+// Atmosphere related
+namespace atm {
+
+// Avogadro number [#/mol]
+constexpr double na { 6.02214076e23 };
+// Molar mass dry air [kg/mol]
+constexpr double mdryair { 28.9647e-3 };
+// Standard gravity at ground [m/s2]
+constexpr double g0 { 9.80665 };
+// Molecular oxygen mole fraction [-]
+constexpr double xo2 { 0.2095 };
+// std CH4 volume mixing ratio 1800 ppb
+constexpr double xch4 { 1.8e-6 };
+// std CO2 volume mixing ratio 410 ppm
+constexpr double xco2 { 410e-6 };
+// Planck's constant [J/s]
+constexpr double hplanck { 6.62607015e-34 };
+// Speed of light [m/s]
+constexpr double clight { 2.99792458e8 };
+
+} // namespace atm
+
 // Process ladder, an ordered list of possible states of
-// data. Possible data levels run from L1A to L1B.
+// data. Possible data levels run from L1A to L1B to L2.
 enum class ProcLevel
 {
     l1a,
@@ -58,6 +80,7 @@ enum class ProcLevel
     swath,
     l1b, // Radiometrically calibrated
     sgm, // Unconvolved line-by-line spectra from the scene generation module
+    l2,
     n_levels,
 };
 

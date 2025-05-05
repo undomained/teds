@@ -1,8 +1,16 @@
 # This source code is licensed under the 3-clause BSD license found in
 # the LICENSE file in the root directory of this project.
 """Types used by L2 processor."""
+from dataclasses import dataclass
 import numpy as np
 import numpy.typing as npt
+
+
+@dataclass
+class RefProfiles:
+    def __init__(self) -> None:
+        self.gases: dict[str, npt.NDArray[np.floating]] = {}
+        self.initial: dict[str, float] = {}
 
 
 class L2:
@@ -17,14 +25,14 @@ class L2:
         # Retrieval diagnostics
         self.chi2 = np.empty((n_alt, n_act))
         self.converged = np.full((n_alt, n_act), False, dtype=np.bool_)
-        self.number_iter = np.empty((n_alt, n_act), dtype=np.int32)
+        self.iterations = np.empty((n_alt, n_act), dtype=np.int32)
 
         # Albedo coefficients, dry air mixing ratios (e.g. XCO2),
         # proxy mixing ratios, and their precisions, accuracies, and
         # other related quantities. Each of those variables is a
         # dictionary with Numpy arrays. This way gases can easily be
         # fetched by their name.
-        self.albedo_coeffs = np.empty((n_albedo, n_alt, n_act))
+        self.albedo0 = np.empty((n_alt, n_act))
         self.mixing_ratios: dict[str, npt.NDArray[np.floating]] = {}
         self.precisions = {}
         self.gains = {}

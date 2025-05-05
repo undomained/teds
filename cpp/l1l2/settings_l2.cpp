@@ -19,6 +19,7 @@ auto SettingsL2::scanKeys() -> void
     scan(retrieval.n_albedos);
     scan(retrieval.gases);
     scan(retrieval.initial_concentrations);
+    scan(retrieval.do_shift);
 
     scan(atmosphere.n_layers);
     scan(atmosphere.layer_thickness);

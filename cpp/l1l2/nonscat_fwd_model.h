@@ -20,6 +20,7 @@ class Surface;
 auto nonscatFwdModel(const Eigen::VectorXd& state_vector,
                      const std::vector<std::string>& gas_names,
                      const int n_albedo,
+                     const int n_shift,
                      const ISRF& isrf,
                      const Eigen::ArrayXd& sun_lbl,
                      const Atmosphere& atm,

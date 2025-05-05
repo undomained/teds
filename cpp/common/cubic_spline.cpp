@@ -105,4 +105,18 @@ CubicSpline::CubicSpline(const Eigen::Ref<const Eigen::ArrayXd> x_values,
     return result;
 }
 
+[[nodiscard]] auto CubicSpline::deriv(const double x) const -> double
+{
+    if (x <= knots(0)) {
+        return A(0);
+    }
+    if (x >= knots(knots.size() - 1)) {
+        return A(A.size() - 1);
+    }
+    const int idx { equal_spacing ? lookupIdx(x) : binaryFindIdx(knots, x) };
+    const double Dx { x - knots(idx) };
+    const double Dx2 { Dx * Dx };
+    return A(idx) + 2.0 * B(idx) * Dx + 3.0 * C(idx) * Dx2;
+}
+
 } // namespace tango

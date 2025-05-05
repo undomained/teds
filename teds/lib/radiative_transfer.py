@@ -298,6 +298,7 @@ def transmission(sun_lbl: npt.NDArray[np.floating],
 
 def nonscat_fwd_model(gas_names: list[str],
                       n_albedo: int,
+                      do_shift: bool,
                       isrf: Kernel,
                       sun_lbl: npt.NDArray[np.floating],
                       atm: Atmosphere,
@@ -352,8 +353,10 @@ def nonscat_fwd_model(gas_names: list[str],
 
     time_conv = time.time()
     rad = isrf.convolve(rad_lbl)
-    derivatives_albedo = []
+    if do_shift:
+        rad_der = isrf.convolve_der(rad_lbl)
     derivatives_gases = []
+    derivatives_albedo = []
     derivatives_gases_layers: list[npt.NDArray[np.floating]] = []
     for i in range(n_albedo):
         derivatives_albedo.append(isrf.convolve(dev_alb_lbl * surface.spec**i))
@@ -374,6 +377,7 @@ def nonscat_fwd_model(gas_names: list[str],
         derivatives_gases_layers.append(layer)
     timings['kern'] += time.time() - time_kern
 
-    return (rad,
-            derivatives_gases+derivatives_albedo,
-            derivatives_gases_layers)
+    derivatives = derivatives_gases + derivatives_albedo
+    if do_shift:
+        derivatives += [rad_der]
+    return rad, derivatives, derivatives_gases_layers

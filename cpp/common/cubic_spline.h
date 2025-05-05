@@ -31,6 +31,7 @@ public:
                 const Eigen::Ref<const Eigen::ArrayXd> y_values);
     [[nodiscard]] auto eval(const double x) const -> double;
     [[nodiscard]] auto eval(const Eigen::ArrayXd& x) const -> Eigen::ArrayXd;
+    [[nodiscard]] auto deriv(const double x) const -> double;
 };
 
 } // namespace tango

@@ -50,8 +50,11 @@ auto driver(const SettingsIM& settings,
     ISRF isrf {};
     if (settings.isrf.tabulated) {
         spdlog::info("Reading ISRF from file:");
-        isrf.fromFile(
-          settings.io_files.isrf, l1_prod.wavelengths, ckd.wave.wavelengths);
+        isrf.fromFile(settings.io_files.isrf,
+                      l1_prod.wavelengths,
+                      ckd.wave.wavelengths,
+                      settings.alt_beg,
+                      static_cast<size_t>(l1_prod.n_alt));
     } else {
         spdlog::info("Generating ISRF from generalized Gaussian parameters");
         isrf.fromGauss(l1_prod.wavelengths,

@@ -58,7 +58,7 @@ auto gaussNewton(const int i_gp,
                  const Eigen::Ref<const Eigen::ArrayXd> S_meas,
                  const double mu0,
                  const double muv,
-                 const ISRF& isrf,
+                 ISRF& isrf,
                  OpticAbsProp& optics,
                  const Eigen::ArrayXd& sun,
                  L2& l2) -> void;

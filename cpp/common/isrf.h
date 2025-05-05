@@ -12,6 +12,10 @@ namespace tango {
 class ISRF
 {
 private:
+    // x and y-values of the ISRF data as read from file or from
+    // generalized Gaussian parameters.
+    Eigen::ArrayXd wavelength_diffs {};
+    ArrayXXd isrf_data {};
     // Wavelength grid of unconvolved data
     Eigen::ArrayXd wavelengths_in {};
     // Wavelength grid of convolved data
@@ -25,9 +29,17 @@ private:
     double wavelength_in_range {};
     // Precomputed kernel values
     ArrayXXd kernels {};
+    // Precomputed kernel derivative values (limited to just one kernel)
+    Eigen::VectorXd kernel_der {};
 
     // Find index in wavelengths_in corresponding to a wavelength
-    auto lookupIdx(const double lambda) const -> int;
+    [[nodiscard]] auto lookupIdx(const double lambda) const -> int;
+
+    // Core of the convolution algorithm. The kernel can be the normal
+    // kernel or the ISRF derivative.
+    [[nodiscard]] auto convolve(
+      const Eigen::Ref<const Eigen::VectorXd> kernel,
+      const Eigen::Ref<const Eigen::VectorXd> data_in) const -> Eigen::ArrayXd;
 
 public:
     ISRF() = default;
@@ -42,12 +54,21 @@ public:
          const ArrayXXd& isrf_data,
          const Eigen::ArrayXd& wavelengths_in,
          const Eigen::ArrayXd& wavelengths_out,
-         const double wave_cutoff = 0.7);
+         const double wave_cutoff = 0.58);
 
-    // Read ISRF data from file
+    // Interpolate input data onto the wavelength range that is
+    // relevant for convolution. This is recallable part of the
+    // constructor in case we need to regenerate the ISRF because of
+    // spectral shift.
+    auto regenerate(const double lambda0) -> void;
+
+    // Read ISRF data from file. First ALT bin and the number of ALT
+    // bins are only relevant for reading the heterogeneous ISRF.
     auto fromFile(const std::string& filename,
                   const Eigen::ArrayXd& wavelengths_in,
-                  const Eigen::ArrayXd& wavelengths_out) -> void;
+                  const Eigen::ArrayXd& wavelengths_out,
+                  const size_t alt_beg = 0,
+                  const size_t n_alt = 0) -> void;
 
     // Construct ISRF from generalized Gaussian parameters
     auto fromGauss(const Eigen::ArrayXd& wavelengths_in,
@@ -56,8 +77,12 @@ public:
                    const double shape) -> void;
 
     // Convolve the ith kernel with data. For a simple ISRF i_kernel = 0.
-    auto convolve(const Eigen::Ref<const Eigen::VectorXd> data_in,
-                  const int i_kernel = 0) const -> Eigen::ArrayXd;
+    [[nodiscard]] auto convolve(const Eigen::Ref<const Eigen::VectorXd> data_in,
+                                const int i_kernel = 0) const -> Eigen::ArrayXd;
+
+    // Convolve with ISRF derivative with respect to lambda0
+    [[nodiscard]] auto convolveDer(
+      const Eigen::Ref<const Eigen::VectorXd> data_in) const -> Eigen::ArrayXd;
 };
 
 } // namespace tango

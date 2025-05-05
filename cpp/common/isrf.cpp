@@ -15,7 +15,10 @@ ISRF::ISRF(const Eigen::ArrayXd& wavelength_diffs,
            const Eigen::ArrayXd& wavelengths_in,
            const Eigen::ArrayXd& wavelengths_out,
            const double wave_cutoff)
-  : wavelengths_in { wavelengths_in }, wavelengths_out { wavelengths_out }
+  : wavelength_diffs { wavelength_diffs }
+  , isrf_data { isrf_data }
+  , wavelengths_in { wavelengths_in }
+  , wavelengths_out { wavelengths_out }
 {
     step = wavelengths_in(1) - wavelengths_in(0);
     wavelength_in_range =
@@ -31,21 +34,37 @@ ISRF::ISRF(const Eigen::ArrayXd& wavelength_diffs,
     // class, however, does not explicitly know about the geometry. It
     // only stores the kernels in order that they are read.
     kernels.resize(isrf_data.rows(), n_vals);
+    regenerate(0.0);
+}
+
+auto ISRF::regenerate(const double lambda0) -> void
+{
     for (int i_kernel {}; i_kernel < static_cast<int>(isrf_data.rows());
          ++i_kernel) {
         auto kernel = kernels.row(i_kernel);
-        const CubicSpline kernel_spline { wavelength_diffs,
+        const CubicSpline kernel_spline { wavelength_diffs - lambda0,
                                           isrf_data.row(i_kernel) };
         for (int i {}; i < n_vals; ++i) {
             kernel(i) = kernel_spline.eval(-n_vals_half * step + i * step);
         }
-        kernel /= kernel.sum();
+        const double norm { kernel.sum() };
+        kernel /= norm;
+        if (i_kernel == 0) {
+            kernel_der.resize(kernel.size());
+            for (int i {}; i < n_vals; ++i) {
+                kernel_der(i) =
+                  kernel_spline.deriv(-n_vals_half * step + i * step);
+            }
+            kernel_der /= norm;
+        }
     }
 }
 
 auto ISRF::fromFile(const std::string& filename,
                     const Eigen::ArrayXd& wavelengths_in,
-                    const Eigen::ArrayXd& wavelengths_out) -> void
+                    const Eigen::ArrayXd& wavelengths_out,
+                    const size_t alt_beg,
+                    const size_t n_alt) -> void
 
 {
     const netCDF::NcFile nc { filename, netCDF::NcFile::read };
@@ -60,13 +79,13 @@ auto ISRF::fromFile(const std::string& filename,
         nc.getVar("isrf").getVar(isrf.data());
     } else {
         spdlog::info("  Reading heterogenous ISRF");
-        const auto n_alt { nc.getDim("along_track_sample").getSize() };
         const auto n_act { nc.getDim("across_track_sample").getSize() };
         const auto n_wavelengths { grp.getDim("wavelength").getSize() };
         wavelengths.resize(n_wavelengths);
         isrf.resize(n_alt * n_act, n_wavelengths);
         grp.getVar("wavelength").getVar(wavelengths.data());
-        grp.getVar("isrf").getVar(isrf.data());
+        grp.getVar("isrf").getVar(
+          { alt_beg, 0, 0 }, { n_alt, n_act, n_wavelengths }, isrf.data());
     }
     *this = ISRF(wavelengths, isrf, wavelengths_in, wavelengths_out);
 }
@@ -88,17 +107,16 @@ auto ISRF::fromGauss(const Eigen::ArrayXd& wavelengths_in,
     *this = ISRF(wavelength_diffs, isrf, wavelengths_in, wavelengths_out);
 }
 
-auto ISRF::lookupIdx(const double lambda) const -> int
+[[nodiscard]] auto ISRF::lookupIdx(const double lambda) const -> int
 {
     return static_cast<int>((lambda - wavelengths_in(0)) / wavelength_in_range
                             * (wavelengths_in.size() - 1));
 }
 
-auto ISRF::convolve(const Eigen::Ref<const Eigen::VectorXd> data_in,
-                    const int i_kernel) const -> Eigen::ArrayXd
+[[nodiscard]] auto ISRF::convolve(
+  const Eigen::Ref<const Eigen::VectorXd> kernel,
+  const Eigen::Ref<const Eigen::VectorXd> data_in) const -> Eigen::ArrayXd
 {
-    const auto& kernel = kernels.matrix().row(
-      std::min(i_kernel, static_cast<int>(kernels.rows() - 1)));
     Eigen::ArrayXd data_out(wavelengths_out.size());
     for (int i_conv {}; i_conv < static_cast<int>(data_out.size()); ++i_conv) {
         const double first_wavelength { wavelengths_out(i_conv)
@@ -108,6 +126,21 @@ auto ISRF::convolve(const Eigen::Ref<const Eigen::VectorXd> data_in,
           kernel.dot(data_in(Eigen::seqN(first_idx, kernel.size())));
     }
     return data_out;
+}
+
+[[nodiscard]] auto ISRF::convolve(
+  const Eigen::Ref<const Eigen::VectorXd> data_in,
+  const int i_kernel) const -> Eigen::ArrayXd
+{
+    const auto& kernel = kernels.matrix().row(
+      std::min(i_kernel, static_cast<int>(kernels.rows() - 1)));
+    return convolve(kernel, data_in);
+}
+
+[[nodiscard]] auto ISRF::convolveDer(
+  const Eigen::Ref<const Eigen::VectorXd> data_in) const -> Eigen::ArrayXd
+{
+    return convolve(kernel_der, data_in);
 }
 
 } // namespace tango

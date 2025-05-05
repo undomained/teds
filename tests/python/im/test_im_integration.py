@@ -27,7 +27,7 @@ def test_full_chain(ckd_file, binningtable_file, sgm_file, tmp_path):
     }
     run_instrument_model(config)
     l1 = read_l1(tmp_path / 'tango_l1a.nc', 0, None, True)
-    assert abs(l1.signal).sum() == approx(82179075.0)
+    assert abs(l1.signal).sum() == approx(82168276.0)
 
 
 def test_full_chain_no_adc_binning(

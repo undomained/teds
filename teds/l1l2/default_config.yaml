@@ -16,6 +16,8 @@ retrieval:
   # Initial concentrations of gases to be retrieved. Order must match
   # those in [retrieval][gases].
   initial_concentrations: [400e-6, 1700e-9, 9000e-6]
+  # Whether to fit for the spectral shift
+  do_shift: yes
 
 atmosphere:
   # Number of atmospheric layers
@@ -60,6 +62,8 @@ io_files:
   afgl: ""
   # Solar irradiance file
   sun_reference: ""
+  # HAPI database location (directory with 'data' and 'header' text files)
+  hapi: ""
   # Dump file containing absorption cross-sections of the trace gases
   dump_xsec: ""
   # L2 data product

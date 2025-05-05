@@ -31,6 +31,7 @@ static auto transmission(const Eigen::ArrayXd& sun_lbl,
 auto nonscatFwdModel(const Eigen::VectorXd& state_vector,
                      const std::vector<std::string>& gas_names,
                      const int n_albedo,
+                     const int n_shift,
                      const ISRF& isrf,
                      const Eigen::ArrayXd& sun_lbl,
                      const Atmosphere& atm,
@@ -44,6 +45,7 @@ auto nonscatFwdModel(const Eigen::VectorXd& state_vector,
                      Eigen::VectorXd& rad,
                      Eigen::MatrixXd& jacobian) -> void
 {
+    const int n_gases { static_cast<int>(gas_names.size()) };
     optics.setOptDepth(gas_names, state_vector);
 
     transmission(sun_lbl,
@@ -58,17 +60,22 @@ auto nonscatFwdModel(const Eigen::VectorXd& state_vector,
     // Radiance
     rad = isrf.convolve(rad_lbl);
 
+    // Derivative with respect to a scaling of the total optical depth
+    for (int i {}; i < n_gases; ++i) {
+        const std::string& name { gas_names[i] };
+        jacobian.col(i) = isrf.convolve(optics.tau.at(name) * dev_tau_lbl);
+    }
+
     // Albedo coefficients
-    jacobian.col(gas_names.size()) = isrf.convolve(dev_alb_lbl);
+    jacobian.col(n_gases) = isrf.convolve(dev_alb_lbl);
     for (int i_deriv { 1 }; i_deriv < n_albedo; ++i_deriv) {
-        jacobian.col(gas_names.size() + i_deriv) =
+        jacobian.col(n_gases + i_deriv) =
           isrf.convolve(dev_alb_lbl * surface.waves.col(i_deriv - 1));
     }
 
-    for (int i {}; i < static_cast<int>(gas_names.size()); ++i) {
-        const std::string& name { gas_names[i] };
-        // Derivative with respect to a scaling of the total optical depth
-        jacobian.col(i) = isrf.convolve(optics.tau.at(name) * dev_tau_lbl);
+    // Spectral Shift
+    if (n_shift > 0) {
+        jacobian.col(n_gases + n_albedo) = isrf.convolveDer(rad_lbl);
     }
 }
 

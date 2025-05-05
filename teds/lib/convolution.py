@@ -28,7 +28,7 @@ class Kernel:
                  isrf: npt.NDArray[np.floating],
                  wavelengths_in: npt.NDArray[np.floating],
                  wavelengths_out: npt.NDArray[np.floating],
-                 wave_cutoff: float = 0.7) -> None:
+                 wave_cutoff: float = 0.58) -> None:
         """Precompute kernel values that will be used for convolution.
 
         Parameters
@@ -50,6 +50,8 @@ class Kernel:
             the same as wavelength_diffs so not necessarily nm.
 
         """
+        self.wavelength_diffs = wavelength_diffs
+        self.isrf_data = isrf
         # Convolution wavelength range
         self.wavelengths_in = wavelengths_in
         self.wavelengths_out = wavelengths_out
@@ -58,12 +60,20 @@ class Kernel:
         # stored. Outside the range the kernel is 0.
         self.n_vals_half = int(wave_cutoff // self.wave_step)
         self.n_vals = 2 * self.n_vals_half - 1
+        self.regenerate()
+
+    def regenerate(self, x0: float = 0) -> None:
         # Interpolate input data onto the wavelength range that is
         # relevant for convolution.
-        isrf_spline = CubicSpline(wavelength_diffs, isrf)
+        isrf_spline = CubicSpline(self.wavelength_diffs - x0, self.isrf_data)
         self.isrf_values = isrf_spline(-self.n_vals_half * self.wave_step
                                        + range(self.n_vals) * self.wave_step)
-        self.isrf_values = self.isrf_values / self.isrf_values.sum()
+        norm = self.isrf_values.sum()
+        self.isrf_values = self.isrf_values / norm
+        self.isrf_values_der = isrf_spline.derivative()(
+            -self.n_vals_half * self.wave_step
+            + range(self.n_vals) * self.wave_step)
+        self.isrf_values_der /= norm
 
     @classmethod
     def from_file(cls,
@@ -186,6 +196,18 @@ class Kernel:
                                 self.n_vals_half,
                                 self.n_vals,
                                 self.isrf_values,
+                                data)
+
+    def convolve_der(
+            self,
+            data: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
+        """Convolve with the derivative of the kernel."""
+        return Kernel._convolve(self.wavelengths_in,
+                                self.wavelengths_out,
+                                self.wave_step,
+                                self.n_vals_half,
+                                self.n_vals,
+                                self.isrf_values_der,
                                 data)
 
 

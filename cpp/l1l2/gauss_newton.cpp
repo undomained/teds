@@ -26,7 +26,7 @@ auto gaussNewton(const int i_gp,
                  const Eigen::Ref<const Eigen::ArrayXd> S_meas,
                  const double mu0,
                  const double muv,
-                 const ISRF& isrf,
+                 ISRF& isrf,
                  OpticAbsProp& optics,
                  const Eigen::ArrayXd& sun,
                  L2& l2) -> void
@@ -43,10 +43,12 @@ auto gaussNewton(const int i_gp,
     }
     const int n_gases { static_cast<int>(gas_names.size()) };
     const int n_albedos { settings.retrieval.n_albedos };
+    const int n_shift { settings.retrieval.do_shift ? 1 : 0 };
 
     // State vector, to be populated with gas concentrations and
     // albedo coefficients.
-    Eigen::VectorXd state_vector(n_gases + n_albedos);
+    Eigen::VectorXd state_vector =
+      Eigen::VectorXd::Zero(n_gases + n_albedos + n_shift);
 
     // Start by adding gas scaling initial guesses to the state vector
     for (int i {}; i < n_gases; ++i) {
@@ -57,7 +59,6 @@ auto gaussNewton(const int i_gp,
 
     // Next add albedo coefficient initial guesses. The first entries
     // of the state vector correspond to gases.
-    state_vector(Eigen::seqN(n_gases, n_albedos)).array() = 0.0;
     // Derive first guess albedo from maximum reflectance
     Eigen::Index idx_max {};
     const double max_rad { spectrum.maxCoeff(&idx_max) };
@@ -77,16 +78,20 @@ auto gaussNewton(const int i_gp,
 
     for (int iterations {}; iterations < settings.retrieval.max_iter;
          ++iterations) {
+        // Update all fitted variables using the current state vector
         for (int i_gas {}; i_gas < n_gases; ++i_gas) {
             atm.gases.at(gas_names[i_gas]) =
               state_vector[i_gas] * ref_profiles.gases.at(gas_names[i_gas]);
         }
-
         surface.getAlbedoPoly(state_vector(Eigen::seqN(n_gases, n_albedos)));
+        if (settings.retrieval.do_shift) {
+            isrf.regenerate(state_vector(n_gases + n_albedos));
+        }
 
         nonscatFwdModel(state_vector,
                         gas_names,
                         n_albedos,
+                        n_shift,
                         isrf,
                         sun_lbl,
                         atm,
@@ -127,7 +132,7 @@ auto gaussNewton(const int i_gp,
         chi2_prev = l2.chi2(i_gp);
     }
 
-    // Update gas concentrations
+    // Update gas concentrations once more with the latest state vector
     for (int i_gas {}; i_gas < n_gases; ++i_gas) {
         atm.gases.at(gas_names[i_gas]) =
           state_vector[i_gas] * ref_profiles.gases.at(gas_names[i_gas]);
@@ -144,6 +149,13 @@ auto gaussNewton(const int i_gp,
                                      * (gas == "CH4" ? 1e9 : 1e6);
     }
     l2.albedo0(i_gp) = state_vector(n_gases);
+
+    // Spectral shift
+    if (settings.retrieval.do_shift) {
+        l2.spec_shift(i_gp) = state_vector(n_gases + n_albedos);
+    } else {
+        l2.spec_shift(i_gp) = 0.0;
+    }
 
     // Column averaging kernels
     optics.setOptDepthLayers(atm.gases, gas_names);

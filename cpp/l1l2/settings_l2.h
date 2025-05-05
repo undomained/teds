@@ -56,6 +56,9 @@ public:
             "Initial concentrations of gases to be retrieved. Order must\n"
             "match those in [retrieval][gases]."
         };
+        Setting<bool> do_shift { { "retrieval", "do_shift" },
+                                 true,
+                                 "whether to fit for the spectral shift" };
     } retrieval;
 
     struct

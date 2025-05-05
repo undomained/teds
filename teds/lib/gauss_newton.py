@@ -77,6 +77,10 @@ def gauss_newton(config: dict,
         state_vector_names['albedo_' + str(i)] = i
     n_state += n_albedo
 
+    if config['retrieval']['do_shift']:
+        state_vector_names['shift'] = n_state
+        n_state += 1
+
     # State vector, to be populated with gas concentrations and albedo
     # coefficients.
     state_vector = np.empty(n_state)
@@ -95,21 +99,26 @@ def gauss_newton(config: dict,
     idx = np.argmax(ymeas)
     state_vector[n_gas] = ymeas[idx] / sun[idx] * np.pi / mu0
 
+    if config['retrieval']['do_shift']:
+        state_vector[-1] = 0
+
     chi2 = []
     n_dof = len(ymeas) - len(state_vector)
     surface = Surface(wave_lbl)
     for iterations in range(config['retrieval']['max_iter']):
+        # Update all fitted variables using the current state vector
         for i_gas, gas in enumerate(gas_names):
             atm.get_gas(gas).concentration[:] = (
                 state_vector[i_gas] * ref_profiles.gases[gas])
-
-        # Calculate surface data
         surface.get_albedo_poly(list(state_vector[n_gas:n_gas+n_albedo]))
+        if config['retrieval']['do_shift']:
+            isrf.regenerate(state_vector[n_gas+n_albedo])
 
         # Nonscattering forward model
         fwd_rad, derivatives, derivatives_layers = nonscat_fwd_model(
             gas_names,
             n_albedo,
+            config['retrieval']['do_shift'],
             isrf,
             sun_lbl,
             atm,
@@ -169,6 +178,12 @@ def gauss_newton(config: dict,
                             / sum(atm.air) / scaling)
         l2.gains[gas][i_alt, i_act, :] = gain[i_gas] * ref_mixing_ratio
     l2.albedo0[i_alt, i_act] = state_vector[n_gas]
+
+    # Spectral shift
+    if config['retrieval']['do_shift']:
+        l2.spec_shift[i_alt, i_act] = state_vector[n_gas + n_albedo]
+    else:
+        l2.spec_shift[i_alt, i_act] = 0
 
     # Calculate column averaging kernels
     n_lay = atm.zlay.size

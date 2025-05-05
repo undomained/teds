@@ -213,24 +213,18 @@ auto mapFromDetector(const CKD& ckd,
     }
     const Eigen::ArrayXd cols = Eigen::ArrayXd::LinSpaced(
       ckd.n_detector_cols, 0.0, ckd.n_detector_cols - 1);
-#pragma omp parallel for
+    BSpline2D bspline_2d_signal {
+        b_spline_order, rows, cols, ckd.swath.row_map, ckd.swath.col_map
+    };
+    BSpline2D bspline_2d_noise { bspline_2d_signal };
+#pragma omp parallel for firstprivate(bspline_2d_signal, bspline_2d_noise)
     for (int i_alt = 0; i_alt < l1_prod.n_alt; ++i_alt) {
-        const BSpline2D bspline_2d_signal {
-            b_spline_order, rows, cols, l1_prod.signal(i_alt, Eigen::all)
-        };
-        bspline_2d_signal.eval(
-          ckd.swath.row_map,
-          ckd.swath.col_map,
-          l1_prod.spectra(Eigen::seqN(i_alt * ckd.n_act, ckd.n_act),
-                          Eigen::all));
-        const BSpline2D bspline_2d_noise {
-            b_spline_order, rows, cols, l1_prod.noise(i_alt, Eigen::all)
-        };
-        bspline_2d_noise.eval(
-          ckd.swath.row_map,
-          ckd.swath.col_map,
-          l1_prod.spectra_noise(Eigen::seqN(i_alt * ckd.n_act, ckd.n_act),
-                                Eigen::all));
+        bspline_2d_signal.genControlPoints(l1_prod.signal.row(i_alt));
+        bspline_2d_signal.eval(l1_prod.spectra(
+          Eigen::seqN(i_alt * ckd.n_act, ckd.n_act), Eigen::all));
+        bspline_2d_noise.genControlPoints(l1_prod.noise.row(i_alt));
+        bspline_2d_noise.eval(l1_prod.spectra_noise(
+          Eigen::seqN(i_alt * ckd.n_act, ckd.n_act), Eigen::all));
     }
     l1_prod.signal.resize(0, 0);
     l1_prod.noise.resize(0, 0);

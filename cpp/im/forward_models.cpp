@@ -88,18 +88,16 @@ auto mapToDetector(const CKD& ckd,
 {
     l1_prod.level = ProcLevel::stray;
     l1_prod.signal.resize(l1_prod.n_alt, ckd.npix);
-#pragma omp parallel for
+    BSpline2D bspline_2d { b_spline_order,
+                           ckd.swath.act_angles,
+                           ckd.wave.wavelengths,
+                           ckd.swath.act_map,
+                           ckd.swath.wavelength_map };
+#pragma omp parallel for firstprivate(bspline_2d)
     for (int i_alt = 0; i_alt < l1_prod.n_alt; ++i_alt) {
-        const BSpline2D bspline_2d {
-            b_spline_order,
-            ckd.swath.act_angles,
-            ckd.wave.wavelengths,
-            l1_prod.spectra(Eigen::seqN(i_alt * ckd.n_act, ckd.n_act),
-                            Eigen::all)
-        };
-        bspline_2d.eval(ckd.swath.act_map,
-                        ckd.swath.wavelength_map,
-                        l1_prod.signal.row(i_alt));
+        bspline_2d.genControlPoints(l1_prod.spectra(
+          Eigen::seqN(i_alt * ckd.n_act, ckd.n_act), Eigen::all));
+        bspline_2d.eval(l1_prod.signal.row(i_alt));
         for (int i {}; i < ckd.npix; ++i) {
             l1_prod.signal(i_alt, i) = std::max(0.0, l1_prod.signal(i_alt, i));
         }

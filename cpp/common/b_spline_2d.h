@@ -23,14 +23,22 @@ private:
     BSpline b_spline_r {};
     // 1D B-spline across columns of the input grid
     BSpline b_spline_c {};
+    // Control points are given by C = X P Y^T where P are datapoints
+    Eigen::MatrixXd X {};
+    Eigen::MatrixXd Y {};
+    // Precomputed 1D spline values (products)
+    ArrayXXd spline_values {};
     // Control point matrix with dimensions Nr x Nc where Nr is the
     // number of B-spline states across rows (see BSpline::nStates).
     Eigen::MatrixXd control_points {};
+    // Output grids (2D)
+    ArrayXXd y_values_out {};
+    ArrayXXd x_values_out {};
 
 public:
     BSpline2D() = default;
-    // Construct the 1D B-splines and solve the 2D B-spline equation
-    // to find the control points:
+    // Construct 1D B-splines and solve the 2D B-spline equation to
+    // find the control points:
     //
     //   A^T A Q B^T B - A^T P B = 0,
     //
@@ -48,16 +56,35 @@ public:
     //   A^T A X = A^T,
     //   B^T B Y = B^T.
     //
-    // Inputs:
-    //   x_values_r - input grid coordinates across rows, to be used
-    //                as the B-spline knots.
-    //   x_values_c - the input grid coordinates across columns, to be
-    //                used as the B-spline knots.
-    //   data_in - the data values on that grid.
+    // Parameters
+    // ----------
+    // order
+    //     B-spline order, same in both directions
+    // x_values_in
+    //     Input grid coordinates across rows, to be used as the
+    //     B-spline knots.
+    // y_values_in
+    //     Input grid coordinates across columns, to be used as the
+    //     B-spline knots.
+    // x_values_out
+    //     Output grid coordinates across rows
+    // y_values_out
+    //     Output grid coordinates across columns
     BSpline2D(const int order,
-              const Eigen::ArrayXd& x_values_r,
-              const Eigen::ArrayXd& x_values_c,
-              const Eigen::Ref<const ArrayXXd> data_in);
+              const Eigen::ArrayXd& y_values_in,
+              const Eigen::ArrayXd& x_values_in,
+              const ArrayXXd& y_values_out,
+              const ArrayXXd& x_values_out);
+    // Computed control points using the X and Y matrices generated in
+    // the constructor. The input data can change but not the
+    // corresponding grids.
+    //
+    // Parameters
+    // ----------
+    // data
+    //     Data values on input grid y_values_in and x_values_in used in
+    //     the constructor.
+    auto genControlPoints(const Eigen::Ref<const ArrayXXd> data) -> void;
     // Evaluate the 2D B-spline for points on a target grid (can be
     // irregular). The result for one target point can be expressed as
     //
@@ -71,9 +98,7 @@ public:
     // only evaluate a limited set of non-zero basis functions by
     // making use of de Boor's algorithm. The result array z should be
     // allocated and initialized outside this routine.
-    auto eval(const ArrayXXd& x,
-              const ArrayXXd& y,
-              Eigen::Ref<ArrayXXd> z) const -> void;
+    auto eval(Eigen::Ref<ArrayXXd> z) const -> void;
 };
 
 } // namespace tango

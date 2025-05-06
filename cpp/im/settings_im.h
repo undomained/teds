@@ -228,7 +228,7 @@ public:
     } io_files;
 
     SettingsIM() = default;
-    SettingsIM(const std::string& yaml_file) : Settings { yaml_file } {}
+    SettingsIM(const YAML::Node& node) : Settings { node } {}
     auto scanKeys() -> void override;
     ~SettingsIM() = default;
 };

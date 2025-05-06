@@ -125,11 +125,16 @@ protected:
     virtual auto checkParameters() -> void = 0;
 
 public:
-    Settings() = default;
-    Settings(const std::string& yaml_file)
-      : config { YAML::LoadFile(yaml_file) }
-    {}
+    // Initialize with one YAML node containing all configuration
+    // parameters. If you start with a string call something like node
+    // = YAML::Load(s) in the parent function. If you read from a file
+    // call node = YAML::LoadFile(f).
+    Settings(const YAML::Node& node = {}) : config { node } {}
     Settings(const Settings& /* settings */) {};
+    // Read YAML configuration from a string. This is useful if the
+    // constructor was first called empty but needs to be populated
+    // later.
+    auto yamlLoad(const std::string& config_str) -> void;
     // Read input from a YAML configuration file and check parameters
     // for correctness.
     auto init() -> void;

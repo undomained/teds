@@ -5,6 +5,15 @@ import numpy as np
 import numpy.typing as npt
 
 
+def run_instrument_model(config: dict | None) -> None: ...
+
+
+def run_l1al1b(config: dict | None) -> None: ...
+
+
+def level1b_to_level2_processor(config: dict | None) -> None: ...
+
+
 def solar_model(tai_seconds: np.uint,
                 tai_second_fraction: np.floating,
                 q_ecef_j2000: npt.NDArray[np.floating]) -> None: ...

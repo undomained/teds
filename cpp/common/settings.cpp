@@ -7,6 +7,11 @@
 
 namespace tango {
 
+auto Settings::yamlLoad(const std::string& config_str) -> void
+{
+    config = YAML::Load(config_str);
+}
+
 auto Settings::init() -> void
 {
     default_config = YAML::Load(c_str(false));

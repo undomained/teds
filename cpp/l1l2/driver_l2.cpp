@@ -1,7 +1,7 @@
 // This source code is licensed under the 3-clause BSD license found
 // in the LICENSE file in the root directory of this project.
 
-#include "driver.h"
+#include "driver_l2.h"
 
 #include "atmosphere.h"
 #include "gauss_newton.h"
@@ -22,9 +22,9 @@
 
 namespace tango {
 
-auto driver(const SettingsL2& settings,
-            const int argc,
-            const char* const argv[]) -> void
+auto driverL2(const SettingsL2& settings,
+              const int argc,
+              const char* const argv[]) -> void
 {
     // Set up loggers and print general information
     initLogging();

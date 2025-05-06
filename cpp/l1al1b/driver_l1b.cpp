@@ -1,7 +1,7 @@
 // This source code is licensed under the 3-clause BSD license found
 // in the LICENSE file in the root directory of this project.
 
-#include "driver.h"
+#include "driver_l1b.h"
 
 #include "calibration.h"
 #include "settings_l1b.h"
@@ -15,9 +15,9 @@
 
 namespace tango {
 
-auto driver(const SettingsL1B& settings,
-            const int argc,
-            const char* const argv[]) -> void
+auto driverL1B(const SettingsL1B& settings,
+               const int argc,
+               const char* const argv[]) -> void
 {
     // Set up loggers and print general information
     initLogging();

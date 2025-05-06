@@ -4,8 +4,9 @@
 add_library(bindings SHARED
   bindings.cpp
   convert.cpp
+  drivers.cpp
   solar_model.cpp
   geolocate.cpp
   radiative_transfer.cpp)
-target_link_libraries(bindings PRIVATE common)
+target_link_libraries(bindings PRIVATE tango_im tango_l1b tango_l2 common)
 set_target_properties(bindings PROPERTIES PREFIX "" SUFFIX ".abi3.so")

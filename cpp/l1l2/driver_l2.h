@@ -8,8 +8,8 @@ namespace tango {
 class SettingsL2;
 
 // argc and argv are for generating the history attribute
-auto driver(const SettingsL2& settings,
-            const int argc = 0,
-            const char* const argv[] = nullptr) -> void;
+auto driverL2(const SettingsL2& settings,
+              const int argc = 0,
+              const char* const argv[] = nullptr) -> void;
 
 } // namespace tango

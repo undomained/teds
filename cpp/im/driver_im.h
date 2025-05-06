@@ -12,8 +12,8 @@ namespace tango {
 class SettingsIM;
 
 // argc and argv are for generating the history attribute
-auto driver(const SettingsIM& settings,
-            const int argc = 0,
-            const char* const argv[] = nullptr) -> void;
+auto driverIM(const SettingsIM& settings,
+              const int argc = 0,
+              const char* const argv[] = nullptr) -> void;
 
 } // namespace tango

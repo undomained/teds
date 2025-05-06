@@ -2,7 +2,7 @@
 # the LICENSE file in the root directory of this project.
 
 add_library(tango_im SHARED
-  driver.cpp
+  driver_im.cpp
   settings_im.cpp
   forward_models.cpp)
 target_link_libraries(tango_im PUBLIC common)

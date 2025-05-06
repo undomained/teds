@@ -5,7 +5,7 @@
 #include <common/binning_table.h>
 #include <common/io.h>
 #include <l1al1b/calibration.h>
-#include <l1al1b/driver.h>
+#include <l1al1b/driver_l1b.h>
 #include <l1al1b/settings_l1b.h>
 
 using Catch::Matchers::WithinAbs;
@@ -39,7 +39,7 @@ TEST_CASE("integration tests")
     std::ofstream empty_config { config_filename };
     empty_config << "processing_version: test\n";
     empty_config.close();
-    tango::SettingsL1B settings { config_filename };
+    tango::SettingsL1B settings { YAML::LoadFile(config_filename) };
     settings.io_files.ckd = ckd_filename;
     settings.io_files.l1a = l1a_filename;
     settings.io_files.l1b = l1b_filename;
@@ -51,7 +51,7 @@ TEST_CASE("integration tests")
     SECTION("Full chain, no binning")
     {
         // Run the simulator and read the L1B product from temporary space
-        tango::driver(settings);
+        tango::driverL1B(settings);
         tango::readL1(l1b_filename, 0, std::optional<size_t> {}, l1, true);
         CHECK_THAT(l1.wavelengths.abs().sum(), WithinRel(163065.0, 1e-6));
         CHECK_THAT(l1.spectra.abs().sum(), WithinRel(1.6769428e21, 1e-6));
@@ -69,7 +69,7 @@ TEST_CASE("integration tests")
         l1.signal = binning_table.binMulti(l1.signal, false);
         l1.binning_table_id = bin_factor;
         writeL1A(fixture_dir, l1a_filename, l1);
-        tango::driver(settings);
+        tango::driverL1B(settings);
         tango::readL1(l1b_filename, 0, std::optional<size_t> {}, l1, true);
         CHECK_THAT(l1.wavelengths.abs().sum(), WithinRel(163065.0, 1e-6));
         CHECK_THAT(l1.spectra.abs().sum(), WithinRel(1.6933739e21, 1e-6));
@@ -79,7 +79,7 @@ TEST_CASE("integration tests")
     SECTION("Full chain, L1B binning 5")
     {
         settings.bin_spectra = 5;
-        tango::driver(settings);
+        tango::driverL1B(settings);
         tango::readL1(l1b_filename, 0, std::optional<size_t> {}, l1, true);
         CHECK_THAT(l1.wavelengths.abs().sum(), WithinRel(163065.0, 1e-6));
         CHECK_THAT(l1.spectra.abs().sum(), WithinRel(3.3496472e20, 1e-6));
@@ -94,7 +94,7 @@ TEST_CASE("integration tests")
         settings.nonlin.enabled = false;
         settings.prnu.enabled = false;
         settings.stray.van_cittert_steps = 0;
-        tango::driver(settings);
+        tango::driverL1B(settings);
         tango::readL1(l1b_filename, 0, std::optional<size_t> {}, l1, true);
         tango::Geometry geo {};
         readGeo(l1b_filename, geo);

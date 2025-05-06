@@ -8,7 +8,7 @@
 // available to the user user. Otherwise run the processor with
 // settings read from a YAML configuration file.
 
-#include "driver.h"
+#include "driver_l1b.h"
 #include "settings_l1b.h"
 
 #include <iostream>
@@ -22,9 +22,9 @@ auto main(int argc, char* argv[]) -> int
                   << tango::SettingsL1B {}.c_str() << '\n';
     } else {
         // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-        tango::SettingsL1B settings { argv[1] };
+        tango::SettingsL1B settings { YAML::LoadFile(argv[1]) };
         settings.init();
-        driver(settings, argc, argv);
+        driverL1B(settings, argc, argv);
     }
     return 0;
 }

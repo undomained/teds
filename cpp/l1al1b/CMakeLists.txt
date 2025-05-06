@@ -2,7 +2,7 @@
 # the LICENSE file in the root directory of this project.
 
 add_library(tango_l1b SHARED
-  driver.cpp
+  driver_l1b.cpp
   settings_l1b.cpp
   calibration.cpp)
 target_link_libraries(tango_l1b PUBLIC common)

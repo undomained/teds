@@ -1,10 +1,23 @@
 // Python interface to TEDS C++ components
 
+#include "drivers.h"
 #include "geolocate.h"
 #include "radiative_transfer.h"
 #include "solar_model.h"
 
 static PyMethodDef bindings_methods[] = {
+    { "run_instrument_model",
+      runIM,
+      METH_VARARGS,
+      "Driver function to run the instrument model" },
+    { "run_l1al1b",
+      runL1B,
+      METH_VARARGS,
+      "Driver function to run the L1B processor" },
+    { "level1b_to_level2_processor",
+      runL2,
+      METH_VARARGS,
+      "Driver function to run the L2 processor" },
     { "solar_model",
       solarModel,
       METH_VARARGS,

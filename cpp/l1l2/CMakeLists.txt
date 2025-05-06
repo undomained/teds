@@ -2,7 +2,7 @@
 # the LICENSE file in the root directory of this project.
 
 add_library(tango_l2 SHARED
-  driver.cpp
+  driver_l2.cpp
   settings_l2.cpp
   atmosphere.cpp
   optic_abs_prop.cpp

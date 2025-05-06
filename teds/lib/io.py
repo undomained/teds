@@ -89,7 +89,7 @@ def merge_config_with_default(config: dict | None, teds_module: str) -> dict:
     if config is None:
         print(open(default_config_path).read())
         log.info(f'Stopping because the module {teds_module} was called '
-                 'without an input file')
+                 'without an argument')
         sys.exit(0)
     assert isinstance(config, dict)
     config_full: dict = yaml.safe_load(open(default_config_path))

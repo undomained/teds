@@ -1,7 +1,7 @@
 // This source code is licensed under the 3-clause BSD license found
 // in the LICENSE file in the root directory of this project.
 
-#include "driver.h"
+#include "driver_im.h"
 
 #include "forward_models.h"
 #include "settings_im.h"
@@ -15,9 +15,9 @@
 
 namespace tango {
 
-auto driver(const SettingsIM& settings,
-            const int argc,
-            const char* const argv[]) -> void
+auto driverIM(const SettingsIM& settings,
+              const int argc,
+              const char* const argv[]) -> void
 {
     // Set up loggers and print general information
     initLogging();

@@ -3,7 +3,7 @@
 #include "../testing.h"
 
 #include <common/io.h>
-#include <im/driver.h>
+#include <im/driver_im.h>
 #include <im/settings_im.h>
 
 #include <cstdio>
@@ -44,7 +44,7 @@ TEST_CASE("integration tests")
     std::ofstream empty_config { config_filename };
     empty_config << "processing_version: test\n";
     empty_config.close();
-    tango::SettingsIM settings { config_filename };
+    tango::SettingsIM settings { YAML::LoadFile(config_filename) };
     settings.detector.exposure_time = 0.01724385;
     settings.detector.nr_coadditions = 2;
     settings.isrf.tabulated = false;
@@ -63,7 +63,7 @@ TEST_CASE("integration tests")
     SECTION("Full chain")
     {
         // Run the simulator and read the L1A product from temporary space
-        tango::driver(settings);
+        tango::driverIM(settings);
         tango::readL1(l1a_filename, 0, std::optional<size_t> {}, l1, true);
         CHECK_THAT(l1.signal.abs().sum(), WithinRel(170771723.0, 1e-6));
     }
@@ -71,7 +71,7 @@ TEST_CASE("integration tests")
     SECTION("Full chain, no ADC or binning")
     {
         settings.cal_level = tango::ProcLevel::raw;
-        tango::driver(settings);
+        tango::driverIM(settings);
         tango::readL1(l1a_filename, 0, std::optional<size_t> {}, l1, true);
         CHECK_THAT(l1.signal.abs().sum(), WithinRel(85381591.8420284, 1e-6));
     }
@@ -79,7 +79,7 @@ TEST_CASE("integration tests")
     SECTION("Full chain, binning 4")
     {
         settings.detector.binning_table_id = 4;
-        tango::driver(settings);
+        tango::driverIM(settings);
         tango::readL1(l1a_filename, 0, std::optional<size_t> {}, l1, true);
         CHECK_THAT(l1.signal.abs().sum(), WithinRel(170777956.0, 1e-6));
     }
@@ -88,7 +88,7 @@ TEST_CASE("integration tests")
     {
         settings.cal_level = tango::ProcLevel::raw;
         settings.detector.binning_table_id = 4;
-        tango::driver(settings);
+        tango::driverIM(settings);
         tango::readL1(l1a_filename, 0, std::optional<size_t> {}, l1, true);
         CHECK_THAT(l1.signal.abs().sum(), WithinRel(21839872.0133989, 1e-6));
     }

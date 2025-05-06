@@ -8,7 +8,7 @@
 // available to the user user. Otherwise run the instrument model with
 // settings read from a YAML configuration file.
 
-#include "driver.h"
+#include "driver_im.h"
 #include "settings_im.h"
 
 #include <iostream>
@@ -21,9 +21,9 @@ auto main(int argc, char* argv[]) -> int
         std::cout << "%YAML 1.2\n---\n" << tango::SettingsIM {}.c_str() << '\n';
     } else {
         // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-        tango::SettingsIM settings { argv[1] };
+        tango::SettingsIM settings { YAML::LoadFile(argv[1]) };
         settings.init();
-        tango::driver(settings, argc, argv);
+        tango::driverIM(settings, argc, argv);
     }
     return 0;
 }

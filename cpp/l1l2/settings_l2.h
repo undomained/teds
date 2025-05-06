@@ -146,7 +146,7 @@ public:
     } io_files;
 
     SettingsL2() = default;
-    SettingsL2(const std::string& yaml_file) : Settings { yaml_file } {}
+    SettingsL2(const YAML::Node& node) : Settings { node } {}
     auto scanKeys() -> void override;
     ~SettingsL2() = default;
 };

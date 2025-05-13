@@ -1,35 +1,93 @@
-import numpy as np
-import sys
-import yaml
-import netCDF4 as nc
+import argparse
+import logging
+import os
 from copy import deepcopy
-from teds.lib.libWrite import writevariablefromname
 
-#   main program ##############################################################
+import netCDF4 as nc
+import numpy as np
 
-def get_l1b(l1b_filename):
+# Configure logging
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s %(levelname)s %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+
+def get_l1b(l1b_filename: str) -> dict:
+    """
+    Reads and extracts relevant L1B data from a NetCDF file. The function processes the input file,
+    retrieving and organizing various observation and geolocation data, including radiance,
+    wavelength, noise, solar angles, sensor angles, and spatial coordinates. Additionally,
+    it derives a mask to identify valid data points within the radiance dataset.
+
+    Parameters:
+        l1b_filename: str
+            The path to the L1B NetCDF file to be read.
+
+    Returns:
+        dict
+            A dictionary containing the extracted L1B data. Keys include:
+            'wavelength', 'radiance', 'noise', 'sza', 'saa', 'vza', 'vaa',
+            'latitude', 'longitude', and 'mask', representing respective
+            data arrays.
+    """
+
     # getting l1b data from file
+    logger.debug(f"Reading L1B data from {l1b_filename}")
     nc_l1b = nc.Dataset(l1b_filename, mode='r')
-        
-    l1b_data = {}
-    l1b_data['wavelength'] = deepcopy(nc_l1b['observation_data/wavelength'][:])
-    l1b_data['radiance'] = deepcopy(nc_l1b['observation_data/radiance'][:])
-    l1b_data['noise'] = deepcopy(nc_l1b['observation_data/radiance_stdev'][:])
-    l1b_data['sza'] = deepcopy(nc_l1b['geolocation_data/solar_zenith'][:])
-    l1b_data['saa'] = deepcopy(nc_l1b['geolocation_data/solar_azimuth'][:])
-    l1b_data['vza'] = deepcopy(nc_l1b['geolocation_data/sensor_zenith'][:])
-    l1b_data['vaa'] = deepcopy(nc_l1b['geolocation_data/sensor_azimuth'][:])
-    l1b_data['latitude'] = deepcopy(nc_l1b['geolocation_data/latitude'][:])
-    l1b_data['longitude'] = deepcopy(nc_l1b['geolocation_data/longitude'][:])
+
+    l1b_data = {
+        'wavelength': deepcopy(nc_l1b['observation_data/wavelength'][:]),
+        'radiance': deepcopy(nc_l1b['observation_data/radiance'][:]),
+        'noise': deepcopy(nc_l1b['observation_data/radiance_stdev'][:]),
+        'sza': deepcopy(nc_l1b['geolocation_data/solar_zenith'][:]),
+        'saa': deepcopy(nc_l1b['geolocation_data/solar_azimuth'][:]),
+        'vza': deepcopy(nc_l1b['geolocation_data/sensor_zenith'][:]),
+        'vaa': deepcopy(nc_l1b['geolocation_data/sensor_azimuth'][:]),
+        'latitude': deepcopy(nc_l1b['geolocation_data/latitude'][:]),
+        'longitude': deepcopy(nc_l1b['geolocation_data/longitude'][:]),
+    }
+
     # Extract mask
     nc_var = nc_l1b['observation_data/radiance']
     l1b_data['mask'] = ~nc_var[:].mask
     if not nc_var[:].mask.shape:
         l1b_data['mask'] = np.full(nc_var[:].shape, True)
-    
+
     return (l1b_data)
 
-def sim_modified_output(filename, l1b_output):
+
+def sim_modified_output(filename: str, l1b_output: dict) -> None:
+    """
+    Creates a NetCDF output file containing geolocation and observation data based
+    on the given inputs.
+
+    This function generates a NetCDF file based on provided data arrays representing
+    geolocation and observation data. It defines dimensions, groups, and variables
+    within the file to store latitude, longitude, solar and sensor angles, as well
+    as spectral radiance and noise levels.
+
+    Arguments:
+        filename (str): The path to the NetCDF file to be created.
+        l1b_output (dict): A dictionary containing geolocation and observation
+            data arrays. Expected keys are:
+            - 'latitude': 2D numpy array with latitude values.
+            - 'longitude': 2D numpy array with longitude values.
+            - 'sza': 2D numpy array with solar zenith angles.
+            - 'saa': 2D numpy array with solar azimuth angles.
+            - 'vza': 2D numpy array with sensor zenith angles.
+            - 'vaa': 2D numpy array with sensor azimuth angles.
+            - 'wavelength': 2D numpy array with wavelength values.
+            - 'radiance': 3D numpy array with spectral radiance values.
+            - 'noise': 3D numpy array with radiance noise values.
+
+    Raises:
+        IOError: If there is an issue creating or writing to the file.
+
+    Returns:
+        None
+    """
     output = nc.Dataset(filename, mode='w')
     output.title = 'Tango Carbon level 1B data'
 
@@ -118,26 +176,48 @@ def sim_modified_output(filename, l1b_output):
 
     output.close()
 
-def add_radiance_offset(filename_in, filename_out, rad_offset):
 
-    l1b = get_l1b(filename_in)
+def add_radiance_offset(filename_in, filename_out, rad_offset):
+    logger.debug(f"Adding radiance offset of {rad_offset} to {filename_in}")
+    """
+    Adds a radiometric offset to radiance data and saves the modified data to a
+    NetCDF file. The function processes input data by applying a scaled radiometric
+    offset to the radiance field, while duplicating other data fields consistently
+    in the output structure.
+
+    Args:
+        filename_in (str): The path to the input file containing radiance
+        and associated data.
+        filename_out (str): The path where the output file with the modified
+        radiance data will be saved.
+        rad_offset (float): The scaling factor used to calculate the radiometric
+        offset applied to the radiance data.
+
+    Raises:
+        None
+
+    Returns:
+        None
+    """
+    l1b: dict = get_l1b(filename_in)
     nalt, nact, nwav = l1b['radiance'].shape
 
-    l1b_scaled = {}
-    l1b_scaled['sza'] = np.empty([nalt, nact])
-    l1b_scaled['saa'] = np.empty([nalt, nact])
-    l1b_scaled['vza'] = np.empty([nalt, nact])
-    l1b_scaled['vaa'] = np.empty([nalt, nact])
-    l1b_scaled['latitude'] = np.empty([nalt, nact])
-    l1b_scaled['longitude'] = np.empty([nalt, nact])
-    l1b_scaled['noise'] = np.empty([nalt, nact, nwav])
-    l1b_scaled['radiance'] = np.empty([nalt, nact, nwav])
-    l1b_scaled['wavelength'] = np.empty([nwav])
+    l1b_scaled: dict = {
+        'sza': np.empty([nalt, nact]),
+        'saa': np.empty([nalt, nact]),
+        'vza': np.empty([nalt, nact]),
+        'vaa': np.empty([nalt, nact]),
+        'latitude': np.empty([nalt, nact]),
+        'longitude': np.empty([nalt, nact]),
+        'noise': np.empty([nalt, nact, nwav]),
+        'radiance': np.empty([nalt, nact, nwav]),
+        'wavelength': np.empty([nwav]),
+    }
 
     for ialt in range(nalt):
         for iact in range(nact):
-            offset = rad_offset*np.max(l1b['radiance'][0, iact, :])
-            l1b_scaled['radiance'][ialt, iact, :] = l1b['radiance'][0, iact, :]+offset
+            offset = rad_offset * np.max(l1b['radiance'][0, iact, :])
+            l1b_scaled['radiance'][ialt, iact, :] = l1b['radiance'][0, iact, :] + offset
         l1b_scaled['sza'][ialt, :] = l1b['sza'][0, :]
         l1b_scaled['saa'][ialt, :] = l1b['saa'][0, :]
         l1b_scaled['vza'][ialt, :] = l1b['vza'][0, :]
@@ -150,6 +230,22 @@ def add_radiance_offset(filename_in, filename_out, rad_offset):
     # output to netcdf file
     sim_modified_output(filename_out, l1b_scaled)
 
-    print('=> radiometric offset added successfully ')
+    logger.info('Radiometric offset added successfully ')
 
-    return
+
+def main():
+    parser = argparse.ArgumentParser(description="Apply a radiance offset to L1B NetCDF data.")
+
+    parser.add_argument('--input', required=True, help='Input NetCDF file path')
+    parser.add_argument('--output', required=True, help='Output NetCDF file path')
+    parser.add_argument('--offset', type=float, default=0.01, help='Offset fraction (e.g., 0.01 for 1%)')
+    args = parser.parse_args()
+
+    if not os.path.exists(args.input):
+        raise FileNotFoundError(f"Input file not found: {args.input}")
+
+    add_radiance_offset(args.input, args.output, args.offset)
+
+
+if __name__ == '__main__':
+    main()

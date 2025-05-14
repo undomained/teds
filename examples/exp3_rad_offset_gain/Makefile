@@ -1,4 +1,4 @@
-# Makefile for rad_offset_gain project
+# Makefile for rad_offset_gain module
 
 PYTHON = .venv/bin/python
 PIP = .venv/bin/pip
@@ -8,9 +8,33 @@ RUFF = .venv/bin/ruff
 
 .PHONY: update-requirements fmt install uninstall build tests coverage clean flake8
 
-all: venv build
+all: help
 
 dist: all
+
+help:
+	@echo "Makefile for rad_offset_gain module"
+	@echo "Available targets:"
+	@echo "  all                 - Run all targets"
+	@echo "  build               - Build distribution packages"
+	@echo "  clean               - Clean build artifacts and cache"
+	@echo "  coverage            - Run tests with coverage"
+	@echo "  dist                - Run all targets and build distribution packages"
+	@echo "  dist-clean          - Clean all build artifacts and caches"
+	@echo "  docker              - Build Docker image"
+	@echo "  docker-bash         - Run Docker container with bash"
+	@echo "  fmt                 - Format code using black"
+	@echo "  install             - Install project dependencies"
+	@echo "  lint                - Linting with ruff"
+	@echo "  mypy                - Run MyPy type checking"
+	@echo "  tests               - Run tests using tox"
+	@echo "  uninstall           - Uninstall project and its dependencies"
+	@echo "  update-requirements - Update requirements.txt from requirements.in"
+	@echo "  venv                - Create a virtual environment and install dependencies"
+	@echo ""
+	@echo "  help                - Show this help message"
+	@echo ""
+
 
 # Virtual environment setup
 .PHONY: venv
@@ -77,6 +101,3 @@ docker: build
 
 docker-bash:
 	docker run -ti rad-offset-gain bash
-
-docker-run:
-	docker run -ti rad-offset-gain rad_offset_gain

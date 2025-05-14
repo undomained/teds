@@ -1,0 +1,36 @@
+[project]
+name = "rad_offset_gain"
+version = "1.0.0"
+description = "A project for analyzing radiance offset and gain, containing scripts, unit tests, Jupyter notebooks, and YAML configurations."
+authors = [
+    { name = "Tomasz Dudzisz", email = "tomasz@dudzisz.com" }
+]
+readme = "README.md"
+license = "BSD-3-Clause"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy",
+    "netCDF4"
+]
+
+[project.optional-dependencies]
+dev = [
+    "black",
+    "pip-tools",
+    "pytest",
+    "jupyter",
+    "matplotlib",
+    "pandas",
+    "pyyaml",
+    "click"
+]
+
+[build-system]
+requires = ["setuptools>=77.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[project.scripts]
+rad_offset_gain = "rad_offset_gain.cli:main"

@@ -1,0 +1,19 @@
+[flake8]
+# Set max line length (compatible with black)
+max-line-length = 100
+
+# Ignore these directories
+exclude =
+    .venv,
+    __pycache__,
+    build,
+    dist,
+    .git,
+    .tox
+
+# Ignore specific warning codes
+ignore =
+    # Whitespace before ':', ignored to match black
+    E203,
+    # Line break before binary operator (black prefers this)
+    W503

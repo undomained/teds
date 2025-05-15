@@ -1,6 +1,6 @@
 # This workflow will build and upload a Python Package to PyPI
 
-name: rad_offset_gain - Upload Python Package
+name: rad_offset_gain - Python Package
 
 on:
   workflow_dispatch:
@@ -24,7 +24,7 @@ permissions:
 
 jobs:
   call-builder:
-    uses: ./.github/workflows/python-package-build.yml
+    uses: ./.github/workflows/templates/python-package-build.yml
     with:
       project-path: examples/exp3_rad_offset_gain
 

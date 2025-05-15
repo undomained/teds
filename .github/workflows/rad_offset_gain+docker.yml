@@ -1,7 +1,7 @@
 # This workflow will build the Docker image for the `rad_offset_gain`
 # example and upload the distributions as artifacts.
 
-name: rad_offset_gain - Build Docker Image
+name: rad_offset_gain - Docker Image
 
 on:
   workflow_dispatch:
@@ -23,6 +23,6 @@ permissions:
 
 jobs:
   call-builder:
-    uses: ./.github/workflows/container-build.yml
+    uses: ./.github/workflows/templates/container-build.yml
     with:
       project-path: examples/exp3_rad_offset_gain

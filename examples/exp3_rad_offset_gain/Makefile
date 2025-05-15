@@ -101,3 +101,7 @@ docker: build
 
 docker-bash:
 	docker run -ti rad-offset-gain bash
+
+# Build Docker image using podman
+container: build
+	$(TOX) -e container

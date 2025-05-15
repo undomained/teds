@@ -23,6 +23,6 @@ permissions:
 
 jobs:
   call-builder:
-    uses: ./.github/workflows/templates/container-build.yml
+    uses: ./.github/workflows/template_container-build.yml
     with:
       project-path: examples/exp3_rad_offset_gain

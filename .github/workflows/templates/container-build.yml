@@ -1,6 +1,6 @@
-# Template for building Python packages
+# Template for building containers
 
-name: Python Package Builder
+name: Container Builder
 
 on:
   workflow_call:

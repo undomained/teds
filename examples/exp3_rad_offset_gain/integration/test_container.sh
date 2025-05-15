@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 
-DIR=$(dirname $(realpath ${0}))
+DIR=$(dirname $(realpath "${0}"))
 
 cd ${DIR} || exit 1
 

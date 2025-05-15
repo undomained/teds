@@ -23,7 +23,7 @@ jobs:
 
       - name: Test Container
         run: |
-          cd cd ${{ inputs.project-path }}
+          cd ${{ inputs.project-path }}
           make test-container
 
 #      - name: Log in to Docker Hub

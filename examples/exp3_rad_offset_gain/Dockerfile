@@ -6,9 +6,7 @@ ENV VIRTUAL_ENV=/opt/venv
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
 # Install system dependencies
-RUN apt-get update
-
-# && apt-get install -y gcc libffi-dev && rm -rf /var/lib/apt/lists/*
+# RUN apt-get update
 
 # Create virtualenv and install tox
 RUN python -m venv $VIRTUAL_ENV
@@ -20,6 +18,7 @@ WORKDIR /app
 # Copy project
 COPY dist/ /app/dist/
 
+# Install the package
 RUN pip install /app/dist/rad_offset_gain-*.whl && rm -rf /app/dist
 
 ENTRYPOINT ["python", "-m", "rad_offset_gain.cli"]

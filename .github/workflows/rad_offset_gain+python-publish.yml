@@ -1,6 +1,6 @@
 # This workflow will upload a Python Package to PyPI when a release is created
 
-name: Upload Python Package
+name: rad_offset_gain - Upload Python Package
 
 on:
   workflow_dispatch:
@@ -30,7 +30,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: release-dists
-          path: dist/
+          path: examples/exp3_rad_offset_gain/dist/
 
   pypi-publish:
     runs-on: ubuntu-latest
@@ -56,9 +56,9 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: release-dists
-          path: dist/
+          path: examples/exp3_rad_offset_gain/dist/
 
       - name: Publish release distributions to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          packages-dir: dist/
+          packages-dir: examples/exp3_rad_offset_gain/dist/

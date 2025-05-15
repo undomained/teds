@@ -23,43 +23,9 @@ permissions:
   contents: read
 
 jobs:
-  release-build:
-    runs-on: self-hosted
+  call-builder:
+    uses: ./.github/workflows/python-package-build.yml
+    with:
+      project-path: examples/exp3_rad_offset_gain
+      project-name: rad_offset_gain
 
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Build release distributions
-        run: |
-          cd examples/exp3_rad_offset_gain
-          make build
-
-      - name: Upload distributions
-        uses: actions/upload-artifact@v4
-        with:
-          name: release-dists
-          path: examples/exp3_rad_offset_gain/dist/
-
-#  pypi-publish:
-#    runs-on: ubuntu-latest
-#    needs:
-#      - release-build
-#    permissions:
-#      id-token: write
-#
-#    environment:
-#      name: pypi
-#      # url: https://pypi.org/p/undomained
-#      # url: https://pypi.org/project/undomained/${{ github.event.release.name }}
-#
-#    steps:
-#      - name: Retrieve release distributions
-#        uses: actions/download-artifact@v4
-#        with:
-#          name: release-dists
-#          path: examples/exp3_rad_offset_gain/dist/
-#
-#      - name: Publish release distributions to PyPI
-#        uses: pypa/gh-action-pypi-publish@release/v1
-#        with:
-#          packages-dir: examples/exp3_rad_offset_gain/dist/

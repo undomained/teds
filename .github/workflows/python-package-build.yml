@@ -1,0 +1,55 @@
+# Template for building Python packages
+
+name: Python Package Builder
+
+on:
+  workflow_call:
+    inputs:
+      project-path:
+        required: true
+        type: string
+      project-name:
+        required: true
+        type: string
+
+jobs:
+  package-build:
+    runs-on: self-hosted
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build release distributions
+        run: |
+          cd ${{ inputs.project-path }}
+          make build
+
+      - name: Upload distributions
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-dists
+          path: ${{ inputs.project-path }}/dist/
+
+#  pypi-publish:
+#    runs-on: self-hosted
+#    needs:
+#      - release-build
+#    permissions:
+#      id-token: write
+#
+#    environment:
+#      name: pypi
+#      url: https://pypi.org/p/undomained
+#      url: https://pypi.org/project/undomained/${{ github.event.release.name }}
+#
+#    steps:
+#      - name: Retrieve release distributions
+#        uses: actions/download-artifact@v4
+#        with:
+#          name: release-dists
+#          path: ${{ inputs.project-path }}/dist/
+#
+#      - name: Publish release distributions to PyPI
+#        uses: pypa/gh-action-pypi-publish@release/v1
+#        with:
+#          packages-dir: ${{ inputs.project-path }}/dist/

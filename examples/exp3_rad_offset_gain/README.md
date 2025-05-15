@@ -319,9 +319,9 @@ jobs:
           path: ${{ inputs.project-path }}/dist/
 ```
 
-#### Implementation of the Python package
+#### Python package CI/CD implementation example
 
-- See [rad_offset_gain+python-publish.yml](.github/workflows/rad_offset_gain+python.yml) file for the Python package workflow source code.
+- See [rad_offset_gain+python.yml](/.github/workflows/rad_offset_gain+python.yml) file for the Python package workflow source code.
 - See [Actions/rad_offset_gain - Python Package](https://github.com/undomained/teds/actions/workflows/rad_offset_gain+python.yml) for the latest run.
 
 ### Container
@@ -358,9 +358,9 @@ jobs:
           make test-container
 ```
 
-#### Implementation of the container
+#### Container CI/CD Implementation example
 
-- See [rad_offset_gain+python-publish.yml](/.github/workflows/rad_offset_gain+container.yml) file for the container workflow source code.
+- See [rad_offset_gain+container.yml](/.github/workflows/rad_offset_gain+container.yml) file for the container workflow source code.
 - See [Actions/rad_offset_gain - Container Image](https://github.com/undomained/teds/actions/workflows/rad_offset_gain+container.yml) for the latest run.
 
 ### Notes

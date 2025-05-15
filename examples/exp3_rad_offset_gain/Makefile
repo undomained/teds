@@ -39,10 +39,10 @@ help:
 # Virtual environment setup
 .PHONY: venv
 venv:
-	python3 -m venv .venv && \
+	bash -c "python3 -m venv .venv && \
 	source .venv/bin/activate && \
 	pip install --upgrade pip && \
-	pip install tox
+	pip install tox"
 
 # Update requirements.txt from requirements.in using pip-tools
 update-requirements: venv

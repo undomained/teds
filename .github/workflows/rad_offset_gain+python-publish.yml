@@ -1,15 +1,23 @@
-# This workflow will upload a Python Package to PyPI when a release is created
+# This workflow will build and upload a Python Package to PyPI
 
 name: rad_offset_gain - Upload Python Package
 
 on:
   workflow_dispatch:
   push:
-      branches: [ "tomd/refactoring" ]
+    branches: [ "tomd/refactoring" ]
+    paths:
+      - "examples/exp3_rad_offset_gain/**"
+      - ".github/workflows/rad_offset_gain**"
+
   pull_request:
     branches: [ "tomd/refactoring" ]
+    paths:
+      - "examples/exp3_rad_offset_gain/**"
+      - ".github/workflows/rad_offset_gain**"
+
   release:
-    types: [published]
+    types: [ published ]
 
 permissions:
   contents: read

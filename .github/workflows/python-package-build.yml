@@ -8,9 +8,6 @@ on:
       project-path:
         required: true
         type: string
-      project-name:
-        required: true
-        type: string
 
 jobs:
   package-build:

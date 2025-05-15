@@ -27,5 +27,4 @@ jobs:
     uses: ./.github/workflows/python-package-build.yml
     with:
       project-path: examples/exp3_rad_offset_gain
-      project-name: rad_offset_gain
 

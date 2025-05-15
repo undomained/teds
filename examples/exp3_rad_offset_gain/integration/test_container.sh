@@ -1,8 +1,10 @@
 #!/usr/bin/env sh
 
-rm -f sample*nc
+DIR=$(dirname $(realpath ${0}))
 
-python3 nc_generator.py || exit 1
+cd ${DIR} || exit 1
+
+rm -f sample_l1b_offset.nc
 
 docker run -ti \
   -v "$(pwd)":/data \

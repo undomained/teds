@@ -105,3 +105,6 @@ docker-bash:
 # Build Docker image using podman
 container: build
 	$(TOX) -e container
+
+test-container:
+	$(TOX) -e test-container

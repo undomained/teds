@@ -1,6 +1,7 @@
 import sys
 import unittest
 from unittest import mock
+from unittest.mock import MagicMock
 
 from rad_offset_gain import cli
 
@@ -8,7 +9,7 @@ from rad_offset_gain import cli
 class TestCLI(unittest.TestCase):
 
     @mock.patch("rad_offset_gain.cli.add_radiance_offset")
-    def test_cli_success(self, mock_add):
+    def test_cli_success(self, mock_add: MagicMock) -> None:
         test_args = [
             "prog",
             "--input",
@@ -25,12 +26,12 @@ class TestCLI(unittest.TestCase):
             cli.main()
             mock_add.assert_called_once_with("input.nc", "output.nc", 0.05)
 
-    def test_missing_arguments(self):
+    def test_missing_arguments(self) -> None:
         test_args = ["prog", "--input", "input.nc"]
         with mock.patch.object(sys, "argv", test_args), self.assertRaises(SystemExit):
             cli.main()
 
-    def test_input_file_not_found(self):
+    def test_input_file_not_found(self) -> None:
         test_args = ["prog", "--input", "missing.nc", "--output", "output.nc"]
         with (
             mock.patch.object(sys, "argv", test_args),
@@ -40,7 +41,7 @@ class TestCLI(unittest.TestCase):
             cli.main()
 
     @mock.patch("rad_offset_gain.cli.add_radiance_offset", side_effect=Exception("Mock error"))
-    def test_processing_error(self, mock_add):
+    def test_processing_error(self, mock_add: MagicMock) -> None:
         test_args = ["prog", "--input", "input.nc", "--output", "output.nc"]
         with (
             mock.patch.object(sys, "argv", test_args),

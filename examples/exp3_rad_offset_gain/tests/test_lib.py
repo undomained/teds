@@ -1,5 +1,7 @@
 import unittest
 from unittest import mock, skip
+
+import netCDF4 as nc
 import numpy as np
 
 from rad_offset_gain import lib
@@ -9,7 +11,7 @@ class TestLib(unittest.TestCase):
 
     @skip("rad_offset_gain.lib.nc.Dataset")
     @mock.patch("rad_offset_gain.lib.nc.Dataset")
-    def test_get_l1b(self, mock_dataset):
+    def test_get_l1b(self, mock_dataset: nc.Dataset) -> None:
         # Create mock variables
         mock_vars = {
             "wavelength": np.array([[500.0]]),
@@ -40,7 +42,7 @@ class TestLib(unittest.TestCase):
             np.testing.assert_array_equal(result[key], mock_vars[key])
 
     @skip("rad_offset_gain.lib.nc.Dataset")
-    def test_add_radiance_offset(self):
+    def test_add_radiance_offset(self) -> None:
         # Sample input
         input_data = {"radiance": np.array([[1.0, 2.0, 3.0]])}
         offset = 0.1

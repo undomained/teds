@@ -15,7 +15,7 @@ dist: all
 help:
 	@echo "Makefile for rad_offset_gain module"
 	@echo "Available targets:"
-	@echo "  all                 - Run all targets"
+	@echo "  all                 - Show this help message"
 	@echo "  build               - Build distribution packages"
 	@echo "  clean               - Clean build artifacts and cache"
 	@echo "  coverage            - Run tests with coverage"

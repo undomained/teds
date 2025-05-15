@@ -281,6 +281,9 @@ There are two main workflows:
 
 ### Examples
 
+These examples utilize Self-Hosted runner deployed on GCP x64 Linux instance.
+See details: https://github.com/undomained/teds/actions/runners?tab=self-hosted
+
 #### Python Package
 
 Example of a GitHub Actions workflow file for the Python package:
@@ -359,3 +362,8 @@ jobs:
 
 - See [rad_offset_gain+python-publish.yml](.github/workflows/rad_offset_gain+container.yml) file for the container workflow source code.
 - See [Actions/rad_offset_gain - Container Image](https://github.com/undomained/teds/actions/workflows/rad_offset_gain+container.yml) for the latest run.
+
+### Notes
+
+To keep costs low and shorten pipeline execution time, certain sections of the templates have been commented out, as this project serves only as a demonstration.
+

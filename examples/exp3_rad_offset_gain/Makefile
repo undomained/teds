@@ -6,11 +6,12 @@ TOX = .venv/bin/tox
 BLACK = .venv/bin/black
 RUFF = .venv/bin/ruff
 
-.PHONY: update-requirements fmt install uninstall build tests coverage clean flake8
+.PHONY: update-requirements fmt install uninstall build
+.PHONY: tests coverage clean flake8 mypy lint
+.PHONY: dist-clean docker container test-container
+.PHONY: all help venv
 
 all: help
-
-dist: all
 
 help:
 	@echo "Makefile for rad_offset_gain module"
@@ -19,10 +20,8 @@ help:
 	@echo "  build               - Build distribution packages"
 	@echo "  clean               - Clean build artifacts and cache"
 	@echo "  coverage            - Run tests with coverage"
-	@echo "  dist                - Run all targets and build distribution packages"
 	@echo "  dist-clean          - Clean all build artifacts and caches"
 	@echo "  docker              - Build Docker image"
-	@echo "  docker-bash         - Run Docker container with bash"
 	@echo "  fmt                 - Format code using black"
 	@echo "  install             - Install project dependencies"
 	@echo "  lint                - Linting with ruff"
@@ -75,13 +74,13 @@ dist-clean: clean
 	rm -rf .eggs .hypothesis .ruff_cache
 	rm -rf coverage.xml htmlcov
 
-# Run tests using tox
+# Run all tests using tox
 tests: venv
-	$(TOX) -e py310 -- tests
+	$(TOX) -e run-tests
 
 # Run tests with coverage
 coverage: venv
-	$(TOX) -e py310 -- --cov=rad_offset_gain --cov-report=term-missing tests
+	$(TOX) -e coverage
 
 # MyPy type checking
 mypy: venv
@@ -99,12 +98,12 @@ flake8: venv
 docker: build
 	$(TOX) -e docker
 
-docker-bash:
-	docker run -ti rad-offset-gain bash
-
 # Build Docker image using podman
 container: build
 	$(TOX) -e container
 
 test-container:
 	$(TOX) -e test-container
+
+test-all-targets: clean dist-clean venv dist update-requirements fmt tests \
+	coverage mypy lint flake8 build install uninstall docker dist-clean

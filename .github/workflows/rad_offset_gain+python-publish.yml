@@ -21,13 +21,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-#      - uses: actions/setup-python@v5
-#        with:
-#          python-version: "3.11.2"
-
       - name: Build release distributions
         run: |
-          # NOTE: put your own distribution build steps here.
+          cd examples/exp3_rad_offset_gain
           make build
 
       - name: Upload distributions
